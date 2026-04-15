@@ -117,7 +117,9 @@ Each module contains:
 - Read `docs/architecture.md` for the module map and pipeline contract.
 - Read `docs/repository-map.md` for the purpose of the current scaffolding files.
 - Read `docs/implementation-plan.md` for agent rollout and dependencies.
+- Read `docs/roadmap.md` for the multi-phase project roadmap.
 - Read `docs/phase-1-roadmap.md` for the current delivery roadmap.
+- Read `docs/phase-2-plan.md` for the next implementation wave and its locked scope.
 - Read `docs/agent-assignments.md` for the current module-task ownership plan.
 - Read `docs/current-capabilities.md` for the actual implemented feature boundary.
 - Read `docs/contributor-guide.md` for setup, happy-path workflow, extension points, and validation.
