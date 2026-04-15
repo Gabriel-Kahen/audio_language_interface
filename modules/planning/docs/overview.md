@@ -4,7 +4,7 @@
 
 Convert user intent and current audio state into an explicit `EditPlan`.
 
-The initial implementation is a deterministic baseline planner. It uses conservative keyword parsing plus analysis and semantic evidence to emit small, explicit plans that stay within the currently implemented transform operation set.
+The initial implementation is a deterministic baseline planner. It uses conservative keyword parsing plus analysis and semantic evidence to emit small, explicit plans that stay within the currently supported planning operation set.
 
 ## Public API surface
 
@@ -45,13 +45,15 @@ The initial implementation is a deterministic baseline planner. It uses conserva
 
 ## Baseline behavior
 
-- only emits operations currently supported by `modules/transforms`
+- only emits operations currently supported by the Phase 2 planning slice: EQ, filtering, trim, fade, gain, conservative compression, and peak limiting
 - prefers one small EQ step over multiple overlapping tonal steps when possible
 - validates inbound `AudioVersion`, `AnalysisReport`, and `SemanticProfile` contracts before planning
 - uses the current `AudioVersion` duration to reject trim and fade requests that exceed the available file
 - rejects combined fade requests that would overlap or cover more than half of the available file duration
 - uses analysis annotations and semantic descriptors to refine frequencies and verification targets
 - maps generic `cleaner` requests only when current evidence supports a conservative tonal cleanup target
+- maps conservative `more controlled` language to `compressor` and explicit peak-control language to `limiter`
+- keeps stereo-width and denoise-style requests explicit placeholders instead of silently planning them
 - fails instead of guessing when the request cannot be mapped to an explicit supported operation
 
 See `modules/planning/docs/heuristics.md` for the current phrase-to-operation mappings.

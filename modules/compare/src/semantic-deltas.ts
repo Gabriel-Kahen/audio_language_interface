@@ -89,32 +89,58 @@ function describeHarshnessShift(
 function describeDynamicsShift(metricDeltas: MetricDelta[]): SemanticDelta | undefined {
   const crestFactorDelta = getDelta(metricDeltas, "dynamics.crest_factor_db");
   const transientDensityDelta = getDelta(metricDeltas, "dynamics.transient_density_per_second");
+  const dynamicRangeDelta = getDelta(metricDeltas, "dynamics.dynamic_range_db");
 
   if (crestFactorDelta === undefined || transientDensityDelta === undefined) {
     return undefined;
   }
 
-  if (crestFactorDelta <= -0.75 && transientDensityDelta <= -0.1) {
+  if (
+    crestFactorDelta <= -0.75 &&
+    (transientDensityDelta <= -0.1 || (dynamicRangeDelta !== undefined && dynamicRangeDelta <= -1))
+  ) {
     return {
       label: "less_punchy",
       confidence: confidenceFromMagnitude(
-        Math.max(Math.abs(crestFactorDelta) / 3, Math.abs(transientDensityDelta)),
+        Math.max(
+          Math.abs(crestFactorDelta) / 3,
+          Math.abs(transientDensityDelta),
+          Math.abs(dynamicRangeDelta ?? 0) / 4,
+        ),
       ),
-      evidence: "crest factor and transient density both decreased",
+      evidence: buildDynamicsEvidence("decreased", dynamicRangeDelta),
     };
   }
 
-  if (crestFactorDelta >= 0.75 && transientDensityDelta >= 0.1) {
+  if (
+    crestFactorDelta >= 0.75 &&
+    (transientDensityDelta >= 0.1 || (dynamicRangeDelta !== undefined && dynamicRangeDelta >= 1))
+  ) {
     return {
       label: "more_punchy",
       confidence: confidenceFromMagnitude(
-        Math.max(Math.abs(crestFactorDelta) / 3, Math.abs(transientDensityDelta)),
+        Math.max(
+          Math.abs(crestFactorDelta) / 3,
+          Math.abs(transientDensityDelta),
+          Math.abs(dynamicRangeDelta ?? 0) / 4,
+        ),
       ),
-      evidence: "crest factor and transient density both increased",
+      evidence: buildDynamicsEvidence("increased", dynamicRangeDelta),
     };
   }
 
   return undefined;
+}
+
+function buildDynamicsEvidence(
+  direction: "increased" | "decreased",
+  dynamicRangeDelta: number | undefined,
+): string {
+  if (dynamicRangeDelta !== undefined) {
+    return `crest factor ${direction} and either transient density or dynamic range ${direction}`;
+  }
+
+  return `crest factor and transient density both ${direction}`;
 }
 
 function describeStereoShift(metricDeltas: MetricDelta[]): SemanticDelta | undefined {

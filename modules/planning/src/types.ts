@@ -8,10 +8,21 @@ import type {
   SemanticDescriptor as UpstreamSemanticDescriptor,
   SemanticProfile as UpstreamSemanticProfile,
 } from "@audio-language-interface/semantics";
-import type { OperationName, TargetScope } from "@audio-language-interface/transforms";
 
 export const CONTRACT_SCHEMA_VERSION = "1.0.0" as const;
-export type { OperationName, TargetScope };
+
+export type OperationName =
+  | "gain"
+  | "normalize"
+  | "trim"
+  | "fade"
+  | "parametric_eq"
+  | "high_pass_filter"
+  | "low_pass_filter"
+  | "compressor"
+  | "limiter";
+
+export type TargetScope = "full_file" | "time_range" | "segment" | "channel" | "frequency_region";
 
 export type AudioVersion = CoreAudioVersion;
 export type AnalysisAnnotation = UpstreamAnalysisAnnotation;
@@ -64,7 +75,10 @@ export interface ParsedEditObjectives {
   wants_remove_rumble: boolean;
   wants_louder: boolean;
   wants_quieter: boolean;
+  wants_more_controlled_dynamics: boolean;
+  wants_peak_control: boolean;
   preserve_punch: boolean;
+  ambiguous_requests: string[];
   unsupported_requests: string[];
   trim_range?: {
     start_seconds: number;

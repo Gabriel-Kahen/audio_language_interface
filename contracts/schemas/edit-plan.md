@@ -40,9 +40,9 @@ Each step should include:
 - `expected_effects`
 - `safety_limits`
 
-## Initial operation taxonomy
+## Operation taxonomy
 
-The initial implementation should use one of these operation names in `steps[].operation`:
+The current published contract allows these operation names in `steps[].operation`:
 
 - `gain`
 - `normalize`
@@ -53,12 +53,10 @@ The initial implementation should use one of these operation names in `steps[].o
 - `low_pass_filter`
 - `compressor`
 - `limiter`
-- `saturate`
 - `denoise`
-- `declick`
-- `pitch_shift`
-- `time_stretch`
 - `stereo_width`
+
+Deferred Phase 2 and future transforms are intentionally omitted from the published v1 taxonomy until they are locked and documented.
 
 `steps[].target.scope` should initially be one of:
 
@@ -67,6 +65,26 @@ The initial implementation should use one of these operation names in `steps[].o
 - `segment`
 - `channel`
 - `frequency_region`
+
+For the locked Phase 2 batch, the intended initial target scope is `full_file` for:
+
+- `compressor`
+- `limiter`
+- `stereo_width`
+- `denoise`
+
+## Parameter surfaces
+
+`steps[].parameters` must match the named operation.
+
+Locked Phase 2 parameter surfaces:
+
+- `compressor`: `threshold_db`, `ratio`, `attack_ms`, `release_ms`, with optional `knee_db` and `makeup_gain_db`
+- `limiter`: `ceiling_dbtp`, with optional `release_ms`, `lookahead_ms`, and `input_gain_db`
+- `stereo_width`: `width_multiplier`
+- `denoise`: `reduction_db`, with optional `noise_floor_dbfs`
+
+The machine-readable schema also keeps the existing baseline operation shapes explicit for `gain`, `normalize`, `trim`, `fade`, `parametric_eq`, `high_pass_filter`, and `low_pass_filter`.
 
 ## Optional fields
 

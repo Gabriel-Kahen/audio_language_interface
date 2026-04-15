@@ -88,8 +88,13 @@ The current implementation emits deltas with `direction` set to `increased`, `de
 
 - `levels.integrated_lufs`
 - `levels.true_peak_dbtp`
+- `levels.rms_dbfs` when present in both reports
+- `levels.sample_peak_dbfs` when present in both reports
+- `levels.headroom_db` when present in both reports
 - `dynamics.crest_factor_db`
 - `dynamics.transient_density_per_second`
+- `dynamics.rms_short_term_dbfs` when present in both reports
+- `dynamics.dynamic_range_db` when present in both reports
 - `spectral_balance.low_band_db`
 - `spectral_balance.mid_band_db`
 - `spectral_balance.high_band_db`
@@ -147,6 +152,8 @@ The current regression warning kinds are:
 - `reduced_true_peak_headroom`
 - `stereo_collapse`
 - `lost_punch`
+- `over_compression`
+- `peak_control_regression`
 
 ### Render regressions
 
@@ -171,10 +178,11 @@ Goal alignment is currently heuristic and keyword-driven. `evaluateGoalAlignment
 - harshness reduction: matches fragments like `harsh`, `upper-mid`, or `smoother`
 - darkening / brightness reduction: matches fragments like `bright`, `brightness`, `darker`, `darken`, or `top end`
 - punch preservation: matches fragments like `punch`, `transient`, `attack`, or `impact`
+- peak control / tighter dynamics: matches phrases like `control peaks`, `peak control`, `tighter`, `more controlled`, or `under control`
 - width increase: matches fragments like `wide` or `wider`
 - cleanup / noise reduction: matches phrases like `clean up`, `cleaner`, `noise`, `denoise`, `hiss`, or `hum`
 - clipping avoidance: matches fragments like `clip` or `clipping`
-- loudness stability: matches fragments like `loud`, `quieter`, or `volume`
+- loudness and level control: matches fragments like `loud`, `quieter`, `volume`, or `level`
 
 ### Status values
 
@@ -188,10 +196,11 @@ Goal alignment is currently heuristic and keyword-driven. `evaluateGoalAlignment
 - Goal matching is substring-based, not schema-driven or ontology-driven.
 - Unsupported goal wording returns `unknown`.
 - Broad wording like `clean it` or `make it better` is treated as ambiguous and returns `unknown`.
+- A single goal string can trigger multiple checks, and the final status is the most conservative status across those matched checks.
 - The current implementation only supports width increase, not width reduction.
 - Brightness-related matching is currently biased toward darkening goals.
-- Loudness-related matching currently checks magnitude of change more than direction of intent.
-- Punch-related goals are treated as preservation checks, not as explicit punch-increase requests.
+- Loudness-related matching distinguishes directional requests like `quieter` from stability requests like `keep the level under control`.
+- Punch-related goals are still treated as preservation checks, but they now also use `dynamic_range_db` when present instead of relying only on crest factor and transient density.
 - Cleanup-related goals only score measurable noise-floor reduction or clipping removal.
 
 ## Summary generation

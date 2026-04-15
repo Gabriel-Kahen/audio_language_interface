@@ -61,7 +61,12 @@ export async function analyzeAudioVersion(
       stereo,
       artifacts,
     },
-    annotations: [...spectrum.annotations, ...dynamics.annotations, ...artifacts.annotations],
+    annotations: [
+      ...spectrum.annotations,
+      ...dynamics.annotations,
+      ...stereo.annotations,
+      ...artifacts.annotations,
+    ],
     segments: segments.segments,
     sourceCharacter,
   });

@@ -45,6 +45,16 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
     wants_remove_rumble: containsAny(normalizedRequest, ["rumble", "subsonic", "low end noise"]),
     wants_louder: containsAny(normalizedRequest, ["louder", "turn up", "more level"]),
     wants_quieter: containsAny(normalizedRequest, ["quieter", "turn down", "lower level"]),
+    wants_more_controlled_dynamics: wantsMoreControlledDynamics(normalizedRequest),
+    wants_peak_control: containsAny(normalizedRequest, [
+      "control peaks",
+      "catch peaks",
+      "keep peaks in check",
+      "limit peaks",
+      "peak limiting",
+      "use a limiter",
+      "limiter",
+    ]),
     preserve_punch: containsAny(normalizedRequest, [
       "keep the punch",
       "keep punch",
@@ -55,6 +65,7 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "keep the transients",
       "preserve transient",
     ]),
+    ambiguous_requests: parseAmbiguousRequests(normalizedRequest),
     unsupported_requests: parseUnsupportedRequests(normalizedRequest),
     intensity: parseIntensity(normalizedRequest),
   };
@@ -105,6 +116,12 @@ function parseUnsupportedRequests(value: string): string[] {
   const matches = new Set<string>();
 
   collectMatchedPhrases(matches, value, [
+    "wider",
+    "widen",
+    "more width",
+    "stereo width",
+    "narrower",
+    "narrow the stereo",
     "remove noise",
     "reduce noise",
     "noise reduction",
@@ -131,6 +148,35 @@ function parseUnsupportedRequests(value: string): string[] {
   ]);
 
   return [...matches];
+}
+
+function parseAmbiguousRequests(value: string): string[] {
+  const matches = new Set<string>();
+
+  collectMatchedPhrases(matches, value, [
+    "make it better",
+    "make this better",
+    "hit harder",
+    "harder",
+    "bigger",
+  ]);
+
+  return [...matches];
+}
+
+function wantsMoreControlledDynamics(value: string): boolean {
+  return (
+    containsAny(value, [
+      "more controlled",
+      "better controlled",
+      "control the dynamics",
+      "compress",
+      "compression",
+      "glue it a bit",
+      "glue it slightly",
+    ]) ||
+    (value.includes("tighter") && value.includes("controlled"))
+  );
 }
 
 function collectMatchedPhrases(matches: Set<string>, value: string, phrases: string[]): void {

@@ -69,6 +69,8 @@ Measurement notes:
 - `transient_crest_db`: `90th percentile` of active-window `(peak dBFS - RMS dBFS)` values
 - `punch_window_ratio`: fraction of active windows whose RMS exceeds `-30 dBFS` and crest is at least `9 dB`
 
+Interpretation note: `transient_density_per_second` alone is not sufficient punch evidence. Downstream modules should combine it with `transient_crest_db`, `punch_window_ratio`, and clipping or dynamic-range context before calling material punchy.
+
 ### Transient-impact annotation
 
 - Annotation kind: `transient_impact`
@@ -119,6 +121,14 @@ Measurement notes:
 - `width` is `rms(side) / (rms(mid) + rms(side))`.
 - `balance_db` is `leftRmsDbfs - rightRmsDbfs`.
 
+### Stereo width annotations
+
+- Windowing matches the segment and short-term dynamics window: `0.05` seconds.
+- `stereo_width` marks windows where local width is at least `0.33` and correlation stays between `0.15` and `0.98`.
+- `stereo_ambiguity` marks windows where local width is at least `0.28` while correlation falls below `0.1`.
+- Consecutive qualifying windows are merged into one annotation.
+- These annotations are intended to separate stable width evidence from potentially phase-sensitive width evidence.
+
 ## Artifact analyzer
 
 - A frame is clipped when any channel has absolute amplitude `>= 0.999`.
@@ -127,14 +137,30 @@ Measurement notes:
 - Clipping severity is `clamp(clippedFrames / max(frameCount * 0.01, 1), 0, 1)`.
 - `noise_floor_dbfs` is estimated as the 10th-percentile fixed-window RMS dBFS value.
 
+### Noise annotation
+
+- Windowing matches the segment and short-term dynamics window: `0.05` seconds.
+- A window qualifies as `noise` when all of these hold:
+  - estimated severity is at least `0.25`
+  - RMS is at least `-72 dBFS`
+  - RMS is no more than `8 dB` above the file-level `noise_floor_dbfs`
+  - crest factor is at most `6 dB`
+  - zero-crossing ratio is at least `0.12`
+- Consecutive qualifying windows are merged, but regions shorter than `0.12` seconds are discarded.
+- The annotation uses the band hint `[2000, 12000]` to reflect that the current heuristic is mainly tuned for hiss-like broadband noise, not low-frequency hum.
+- Important limitation: this is still a heuristic low-level broadband detector. It does not separate noise from foreground content and should not be treated as a calibrated SNR estimate.
+
 Threshold summary for downstream modules:
 
 - silence threshold: `-50 dBFS` window RMS
 - transient gate: rise `> 6 dB` and current window `> -24 dBFS`
 - transient-impact window: RMS `> -30 dBFS` and crest `>= 9 dB`
 - clipping threshold: absolute sample amplitude `>= 0.999`
+- stereo-width annotation threshold: local width `>= 0.33` with correlation `>= 0.15`
+- stereo-ambiguity threshold: local width `>= 0.28` with correlation `< 0.1`
 - brightness annotation threshold: severity `> 0.2` with local centroid `>= 2200 Hz`
 - harshness annotation threshold: severity `> 0.2` with local centroid `>= 1800 Hz`
+- noise annotation threshold: severity `>= 0.25`, crest `<= 6 dB`, zero-crossing ratio `>= 0.12`, and RMS near the estimated floor
 - pitched-signal threshold: normalized autocorrelation-style score `> 0.65`
 
 ## Pitched-signal detection

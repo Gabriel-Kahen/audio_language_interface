@@ -147,41 +147,69 @@
       "plan_id": "plan_01HZZ0FIRSTSLICEPLAN00000001",
       "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
       "version_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
-      "user_request": "Make this loop darker and less harsh without losing punch.",
+      "user_request": "Clean this loop up a bit, widen it slightly, and control the peaks without crushing it.",
       "created_at": "2026-04-14T20:20:05Z",
-      "goals": ["reduce brightness", "reduce harshness", "preserve punch"],
+      "goals": [
+        "reduce steady background noise",
+        "slightly increase stereo width",
+        "control short peaks",
+        "preserve punch"
+      ],
       "steps": [
         {
-          "step_id": "step_eq_1",
-          "operation": "parametric_eq",
+          "step_id": "step_denoise_1",
+          "operation": "denoise",
           "target": {
             "scope": "full_file"
           },
           "parameters": {
-            "bands": [
-              {
-                "type": "bell",
-                "frequency_hz": 3600,
-                "gain_db": -2.5,
-                "q": 1.1
-              }
-            ]
+            "reduction_db": 6,
+            "noise_floor_dbfs": -58
           },
-          "expected_effects": ["reduce upper-mid bite", "reduce harshness"],
-          "safety_limits": ["avoid dulling transients", "avoid broad mid loss"]
+          "expected_effects": ["lower steady broadband noise", "keep the main signal intact"],
+          "safety_limits": ["avoid watery artifacts", "avoid removing transient detail"]
         },
         {
-          "step_id": "step_filter_1",
-          "operation": "low_pass_filter",
+          "step_id": "step_compressor_1",
+          "operation": "compressor",
           "target": {
             "scope": "full_file"
           },
           "parameters": {
-            "cutoff_hz": 14500,
-            "slope_db_per_octave": 12
+            "threshold_db": -18,
+            "ratio": 2,
+            "attack_ms": 15,
+            "release_ms": 120,
+            "makeup_gain_db": 1.5
           },
-          "expected_effects": ["slightly darker tonal balance"],
-          "safety_limits": ["preserve punch", "avoid audible pumping"]
+          "expected_effects": ["tighten dynamic swings slightly", "retain punch"],
+          "safety_limits": ["avoid over-compression", "avoid flattening the attack"]
+        },
+        {
+          "step_id": "step_limiter_1",
+          "operation": "limiter",
+          "target": {
+            "scope": "full_file"
+          },
+          "parameters": {
+            "ceiling_dbtp": -1,
+            "release_ms": 60,
+            "lookahead_ms": 5
+          },
+          "expected_effects": ["catch short peaks", "leave more consistent peak headroom"],
+          "safety_limits": ["avoid pumping", "do not drive the limiter aggressively"]
+        },
+        {
+          "step_id": "step_stereo_width_1",
+          "operation": "stereo_width",
+          "target": {
+            "scope": "full_file"
+          },
+          "parameters": {
+            "width_multiplier": 1.18
+          },
+          "expected_effects": ["slightly widen the image"],
+          "safety_limits": ["preserve mono compatibility", "avoid phasey side emphasis"]
         }
       ]
     },

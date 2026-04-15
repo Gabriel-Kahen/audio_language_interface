@@ -690,7 +690,12 @@ describe("tools module", () => {
                 step_id: "step_1",
                 operation: "compressor",
                 target: { scope: "full_file" },
-                parameters: {},
+                parameters: {
+                  threshold_db: -18,
+                  ratio: 2,
+                  attack_ms: 15,
+                  release_ms: 120,
+                },
                 expected_effects: ["reduce dynamics"],
                 safety_limits: ["keep transients"],
               },

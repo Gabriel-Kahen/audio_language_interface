@@ -184,6 +184,68 @@ Target support:
 
 - `full_file` only
 
+### `compressor`
+
+Parameters:
+
+- `threshold_dbfs: number`
+- `ratio: number`
+- `attack_ms: number`
+- `release_ms: number`
+- optional `makeup_gain_db: number`, default `0`
+
+Rules:
+
+- `threshold_dbfs` must be between `-60` and `0`
+- `ratio` must be between `1` and `20`
+- `attack_ms` must be between `0.01` and `2000`
+- `release_ms` must be between `0.01` and `9000`
+- `makeup_gain_db` must be between `0` and `20`
+- the module records both caller-facing dB values and the exact linear values sent to FFmpeg
+
+Target support:
+
+- `full_file` only
+
+Fixed execution behavior:
+
+- FFmpeg filter: `acompressor`
+- `mode=downward`
+- `link=maximum`
+- `detection=rms`
+- `mix=1`
+- `level_in=1`
+- `knee=2.828427`
+
+### `limiter`
+
+Parameters:
+
+- `limit_dbfs: number`
+- `attack_ms: number`
+- `release_ms: number`
+
+Rules:
+
+- `limit_dbfs` must be between `-24` and `0`
+- `attack_ms` must be between `0.1` and `80`
+- `release_ms` must be between `1` and `8000`
+- the module records both the dB ceiling and the exact linear ceiling sent to FFmpeg
+
+Target support:
+
+- `full_file` only
+
+Fixed execution behavior:
+
+- FFmpeg filter: `alimiter`
+- `level_in=1`
+- `level_out=1`
+- `asc=false`
+- `asc_level=0.5`
+- `level=false`
+- `latency=true`
+
 ## Path and file conventions
 
 `resolveTransformOutputPath(...)` normalizes output paths to workspace-relative POSIX-style `storage_ref` values.

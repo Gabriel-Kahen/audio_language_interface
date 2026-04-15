@@ -102,6 +102,58 @@ describe("buildOperation", () => {
     expect(result.nextAudio.frame_count).toBe(44100);
   });
 
+  it("normalizes compressor parameters into an explicit FFmpeg filter", () => {
+    const result = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "compressor",
+      {
+        threshold_db: -18,
+        ratio: 4,
+        attack_ms: 10,
+        release_ms: 120,
+        knee_db: 3,
+        makeup_gain_db: 3,
+      },
+      { scope: "full_file" },
+    );
+
+    expect(result.filterChain).toBe(
+      "acompressor=level_in=1:mode=downward:threshold=0.125893:ratio=4:attack=10:release=120:makeup=1.412538:knee=1.412538:link=maximum:detection=rms:mix=1",
+    );
+    expect(result.effectiveParameters).toEqual({
+      threshold_db: -18,
+      ratio: 4,
+      attack_ms: 10,
+      release_ms: 120,
+      knee_db: 3,
+      makeup_gain_db: 3,
+    });
+  });
+
+  it("normalizes limiter parameters into an explicit FFmpeg filter", () => {
+    const result = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "limiter",
+      {
+        ceiling_dbtp: -6,
+        lookahead_ms: 5,
+        release_ms: 50,
+        input_gain_db: 0,
+      },
+      { scope: "full_file" },
+    );
+
+    expect(result.filterChain).toBe(
+      "alimiter=level_in=1:level_out=1:limit=0.501187:attack=5:release=50:asc=false:asc_level=0.5:level=false:latency=true",
+    );
+    expect(result.effectiveParameters).toEqual({
+      ceiling_dbtp: -6,
+      lookahead_ms: 5,
+      release_ms: 50,
+      input_gain_db: 0,
+    });
+  });
+
   it("rejects unsupported trim target scopes", () => {
     expect(() =>
       buildOperation(
@@ -123,6 +175,37 @@ describe("buildOperation", () => {
         fade_out_seconds: 1.1,
       }),
     ).toThrow(/fit within the current audio duration/);
+  });
+
+  it("rejects unsupported compressor targets", () => {
+    expect(() =>
+      buildOperation(
+        createAudioVersion("storage/audio/source.wav").audio,
+        "compressor",
+        {
+          threshold_db: -18,
+          ratio: 4,
+          attack_ms: 10,
+          release_ms: 120,
+        },
+        { scope: "channel", channel: "left" },
+      ),
+    ).toThrow(/full_file/);
+  });
+
+  it("rejects limiter ceilings above 0 dBFS", () => {
+    expect(() =>
+      buildOperation(
+        createAudioVersion("storage/audio/source.wav").audio,
+        "limiter",
+        {
+          ceiling_dbtp: 1,
+          lookahead_ms: 5,
+          release_ms: 50,
+        },
+        { scope: "full_file" },
+      ),
+    ).toThrow(/between -24 and 0/);
   });
 });
 
@@ -173,6 +256,121 @@ describe("applyOperation", () => {
         executor: createFakeExecutor("bad"),
       }),
     ).rejects.toThrow(/full_file/);
+  });
+
+  it("applies a real compressor transform deterministically", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createRealAudioVersionFixture(workspaceRoot, {
+      durationSeconds: 1,
+      sampleRateHz: 44100,
+      channels: 1,
+      peakAmplitude: 30000,
+    });
+
+    const firstResult = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "compressor",
+      parameters: {
+        threshold_db: -18,
+        ratio: 4,
+        attack_ms: 0.01,
+        release_ms: 100,
+        knee_db: 3,
+      },
+      outputVersionId: "ver_01HZY00000000000000000001",
+      recordId: "transform_01HZY0000000000000000001",
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+    });
+    const secondResult = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "compressor",
+      parameters: {
+        threshold_db: -18,
+        ratio: 4,
+        attack_ms: 0.01,
+        release_ms: 100,
+        knee_db: 3,
+      },
+      outputVersionId: "ver_01HZY00000000000000000002",
+      recordId: "transform_01HZY0000000000000000002",
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+    });
+
+    const sourcePeakDbfs = await measurePeakLevelDbfs(
+      path.join(workspaceRoot, version.audio.storage_ref),
+    );
+    const firstPeakDbfs = await measurePeakLevelDbfs(
+      path.join(workspaceRoot, firstResult.outputVersion.audio.storage_ref),
+    );
+    const firstBytes = await readFile(
+      path.join(workspaceRoot, firstResult.outputVersion.audio.storage_ref),
+    );
+    const secondBytes = await readFile(
+      path.join(workspaceRoot, secondResult.outputVersion.audio.storage_ref),
+    );
+
+    expect(firstPeakDbfs).toBeLessThan(sourcePeakDbfs - 8);
+    expect(firstBytes.equals(secondBytes)).toBe(true);
+    expect(firstResult.transformRecord.operations).toEqual([
+      {
+        operation: "compressor",
+        parameters: {
+          threshold_db: -18,
+          ratio: 4,
+          attack_ms: 0.01,
+          release_ms: 100,
+          knee_db: 3,
+          makeup_gain_db: 0,
+        },
+        status: "applied",
+      },
+    ]);
+  });
+
+  it("applies a real limiter transform that respects the configured ceiling", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createRealAudioVersionFixture(workspaceRoot, {
+      durationSeconds: 1,
+      sampleRateHz: 44100,
+      channels: 1,
+      peakAmplitude: 31000,
+    });
+
+    const result = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "limiter",
+      parameters: {
+        ceiling_dbtp: -6,
+        lookahead_ms: 5,
+        release_ms: 80,
+        input_gain_db: 0,
+      },
+      outputVersionId: "ver_01HZY00000000000000000003",
+      recordId: "transform_01HZY0000000000000000003",
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+    });
+
+    const limitedPeakDbfs = await measurePeakLevelDbfs(
+      path.join(workspaceRoot, result.outputVersion.audio.storage_ref),
+    );
+
+    expect(limitedPeakDbfs).toBeLessThanOrEqual(-5.7);
+    expect(result.transformRecord.operations).toEqual([
+      {
+        operation: "limiter",
+        parameters: {
+          ceiling_dbtp: -6,
+          lookahead_ms: 5,
+          release_ms: 80,
+          input_gain_db: 0,
+        },
+        status: "applied",
+      },
+    ]);
+    expect(result.transformRecord.warnings).toBeUndefined();
   });
 });
 
@@ -300,6 +498,7 @@ async function createRealAudioVersionFixture(
     durationSeconds: number;
     sampleRateHz: number;
     channels: number;
+    peakAmplitude?: number;
   },
 ): Promise<AudioVersion> {
   const storageRef = "storage/audio/source.wav";
@@ -307,9 +506,10 @@ async function createRealAudioVersionFixture(
   await mkdir(path.dirname(absolutePath), { recursive: true });
 
   const totalFrames = Math.round(options.durationSeconds * options.sampleRateHz);
+  const peakAmplitude = options.peakAmplitude ?? 16000;
   const samples = Array.from({ length: options.channels }, () =>
     Array.from({ length: totalFrames }, (_, index) =>
-      Math.round(Math.sin((2 * Math.PI * 440 * index) / options.sampleRateHz) * 16000),
+      Math.round(Math.sin((2 * Math.PI * 440 * index) / options.sampleRateHz) * peakAmplitude),
     ),
   );
   const wav = new WaveFile();
@@ -393,6 +593,27 @@ async function probeAudioMetadata(absolutePath: string): Promise<{
     channels: Number(stream?.channels),
     durationSeconds: Number(payload.format?.duration),
   };
+}
+
+async function measurePeakLevelDbfs(absolutePath: string): Promise<number> {
+  const { stderr } = await execFile("ffmpeg", [
+    "-hide_banner",
+    "-i",
+    absolutePath,
+    "-af",
+    "astats=metadata=1:reset=0",
+    "-f",
+    "null",
+    "-",
+  ]);
+  const matches = Array.from(stderr.matchAll(/Peak level dB:\s*(-?\d+(?:\.\d+)?|-inf)/gu));
+  const peakLevel = matches.at(-1)?.[1];
+
+  if (peakLevel === undefined) {
+    throw new Error(`Could not parse peak level from ffmpeg output for ${absolutePath}.`);
+  }
+
+  return peakLevel === "-inf" ? Number.NEGATIVE_INFINITY : Number(peakLevel);
 }
 
 function validateAgainstSchema(schema: unknown, payload: unknown): boolean {

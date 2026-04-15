@@ -17,12 +17,15 @@ The initial `semantics` implementation only assigns labels that can be traced di
 | `wide` | `measurements.stereo` | Side energy is meaningfully present and channel correlation remains materially positive. |
 | `punchy` | `measurements.dynamics` | Crest factor and transient density are both elevated. |
 | `clipped` | `measurements.artifacts` | Clipping was directly detected. |
+| `noisy` | `annotations[*].kind == noise` plus `measurements.artifacts` | Sustained broadband-like floor evidence is present and the estimated floor is elevated. |
 
 ## Conservative behavior
 
 - The module does not infer descriptors like `muddy`, `warm`, `dry`, or `compressed` yet because the current analysis baseline does not expose enough direct evidence to justify them reliably.
-- The module does not map `artifacts.noise_floor_dbfs` directly to `clean` or `noisy`, because the analysis docs define that field as a low-percentile level estimate rather than a separated noise-only measurement.
+- The module does not map `artifacts.noise_floor_dbfs` directly to `clean`, and it only maps `noisy` when a localized `noise` annotation agrees with the aggregate floor estimate.
 - `balanced` requires both near-neutral low/high band tilt and a mid-range spectral centroid, so unusually high or low centroids remain unresolved instead of being over-normalized.
 - `slightly_harsh` requires both a harshness annotation and enough upper-mid excess to keep the label tied to measurable evidence.
-- Borderline evidence is recorded under `unresolved_terms` instead of forcing a descriptor. This now includes near-threshold `bright`, `dark`, `wide`, `punchy`, and `slightly_harsh` cases.
+- `wide` also requires width evidence to stay materially positive and not conflict with localized width-ambiguity or major left-right imbalance.
+- `punchy` also requires localized transient-impact evidence and avoids assignment when clipping or very low short-term dynamic range conflicts with the transient measurements.
+- Borderline evidence is recorded under `unresolved_terms` instead of forcing a descriptor. This now includes near-threshold `bright`, `dark`, `wide`, `punchy`, `slightly_harsh`, and `noisy` cases.
 - Every assigned descriptor includes one or more `evidence_refs` back to the source `AnalysisReport`.

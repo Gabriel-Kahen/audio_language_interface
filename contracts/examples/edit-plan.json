@@ -3,41 +3,81 @@
   "plan_id": "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0",
   "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
   "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
-  "user_request": "Make the loop a little darker and less harsh, but keep the punch.",
+  "user_request": "Clean this loop up a bit, widen it slightly, and control the peaks without crushing it.",
   "created_at": "2026-04-14T20:20:15Z",
   "goals": [
-    "reduce upper-mid harshness",
-    "slightly reduce perceived brightness",
-    "preserve transient impact"
+    "reduce steady background noise",
+    "slightly increase stereo width",
+    "control short peaks",
+    "preserve punch"
   ],
-  "constraints": ["avoid reducing transient attack more than necessary"],
+  "constraints": [
+    "avoid obvious denoise artifacts",
+    "avoid audible pumping",
+    "keep width changes subtle"
+  ],
   "steps": [
     {
-      "step_id": "step_eq_1",
-      "operation": "parametric_eq",
+      "step_id": "step_denoise_1",
+      "operation": "denoise",
       "target": {
         "scope": "full_file"
       },
       "parameters": {
-        "bands": [
-          {
-            "type": "bell",
-            "frequency_hz": 3800,
-            "gain_db": -2.0,
-            "q": 1.2
-          }
-        ]
+        "reduction_db": 6,
+        "noise_floor_dbfs": -58
       },
-      "expected_effects": [
-        "decrease harshness in the 3 kHz to 5 kHz range",
-        "slightly darken the loop"
-      ],
-      "safety_limits": ["do not exceed 3 dB attenuation in a single band"]
+      "expected_effects": ["lower steady broadband noise", "keep the main signal intact"],
+      "safety_limits": ["avoid watery artifacts", "avoid removing transient detail"]
+    },
+    {
+      "step_id": "step_compressor_1",
+      "operation": "compressor",
+      "target": {
+        "scope": "full_file"
+      },
+      "parameters": {
+        "threshold_db": -18,
+        "ratio": 2,
+        "attack_ms": 15,
+        "release_ms": 120,
+        "makeup_gain_db": 1.5
+      },
+      "expected_effects": ["tighten dynamic swings slightly", "retain punch"],
+      "safety_limits": ["avoid over-compression", "avoid flattening the attack"]
+    },
+    {
+      "step_id": "step_limiter_1",
+      "operation": "limiter",
+      "target": {
+        "scope": "full_file"
+      },
+      "parameters": {
+        "ceiling_dbtp": -1,
+        "release_ms": 60,
+        "lookahead_ms": 5
+      },
+      "expected_effects": ["catch short peaks", "leave more consistent peak headroom"],
+      "safety_limits": ["avoid pumping", "do not drive the limiter aggressively"]
+    },
+    {
+      "step_id": "step_stereo_width_1",
+      "operation": "stereo_width",
+      "target": {
+        "scope": "full_file"
+      },
+      "parameters": {
+        "width_multiplier": 1.18
+      },
+      "expected_effects": ["slightly widen the image"],
+      "safety_limits": ["preserve mono compatibility", "avoid phasey side emphasis"]
     }
   ],
   "verification_targets": [
-    "reduced energy in the 3 kHz to 5 kHz region",
+    "lower measured noise floor",
+    "lower true peak",
+    "small increase in stereo width",
     "no material loss of crest factor"
   ],
-  "rationale": "A small upper-mid cut should reduce harshness while preserving punch."
+  "rationale": "A conservative cleanup, dynamics pass, and subtle width increase should improve control without changing the loop's core character."
 }

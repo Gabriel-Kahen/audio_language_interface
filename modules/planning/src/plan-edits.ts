@@ -98,9 +98,15 @@ function resolvePlannerObjectives(
   analysisReport: PlanEditsOptions["analysisReport"],
   semanticProfile: PlanEditsOptions["semanticProfile"],
 ): ReturnType<typeof parseUserRequest> {
+  if (objectives.ambiguous_requests.length > 0) {
+    throw new Error(
+      `The request includes ambiguous phrasing ${formatQuotedList(objectives.ambiguous_requests)}. Please clarify with a supported direction such as darker, less harsh, more controlled dynamics, or peak limiting.`,
+    );
+  }
+
   if (objectives.unsupported_requests.length > 0) {
     throw new Error(
-      `The baseline planner does not support ${formatQuotedList(objectives.unsupported_requests)}. Supported first-slice planning is limited to tonal EQ, filtering, trim, fade, and gain.`,
+      `The baseline planner does not support ${formatQuotedList(objectives.unsupported_requests)}. Supported planning is limited to tonal EQ, filtering, trim, fade, gain, conservative compression, and peak limiting.`,
     );
   }
 
@@ -192,6 +198,12 @@ function buildGoals(objectives: ReturnType<typeof parseUserRequest>): string[] {
   if (objectives.wants_remove_rumble) {
     goals.push("reduce sub-bass rumble");
   }
+  if (objectives.wants_more_controlled_dynamics) {
+    goals.push("make dynamics more controlled without over-compressing");
+  }
+  if (objectives.wants_peak_control) {
+    goals.push("control peak excursions conservatively");
+  }
   if (objectives.wants_louder) {
     goals.push("increase output level conservatively");
   }
@@ -213,6 +225,14 @@ function buildConstraints(
 
   if (objectives.preserve_punch) {
     constraints.push("avoid reducing transient attack more than necessary");
+  }
+
+  if (objectives.wants_more_controlled_dynamics) {
+    constraints.push("avoid obvious pumping or over-compression");
+  }
+
+  if (objectives.wants_peak_control) {
+    constraints.push("keep output ceiling conservative and avoid audible limiting artifacts");
   }
 
   if (objectives.wants_louder) {

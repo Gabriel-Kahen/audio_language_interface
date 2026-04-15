@@ -42,24 +42,37 @@
       "runtime_ms": 891,
       "operations": [
         {
-          "operation": "parametric_eq",
+          "operation": "denoise",
           "parameters": {
-            "bands": [
-              {
-                "type": "bell",
-                "frequency_hz": 3600,
-                "gain_db": -2.5,
-                "q": 1.1
-              }
-            ]
+            "reduction_db": 6,
+            "noise_floor_dbfs": -58
           },
           "status": "applied"
         },
         {
-          "operation": "low_pass_filter",
+          "operation": "compressor",
           "parameters": {
-            "cutoff_hz": 14500,
-            "slope_db_per_octave": 12
+            "threshold_db": -18,
+            "ratio": 2,
+            "attack_ms": 15,
+            "release_ms": 120,
+            "makeup_gain_db": 1.5
+          },
+          "status": "applied"
+        },
+        {
+          "operation": "limiter",
+          "parameters": {
+            "ceiling_dbtp": -1,
+            "release_ms": 60,
+            "lookahead_ms": 5
+          },
+          "status": "applied"
+        },
+        {
+          "operation": "stereo_width",
+          "parameters": {
+            "width_multiplier": 1.18
           },
           "status": "applied"
         }
@@ -73,5 +86,5 @@
       }
     ]
   },
-  "warnings": ["Applied conservative defaults for unspecified filter transition behavior."]
+  "warnings": ["Executed a conservative locked Phase 2 transform chain."]
 }

@@ -11,6 +11,7 @@ import {
   type AudioVersion,
   compareRenders,
   compareVersions,
+  computeAnalysisMetricDeltas,
   type EditPlan,
   evaluateGoalAlignment,
   isValidComparisonReport,
@@ -27,8 +28,11 @@ describe("compareVersions", () => {
         versionId: "ver_baseline123",
         integratedLufs: -14.8,
         truePeakDbtp: -1.1,
+        samplePeakDbfs: -1.5,
+        headroomDb: 1.5,
         crestFactorDb: 10.3,
         transientDensity: 2,
+        dynamicRangeDb: 8.4,
         lowBandDb: -16.4,
         midBandDb: -11.2,
         highBandDb: -9.8,
@@ -43,8 +47,11 @@ describe("compareVersions", () => {
         versionId: "ver_candidate123",
         integratedLufs: -15.1,
         truePeakDbtp: -1.2,
+        samplePeakDbfs: -1.7,
+        headroomDb: 1.7,
         crestFactorDb: 10.1,
         transientDensity: 1.97,
+        dynamicRangeDb: 8.1,
         lowBandDb: -16.3,
         midBandDb: -11.5,
         highBandDb: -11.4,
@@ -64,6 +71,16 @@ describe("compareVersions", () => {
       metric: "spectral_balance.high_band_db",
       direction: "decreased",
       delta: -1.6,
+    });
+    expect(report.metric_deltas).toContainEqual({
+      metric: "levels.headroom_db",
+      direction: "increased",
+      delta: 0.2,
+    });
+    expect(report.metric_deltas).toContainEqual({
+      metric: "dynamics.dynamic_range_db",
+      direction: "decreased",
+      delta: -0.3,
     });
     expect(report.semantic_deltas).toEqual(
       expect.arrayContaining([
@@ -88,8 +105,11 @@ describe("compareVersions", () => {
         versionId: "ver_clean123",
         integratedLufs: -18,
         truePeakDbtp: -4,
+        samplePeakDbfs: -3.2,
+        headroomDb: 3.2,
         crestFactorDb: 11,
         transientDensity: 1.5,
+        dynamicRangeDb: 9.2,
         lowBandDb: -14,
         midBandDb: -12,
         highBandDb: -11,
@@ -104,8 +124,11 @@ describe("compareVersions", () => {
         versionId: "ver_loud123",
         integratedLufs: -13.5,
         truePeakDbtp: -0.3,
+        samplePeakDbfs: -0.2,
+        headroomDb: 0.2,
         crestFactorDb: 8.8,
         transientDensity: 1.1,
+        dynamicRangeDb: 5.8,
         lowBandDb: -13.8,
         midBandDb: -11.4,
         highBandDb: -10.2,
@@ -125,6 +148,8 @@ describe("compareVersions", () => {
         expect.objectContaining({ kind: "reduced_true_peak_headroom" }),
         expect.objectContaining({ kind: "stereo_collapse" }),
         expect.objectContaining({ kind: "lost_punch" }),
+        expect.objectContaining({ kind: "over_compression" }),
+        expect.objectContaining({ kind: "peak_control_regression" }),
       ]),
     );
   });
@@ -137,8 +162,11 @@ describe("evaluateGoalAlignment", () => {
       versionId: "ver_prompt_base",
       integratedLufs: -14.8,
       truePeakDbtp: -1.1,
+      samplePeakDbfs: -1.5,
+      headroomDb: 1.5,
       crestFactorDb: 10.3,
       transientDensity: 2,
+      dynamicRangeDb: 8.5,
       lowBandDb: -16.4,
       midBandDb: -11.2,
       highBandDb: -9.8,
@@ -153,8 +181,11 @@ describe("evaluateGoalAlignment", () => {
       versionId: "ver_prompt_cand",
       integratedLufs: -15,
       truePeakDbtp: -1.2,
+      samplePeakDbfs: -1.7,
+      headroomDb: 1.7,
       crestFactorDb: 10.2,
       transientDensity: 1.98,
+      dynamicRangeDb: 8.2,
       lowBandDb: -16.3,
       midBandDb: -11.4,
       highBandDb: -11.1,
@@ -174,7 +205,7 @@ describe("evaluateGoalAlignment", () => {
       ],
       baseline,
       candidate,
-      reportMetricDeltas(baseline, candidate),
+      computeAnalysisMetricDeltas(baseline, candidate),
     );
 
     expect(goalAlignment).toEqual([
@@ -223,12 +254,122 @@ describe("evaluateGoalAlignment", () => {
       ["make it better", "clean it"],
       baseline,
       candidate,
-      reportMetricDeltas(baseline, candidate),
+      computeAnalysisMetricDeltas(baseline, candidate),
     );
 
     expect(goalAlignment).toEqual([
       { goal: "make it better", status: "unknown" },
       { goal: "clean it", status: "unknown" },
+    ]);
+  });
+
+  it("scores compound dynamics-sensitive goals without guessing", () => {
+    const baseline = createAnalysisReport({
+      reportId: "analysis_dynamics_base",
+      versionId: "ver_dynamics_base",
+      integratedLufs: -15.2,
+      truePeakDbtp: -1.1,
+      samplePeakDbfs: -1.4,
+      headroomDb: 1.4,
+      crestFactorDb: 10.5,
+      transientDensity: 1.9,
+      dynamicRangeDb: 8.1,
+      lowBandDb: -16.2,
+      midBandDb: -11.4,
+      highBandDb: -9.5,
+      spectralCentroidHz: 2600,
+      stereoWidth: 0.58,
+      stereoCorrelation: 0.46,
+      noiseFloorDbfs: -73,
+      clippingDetected: false,
+    }).measurements;
+    const candidate = createAnalysisReport({
+      reportId: "analysis_dynamics_cand",
+      versionId: "ver_dynamics_cand",
+      integratedLufs: -15.5,
+      truePeakDbtp: -1.7,
+      samplePeakDbfs: -2.1,
+      headroomDb: 2.1,
+      crestFactorDb: 10.2,
+      transientDensity: 1.87,
+      dynamicRangeDb: 7.7,
+      lowBandDb: -16.1,
+      midBandDb: -11.5,
+      highBandDb: -10.8,
+      spectralCentroidHz: 2450,
+      stereoWidth: 0.58,
+      stereoCorrelation: 0.47,
+      noiseFloorDbfs: -73,
+      clippingDetected: false,
+    }).measurements;
+
+    const goalAlignment = evaluateGoalAlignment(
+      [
+        "make it less harsh but keep the punch",
+        "control peaks without killing the punch",
+        "keep the level under control",
+      ],
+      baseline,
+      candidate,
+      computeAnalysisMetricDeltas(baseline, candidate),
+    );
+
+    expect(goalAlignment).toEqual([
+      { goal: "make it less harsh but keep the punch", status: "met" },
+      { goal: "control peaks without killing the punch", status: "met" },
+      { goal: "keep the level under control", status: "met" },
+    ]);
+  });
+
+  it("marks compound goals not met when peak control flattens dynamics", () => {
+    const baseline = createAnalysisReport({
+      reportId: "analysis_flat_base",
+      versionId: "ver_flat_base",
+      integratedLufs: -16,
+      truePeakDbtp: -1.2,
+      samplePeakDbfs: -1.6,
+      headroomDb: 1.6,
+      crestFactorDb: 10.8,
+      transientDensity: 2,
+      dynamicRangeDb: 8.8,
+      lowBandDb: -16.5,
+      midBandDb: -11.6,
+      highBandDb: -10.2,
+      spectralCentroidHz: 2550,
+      stereoWidth: 0.57,
+      stereoCorrelation: 0.49,
+      noiseFloorDbfs: -74,
+      clippingDetected: false,
+    }).measurements;
+    const candidate = createAnalysisReport({
+      reportId: "analysis_flat_cand",
+      versionId: "ver_flat_cand",
+      integratedLufs: -15.9,
+      truePeakDbtp: -1.5,
+      samplePeakDbfs: -1.9,
+      headroomDb: 1.9,
+      crestFactorDb: 8.6,
+      transientDensity: 1.55,
+      dynamicRangeDb: 5.6,
+      lowBandDb: -16.4,
+      midBandDb: -11.8,
+      highBandDb: -10.9,
+      spectralCentroidHz: 2430,
+      stereoWidth: 0.57,
+      stereoCorrelation: 0.5,
+      noiseFloorDbfs: -74,
+      clippingDetected: false,
+    }).measurements;
+
+    const goalAlignment = evaluateGoalAlignment(
+      ["control peaks without killing the punch"],
+      baseline,
+      candidate,
+      computeAnalysisMetricDeltas(baseline, candidate),
+    );
+
+    expect(goalAlignment).toEqual([
+      { goal: "control peaks without killing the punch", status: "not_met" },
     ]);
   });
 });
@@ -294,8 +435,13 @@ interface AnalysisFixtureOptions {
   versionId: string;
   integratedLufs: number;
   truePeakDbtp: number;
+  rmsDbfs?: number;
+  samplePeakDbfs?: number;
+  headroomDb?: number;
   crestFactorDb: number;
   transientDensity: number;
+  rmsShortTermDbfs?: number;
+  dynamicRangeDb?: number;
   lowBandDb: number;
   midBandDb: number;
   highBandDb: number;
@@ -324,10 +470,21 @@ function createAnalysisReport(options: AnalysisFixtureOptions): AnalysisReport {
       levels: {
         integrated_lufs: options.integratedLufs,
         true_peak_dbtp: options.truePeakDbtp,
+        ...(options.rmsDbfs === undefined ? {} : { rms_dbfs: options.rmsDbfs }),
+        ...(options.samplePeakDbfs === undefined
+          ? {}
+          : { sample_peak_dbfs: options.samplePeakDbfs }),
+        ...(options.headroomDb === undefined ? {} : { headroom_db: options.headroomDb }),
       },
       dynamics: {
         crest_factor_db: options.crestFactorDb,
         transient_density_per_second: options.transientDensity,
+        ...(options.rmsShortTermDbfs === undefined
+          ? {}
+          : { rms_short_term_dbfs: options.rmsShortTermDbfs }),
+        ...(options.dynamicRangeDb === undefined
+          ? {}
+          : { dynamic_range_db: options.dynamicRangeDb }),
       },
       spectral_balance: {
         low_band_db: options.lowBandDb,
@@ -397,81 +554,6 @@ function createRenderArtifact(options: RenderFixtureOptions): RenderArtifact {
     },
     warnings: [],
   };
-}
-
-function reportMetricDeltas(
-  baseline: AnalysisReport["measurements"],
-  candidate: AnalysisReport["measurements"],
-) {
-  return [
-    {
-      metric: "levels.integrated_lufs",
-      direction: deltaDirection(candidate.levels.integrated_lufs - baseline.levels.integrated_lufs),
-      delta: round(candidate.levels.integrated_lufs - baseline.levels.integrated_lufs),
-    },
-    {
-      metric: "levels.true_peak_dbtp",
-      direction: deltaDirection(candidate.levels.true_peak_dbtp - baseline.levels.true_peak_dbtp),
-      delta: round(candidate.levels.true_peak_dbtp - baseline.levels.true_peak_dbtp),
-    },
-    {
-      metric: "dynamics.crest_factor_db",
-      direction: deltaDirection(
-        candidate.dynamics.crest_factor_db - baseline.dynamics.crest_factor_db,
-      ),
-      delta: round(candidate.dynamics.crest_factor_db - baseline.dynamics.crest_factor_db),
-    },
-    {
-      metric: "dynamics.transient_density_per_second",
-      direction: deltaDirection(
-        candidate.dynamics.transient_density_per_second -
-          baseline.dynamics.transient_density_per_second,
-      ),
-      delta: round(
-        candidate.dynamics.transient_density_per_second -
-          baseline.dynamics.transient_density_per_second,
-      ),
-    },
-    {
-      metric: "spectral_balance.high_band_db",
-      direction: deltaDirection(
-        candidate.spectral_balance.high_band_db - baseline.spectral_balance.high_band_db,
-      ),
-      delta: round(
-        candidate.spectral_balance.high_band_db - baseline.spectral_balance.high_band_db,
-      ),
-    },
-    {
-      metric: "spectral_balance.spectral_centroid_hz",
-      direction: deltaDirection(
-        candidate.spectral_balance.spectral_centroid_hz -
-          baseline.spectral_balance.spectral_centroid_hz,
-      ),
-      delta: round(
-        candidate.spectral_balance.spectral_centroid_hz -
-          baseline.spectral_balance.spectral_centroid_hz,
-      ),
-    },
-    {
-      metric: "artifacts.noise_floor_dbfs",
-      direction: deltaDirection(
-        candidate.artifacts.noise_floor_dbfs - baseline.artifacts.noise_floor_dbfs,
-      ),
-      delta: round(candidate.artifacts.noise_floor_dbfs - baseline.artifacts.noise_floor_dbfs),
-    },
-  ];
-}
-
-function deltaDirection(delta: number): "increased" | "decreased" | "unchanged" {
-  if (Math.abs(delta) <= 1e-6) {
-    return "unchanged";
-  }
-
-  return delta > 0 ? "increased" : "decreased";
-}
-
-function round(value: number): number {
-  return Math.round(value * 1000) / 1000;
 }
 
 function validateComparisonReport(payload: unknown): boolean {

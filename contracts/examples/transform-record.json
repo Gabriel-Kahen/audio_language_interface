@@ -10,16 +10,37 @@
   "runtime_ms": 42,
   "operations": [
     {
-      "operation": "parametric_eq",
+      "operation": "denoise",
       "parameters": {
-        "bands": [
-          {
-            "type": "bell",
-            "frequency_hz": 3800,
-            "gain_db": -2.0,
-            "q": 1.2
-          }
-        ]
+        "reduction_db": 6,
+        "noise_floor_dbfs": -58
+      },
+      "status": "applied"
+    },
+    {
+      "operation": "compressor",
+      "parameters": {
+        "threshold_db": -18,
+        "ratio": 2,
+        "attack_ms": 15,
+        "release_ms": 120,
+        "makeup_gain_db": 1.5
+      },
+      "status": "applied"
+    },
+    {
+      "operation": "limiter",
+      "parameters": {
+        "ceiling_dbtp": -1,
+        "release_ms": 60,
+        "lookahead_ms": 5
+      },
+      "status": "applied"
+    },
+    {
+      "operation": "stereo_width",
+      "parameters": {
+        "width_multiplier": 1.18
       },
       "status": "applied"
     }

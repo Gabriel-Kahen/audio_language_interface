@@ -7,7 +7,9 @@ export type OperationName =
   | "fade"
   | "parametric_eq"
   | "high_pass_filter"
-  | "low_pass_filter";
+  | "low_pass_filter"
+  | "compressor"
+  | "limiter";
 
 export type OperationStatus = "applied" | "skipped" | "failed";
 export type TargetScope = "full_file" | "time_range" | "segment" | "channel" | "frequency_region";

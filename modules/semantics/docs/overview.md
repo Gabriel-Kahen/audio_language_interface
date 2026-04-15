@@ -69,10 +69,12 @@ The currently assigned descriptor family is intentionally narrow:
 - `wide`
 - `punchy`
 - `clipped`
+- `noisy`
 
 ## Current limitations
 
-- The module does not yet assign broader studio-language descriptors like `muddy`, `warm`, `dry`, `compressed`, `clean`, or `noisy`.
+- The module does not yet assign broader studio-language descriptors like `muddy`, `warm`, `dry`, `compressed`, or `clean`.
 - Descriptor assignment is rule-based and only grounded in currently implemented analysis measurements and annotations.
+- `noisy` is only assigned when a localized `noise` annotation and an elevated `noise_floor_dbfs` agree. The aggregate floor value alone is still treated as insufficient.
 - Borderline evidence is pushed into `unresolved_terms` instead of forcing a weak descriptor.
 - Summary text is descriptive convenience output, not a substitute for the structured descriptor list.

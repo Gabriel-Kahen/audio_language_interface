@@ -17,6 +17,8 @@ Defines the tool envelope for comparing two versions using paired analyses.
   - `comparison_id`
   - `generated_at`
 
+When provided, `arguments.edit_plan` must match the canonical `EditPlan` contract.
+
 ## Success response
 
 - `result.comparison_report`: `ComparisonReport`

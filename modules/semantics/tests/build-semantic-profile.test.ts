@@ -14,15 +14,15 @@ function createDynamics(
   overrides: Partial<AnalysisReport["measurements"]["dynamics"]> = {},
 ): AnalysisReport["measurements"]["dynamics"] {
   const base = loadExampleReport().measurements.dynamics;
-  const crestFactorDb = overrides.crest_factor_db ?? base.crest_factor_db;
+  const crestFactorDb = overrides.crest_factor_db ?? base.crest_factor_db ?? 10.3;
   const transientDensityPerSecond =
-    overrides.transient_density_per_second ?? base.transient_density_per_second;
+    overrides.transient_density_per_second ?? base.transient_density_per_second ?? 2;
 
   return {
     crest_factor_db: crestFactorDb,
     transient_density_per_second: transientDensityPerSecond,
-    rms_short_term_dbfs: overrides.rms_short_term_dbfs ?? base.rms_short_term_dbfs,
-    dynamic_range_db: overrides.dynamic_range_db ?? base.dynamic_range_db,
+    rms_short_term_dbfs: overrides.rms_short_term_dbfs ?? base.rms_short_term_dbfs ?? -18,
+    dynamic_range_db: overrides.dynamic_range_db ?? base.dynamic_range_db ?? 8,
     transient_crest_db: overrides.transient_crest_db ?? crestFactorDb,
     punch_window_ratio:
       overrides.punch_window_ratio ??
@@ -64,14 +64,19 @@ function createReport(overrides: Partial<AnalysisReport> = {}): AnalysisReport {
       spectral_balance: createSpectralBalance(overrides.measurements?.spectral_balance),
       stereo: {
         ...loadExampleReport().measurements.stereo,
+        balance_db: 0,
         ...overrides.measurements?.stereo,
       },
       artifacts: {
         ...loadExampleReport().measurements.artifacts,
+        clipped_sample_count: 0,
         ...overrides.measurements?.artifacts,
       },
       levels: {
         ...loadExampleReport().measurements.levels,
+        rms_dbfs: -16,
+        sample_peak_dbfs: -1.5,
+        headroom_db: 1.5,
         ...overrides.measurements?.levels,
       },
     },
@@ -80,7 +85,26 @@ function createReport(overrides: Partial<AnalysisReport> = {}): AnalysisReport {
 
 describe("buildSemanticProfile", () => {
   it("builds a contract-aligned profile from bright and spatial evidence", () => {
-    const report = loadExampleReport();
+    const report = createReport({
+      annotations: [
+        ...(loadExampleReport().annotations ?? []),
+        {
+          kind: "stereo_width",
+          start_seconds: 0,
+          end_seconds: 4,
+          severity: 0.58,
+          evidence: "stable side energy reaches width 0.62 with local correlation 0.41",
+        },
+        {
+          kind: "transient_impact",
+          start_seconds: 0,
+          end_seconds: 4,
+          bands_hz: [60, 4000],
+          severity: 0.64,
+          evidence: "window crest 12.1 dB at -18.4 dBFS short-term level",
+        },
+      ],
+    });
 
     const profile = buildSemanticProfile(report);
     const labels = profile.descriptors.map((descriptor) => descriptor.label);
@@ -239,6 +263,16 @@ describe("buildSemanticProfile", () => {
             dynamic_range_db: 6,
           }),
         },
+        annotations: [
+          {
+            kind: "transient_impact",
+            start_seconds: 0,
+            end_seconds: 4,
+            bands_hz: [60, 4000],
+            severity: 0.24,
+            evidence: "window crest 8.1 dB at -20.0 dBFS short-term level",
+          },
+        ],
       }),
     );
 
@@ -331,6 +365,15 @@ describe("buildSemanticProfile", () => {
             balance_db: 0,
           },
         },
+        annotations: [
+          {
+            kind: "stereo_ambiguity",
+            start_seconds: 0,
+            end_seconds: 4,
+            severity: 0.52,
+            evidence: "side energy reaches width 0.41 while local correlation falls to -0.05",
+          },
+        ],
       }),
     );
 
@@ -354,5 +397,117 @@ describe("buildSemanticProfile", () => {
 
     expect(profile.descriptors.map((descriptor) => descriptor.label)).not.toContain("wide");
     expect(profile.unresolved_terms ?? []).not.toContain("wide");
+  });
+
+  it("assigns noisy only when localized noise evidence and elevated floor agree", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          artifacts: {
+            clipping_detected: false,
+            noise_floor_dbfs: -46,
+            clipped_sample_count: 0,
+          },
+        },
+        annotations: [
+          {
+            kind: "noise",
+            start_seconds: 0,
+            end_seconds: 4,
+            bands_hz: [2000, 12000],
+            severity: 0.67,
+            evidence:
+              "sustained low-level broadband activity peaks at -45.5 dBFS with 4.1 dB crest and 0.42 zero-crossing ratio",
+          },
+        ],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).toContain("noisy");
+    expect(profile.unresolved_terms ?? []).not.toContain("noisy");
+  });
+
+  it("keeps noise unresolved when only the aggregate floor is elevated", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          artifacts: {
+            clipping_detected: false,
+            noise_floor_dbfs: -52,
+            clipped_sample_count: 0,
+          },
+        },
+        annotations: [],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).not.toContain("noisy");
+    expect(profile.unresolved_terms).toContain("noisy");
+  });
+
+  it("keeps punch unresolved when strong transient evidence conflicts with compressed dynamics", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          dynamics: createDynamics({
+            crest_factor_db: 10.5,
+            transient_density_per_second: 1.9,
+            transient_crest_db: 11.4,
+            punch_window_ratio: 0.42,
+            dynamic_range_db: 3.9,
+          }),
+        },
+        annotations: [
+          {
+            kind: "transient_impact",
+            start_seconds: 0,
+            end_seconds: 4,
+            bands_hz: [60, 4000],
+            severity: 0.62,
+            evidence: "window crest 11.4 dB at -18.2 dBFS short-term level",
+          },
+        ],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).not.toContain("punchy");
+    expect(profile.unresolved_terms).toContain("punchy");
+  });
+
+  it("keeps wide unresolved when stable spread conflicts with stereo ambiguity evidence", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          stereo: {
+            width: 0.42,
+            correlation: 0.24,
+            balance_db: 0,
+          },
+        },
+        annotations: [
+          {
+            kind: "stereo_width",
+            start_seconds: 0,
+            end_seconds: 4,
+            severity: 0.55,
+            evidence: "stable side energy reaches width 0.42 with local correlation 0.24",
+          },
+          {
+            kind: "stereo_ambiguity",
+            start_seconds: 1,
+            end_seconds: 2,
+            severity: 0.46,
+            evidence: "side energy reaches width 0.44 while local correlation falls to -0.03",
+          },
+        ],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).not.toContain("wide");
+    expect(profile.unresolved_terms).toContain("wide");
   });
 });

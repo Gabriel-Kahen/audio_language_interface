@@ -33,6 +33,23 @@ describe("parseUserRequest", () => {
     expect(parsed.preserve_punch).toBe(true);
     expect(parsed.intensity).toBe("subtle");
   });
+
+  it("parses supported compressor and limiter intent phrases", () => {
+    const parsed = parseUserRequest(
+      "Make this a little tighter and more controlled, then keep peaks in check.",
+    );
+
+    expect(parsed.wants_more_controlled_dynamics).toBe(true);
+    expect(parsed.wants_peak_control).toBe(true);
+    expect(parsed.intensity).toBe("subtle");
+  });
+
+  it("classifies ambiguous and unsupported prompt phrases explicitly", () => {
+    const parsed = parseUserRequest("Make it hit harder and wider.");
+
+    expect(parsed.ambiguous_requests).toContain("hit harder");
+    expect(parsed.unsupported_requests).toContain("wider");
+  });
 });
 
 describe("planEdits", () => {
@@ -153,6 +170,59 @@ describe("planEdits", () => {
     expect(plan.steps[0]?.parameters).toEqual({ gain_db: 2 });
   });
 
+  it("maps controlled dynamics prompts to a conservative compressor step", () => {
+    const plan = planEdits({
+      userRequest: "Make this a little tighter and more controlled, but keep the punch.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["compressor"]);
+    expect(plan.steps[0]?.parameters).toEqual({
+      threshold_db: -16,
+      ratio: 1.8,
+      attack_ms: 25,
+      release_ms: 120,
+      knee_db: 3,
+      makeup_gain_db: 0,
+    });
+    expect(plan.goals).toContain("make dynamics more controlled without over-compressing");
+    expect(plan.constraints).toContain("avoid obvious pumping or over-compression");
+    expect(plan.verification_targets).toContain(
+      "slightly reduced dynamic range without obvious pumping",
+    );
+  });
+
+  it("maps explicit peak-control prompts to a conservative limiter step", () => {
+    const plan = planEdits({
+      userRequest: "Control peaks with a limiter.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["limiter"]);
+    expect(plan.steps[0]?.parameters).toEqual({
+      ceiling_dbtp: -1,
+      input_gain_db: 1.1,
+      release_ms: 80,
+      lookahead_ms: 5,
+    });
+    expect(plan.goals).toContain("control peak excursions conservatively");
+  });
+
+  it("orders compressor before limiter when both supported dynamics intents are requested", () => {
+    const plan = planEdits({
+      userRequest: "Make this more controlled and catch peaks.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["compressor", "limiter"]);
+  });
+
   it("fails instead of inventing unsupported behavior", () => {
     expect(() =>
       planEdits({
@@ -161,7 +231,7 @@ describe("planEdits", () => {
         analysisReport: createAnalysisReportFixture(),
         semanticProfile: createSemanticProfileFixture(),
       }),
-    ).toThrow(/could not derive an executable plan/);
+    ).toThrow(/ambiguous phrasing/i);
   });
 
   it("fails clearly for unsupported cleanup operations", () => {
@@ -173,6 +243,28 @@ describe("planEdits", () => {
         semanticProfile: createSemanticProfileFixture(),
       }),
     ).toThrow(/does not support `hiss`/);
+  });
+
+  it("fails clearly for ambiguous dynamics language", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Make it hit harder.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createAnalysisReportFixture(),
+        semanticProfile: createSemanticProfileFixture(),
+      }),
+    ).toThrow(/ambiguous phrasing/i);
+  });
+
+  it("fails clearly for unsupported stereo width placeholders", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Make it wider.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createAnalysisReportFixture(),
+        semanticProfile: createSemanticProfileFixture(),
+      }),
+    ).toThrow(/does not support `wider`/i);
   });
 
   it("fails clearly for contradictory tonal directions", () => {

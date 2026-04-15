@@ -21,6 +21,24 @@ export function computeAnalysisMetricDeltas(
     baseline.levels.true_peak_dbtp,
     candidate.levels.true_peak_dbtp,
   );
+  pushOptionalNumericDelta(
+    deltas,
+    "levels.rms_dbfs",
+    baseline.levels.rms_dbfs,
+    candidate.levels.rms_dbfs,
+  );
+  pushOptionalNumericDelta(
+    deltas,
+    "levels.sample_peak_dbfs",
+    baseline.levels.sample_peak_dbfs,
+    candidate.levels.sample_peak_dbfs,
+  );
+  pushOptionalNumericDelta(
+    deltas,
+    "levels.headroom_db",
+    baseline.levels.headroom_db,
+    candidate.levels.headroom_db,
+  );
   pushNumericDelta(
     deltas,
     "dynamics.crest_factor_db",
@@ -32,6 +50,18 @@ export function computeAnalysisMetricDeltas(
     "dynamics.transient_density_per_second",
     baseline.dynamics.transient_density_per_second,
     candidate.dynamics.transient_density_per_second,
+  );
+  pushOptionalNumericDelta(
+    deltas,
+    "dynamics.rms_short_term_dbfs",
+    baseline.dynamics.rms_short_term_dbfs,
+    candidate.dynamics.rms_short_term_dbfs,
+  );
+  pushOptionalNumericDelta(
+    deltas,
+    "dynamics.dynamic_range_db",
+    baseline.dynamics.dynamic_range_db,
+    candidate.dynamics.dynamic_range_db,
   );
   pushNumericDelta(
     deltas,

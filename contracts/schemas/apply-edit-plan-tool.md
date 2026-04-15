@@ -8,6 +8,8 @@ Defines the tool envelope for executing an explicit `EditPlan` against one `Audi
 
 - `tool_name` must be `apply_edit_plan`
 - `arguments.audio_version` and `arguments.edit_plan` are required
+- `arguments.audio_version` must match the canonical `AudioVersion` contract
+- `arguments.edit_plan` must match the canonical `EditPlan` contract, including operation-specific parameter shapes for the locked Phase 2 transform batch
 - optional arguments:
   - `output_dir`
   - `output_version_id`
@@ -18,6 +20,8 @@ Defines the tool envelope for executing an explicit `EditPlan` against one `Audi
 - `result.output_version`: transformed `AudioVersion`
 - `result.transform_record`: emitted `TransformRecord`
 - `result.commands`: normalized command list used by the runtime
+
+`result.output_version` and `result.transform_record` reuse the canonical artifact contracts directly.
 
 Warnings are surfaced through the shared top-level `ToolResponse.warnings` array.
 

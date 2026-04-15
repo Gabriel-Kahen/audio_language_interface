@@ -39,6 +39,14 @@ export function buildVerificationTargets(
     targets.push("reduced sub-bass energy below the chosen high-pass cutoff");
   }
 
+  if (objectives.wants_more_controlled_dynamics) {
+    targets.push("slightly reduced dynamic range without obvious pumping");
+  }
+
+  if (objectives.wants_peak_control) {
+    targets.push("lower peak excursions while keeping the output ceiling near -1 dB true peak");
+  }
+
   if (objectives.wants_louder) {
     targets.push("higher output level while staying within available peak headroom");
   }

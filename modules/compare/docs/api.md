@@ -70,6 +70,8 @@ Detects a small set of analysis-side failure modes:
 - reduced true-peak headroom
 - stereo collapse
 - measurable punch loss
+- over-compression from combined crest-factor and dynamic-range reduction
+- worsened peak control from higher peaks or lower sample headroom
 
 ### `detectRenderRegressions(baseline, candidate, metricDeltas)`
 
@@ -84,6 +86,7 @@ Detects render metadata mismatches:
 Evaluates each goal string independently and returns `met`, `mostly_met`, `not_met`, or `unknown`.
 
 This helper is heuristic. It does not parse planner steps or verification targets.
+When one goal string contains multiple supported intents, it evaluates each matched intent and returns the most conservative status.
 
 ### `buildComparisonReport(options)`
 

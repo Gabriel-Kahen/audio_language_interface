@@ -1,9 +1,11 @@
 import {
   assertValidFadeSpans,
+  buildCompressorSafetyLimits,
   buildEqSafetyLimits,
   buildFadeSafetyLimits,
   buildFilterSafetyLimits,
   buildGainSafetyLimits,
+  buildLimiterSafetyLimits,
   buildTrimSafetyLimits,
   resolveEqGainDb,
   resolveGainStepDb,
@@ -44,6 +46,16 @@ export function buildPlannedSteps(context: StepBuildContext): EditPlanStep[] {
   const eqStep = buildEqStep(context);
   if (eqStep) {
     steps.push(eqStep);
+  }
+
+  const compressorStep = buildCompressorStep(context.objectives);
+  if (compressorStep) {
+    steps.push(compressorStep);
+  }
+
+  const limiterStep = buildLimiterStep(context.objectives, context.analysisReport);
+  if (limiterStep) {
+    steps.push(limiterStep);
   }
 
   const gainStep = buildGainStep(context.objectives, context.analysisReport);
@@ -279,6 +291,72 @@ function buildGainStep(
     parameters: { gain_db: gainDb },
     expected_effects: ["increase level within measured peak headroom"],
     safety_limits: buildGainSafetyLimits(),
+  };
+}
+
+function buildCompressorStep(objectives: ParsedEditObjectives): EditPlanStep | undefined {
+  if (!objectives.wants_more_controlled_dynamics) {
+    return undefined;
+  }
+
+  const ratio =
+    objectives.preserve_punch && objectives.intensity !== "strong"
+      ? 1.8
+      : objectives.intensity === "subtle"
+        ? 1.6
+        : objectives.intensity === "strong"
+          ? 2.5
+          : 2;
+
+  return {
+    step_id: "step_compressor_1",
+    operation: "compressor",
+    target: { scope: "full_file" },
+    parameters: {
+      threshold_db:
+        objectives.intensity === "subtle" ? -16 : objectives.intensity === "strong" ? -20 : -18,
+      ratio,
+      attack_ms: objectives.preserve_punch ? 25 : 12,
+      release_ms: 120,
+      knee_db: 3,
+      makeup_gain_db: 0,
+    },
+    expected_effects: ["gently reduce dynamic swings for a more controlled result"],
+    safety_limits: buildCompressorSafetyLimits(),
+  };
+}
+
+function buildLimiterStep(
+  objectives: ParsedEditObjectives,
+  analysisReport: AnalysisReport,
+): EditPlanStep | undefined {
+  if (!objectives.wants_peak_control) {
+    return undefined;
+  }
+
+  const measuredPeak = analysisReport.measurements.levels.true_peak_dbtp;
+  const thresholdDb = Math.min(
+    -2,
+    Number(
+      (
+        measuredPeak -
+        (objectives.intensity === "subtle" ? 0.5 : objectives.intensity === "strong" ? 2 : 1)
+      ).toFixed(2),
+    ),
+  );
+
+  return {
+    step_id: "step_limiter_1",
+    operation: "limiter",
+    target: { scope: "full_file" },
+    parameters: {
+      ceiling_dbtp: -1,
+      input_gain_db: Number((Math.abs(thresholdDb) - 1).toFixed(2)),
+      release_ms: 80,
+      lookahead_ms: 5,
+    },
+    expected_effects: ["catch short peak excursions without broad loudness maximization"],
+    safety_limits: buildLimiterSafetyLimits(),
   };
 }
 

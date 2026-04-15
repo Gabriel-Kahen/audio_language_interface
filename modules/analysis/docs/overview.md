@@ -53,6 +53,7 @@ The emitted `AnalysisReport` always includes these measurement families:
 It may also include:
 
 - `annotations` for clipping, localized brightness, localized harshness, and transient-impact hotspots
+- `annotations` for clipping, localized brightness, localized harshness, transient-impact hotspots, sustained noise-like regions, and localized stereo-width or width-ambiguity evidence
 - `segments` describing `silence`, `active`, or a synthetic full-file `loop` segment
 - `source_character` for a coarse baseline class such as `drum_loop`, `tonal_phrase`, `ambience`, or `mixed_program`
 - `summary.confidence` as a bounded heuristic confidence score from `0` to `1`
@@ -78,6 +79,8 @@ This baseline is intentionally simple and should be treated as a reproducible he
 - `stereo.correlation` is a simple Pearson-style correlation of the first two channels.
 - `stereo.balance_db` is left RMS dBFS minus right RMS dBFS.
 - `artifacts.noise_floor_dbfs` is the 10th-percentile fixed-window RMS estimate, not a separated noise-only model.
+- `noise` annotations require sustained low-level windows with elevated zero-crossing activity and low crest factor. They are intended as denoise-oriented evidence, not as a source-separation claim.
+- `stereo_width` and `stereo_ambiguity` annotations localize width-related evidence or conflict. They inspect only the first two channels and should be treated as phase-risk heuristics rather than a full stereo imaging model.
 - `artifacts.clipping_detected` flags frames where any channel reaches absolute amplitude `>= 0.999`, and `clipped_sample_count` counts the total clipped channel samples at that threshold.
 
 See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, and classification rules.
@@ -130,6 +133,8 @@ See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, an
 - Analysis reads the entire file into memory.
 - Multi-channel files beyond stereo are loaded, but stereo metrics only inspect the first two channels.
 - Brightness, harshness, and transient-impact annotations are threshold-based heuristics, not perceptual models.
+- Noise annotations are broadband-floor heuristics and can miss tonal hum, sparse clicks, or noise that only appears under louder foreground material.
+- Stereo-width annotations are local side-versus-mid heuristics and do not model perceptual spaciousness or all phase artifacts.
 - Segment detection is energy-threshold based and only emits `active`, `silence`, or a synthetic full-length `loop` segment.
 - Source classification is a coarse heuristic and not a trained classifier.
 - Pitch detection uses a short autocorrelation-like pass over the beginning of the file only.
@@ -151,3 +156,5 @@ Current coverage in `modules/analysis/tests/analyze-audio.test.ts` validates:
 - localized brightness annotations and brightness tilt measurements
 - localized harshness annotations and presence-band evidence
 - transient-impact annotations and punch-window metrics
+- sustained noise annotations tied to elevated broadband floor evidence
+- localized stereo-width and stereo-ambiguity annotations

@@ -38,6 +38,20 @@ export function buildGainSafetyLimits(): string[] {
   ];
 }
 
+export function buildCompressorSafetyLimits(): string[] {
+  return [
+    "keep compression conservative and reversible",
+    "avoid obvious pumping or sustained transient flattening",
+  ];
+}
+
+export function buildLimiterSafetyLimits(): string[] {
+  return [
+    "keep limiter ceiling at or below -1 dB true peak",
+    "use limiting only for peak control, not broad loudness maximization",
+  ];
+}
+
 export function buildTrimSafetyLimits(): string[] {
   return [
     "preserve only the explicitly requested time range",

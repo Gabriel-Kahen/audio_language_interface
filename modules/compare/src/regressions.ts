@@ -50,6 +50,8 @@ export function detectAnalysisRegressions(
 
   const crestFactorDelta = getDelta(metricDeltas, "dynamics.crest_factor_db");
   const transientDensityDelta = getDelta(metricDeltas, "dynamics.transient_density_per_second");
+  const dynamicRangeDelta = getDelta(metricDeltas, "dynamics.dynamic_range_db");
+  const headroomDelta = getDelta(metricDeltas, "levels.headroom_db");
   if (
     crestFactorDelta !== undefined &&
     transientDensityDelta !== undefined &&
@@ -62,6 +64,36 @@ export function detectAnalysisRegressions(
         Math.max(Math.abs(crestFactorDelta) / 3, Math.abs(transientDensityDelta) / 0.4),
       ),
       description: "Candidate lost measurable transient punch versus the baseline.",
+    });
+  }
+
+  if (
+    crestFactorDelta !== undefined &&
+    dynamicRangeDelta !== undefined &&
+    crestFactorDelta <= -1 &&
+    dynamicRangeDelta <= -1.5
+  ) {
+    regressions.push({
+      kind: "over_compression",
+      severity: roundSeverity(
+        Math.max(Math.abs(crestFactorDelta) / 3, Math.abs(dynamicRangeDelta) / 4),
+      ),
+      description:
+        "Candidate reduced crest factor and short-term dynamic range enough to suggest over-compression.",
+    });
+  }
+
+  if (
+    truePeakDelta !== undefined &&
+    (truePeakDelta >= 0.75 || (headroomDelta !== undefined && headroomDelta <= -0.75))
+  ) {
+    regressions.push({
+      kind: "peak_control_regression",
+      severity: roundSeverity(
+        Math.max(truePeakDelta / 2, Math.abs(Math.min(headroomDelta ?? 0, 0)) / 2),
+      ),
+      description:
+        "Candidate peak control worsened versus the baseline, with higher measured peaks or lower sample headroom.",
     });
   }
 

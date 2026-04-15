@@ -132,6 +132,58 @@ function createPunchyTransientSignal(
   return [mono];
 }
 
+function createBroadbandNoiseSignal(sampleRateHz: number, durationSeconds: number): Float32Array[] {
+  const frameCount = Math.round(sampleRateHz * durationSeconds);
+  const mono = new Float32Array(frameCount);
+  let seed = 0x1234abcd;
+
+  for (let index = 0; index < frameCount; index += 1) {
+    seed = (1664525 * seed + 1013904223) >>> 0;
+    const normalized = seed / 0xffffffff;
+    mono[index] = (normalized * 2 - 1) * 0.04;
+  }
+
+  return [mono];
+}
+
+function createStableWideStereoSignal(
+  sampleRateHz: number,
+  durationSeconds: number,
+): Float32Array[] {
+  const frameCount = Math.round(sampleRateHz * durationSeconds);
+  const left = new Float32Array(frameCount);
+  const right = new Float32Array(frameCount);
+
+  for (let index = 0; index < frameCount; index += 1) {
+    const time = index / sampleRateHz;
+    const mid = 0.25 * Math.sin(2 * Math.PI * 220 * time);
+    const side = 0.18 * Math.sin(2 * Math.PI * 660 * time);
+    left[index] = mid + side;
+    right[index] = mid - side;
+  }
+
+  return [left, right];
+}
+
+function createAmbiguousWideStereoSignal(
+  sampleRateHz: number,
+  durationSeconds: number,
+): Float32Array[] {
+  const frameCount = Math.round(sampleRateHz * durationSeconds);
+  const left = new Float32Array(frameCount);
+  const right = new Float32Array(frameCount);
+
+  for (let index = 0; index < frameCount; index += 1) {
+    const time = index / sampleRateHz;
+    const mid = 0.1 * Math.sin(2 * Math.PI * 220 * time);
+    const side = 0.22 * Math.sin(2 * Math.PI * 660 * time);
+    left[index] = mid + side;
+    right[index] = mid - side;
+  }
+
+  return [left, right];
+}
+
 async function writeWav(
   workspaceRoot: string,
   storageRef: string,
@@ -397,6 +449,85 @@ describe("analyzeAudioVersion", () => {
       expect(transientAnnotation).toBeDefined();
       expect(transientAnnotation?.bands_hz).toEqual([60, 4000]);
       expect(transientAnnotation?.evidence).toContain("window crest");
+    });
+  });
+
+  it("adds sustained noise annotations only when broadband floor evidence is present", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 48000;
+      const durationSeconds = 2;
+      const storageRef = "storage/audio/test-noise.wav";
+      const channels = createBroadbandNoiseSignal(sampleRateHz, durationSeconds);
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const report = await analyzeAudioVersion(
+        createAudioVersion(storageRef, sampleRateHz, channels.length, getFrameCount(channels)),
+        {
+          workspaceRoot,
+          generatedAt: "2026-04-14T20:20:10Z",
+        },
+      );
+
+      expect(report.measurements.artifacts.noise_floor_dbfs).toBeGreaterThan(-50);
+      const noiseAnnotation = report.annotations?.find((annotation) => annotation.kind === "noise");
+      expect(noiseAnnotation).toBeDefined();
+      expect(noiseAnnotation?.bands_hz).toEqual([2000, 12000]);
+      expect(noiseAnnotation?.evidence).toContain("zero-crossing ratio");
+    });
+  });
+
+  it("adds stereo-width evidence only when side energy stays stable", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 44100;
+      const durationSeconds = 2;
+      const storageRef = "storage/audio/test-stereo-width.wav";
+      const channels = createStableWideStereoSignal(sampleRateHz, durationSeconds);
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const report = await analyzeAudioVersion(
+        createAudioVersion(storageRef, sampleRateHz, channels.length, getFrameCount(channels)),
+        {
+          workspaceRoot,
+          generatedAt: "2026-04-14T20:20:10Z",
+        },
+      );
+
+      expect(report.measurements.stereo.width).toBeGreaterThan(0.35);
+      expect(report.measurements.stereo.correlation).toBeGreaterThan(0.15);
+      const widthAnnotation = report.annotations?.find(
+        (annotation) => annotation.kind === "stereo_width",
+      );
+      expect(widthAnnotation).toBeDefined();
+      expect(widthAnnotation?.evidence).toContain("stable side energy");
+    });
+  });
+
+  it("flags ambiguous width evidence when side energy is high but correlation collapses", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 44100;
+      const durationSeconds = 2;
+      const storageRef = "storage/audio/test-stereo-ambiguity.wav";
+      const channels = createAmbiguousWideStereoSignal(sampleRateHz, durationSeconds);
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const report = await analyzeAudioVersion(
+        createAudioVersion(storageRef, sampleRateHz, channels.length, getFrameCount(channels)),
+        {
+          workspaceRoot,
+          generatedAt: "2026-04-14T20:20:10Z",
+        },
+      );
+
+      expect(report.measurements.stereo.width).toBeGreaterThan(0.28);
+      expect(report.measurements.stereo.correlation).toBeLessThan(0.1);
+      const widthAmbiguityAnnotation = report.annotations?.find(
+        (annotation) => annotation.kind === "stereo_ambiguity",
+      );
+      expect(widthAmbiguityAnnotation).toBeDefined();
+      expect(widthAmbiguityAnnotation?.evidence).toContain("correlation falls");
     });
   });
 });

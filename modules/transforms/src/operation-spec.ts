@@ -1,3 +1,4 @@
+import { buildCompressorOperation, buildLimiterOperation } from "./operations/dynamics.js";
 import {
   buildHighPassFilterOperation,
   buildLowPassFilterOperation,
@@ -32,6 +33,10 @@ export function buildOperation(
       return buildHighPassFilterOperation(audio, parameters, target);
     case "low_pass_filter":
       return buildLowPassFilterOperation(audio, parameters, target);
+    case "compressor":
+      return buildCompressorOperation(audio, parameters, target);
+    case "limiter":
+      return buildLimiterOperation(audio, parameters, target);
     default:
       throw new Error(`Unsupported transform operation: ${operation satisfies never}`);
   }
