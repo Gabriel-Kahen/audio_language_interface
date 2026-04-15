@@ -132,6 +132,7 @@ function isRoutineFfmpegLogLine(line: string): boolean {
     line.startsWith("built with") ||
     line.startsWith("configuration:") ||
     line.startsWith("libav") ||
+    line.startsWith("libpost") ||
     line.startsWith("libsw") ||
     line.startsWith("Input #") ||
     line.startsWith("Output #") ||

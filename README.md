@@ -4,6 +4,8 @@ Audio Language Interface is an audio manipulation platform for LLMs.
 
 The project is not a music creation tool. It is a modular system that lets language models inspect audio, plan changes, apply deterministic edits, compare results, and iterate toward a user's requested sound.
 
+License: `MIT`. See `LICENSE`.
+
 ## Current status
 
 The repository now has a real first-slice runtime across most pipeline modules.
