@@ -3,6 +3,7 @@ import { executeWithFailurePolicy, OrchestrationStageError } from "./failure-pol
 import { importAndAnalyze } from "./flows/import-and-analyze.js";
 import { planAndApply } from "./flows/plan-and-apply.js";
 import { renderAndCompare } from "./flows/render-and-compare.js";
+import { resolveFollowUpRequest } from "./follow-up-request.js";
 import type { RequestCycleResult, RunRequestCycleOptions } from "./types.js";
 
 /** Runs one explicit request cycle from import or current version through comparison. */
@@ -21,6 +22,7 @@ export async function runRequestCycle(
   let editPlan: RequestCycleResult["editPlan"] | undefined;
   let transformResult: RequestCycleResult["transformResult"] | undefined;
   let outputVersion: RequestCycleResult["outputVersion"] | undefined;
+  let resolvedUserRequest = options.userRequest;
 
   if (options.input.kind === "import") {
     try {
@@ -111,12 +113,50 @@ export async function runRequestCycle(
     asset,
     version: inputVersion,
   });
-  sessionGraph = options.dependencies.recordAnalysisReport(sessionGraph, inputAnalysis);
+
+  if (options.input.kind === "existing") {
+    sessionGraph = options.dependencies.recordAnalysisReport(sessionGraph, inputAnalysis);
+  }
+
+  if (options.input.kind === "existing") {
+    const followUp = await executeWithFailurePolicy({
+      stage: "resolve_follow_up",
+      operation: async () => {
+        const followUpInput = {
+          userRequest: options.userRequest,
+          versionId: inputVersion.version_id,
+          ...(sessionGraph === undefined ? {} : { sessionGraph }),
+        };
+
+        return resolveFollowUpRequest(followUpInput);
+      },
+      failurePolicy: options.failurePolicy,
+      getPartialResult: () => ({
+        asset,
+        inputVersion,
+        inputAnalysis,
+        sessionGraph,
+      }),
+      trace,
+    });
+
+    if (followUp.kind === "revert") {
+      throw new Error(
+        `The follow-up request resolves to reverting to version '${followUp.targetVersionId}'. Orchestration can resolve that target, but applying the revert still requires the caller to load the referenced AudioVersion artifact explicitly.`,
+      );
+    }
+
+    resolvedUserRequest = followUp.resolvedUserRequest;
+  }
+
+  if (options.input.kind === "import") {
+    sessionGraph = options.dependencies.recordAnalysisReport(sessionGraph, inputAnalysis);
+  }
 
   try {
     const planResult = await planAndApply({
       workspaceRoot: options.workspaceRoot,
-      userRequest: options.userRequest,
+      userRequest: resolvedUserRequest,
       version: inputVersion,
       analysisReport: inputAnalysis,
       dependencies: options.dependencies,

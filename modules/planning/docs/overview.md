@@ -45,7 +45,7 @@ The initial implementation is a deterministic baseline planner. It uses conserva
 
 ## Baseline behavior
 
-- only emits operations currently supported by the Phase 2 planning slice: EQ, filtering, trim, fade, gain, conservative compression, and peak limiting
+- only emits operations currently supported by the Phase 2 planning slice: EQ, filtering, trim, fade, gain, conservative compression, peak limiting, conservative denoise, and conservative stereo-width adjustment
 - prefers one small EQ step over multiple overlapping tonal steps when possible
 - validates inbound `AudioVersion`, `AnalysisReport`, and `SemanticProfile` contracts before planning
 - uses the current `AudioVersion` duration to reject trim and fade requests that exceed the available file
@@ -53,7 +53,8 @@ The initial implementation is a deterministic baseline planner. It uses conserva
 - uses analysis annotations and semantic descriptors to refine frequencies and verification targets
 - maps generic `cleaner` requests only when current evidence supports a conservative tonal cleanup target
 - maps conservative `more controlled` language to `compressor` and explicit peak-control language to `limiter`
-- keeps stereo-width and denoise-style requests explicit placeholders instead of silently planning them
+- supports explicit denoise requests only when analysis indicates steady noise and keeps broader restoration requests explicit
+- supports explicit stereo-width requests only for already-stereo material when the current image is safe to adjust conservatively
 - fails instead of guessing when the request cannot be mapped to an explicit supported operation
 
 See `modules/planning/docs/heuristics.md` for the current phrase-to-operation mappings.

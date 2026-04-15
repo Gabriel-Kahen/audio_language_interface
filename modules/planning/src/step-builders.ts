@@ -1,11 +1,13 @@
 import {
   assertValidFadeSpans,
   buildCompressorSafetyLimits,
+  buildDenoiseSafetyLimits,
   buildEqSafetyLimits,
   buildFadeSafetyLimits,
   buildFilterSafetyLimits,
   buildGainSafetyLimits,
   buildLimiterSafetyLimits,
+  buildStereoWidthSafetyLimits,
   buildTrimSafetyLimits,
   resolveEqGainDb,
   resolveGainStepDb,
@@ -38,6 +40,11 @@ export function buildPlannedSteps(context: StepBuildContext): EditPlanStep[] {
     steps.push(fadeStep);
   }
 
+  const denoiseStep = buildDenoiseStep(context.objectives, context.analysisReport);
+  if (denoiseStep) {
+    steps.push(denoiseStep);
+  }
+
   const filterStep = buildRumbleStep(context.objectives);
   if (filterStep) {
     steps.push(filterStep);
@@ -56,6 +63,11 @@ export function buildPlannedSteps(context: StepBuildContext): EditPlanStep[] {
   const limiterStep = buildLimiterStep(context.objectives, context.analysisReport);
   if (limiterStep) {
     steps.push(limiterStep);
+  }
+
+  const stereoWidthStep = buildStereoWidthStep(context.objectives);
+  if (stereoWidthStep) {
+    steps.push(stereoWidthStep);
   }
 
   const gainStep = buildGainStep(context.objectives, context.analysisReport);
@@ -158,6 +170,28 @@ function buildRumbleStep(objectives: ParsedEditObjectives): EditPlanStep | undef
     parameters: { frequency_hz: 40 },
     expected_effects: ["reduce low-frequency rumble below 40 Hz"],
     safety_limits: buildFilterSafetyLimits(),
+  };
+}
+
+function buildDenoiseStep(
+  objectives: ParsedEditObjectives,
+  analysisReport: AnalysisReport,
+): EditPlanStep | undefined {
+  if (!objectives.wants_denoise) {
+    return undefined;
+  }
+
+  return {
+    step_id: "step_denoise_1",
+    operation: "denoise",
+    target: { scope: "full_file" },
+    parameters: {
+      reduction_db:
+        objectives.intensity === "subtle" ? 4 : objectives.intensity === "strong" ? 9 : 6,
+      noise_floor_dbfs: Number(analysisReport.measurements.artifacts.noise_floor_dbfs.toFixed(1)),
+    },
+    expected_effects: ["reduce steady broadband noise without changing the core balance"],
+    safety_limits: buildDenoiseSafetyLimits(),
   };
 }
 
@@ -328,22 +362,11 @@ function buildCompressorStep(objectives: ParsedEditObjectives): EditPlanStep | u
 
 function buildLimiterStep(
   objectives: ParsedEditObjectives,
-  analysisReport: AnalysisReport,
+  _analysisReport: AnalysisReport,
 ): EditPlanStep | undefined {
   if (!objectives.wants_peak_control) {
     return undefined;
   }
-
-  const measuredPeak = analysisReport.measurements.levels.true_peak_dbtp;
-  const thresholdDb = Math.min(
-    -2,
-    Number(
-      (
-        measuredPeak -
-        (objectives.intensity === "subtle" ? 0.5 : objectives.intensity === "strong" ? 2 : 1)
-      ).toFixed(2),
-    ),
-  );
 
   return {
     step_id: "step_limiter_1",
@@ -351,12 +374,45 @@ function buildLimiterStep(
     target: { scope: "full_file" },
     parameters: {
       ceiling_dbtp: -1,
-      input_gain_db: Number((Math.abs(thresholdDb) - 1).toFixed(2)),
+      input_gain_db: 0,
       release_ms: 80,
       lookahead_ms: 5,
     },
     expected_effects: ["catch short peak excursions without broad loudness maximization"],
     safety_limits: buildLimiterSafetyLimits(),
+  };
+}
+
+function buildStereoWidthStep(objectives: ParsedEditObjectives): EditPlanStep | undefined {
+  if (objectives.wants_wider === objectives.wants_narrower) {
+    return undefined;
+  }
+
+  const widthMultiplier = objectives.wants_wider
+    ? objectives.intensity === "subtle"
+      ? 1.12
+      : objectives.intensity === "strong"
+        ? 1.28
+        : 1.18
+    : objectives.intensity === "subtle"
+      ? 0.9
+      : objectives.intensity === "strong"
+        ? 0.72
+        : 0.82;
+
+  return {
+    step_id: "step_stereo_width_1",
+    operation: "stereo_width",
+    target: { scope: "full_file" },
+    parameters: {
+      width_multiplier: widthMultiplier,
+    },
+    expected_effects: [
+      objectives.wants_wider
+        ? "slightly widen the stereo image"
+        : "slightly narrow the stereo image",
+    ],
+    safety_limits: buildStereoWidthSafetyLimits(),
   };
 }
 

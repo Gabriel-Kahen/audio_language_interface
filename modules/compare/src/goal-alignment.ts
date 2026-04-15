@@ -43,8 +43,8 @@ function evaluateGoal(
     checks.push(classifyPunchPreservation(metricDeltas));
   }
 
-  if (matchesAny(normalizedGoal, ["wide", "wider"])) {
-    checks.push(classifySingleMetric(getDelta(metricDeltas, "stereo.width"), 0.08, 0.03));
+  if (matchesStereoWidthGoal(normalizedGoal)) {
+    checks.push(classifyStereoWidthGoal(normalizedGoal, baseline, candidate, metricDeltas));
   }
 
   if (
@@ -263,13 +263,23 @@ function classifyCleanupGoal(
   metricDeltas: MetricDelta[],
 ): GoalStatus {
   const noiseFloorDelta = getDelta(metricDeltas, "artifacts.noise_floor_dbfs");
+  const highBandDelta = getDelta(metricDeltas, "spectral_balance.high_band_db");
+  const centroidDelta = getDelta(metricDeltas, "spectral_balance.spectral_centroid_hz");
+  const crestFactorDelta = getDelta(metricDeltas, "dynamics.crest_factor_db");
+  const transientDensityDelta = getDelta(metricDeltas, "dynamics.transient_density_per_second");
+
+  if (
+    hasDenoiseArtifactRisk(highBandDelta, centroidDelta, crestFactorDelta, transientDensityDelta)
+  ) {
+    return "not_met";
+  }
 
   if (noiseFloorDelta !== undefined) {
     if (noiseFloorDelta <= -3) {
       return "met";
     }
 
-    if (noiseFloorDelta <= -1) {
+    if (noiseFloorDelta <= -1.5) {
       return "mostly_met";
     }
   }
@@ -285,14 +295,142 @@ function getDelta(metricDeltas: MetricDelta[], metric: string): number | undefin
   return metricDeltas.find((item) => item.metric === metric)?.delta;
 }
 
+function classifyStereoWidthGoal(
+  goal: string,
+  baseline: AnalysisMeasurements,
+  candidate: AnalysisMeasurements,
+  metricDeltas: MetricDelta[],
+): GoalStatus {
+  const widthDelta = getDelta(metricDeltas, "stereo.width");
+  const correlationDelta = getDelta(metricDeltas, "stereo.correlation");
+
+  if (widthDelta === undefined) {
+    return "unknown";
+  }
+
+  const subtleGoal = matchesAny(goal, ["slight", "slightly", "small", "subtle", "a bit", "little"]);
+  const phaseSafeGoal = matchesAny(goal, [
+    "phasey",
+    "phase",
+    "mono compatible",
+    "mono-compatible",
+    "mono compatibility",
+  ]);
+  const wantsNarrower = matchesAny(goal, ["narrow", "narrower", "reduce width", "less wide"]);
+  const widthRisk = hasStereoWidthRisk(baseline, candidate, widthDelta, correlationDelta);
+
+  if (wantsNarrower) {
+    if (widthDelta <= -0.08) {
+      return "met";
+    }
+
+    if (widthDelta <= -0.03) {
+      return "mostly_met";
+    }
+
+    return "not_met";
+  }
+
+  if (phaseSafeGoal && widthRisk) {
+    return "not_met";
+  }
+
+  if (subtleGoal) {
+    if (widthDelta >= 0.05 && widthDelta <= 0.18 && !widthRisk) {
+      return "met";
+    }
+
+    if (
+      widthDelta >= 0.03 &&
+      widthDelta <= 0.25 &&
+      isMostlyStableWidth(candidate, correlationDelta)
+    ) {
+      return "mostly_met";
+    }
+
+    return "not_met";
+  }
+
+  if (widthDelta >= 0.08 && !widthRisk) {
+    return "met";
+  }
+
+  if (widthDelta >= 0.04 && isMostlyStableWidth(candidate, correlationDelta)) {
+    return "mostly_met";
+  }
+
+  return "not_met";
+}
+
+function hasStereoWidthRisk(
+  baseline: AnalysisMeasurements,
+  candidate: AnalysisMeasurements,
+  widthDelta: number,
+  correlationDelta: number | undefined,
+): boolean {
+  return (
+    widthDelta >= 0.1 &&
+    (candidate.stereo.correlation < 0.1 ||
+      (correlationDelta !== undefined && correlationDelta <= -0.25) ||
+      Math.abs(candidate.stereo.balance_db ?? baseline.stereo.balance_db ?? 0) >= 4.5)
+  );
+}
+
+function isMostlyStableWidth(
+  candidate: AnalysisMeasurements,
+  correlationDelta: number | undefined,
+): boolean {
+  return (
+    candidate.stereo.correlation >= 0.1 &&
+    (correlationDelta === undefined || correlationDelta >= -0.18)
+  );
+}
+
+function hasDenoiseArtifactRisk(
+  highBandDelta: number | undefined,
+  centroidDelta: number | undefined,
+  crestFactorDelta: number | undefined,
+  transientDensityDelta: number | undefined,
+): boolean {
+  const lostTopEnd =
+    highBandDelta !== undefined &&
+    centroidDelta !== undefined &&
+    highBandDelta <= -2 &&
+    centroidDelta <= -200;
+  const lostPunch =
+    crestFactorDelta !== undefined &&
+    transientDensityDelta !== undefined &&
+    crestFactorDelta <= -1.25 &&
+    transientDensityDelta <= -0.15;
+
+  return lostTopEnd || lostPunch;
+}
+
 function matchesLoudnessGoal(value: string): boolean {
   return matchesAny(value, ["loud", "quieter", "volume", "level"]);
+}
+
+function matchesStereoWidthGoal(value: string): boolean {
+  return matchesAny(value, [
+    "wide",
+    "wider",
+    "widen",
+    "width",
+    "stereo image",
+    "stereo spread",
+    "narrow",
+    "narrower",
+    "mono compatible",
+    "mono-compatible",
+  ]);
 }
 
 function matchesPeakControlPhrase(value: string): boolean {
   return (
     value.includes("control peaks") ||
+    value.includes("control peak excursions") ||
     value.includes("peak control") ||
+    value.includes("peak excursions") ||
     value.includes("under control") ||
     value.includes("more controlled") ||
     value.includes("tighter") ||

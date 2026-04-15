@@ -17,6 +17,9 @@ Produces a `ComparisonReport` from:
 Behavior:
 
 - requires distinct baseline and candidate version ids
+- requires the baseline and candidate versions to share the same `asset_id`
+- requires each paired `AnalysisReport` to match its `AudioVersion` by `asset_id` and `version_id`
+- requires an optional `editPlan` to match the baseline version by `asset_id` and `version_id`
 - requires paired analysis reports
 - computes analysis-backed metric deltas
 - derives semantic deltas and analysis regressions
@@ -40,6 +43,10 @@ Produces a `ComparisonReport` from:
 Behavior:
 
 - requires distinct baseline and candidate render ids
+- requires the baseline and candidate renders to share the same `asset_id`
+- rejects one-sided analysis input; analysis-backed render comparison requires both paired analysis reports
+- requires each paired `AnalysisReport` to match its `RenderArtifact` by `asset_id` and `version_id`
+- requires an optional `editPlan` to match the baseline render by `asset_id` and `version_id`
 - always computes render-level deltas and render regressions
 - upgrades to analysis-backed comparison only when both analysis reports are present
 - only evaluates goals when an `editPlan` and both analysis reports are present

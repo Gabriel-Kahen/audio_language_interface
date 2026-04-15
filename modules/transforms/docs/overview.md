@@ -41,6 +41,8 @@ The implemented operation set is currently:
 - `low_pass_filter`
 - `compressor`
 - `limiter`
+- `stereo_width`
+- `denoise`
 
 Anything else listed in the module agent guide is still a future capability and is not implemented in `src/` yet.
 
@@ -50,6 +52,8 @@ Target support is intentionally narrow in the initial implementation:
 
 - `gain`, `normalize`, `parametric_eq`, `high_pass_filter`, and `low_pass_filter` only accept `full_file`
 - `compressor` and `limiter` only accept `full_file`
+- `stereo_width` only accepts `full_file` and requires stereo 2-channel input
+- `denoise` only accepts `full_file`
 - `fade` only accepts `full_file`
 - `trim` supports `time_range` via `target.start_seconds` and `target.end_seconds`, or explicit `parameters.start_seconds` and `parameters.end_seconds`
 
@@ -111,9 +115,11 @@ This module consumes and emits repository contracts directly:
 
 ## Current limitations
 
-- Cleanup, saturation, pitch, time-stretch, stereo, and spatial operations are still not implemented.
+- Saturation, pitch, and time-stretch operations are still not implemented.
 - `compressor` exposes only downward RMS compression with explicit threshold, ratio, attack, release, and optional makeup gain. It does not expose upward compression, dry/wet mixing, sidechain input, or alternate detection/link modes.
 - `limiter` exposes only ceiling, attack, and release. Automatic gain staging is disabled deliberately so the emitted `TransformRecord` stays explicit and inspectable.
+- `stereo_width` uses FFmpeg `extrastereo` with clipping disabled and only supports stereo 2-channel material. It is intended for subtle widening or narrowing, not aggressive spatial effects or multichannel imaging.
+- `denoise` uses FFmpeg `afftdn` with a fixed broadband profile, explicit reduction, explicit or defaulted noise floor, and adaptive tracking disabled. It is intentionally conservative and is best suited to steady broadband noise rather than clicks, hum removal, or profile-learned restoration.
 - No automatic loudness or peak measurement. `normalize` requires caller-supplied `measured_peak_dbfs`.
 - `normalize` supports only `mode: "peak"`.
 - `parametric_eq` supports only bell bands.
@@ -131,5 +137,5 @@ Module-local tests cover:
 - single-operation application output shape
 - ordered edit plan execution
 - workspace-relative output path behavior
-- real compressor and limiter output verification
+- real compressor, limiter, stereo width, and denoise output verification
 - JSON Schema alignment for emitted `AudioVersion` and `TransformRecord`

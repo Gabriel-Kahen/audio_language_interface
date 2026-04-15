@@ -40,11 +40,32 @@ export function detectAnalysisRegressions(
   }
 
   const widthDelta = getDelta(metricDeltas, "stereo.width");
+  const correlationDelta = getDelta(metricDeltas, "stereo.correlation");
   if (widthDelta !== undefined && widthDelta <= -0.2) {
     regressions.push({
       kind: "stereo_collapse",
       severity: roundSeverity(Math.abs(widthDelta) / 0.5),
       description: "Stereo width decreased materially versus the baseline.",
+    });
+  }
+
+  if (
+    widthDelta !== undefined &&
+    correlationDelta !== undefined &&
+    widthDelta >= 0.1 &&
+    (candidate.stereo.correlation < 0.1 || correlationDelta <= -0.25)
+  ) {
+    regressions.push({
+      kind: "stereo_instability",
+      severity: roundSeverity(
+        Math.max(
+          Math.abs(widthDelta) / 0.35,
+          Math.abs(correlationDelta) / 0.7,
+          Math.max(0.1 - candidate.stereo.correlation, 0) / 0.15,
+        ),
+      ),
+      description:
+        "Stereo width increased while channel correlation fell toward phase-risk territory.",
     });
   }
 
@@ -94,6 +115,35 @@ export function detectAnalysisRegressions(
       ),
       description:
         "Candidate peak control worsened versus the baseline, with higher measured peaks or lower sample headroom.",
+    });
+  }
+
+  const noiseFloorDelta = getDelta(metricDeltas, "artifacts.noise_floor_dbfs");
+  const highBandDelta = getDelta(metricDeltas, "spectral_balance.high_band_db");
+  const centroidDelta = getDelta(metricDeltas, "spectral_balance.spectral_centroid_hz");
+  if (
+    noiseFloorDelta !== undefined &&
+    noiseFloorDelta <= -4 &&
+    ((highBandDelta !== undefined &&
+      centroidDelta !== undefined &&
+      highBandDelta <= -2 &&
+      centroidDelta <= -200) ||
+      (crestFactorDelta !== undefined &&
+        transientDensityDelta !== undefined &&
+        crestFactorDelta <= -1.25 &&
+        transientDensityDelta <= -0.15))
+  ) {
+    regressions.push({
+      kind: "denoise_artifacts",
+      severity: roundSeverity(
+        Math.max(
+          Math.abs(noiseFloorDelta) / 12,
+          Math.abs(highBandDelta ?? 0) / 5,
+          Math.abs(crestFactorDelta ?? 0) / 3,
+        ),
+      ),
+      description:
+        "Noise-floor reduction coincided with measurable top-end or transient loss, suggesting denoise artifacts.",
     });
   }
 

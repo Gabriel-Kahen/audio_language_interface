@@ -8,16 +8,17 @@ License: `MIT`. See `LICENSE`.
 
 ## Current status
 
-The repository now has a real first-slice runtime across most pipeline modules.
+The repository now has a real Phase 2-in-progress runtime across the full core pipeline.
 
 Today it is best understood as a narrow, programmatic audio-editing platform for:
 
 - importing one local audio file
 - analyzing a WAV-backed version
-- planning and applying conservative tonal-shaping edits
+- planning and applying conservative edits for tone, dynamics, width, and steady-noise cleanup
 - rendering preview or export artifacts
 - comparing before and after
 - recording provenance in session history
+- running repeated request cycles with early follow-up support such as `more`
 
 See `docs/current-capabilities.md` for the implemented scope and `docs/contributor-guide.md` for the contributor entry path.
 
@@ -49,13 +50,13 @@ Every step must also work independently.
 
 ## Current capabilities
 
-The strongest supported Phase 1 slice today is:
+The strongest supported slice today is:
 
 - single-file editing
 - local file-path imports
 - WAV-backed analysis
-- conservative prompts like `darker`, `less harsh`, `slightly cleaner`, and `preserve punch`
-- deterministic transform execution through a small FFmpeg-backed operation set
+- conservative prompts like `darker`, `less harsh`, `slightly cleaner`, `preserve punch`, `more controlled`, and `control peaks`
+- deterministic transform execution through a constrained FFmpeg-backed operation set that now includes dynamics, width, and denoise support at the runtime layer
 - preview rendering, comparison, and session-history tracking
 
 Current tool entrypoints are:
@@ -70,7 +71,8 @@ Important current limitations include:
 
 - no streaming or byte-buffer import path
 - no broad multi-file workflow
-- no tool-exposed `plan_edits` operation yet
+- the tool surface still exposes a narrower subset than the full runtime and does not yet expose `plan_edits`
+- width and denoise behavior are implemented conservatively and not yet fully opened through every external entrypoint
 - no dedicated demo CLI or app entrypoint yet
 - benchmark coverage is still synthetic-first and not yet driven by committed real audio fixtures
 

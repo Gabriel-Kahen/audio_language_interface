@@ -12,12 +12,12 @@
   "generated_at": "2026-04-14T20:20:22Z",
   "metric_deltas": [
     {
-      "metric": "spectral_energy_3k_5k_db",
+      "metric": "spectral_balance.high_band_db",
       "direction": "decreased",
       "delta": -1.8
     },
     {
-      "metric": "crest_factor_db",
+      "metric": "dynamics.crest_factor_db",
       "direction": "decreased",
       "delta": -0.2
     }

@@ -1,6 +1,10 @@
 import type { AudioVersion, EditPlan, OperationName } from "@audio-language-interface/transforms";
 
-import { createProvenanceMismatchError, createUnsupportedOperationError } from "../errors.js";
+import {
+  createProvenanceMismatchError,
+  createUnsupportedOperationCombinationError,
+  createUnsupportedOperationError,
+} from "../errors.js";
 import type { ToolDefinition, ToolRequest } from "../types.js";
 import {
   assertToolResultAudioVersion,
@@ -27,6 +31,19 @@ const SUPPORTED_EDIT_PLAN_OPERATIONS = new Set<OperationName>([
   "parametric_eq",
   "high_pass_filter",
   "low_pass_filter",
+  "compressor",
+  "limiter",
+]);
+
+const PHASE_2_DECLARED_BUT_UNSUPPORTED_OPERATIONS = new Map<string, string>([
+  [
+    "stereo_width",
+    "stereo_width is part of the locked Phase 2 batch, but the current tool surface does not execute width changes yet.",
+  ],
+  [
+    "denoise",
+    "denoise is part of the locked Phase 2 batch, but the current tool surface does not execute noise-reduction changes yet.",
+  ],
 ]);
 
 function toCommandShape(command: {
@@ -100,15 +117,46 @@ function validateArguments(value: unknown, request: ToolRequest): ApplyEditPlanA
     );
   }
 
-  for (const [index, step] of editPlan.steps.entries()) {
-    if (!SUPPORTED_EDIT_PLAN_OPERATIONS.has(step.operation)) {
+  const unsupportedSteps = editPlan.steps.flatMap((step, index) => {
+    if (SUPPORTED_EDIT_PLAN_OPERATIONS.has(step.operation)) {
+      return [];
+    }
+
+    const reason = PHASE_2_DECLARED_BUT_UNSUPPORTED_OPERATIONS.get(step.operation);
+
+    return [
+      {
+        field: `arguments.edit_plan.steps[${index}].operation`,
+        operation: step.operation,
+        reason:
+          reason ??
+          `${step.operation} is outside the current apply_edit_plan tool surface. Use describeTools() to inspect the supported operation subset.`,
+      },
+    ];
+  });
+
+  if (unsupportedSteps.length === 1) {
+    const [unsupportedStep] = unsupportedSteps;
+
+    if (unsupportedStep) {
       throw createUnsupportedOperationError(
-        `arguments.edit_plan.steps[${index}].operation`,
-        step.operation,
+        unsupportedStep.field,
+        unsupportedStep.operation,
         [...SUPPORTED_EDIT_PLAN_OPERATIONS],
         "apply_edit_plan",
+        {
+          reason: unsupportedStep.reason,
+        },
       );
     }
+  }
+
+  if (unsupportedSteps.length > 1) {
+    throw createUnsupportedOperationCombinationError(
+      unsupportedSteps,
+      [...SUPPORTED_EDIT_PLAN_OPERATIONS],
+      "apply_edit_plan",
+    );
   }
 
   return {
@@ -136,6 +184,7 @@ export const applyEditPlanTool: ToolDefinition<ApplyEditPlanArguments, Record<st
     ],
     capabilities: {
       supported_operations: [...SUPPORTED_EDIT_PLAN_OPERATIONS],
+      unsupported_phase_2_operations: [...PHASE_2_DECLARED_BUT_UNSUPPORTED_OPERATIONS.keys()],
     },
   },
   validateArguments,

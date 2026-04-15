@@ -47,6 +47,7 @@ function buildStereoAnnotations(
     severity: number;
     width: number;
     correlation: number;
+    balanceDb: number;
   }> = [];
   const ambiguousFrames: Array<{
     start: number;
@@ -54,16 +55,20 @@ function buildStereoAnnotations(
     severity: number;
     width: number;
     correlation: number;
+    balanceDb: number;
   }> = [];
 
   for (let start = 0; start < audioData.frameCount; start += windowSize) {
     const end = Math.min(start + windowSize, audioData.frameCount);
     const frameStereo = measureWindowStereo(left, right, start, end);
+    const isActiveStereoWindow = frameStereo.rmsDbfs >= -42;
 
     if (
+      isActiveStereoWindow &&
       frameStereo.width >= 0.33 &&
       frameStereo.correlation >= 0.15 &&
-      frameStereo.correlation < 0.98
+      frameStereo.correlation < 0.98 &&
+      Math.abs(frameStereo.balanceDb) < 4.5
     ) {
       wideFrames.push({
         start,
@@ -75,10 +80,11 @@ function buildStereoAnnotations(
         ),
         width: frameStereo.width,
         correlation: frameStereo.correlation,
+        balanceDb: frameStereo.balanceDb,
       });
     }
 
-    if (frameStereo.width >= 0.28 && frameStereo.correlation < 0.1) {
+    if (isActiveStereoWindow && frameStereo.width >= 0.28 && frameStereo.correlation < 0.1) {
       ambiguousFrames.push({
         start,
         end,
@@ -89,6 +95,7 @@ function buildStereoAnnotations(
         ),
         width: frameStereo.width,
         correlation: frameStereo.correlation,
+        balanceDb: frameStereo.balanceDb,
       });
     }
   }
@@ -98,15 +105,15 @@ function buildStereoAnnotations(
       wideFrames,
       audioData.sampleRateHz,
       "stereo_width",
-      (maxWidth, minCorrelation) =>
-        `stable side energy reaches width ${maxWidth.toFixed(2)} with local correlation ${minCorrelation.toFixed(2)}`,
+      (metrics) =>
+        `stable side energy reaches width ${metrics.maxWidth.toFixed(2)} with local correlation ${metrics.minCorrelation.toFixed(2)} over ${metrics.durationSeconds.toFixed(2)} seconds at up to ${Math.abs(metrics.maxBalanceDb).toFixed(1)} dB channel imbalance`,
     ),
     ...buildMergedStereoAnnotations(
       ambiguousFrames,
       audioData.sampleRateHz,
       "stereo_ambiguity",
-      (maxWidth, minCorrelation) =>
-        `side energy reaches width ${maxWidth.toFixed(2)} while local correlation falls to ${minCorrelation.toFixed(2)}`,
+      (metrics) =>
+        `side energy reaches width ${metrics.maxWidth.toFixed(2)} while local correlation falls to ${metrics.minCorrelation.toFixed(2)} over ${metrics.durationSeconds.toFixed(2)} seconds`,
     ),
   ];
 }
@@ -116,7 +123,7 @@ function measureWindowStereo(
   right: Float32Array,
   start: number,
   end: number,
-): { width: number; correlation: number } {
+): { width: number; correlation: number; balanceDb: number; rmsDbfs: number } {
   let midSquared = 0;
   let sideSquared = 0;
   let numerator = 0;
@@ -139,10 +146,14 @@ function measureWindowStereo(
   const midRms = Math.sqrt(midSquared / Math.max(end - start, 1));
   const sideRms = Math.sqrt(sideSquared / Math.max(end - start, 1));
   const denominator = Math.sqrt(leftSquared * rightSquared);
+  const leftRms = Math.sqrt(leftSquared / Math.max(end - start, 1));
+  const rightRms = Math.sqrt(rightSquared / Math.max(end - start, 1));
 
   return {
     width: sideRms / Math.max(midRms + sideRms, 1e-12),
     correlation: denominator === 0 ? 1 : numerator / denominator,
+    balanceDb: toDecibels(leftRms) - toDecibels(rightRms),
+    rmsDbfs: toDecibels(Math.sqrt((leftSquared + rightSquared) / Math.max((end - start) * 2, 1))),
   };
 }
 
@@ -153,10 +164,16 @@ function buildMergedStereoAnnotations(
     severity: number;
     width: number;
     correlation: number;
+    balanceDb: number;
   }>,
   sampleRateHz: number,
   kind: string,
-  buildEvidence: (maxWidth: number, minCorrelation: number) => string,
+  buildEvidence: (metrics: {
+    maxWidth: number;
+    minCorrelation: number;
+    maxBalanceDb: number;
+    durationSeconds: number;
+  }) => string,
 ): AnalysisAnnotation[] {
   const annotations: AnalysisAnnotation[] = [];
   let currentStart = -1;
@@ -164,6 +181,7 @@ function buildMergedStereoAnnotations(
   let currentMaxSeverity = 0;
   let currentMaxWidth = 0;
   let currentMinCorrelation = 1;
+  let currentMaxAbsBalanceDb = 0;
 
   for (const frame of frames) {
     if (currentStart < 0) {
@@ -172,6 +190,7 @@ function buildMergedStereoAnnotations(
       currentMaxSeverity = frame.severity;
       currentMaxWidth = frame.width;
       currentMinCorrelation = frame.correlation;
+      currentMaxAbsBalanceDb = Math.abs(frame.balanceDb);
       continue;
     }
 
@@ -180,31 +199,50 @@ function buildMergedStereoAnnotations(
       currentMaxSeverity = Math.max(currentMaxSeverity, frame.severity);
       currentMaxWidth = Math.max(currentMaxWidth, frame.width);
       currentMinCorrelation = Math.min(currentMinCorrelation, frame.correlation);
+      currentMaxAbsBalanceDb = Math.max(currentMaxAbsBalanceDb, Math.abs(frame.balanceDb));
       continue;
     }
 
-    annotations.push({
-      kind,
-      start_seconds: currentStart / sampleRateHz,
-      end_seconds: currentEnd / sampleRateHz,
-      severity: currentMaxSeverity,
-      evidence: buildEvidence(currentMaxWidth, currentMinCorrelation),
-    });
+    const durationSeconds = (currentEnd - currentStart) / sampleRateHz;
+    if (durationSeconds >= 0.1) {
+      annotations.push({
+        kind,
+        start_seconds: currentStart / sampleRateHz,
+        end_seconds: currentEnd / sampleRateHz,
+        severity: currentMaxSeverity,
+        evidence: buildEvidence({
+          maxWidth: currentMaxWidth,
+          minCorrelation: currentMinCorrelation,
+          maxBalanceDb: currentMaxAbsBalanceDb,
+          durationSeconds,
+        }),
+      });
+    }
+
     currentStart = frame.start;
     currentEnd = frame.end;
     currentMaxSeverity = frame.severity;
     currentMaxWidth = frame.width;
     currentMinCorrelation = frame.correlation;
+    currentMaxAbsBalanceDb = Math.abs(frame.balanceDb);
   }
 
   if (currentStart >= 0) {
-    annotations.push({
-      kind,
-      start_seconds: currentStart / sampleRateHz,
-      end_seconds: currentEnd / sampleRateHz,
-      severity: currentMaxSeverity,
-      evidence: buildEvidence(currentMaxWidth, currentMinCorrelation),
-    });
+    const durationSeconds = (currentEnd - currentStart) / sampleRateHz;
+    if (durationSeconds >= 0.1) {
+      annotations.push({
+        kind,
+        start_seconds: currentStart / sampleRateHz,
+        end_seconds: currentEnd / sampleRateHz,
+        severity: currentMaxSeverity,
+        evidence: buildEvidence({
+          maxWidth: currentMaxWidth,
+          minCorrelation: currentMinCorrelation,
+          maxBalanceDb: currentMaxAbsBalanceDb,
+          durationSeconds,
+        }),
+      });
+    }
   }
 
   return annotations;

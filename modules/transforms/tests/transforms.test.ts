@@ -154,6 +154,40 @@ describe("buildOperation", () => {
     });
   });
 
+  it("normalizes stereo width parameters into an explicit FFmpeg filter", () => {
+    const result = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "stereo_width",
+      {
+        width_multiplier: 1.18,
+      },
+      { scope: "full_file" },
+    );
+
+    expect(result.filterChain).toBe("extrastereo=m=1.18:c=false");
+    expect(result.effectiveParameters).toEqual({
+      width_multiplier: 1.18,
+    });
+  });
+
+  it("normalizes denoise parameters into an explicit FFmpeg filter", () => {
+    const result = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "denoise",
+      {
+        reduction_db: 6,
+        noise_floor_dbfs: -58,
+      },
+      { scope: "full_file" },
+    );
+
+    expect(result.filterChain).toBe("afftdn=nr=6:nf=-58:tn=0:tr=0:ad=0.5:fo=1:nl=min:om=o");
+    expect(result.effectiveParameters).toEqual({
+      reduction_db: 6,
+      noise_floor_dbfs: -58,
+    });
+  });
+
   it("rejects unsupported trim target scopes", () => {
     expect(() =>
       buildOperation(
@@ -206,6 +240,37 @@ describe("buildOperation", () => {
         { scope: "full_file" },
       ),
     ).toThrow(/between -24 and 0/);
+  });
+
+  it("rejects stereo width for mono input", () => {
+    expect(() =>
+      buildOperation(
+        {
+          ...createAudioVersion("storage/audio/source.wav").audio,
+          channels: 1,
+          channel_layout: "mono",
+        },
+        "stereo_width",
+        {
+          width_multiplier: 1.2,
+        },
+        { scope: "full_file" },
+      ),
+    ).toThrow(/requires stereo 2-channel audio/);
+  });
+
+  it("rejects denoise noise floors above the supported range", () => {
+    expect(() =>
+      buildOperation(
+        createAudioVersion("storage/audio/source.wav").audio,
+        "denoise",
+        {
+          reduction_db: 6,
+          noise_floor_dbfs: -10,
+        },
+        { scope: "full_file" },
+      ),
+    ).toThrow(/between -80 and -20/);
   });
 });
 
@@ -372,6 +437,119 @@ describe("applyOperation", () => {
     ]);
     expect(result.transformRecord.warnings).toBeUndefined();
   });
+
+  it("applies a real stereo width transform deterministically and increases side energy", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createStereoWidthFixture(workspaceRoot);
+
+    const firstResult = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "stereo_width",
+      parameters: {
+        width_multiplier: 1.5,
+      },
+      outputVersionId: "ver_01HZY00000000000000000004",
+      recordId: "transform_01HZY0000000000000000004",
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+    });
+    const secondResult = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "stereo_width",
+      parameters: {
+        width_multiplier: 1.5,
+      },
+      outputVersionId: "ver_01HZY00000000000000000005",
+      recordId: "transform_01HZY0000000000000000005",
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+    });
+
+    const sourceWidth = await measureMidSideBalanceDb(
+      path.join(workspaceRoot, version.audio.storage_ref),
+    );
+    const widenedWidth = await measureMidSideBalanceDb(
+      path.join(workspaceRoot, firstResult.outputVersion.audio.storage_ref),
+    );
+    const firstBytes = await readFile(
+      path.join(workspaceRoot, firstResult.outputVersion.audio.storage_ref),
+    );
+    const secondBytes = await readFile(
+      path.join(workspaceRoot, secondResult.outputVersion.audio.storage_ref),
+    );
+
+    expect(widenedWidth.sideMinusMidDb).toBeGreaterThan(sourceWidth.sideMinusMidDb + 2.5);
+    expect(firstBytes.equals(secondBytes)).toBe(true);
+    expect(firstResult.transformRecord.operations).toEqual([
+      {
+        operation: "stereo_width",
+        parameters: {
+          width_multiplier: 1.5,
+        },
+        status: "applied",
+      },
+    ]);
+  });
+
+  it("applies a real denoise transform deterministically and reduces noise-only energy", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createNoisyAudioVersionFixture(workspaceRoot);
+
+    const firstResult = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "denoise",
+      parameters: {
+        reduction_db: 18,
+        noise_floor_dbfs: -45,
+      },
+      outputVersionId: "ver_01HZY00000000000000000006",
+      recordId: "transform_01HZY0000000000000000006",
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+    });
+    const secondResult = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "denoise",
+      parameters: {
+        reduction_db: 18,
+        noise_floor_dbfs: -45,
+      },
+      outputVersionId: "ver_01HZY00000000000000000007",
+      recordId: "transform_01HZY0000000000000000007",
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+    });
+
+    const sourceNoiseRmsDb = await measureSegmentRmsLevelDb(
+      path.join(workspaceRoot, version.audio.storage_ref),
+      0,
+      0.25,
+    );
+    const denoisedNoiseRmsDb = await measureSegmentRmsLevelDb(
+      path.join(workspaceRoot, firstResult.outputVersion.audio.storage_ref),
+      0,
+      0.25,
+    );
+    const firstBytes = await readFile(
+      path.join(workspaceRoot, firstResult.outputVersion.audio.storage_ref),
+    );
+    const secondBytes = await readFile(
+      path.join(workspaceRoot, secondResult.outputVersion.audio.storage_ref),
+    );
+
+    expect(denoisedNoiseRmsDb).toBeLessThan(sourceNoiseRmsDb - 2);
+    expect(firstBytes.equals(secondBytes)).toBe(true);
+    expect(firstResult.transformRecord.operations).toEqual([
+      {
+        operation: "denoise",
+        parameters: {
+          reduction_db: 18,
+          noise_floor_dbfs: -45,
+        },
+        status: "applied",
+      },
+    ]);
+  });
 });
 
 describe("applyEditPlan", () => {
@@ -529,6 +707,90 @@ async function createRealAudioVersionFixture(
   };
 }
 
+async function createStereoWidthFixture(workspaceRoot: string): Promise<AudioVersion> {
+  const sampleRateHz = 44100;
+  const durationSeconds = 1;
+  const totalFrames = Math.round(durationSeconds * sampleRateHz);
+  const left = Array.from({ length: totalFrames }, (_, index) => {
+    const mid = Math.sin((2 * Math.PI * 220 * index) / sampleRateHz) * 10000;
+    const side = Math.sin((2 * Math.PI * 660 * index) / sampleRateHz) * 4000;
+    return Math.round(mid + side);
+  });
+  const right = Array.from({ length: totalFrames }, (_, index) => {
+    const mid = Math.sin((2 * Math.PI * 220 * index) / sampleRateHz) * 10000;
+    const side = Math.sin((2 * Math.PI * 660 * index) / sampleRateHz) * 4000;
+    return Math.round(mid - side);
+  });
+
+  return createCustomAudioVersionFixture(workspaceRoot, {
+    sampleRateHz,
+    channels: 2,
+    channelLayout: "stereo",
+    samples: [left, right],
+  });
+}
+
+async function createNoisyAudioVersionFixture(workspaceRoot: string): Promise<AudioVersion> {
+  const sampleRateHz = 44100;
+  const durationSeconds = 1;
+  const totalFrames = Math.round(durationSeconds * sampleRateHz);
+  let state = 1337;
+  const noise = () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967295;
+  };
+  const mono = Array.from({ length: totalFrames }, (_, index) => {
+    const noiseAmplitude = index < sampleRateHz * 0.25 ? 220 : 160;
+    const noiseSample = (noise() * 2 - 1) * noiseAmplitude;
+    const toneSample =
+      index < sampleRateHz * 0.25 ? 0 : Math.sin((2 * Math.PI * 440 * index) / sampleRateHz) * 9000;
+    return Math.round(toneSample + noiseSample);
+  });
+
+  return createCustomAudioVersionFixture(workspaceRoot, {
+    sampleRateHz,
+    channels: 1,
+    channelLayout: "mono",
+    samples: [mono],
+  });
+}
+
+async function createCustomAudioVersionFixture(
+  workspaceRoot: string,
+  options: {
+    sampleRateHz: number;
+    channels: number;
+    channelLayout: string;
+    samples: number[][];
+  },
+): Promise<AudioVersion> {
+  const storageRef = "storage/audio/source.wav";
+  const absolutePath = path.join(workspaceRoot, storageRef);
+  const frameCount = options.samples[0]?.length;
+
+  if (frameCount === undefined) {
+    throw new Error("Custom audio fixtures require at least one channel of sample data.");
+  }
+
+  await mkdir(path.dirname(absolutePath), { recursive: true });
+
+  const wav = new WaveFile();
+  wav.fromScratch(options.channels, options.sampleRateHz, "16", options.samples);
+  await writeFile(absolutePath, Buffer.from(wav.toBuffer()));
+
+  return {
+    ...createAudioVersion(storageRef),
+    audio: {
+      storage_ref: storageRef,
+      sample_rate_hz: options.sampleRateHz,
+      channels: options.channels,
+      duration_seconds: frameCount / options.sampleRateHz,
+      frame_count: frameCount,
+      channel_layout: options.channelLayout,
+    },
+  };
+}
+
 function createAudioVersion(storageRef: string): AudioVersion {
   return {
     schema_version: "1.0.0",
@@ -614,6 +876,75 @@ async function measurePeakLevelDbfs(absolutePath: string): Promise<number> {
   }
 
   return peakLevel === "-inf" ? Number.NEGATIVE_INFINITY : Number(peakLevel);
+}
+
+async function measureSegmentRmsLevelDb(
+  absolutePath: string,
+  startSeconds: number,
+  endSeconds: number,
+): Promise<number> {
+  const { stderr } = await execFile("ffmpeg", [
+    "-hide_banner",
+    "-i",
+    absolutePath,
+    "-af",
+    `atrim=start=${startSeconds}:end=${endSeconds},astats=metadata=1:reset=0`,
+    "-f",
+    "null",
+    "-",
+  ]);
+
+  return parseLastMetricValue(stderr, /RMS level dB:\s*(-?\d+(?:\.\d+)?|-inf)/gu, "RMS level dB");
+}
+
+async function measureMidSideBalanceDb(absolutePath: string): Promise<{
+  midDb: number;
+  sideDb: number;
+  sideMinusMidDb: number;
+}> {
+  const midDb = await measureFilteredRmsLevelDb(
+    absolutePath,
+    "pan=mono|c0=0.5*c0+0.5*c1,astats=metadata=1:reset=0",
+  );
+  const sideDb = await measureFilteredRmsLevelDb(
+    absolutePath,
+    "pan=mono|c0=0.5*c0-0.5*c1,astats=metadata=1:reset=0",
+  );
+
+  return {
+    midDb,
+    sideDb,
+    sideMinusMidDb: sideDb - midDb,
+  };
+}
+
+async function measureFilteredRmsLevelDb(
+  absolutePath: string,
+  filterChain: string,
+): Promise<number> {
+  const { stderr } = await execFile("ffmpeg", [
+    "-hide_banner",
+    "-i",
+    absolutePath,
+    "-af",
+    filterChain,
+    "-f",
+    "null",
+    "-",
+  ]);
+
+  return parseLastMetricValue(stderr, /RMS level dB:\s*(-?\d+(?:\.\d+)?|-inf)/gu, "RMS level dB");
+}
+
+function parseLastMetricValue(stderr: string, pattern: RegExp, label: string): number {
+  const matches = Array.from(stderr.matchAll(pattern));
+  const value = matches.at(-1)?.[1];
+
+  if (value === undefined) {
+    throw new Error(`Could not parse ${label} from ffmpeg output.`);
+  }
+
+  return value === "-inf" ? Number.NEGATIVE_INFINITY : Number(value);
 }
 
 function validateAgainstSchema(schema: unknown, payload: unknown): boolean {

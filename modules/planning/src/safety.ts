@@ -52,6 +52,20 @@ export function buildLimiterSafetyLimits(): string[] {
   ];
 }
 
+export function buildDenoiseSafetyLimits(): string[] {
+  return [
+    "keep noise reduction conservative and reversible",
+    "avoid watery artifacts or obvious transient smearing",
+  ];
+}
+
+export function buildStereoWidthSafetyLimits(): string[] {
+  return [
+    "keep width changes subtle and preserve mono compatibility",
+    "avoid aggressive side emphasis or phasey stereo artifacts",
+  ];
+}
+
 export function buildTrimSafetyLimits(): string[] {
   return [
     "preserve only the explicitly requested time range",

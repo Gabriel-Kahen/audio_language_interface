@@ -1,5 +1,10 @@
 import { computeAnalysisMetricDeltas } from "./deltas.js";
 import { evaluateGoalAlignment } from "./goal-alignment.js";
+import {
+  assertAnalysisMatchesVersion,
+  assertComparableAsset,
+  assertEditPlanMatchesBaseline,
+} from "./provenance.js";
 import { detectAnalysisRegressions } from "./regressions.js";
 import { buildComparisonReport } from "./report-builder.js";
 import { deriveSemanticDeltas } from "./semantic-deltas.js";
@@ -13,6 +18,17 @@ export function compareVersions(options: CompareVersionsOptions): ComparisonRepo
     options.candidateVersion.version_id,
     "version",
   );
+  assertComparableAsset(
+    options.baselineVersion.asset_id,
+    options.candidateVersion.asset_id,
+    "version",
+  );
+  assertAnalysisMatchesVersion(options.baselineAnalysis, options.baselineVersion, "baseline");
+  assertAnalysisMatchesVersion(options.candidateAnalysis, options.candidateVersion, "candidate");
+
+  if (options.editPlan !== undefined) {
+    assertEditPlanMatchesBaseline(options.editPlan, options.baselineVersion, "AudioVersion");
+  }
 
   const metricDeltas = computeAnalysisMetricDeltas(
     options.baselineAnalysis.measurements,

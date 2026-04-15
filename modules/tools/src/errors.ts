@@ -54,6 +54,7 @@ export function createUnsupportedOperationError(
   operation: string,
   supportedOperations: readonly string[],
   toolName: string,
+  details?: Record<string, unknown>,
 ): ToolInputError {
   return new ToolInputError(
     "unsupported_operation",
@@ -61,6 +62,27 @@ export function createUnsupportedOperationError(
     {
       field,
       operation,
+      supported_operations: [...supportedOperations],
+      tool_name: toolName,
+      ...(details === undefined ? {} : details),
+    },
+  );
+}
+
+export function createUnsupportedOperationCombinationError(
+  unsupportedSteps: ReadonlyArray<{
+    field: string;
+    operation: string;
+    reason: string;
+  }>,
+  supportedOperations: readonly string[],
+  toolName: string,
+): ToolInputError {
+  return new ToolInputError(
+    "unsupported_operation",
+    `${toolName} does not support one or more requested edit-plan operations.`,
+    {
+      unsupported_steps: unsupportedSteps.map((step) => ({ ...step })),
       supported_operations: [...supportedOperations],
       tool_name: toolName,
     },

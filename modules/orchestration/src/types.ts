@@ -13,6 +13,8 @@ import type {
 import type { SemanticDescriptor, SemanticProfile } from "@audio-language-interface/semantics";
 import type { ApplyTransformsResult } from "@audio-language-interface/transforms";
 
+import type { FollowUpResolution } from "./follow-up-request.js";
+
 export type {
   AnalysisReport,
   AnalyzeAudioOptions,
@@ -22,6 +24,7 @@ export type {
   ComparisonReport,
   EditPlan,
   FinalRenderOptions,
+  FollowUpResolution,
   ImportAudioOptions,
   ImportAudioResult,
   PreviewRenderOptions,
@@ -34,6 +37,7 @@ export type {
 export type WorkflowStage =
   | "import"
   | "analyze_input"
+  | "resolve_follow_up"
   | "semantic_profile"
   | "plan"
   | "apply"

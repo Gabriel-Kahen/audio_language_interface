@@ -146,6 +146,28 @@ function createBroadbandNoiseSignal(sampleRateHz: number, durationSeconds: numbe
   return [mono];
 }
 
+function createBriefBroadbandNoiseBurstSignal(
+  sampleRateHz: number,
+  durationSeconds: number,
+): Float32Array[] {
+  const frameCount = Math.round(sampleRateHz * durationSeconds);
+  const mono = new Float32Array(frameCount);
+  let seed = 0x1234abcd;
+
+  for (let index = 0; index < frameCount; index += 1) {
+    const time = index / sampleRateHz;
+    if (time < 0.5 || time >= 0.58) {
+      continue;
+    }
+
+    seed = (1664525 * seed + 1013904223) >>> 0;
+    const normalized = seed / 0xffffffff;
+    mono[index] = (normalized * 2 - 1) * 0.04;
+  }
+
+  return [mono];
+}
+
 function createStableWideStereoSignal(
   sampleRateHz: number,
   durationSeconds: number,
@@ -158,6 +180,44 @@ function createStableWideStereoSignal(
     const time = index / sampleRateHz;
     const mid = 0.25 * Math.sin(2 * Math.PI * 220 * time);
     const side = 0.18 * Math.sin(2 * Math.PI * 660 * time);
+    left[index] = mid + side;
+    right[index] = mid - side;
+  }
+
+  return [left, right];
+}
+
+function createBriefWideStereoBurstSignal(
+  sampleRateHz: number,
+  durationSeconds: number,
+): Float32Array[] {
+  const frameCount = Math.round(sampleRateHz * durationSeconds);
+  const left = new Float32Array(frameCount);
+  const right = new Float32Array(frameCount);
+
+  for (let index = 0; index < frameCount; index += 1) {
+    const time = index / sampleRateHz;
+    const mid = 0.18 * Math.sin(2 * Math.PI * 220 * time);
+    const side = time >= 0.5 && time < 0.58 ? 0.16 * Math.sin(2 * Math.PI * 660 * time) : 0;
+    left[index] = mid + side;
+    right[index] = mid - side;
+  }
+
+  return [left, right];
+}
+
+function createQuietWideStereoSignal(
+  sampleRateHz: number,
+  durationSeconds: number,
+): Float32Array[] {
+  const frameCount = Math.round(sampleRateHz * durationSeconds);
+  const left = new Float32Array(frameCount);
+  const right = new Float32Array(frameCount);
+
+  for (let index = 0; index < frameCount; index += 1) {
+    const time = index / sampleRateHz;
+    const mid = 0.0008 * Math.sin(2 * Math.PI * 220 * time);
+    const side = 0.0007 * Math.sin(2 * Math.PI * 660 * time);
     left[index] = mid + side;
     right[index] = mid - side;
   }
@@ -473,7 +533,30 @@ describe("analyzeAudioVersion", () => {
       const noiseAnnotation = report.annotations?.find((annotation) => annotation.kind === "noise");
       expect(noiseAnnotation).toBeDefined();
       expect(noiseAnnotation?.bands_hz).toEqual([2000, 12000]);
+      expect(noiseAnnotation?.evidence).toContain("lasts");
+      expect(noiseAnnotation?.evidence).toContain("estimated floor");
       expect(noiseAnnotation?.evidence).toContain("zero-crossing ratio");
+    });
+  });
+
+  it("does not add noise annotations for bursts shorter than the sustain threshold", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 48000;
+      const durationSeconds = 2;
+      const storageRef = "storage/audio/test-brief-noise.wav";
+      const channels = createBriefBroadbandNoiseBurstSignal(sampleRateHz, durationSeconds);
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const report = await analyzeAudioVersion(
+        createAudioVersion(storageRef, sampleRateHz, channels.length, getFrameCount(channels)),
+        {
+          workspaceRoot,
+          generatedAt: "2026-04-14T20:20:10Z",
+        },
+      );
+
+      expect(report.annotations?.some((annotation) => annotation.kind === "noise")).toBe(false);
     });
   });
 
@@ -528,6 +611,56 @@ describe("analyzeAudioVersion", () => {
       );
       expect(widthAmbiguityAnnotation).toBeDefined();
       expect(widthAmbiguityAnnotation?.evidence).toContain("correlation falls");
+      expect(report.summary.plain_text).toContain("stereo spread with ambiguous width cues");
+      expect(report.summary.plain_text).not.toContain("wide stereo");
+    });
+  });
+
+  it("does not add stereo-width annotations for wide bursts shorter than the sustain threshold", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 44100;
+      const durationSeconds = 2;
+      const storageRef = "storage/audio/test-brief-width.wav";
+      const channels = createBriefWideStereoBurstSignal(sampleRateHz, durationSeconds);
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const report = await analyzeAudioVersion(
+        createAudioVersion(storageRef, sampleRateHz, channels.length, getFrameCount(channels)),
+        {
+          workspaceRoot,
+          generatedAt: "2026-04-14T20:20:10Z",
+        },
+      );
+
+      expect(report.measurements.stereo.width).toBeGreaterThan(0.1);
+      expect(report.annotations?.some((annotation) => annotation.kind === "stereo_width")).toBe(
+        false,
+      );
+    });
+  });
+
+  it("does not treat very quiet side energy as stereo-width evidence", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 44100;
+      const durationSeconds = 2;
+      const storageRef = "storage/audio/test-quiet-width.wav";
+      const channels = createQuietWideStereoSignal(sampleRateHz, durationSeconds);
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const report = await analyzeAudioVersion(
+        createAudioVersion(storageRef, sampleRateHz, channels.length, getFrameCount(channels)),
+        {
+          workspaceRoot,
+          generatedAt: "2026-04-14T20:20:10Z",
+        },
+      );
+
+      expect(report.measurements.stereo.width).toBeGreaterThan(0.3);
+      expect(report.annotations?.some((annotation) => annotation.kind === "stereo_width")).toBe(
+        false,
+      );
     });
   });
 });

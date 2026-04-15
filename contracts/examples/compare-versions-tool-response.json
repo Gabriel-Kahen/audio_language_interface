@@ -19,17 +19,17 @@
       "generated_at": "2026-04-14T20:20:12Z",
       "metric_deltas": [
         {
-          "metric": "spectral_centroid_hz",
+          "metric": "spectral_balance.spectral_centroid_hz",
           "direction": "decreased",
           "delta": -340
         },
         {
-          "metric": "harshness_severity_3k_4p5k",
+          "metric": "spectral_balance.high_band_db",
           "direction": "decreased",
-          "delta": -0.23
+          "delta": -1.6
         },
         {
-          "metric": "crest_factor_db",
+          "metric": "dynamics.crest_factor_db",
           "direction": "decreased",
           "delta": -0.3
         }
@@ -49,15 +49,15 @@
       "regressions": [],
       "goal_alignment": [
         {
-          "goal": "reduce brightness",
+          "goal": "slightly reduce perceived brightness",
           "status": "met"
         },
         {
-          "goal": "reduce harshness",
+          "goal": "reduce upper-mid harshness",
           "status": "met"
         },
         {
-          "goal": "preserve punch",
+          "goal": "preserve transient impact",
           "status": "mostly_met"
         }
       ],

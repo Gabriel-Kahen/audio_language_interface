@@ -80,7 +80,8 @@ This baseline is intentionally simple and should be treated as a reproducible he
 - `stereo.balance_db` is left RMS dBFS minus right RMS dBFS.
 - `artifacts.noise_floor_dbfs` is the 10th-percentile fixed-window RMS estimate, not a separated noise-only model.
 - `noise` annotations require sustained low-level windows with elevated zero-crossing activity and low crest factor. They are intended as denoise-oriented evidence, not as a source-separation claim.
-- `stereo_width` and `stereo_ambiguity` annotations localize width-related evidence or conflict. They inspect only the first two channels and should be treated as phase-risk heuristics rather than a full stereo imaging model.
+- `stereo_width` and `stereo_ambiguity` annotations localize width-related evidence or conflict. They inspect only the first two channels, ignore very quiet windows, and should be treated as phase-risk heuristics rather than a full stereo imaging model.
+- Summary wording only calls material `wide stereo` when sustained `stereo_width` evidence supports it. Ambiguous or weakly supported spread is described more cautiously.
 - `artifacts.clipping_detected` flags frames where any channel reaches absolute amplitude `>= 0.999`, and `clipped_sample_count` counts the total clipped channel samples at that threshold.
 
 See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, and classification rules.
@@ -134,7 +135,7 @@ See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, an
 - Multi-channel files beyond stereo are loaded, but stereo metrics only inspect the first two channels.
 - Brightness, harshness, and transient-impact annotations are threshold-based heuristics, not perceptual models.
 - Noise annotations are broadband-floor heuristics and can miss tonal hum, sparse clicks, or noise that only appears under louder foreground material.
-- Stereo-width annotations are local side-versus-mid heuristics and do not model perceptual spaciousness or all phase artifacts.
+- Stereo-width annotations are local side-versus-mid heuristics gated to active windows, so brief or very low-level spread may remain intentionally unannotated. They do not model perceptual spaciousness or all phase artifacts.
 - Segment detection is energy-threshold based and only emits `active`, `silence`, or a synthetic full-length `loop` segment.
 - Source classification is a coarse heuristic and not a trained classifier.
 - Pitch detection uses a short autocorrelation-like pass over the beginning of the file only.

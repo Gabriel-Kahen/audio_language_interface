@@ -43,8 +43,20 @@ export function buildVerificationTargets(
     targets.push("slightly reduced dynamic range without obvious pumping");
   }
 
+  if (objectives.wants_denoise) {
+    targets.push("lower measured noise floor without obvious denoise artifacts");
+  }
+
   if (objectives.wants_peak_control) {
     targets.push("lower peak excursions while keeping the output ceiling near -1 dB true peak");
+  }
+
+  if (objectives.wants_wider) {
+    targets.push("small increase in stereo width without poorer mono compatibility");
+  }
+
+  if (objectives.wants_narrower) {
+    targets.push("small decrease in stereo width while keeping the image balanced");
   }
 
   if (objectives.wants_louder) {

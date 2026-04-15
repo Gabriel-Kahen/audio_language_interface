@@ -21,6 +21,7 @@ import { WaveFile } from "wavefile";
 import {
   defaultOrchestrationDependencies,
   OrchestrationStageError,
+  resolveFollowUpRequest,
   runRequestCycle,
 } from "../../modules/orchestration/src/index.js";
 
@@ -218,6 +219,136 @@ describe("request cycle integration", () => {
         expect(
           provenance[stageError.partialResult?.editPlan?.plan_id ?? "missing"]?.version_id,
         ).toBe(imported.version.version_id);
+
+        return true;
+      });
+    });
+  });
+
+  it("supports repeated `more` cycles and resolves revert-like follow-ups from session history", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const inputPath = path.join(workspaceRoot, "fixtures", "tone.wav");
+      await writeFixtureWav(inputPath, { sampleRateHz: 44_100, durationSeconds: 1.25 });
+      const dependencies = {
+        ...defaultOrchestrationDependencies,
+        applyEditPlan: async (options: Parameters<typeof applyEditPlan>[0]) =>
+          applyEditPlan({ ...options, executor: copyAudioExecutor }),
+        renderPreview: async (options: Parameters<typeof renderPreview>[0]) =>
+          renderPreview({
+            ...options,
+            executor: copyAudioExecutor,
+            probeExecutor: createProbeExecutor({
+              format: "mp3",
+              codec: "mp3",
+              sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
+              channels: options.channels ?? options.version.audio.channels,
+              durationSeconds: options.version.audio.duration_seconds,
+            }),
+          }),
+        renderExport: async (options: Parameters<typeof renderExport>[0]) =>
+          renderExport({
+            ...options,
+            executor: copyAudioExecutor,
+            probeExecutor: createProbeExecutor({
+              format: options.format ?? "wav",
+              codec: options.format === "flac" ? "flac" : "pcm_s16le",
+              sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
+              channels: options.channels ?? options.version.audio.channels,
+              durationSeconds: options.version.audio.duration_seconds,
+            }),
+          }),
+      };
+
+      const firstCycle = await runRequestCycle({
+        workspaceRoot,
+        userRequest: "Make this loop darker and less harsh.",
+        input: {
+          kind: "import",
+          inputPath,
+          importOptions: {
+            importedAt: "2026-04-14T20:30:00Z",
+          },
+        },
+        dependencies,
+      });
+
+      const secondCycle = await runRequestCycle({
+        workspaceRoot,
+        userRequest: "more",
+        input: {
+          kind: "existing",
+          asset: firstCycle.asset,
+          version: firstCycle.outputVersion,
+          sessionGraph: firstCycle.sessionGraph,
+        },
+        dependencies,
+      });
+
+      expect(validateSessionGraph(secondCycle.sessionGraph).valid).toBe(true);
+      expect(secondCycle.editPlan.user_request).toBe("Make this loop darker and less harsh.");
+      expect(
+        getParentVersionId(secondCycle.sessionGraph, secondCycle.outputVersion.version_id),
+      ).toBe(firstCycle.outputVersion.version_id);
+      expect(
+        listAncestorVersionIds(secondCycle.sessionGraph, secondCycle.outputVersion.version_id),
+      ).toEqual([firstCycle.outputVersion.version_id, firstCycle.inputVersion.version_id]);
+      expect(
+        resolveFollowUpRequest({
+          userRequest: "undo",
+          versionId: secondCycle.outputVersion.version_id,
+          sessionGraph: secondCycle.sessionGraph,
+        }),
+      ).toEqual({
+        kind: "revert",
+        targetVersionId: firstCycle.outputVersion.version_id,
+        source: "undo",
+      });
+    });
+  });
+
+  it("wraps follow-up resolution failures with a partial session graph", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const inputPath = path.join(workspaceRoot, "fixtures", "tone.wav");
+      await writeFixtureWav(inputPath, { sampleRateHz: 44_100, durationSeconds: 1 });
+      const imported = await importAudioFromFile(inputPath, {
+        workspaceRoot,
+        importedAt: "2026-04-14T20:35:00Z",
+      });
+
+      await expect(
+        runRequestCycle({
+          workspaceRoot,
+          userRequest: "more",
+          input: {
+            kind: "existing",
+            asset: imported.asset,
+            version: imported.version,
+          },
+          dependencies: defaultOrchestrationDependencies,
+        }),
+      ).rejects.toSatisfy((error: unknown) => {
+        expect(error).toBeInstanceOf(OrchestrationStageError);
+
+        const stageError = error as OrchestrationStageError<{
+          sessionGraph?: SessionGraph;
+          inputAnalysis?: { version_id: string };
+        }>;
+        const partialGraph = stageError.partialResult?.sessionGraph;
+
+        expect(stageError.stage).toBe("resolve_follow_up");
+        expect(stageError.partialResult?.inputAnalysis?.version_id).toBe(
+          imported.version.version_id,
+        );
+        expect(partialGraph).toBeTruthy();
+        if (!partialGraph) {
+          throw new Error("Expected a partial session graph for follow-up resolution failures.");
+        }
+
+        expect(validateSessionGraph(partialGraph).valid).toBe(true);
+        expect(partialGraph.active_refs.version_id).toBe(imported.version.version_id);
+        expect(partialGraph.nodes.map((node: { node_type: string }) => node.node_type)).toEqual(
+          expect.arrayContaining(["audio_asset", "audio_version", "analysis_report"]),
+        );
 
         return true;
       });

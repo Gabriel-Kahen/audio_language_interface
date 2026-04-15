@@ -188,20 +188,22 @@ Target support:
 
 Parameters:
 
-- `threshold_dbfs: number`
+- `threshold_db: number`
 - `ratio: number`
 - `attack_ms: number`
 - `release_ms: number`
+- optional `knee_db: number`, default `3`
 - optional `makeup_gain_db: number`, default `0`
 
 Rules:
 
-- `threshold_dbfs` must be between `-60` and `0`
+- `threshold_db` must be between `-60` and `0`
 - `ratio` must be between `1` and `20`
 - `attack_ms` must be between `0.01` and `2000`
 - `release_ms` must be between `0.01` and `9000`
+- `knee_db` must be between `0` and `24`
 - `makeup_gain_db` must be between `0` and `20`
-- the module records both caller-facing dB values and the exact linear values sent to FFmpeg
+- the module records the normalized caller-facing parameter surface only
 
 Target support:
 
@@ -215,22 +217,24 @@ Fixed execution behavior:
 - `detection=rms`
 - `mix=1`
 - `level_in=1`
-- `knee=2.828427`
+- `knee` defaults to `3 dB` when omitted
 
 ### `limiter`
 
 Parameters:
 
-- `limit_dbfs: number`
-- `attack_ms: number`
-- `release_ms: number`
+- `ceiling_dbtp: number`
+- optional `lookahead_ms: number`, default `5`
+- optional `release_ms: number`, default `80`
+- optional `input_gain_db: number`, default `0`
 
 Rules:
 
-- `limit_dbfs` must be between `-24` and `0`
-- `attack_ms` must be between `0.1` and `80`
+- `ceiling_dbtp` must be between `-24` and `0`
+- `lookahead_ms` must be between `0.1` and `80`
 - `release_ms` must be between `1` and `8000`
-- the module records both the dB ceiling and the exact linear ceiling sent to FFmpeg
+- `input_gain_db` must be between `-24` and `24`
+- the module records the normalized caller-facing parameter surface only
 
 Target support:
 
@@ -245,6 +249,53 @@ Fixed execution behavior:
 - `asc_level=0.5`
 - `level=false`
 - `latency=true`
+
+### `stereo_width`
+
+Parameters:
+
+- `width_multiplier: number`
+
+Rules:
+
+- `width_multiplier` must be between `0` and `2`
+- input audio must be stereo with exactly `2` channels
+- the module records the exact executed `width_multiplier`
+
+Target support:
+
+- `full_file` only
+
+Fixed execution behavior:
+
+- FFmpeg filter: `extrastereo`
+- clipping is disabled explicitly with `c=false`
+- `width_multiplier = 1` preserves the current width
+- `width_multiplier = 0` collapses the side signal fully to mono
+
+### `denoise`
+
+Parameters:
+
+- `reduction_db: number`
+- optional `noise_floor_dbfs: number`, default `-50`
+
+Rules:
+
+- `reduction_db` must be between `0.01` and `24`
+- `noise_floor_dbfs` must be between `-80` and `-20`
+- the module records the normalized caller-facing parameter surface only
+
+Target support:
+
+- `full_file` only
+
+Fixed execution behavior:
+
+- FFmpeg filter: `afftdn`
+- adaptive tracking is disabled with `tn=0` and `tr=0`
+- the implementation uses a fixed broadband denoise profile rather than learned noise capture
+- this is intentionally conservative and best suited to steady broadband noise
 
 ## Path and file conventions
 

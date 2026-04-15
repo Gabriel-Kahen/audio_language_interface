@@ -15,6 +15,8 @@ Defines the tool envelope for executing an explicit `EditPlan` against one `Audi
   - `output_version_id`
   - `record_id`
 
+The request schema allows the locked Phase 2 operation parameter shapes, but the current tool runtime supports only the narrower `apply_edit_plan` execution subset advertised by `describeTools()`. Contract-valid `stereo_width` and `denoise` steps are rejected explicitly at execution time.
+
 ## Success response
 
 - `result.output_version`: transformed `AudioVersion`

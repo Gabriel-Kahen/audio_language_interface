@@ -15,7 +15,7 @@ export function deriveSemanticDeltas(
   pushIfPresent(semanticDeltas, describeHarshnessShift(baseline, candidate));
   pushIfPresent(semanticDeltas, describeDynamicsShift(metricDeltas));
   pushIfPresent(semanticDeltas, describeStereoShift(metricDeltas));
-  pushIfPresent(semanticDeltas, describeNoiseShift(metricDeltas));
+  pushIfPresent(semanticDeltas, describeNoiseShift(baseline, candidate, metricDeltas));
 
   return semanticDeltas;
 }
@@ -145,6 +145,7 @@ function buildDynamicsEvidence(
 
 function describeStereoShift(metricDeltas: MetricDelta[]): SemanticDelta | undefined {
   const widthDelta = getDelta(metricDeltas, "stereo.width");
+  const correlationDelta = getDelta(metricDeltas, "stereo.correlation");
 
   if (widthDelta === undefined) {
     return undefined;
@@ -158,29 +159,48 @@ function describeStereoShift(metricDeltas: MetricDelta[]): SemanticDelta | undef
     };
   }
 
-  if (widthDelta >= 0.08) {
+  if (widthDelta >= 0.08 && !hasPhaseRisk(correlationDelta)) {
     return {
       label: "wider",
-      confidence: confidenceFromMagnitude(Math.abs(widthDelta) / 0.4),
-      evidence: "stereo width increased",
+      confidence: confidenceFromMagnitude(
+        Math.max(Math.abs(widthDelta) / 0.4, Math.max((correlationDelta ?? 0) + 0.2, 0) / 0.3),
+      ),
+      evidence: "stereo width increased without a matching collapse in correlation",
     };
   }
 
   return undefined;
 }
 
-function describeNoiseShift(metricDeltas: MetricDelta[]): SemanticDelta | undefined {
+function describeNoiseShift(
+  baseline: AnalysisMeasurements,
+  candidate: AnalysisMeasurements,
+  metricDeltas: MetricDelta[],
+): SemanticDelta | undefined {
   const noiseFloorDelta = getDelta(metricDeltas, "artifacts.noise_floor_dbfs");
+  const highBandDelta = getDelta(metricDeltas, "spectral_balance.high_band_db");
+  const centroidDelta = getDelta(metricDeltas, "spectral_balance.spectral_centroid_hz");
+  const crestFactorDelta = getDelta(metricDeltas, "dynamics.crest_factor_db");
 
   if (noiseFloorDelta === undefined) {
     return undefined;
   }
 
-  if (noiseFloorDelta <= -3) {
+  if (
+    noiseFloorDelta <= -3 &&
+    !hasSevereDenoiseCollateralLoss(
+      baseline,
+      candidate,
+      highBandDelta,
+      centroidDelta,
+      crestFactorDelta,
+    )
+  ) {
     return {
       label: "cleaner",
       confidence: confidenceFromMagnitude(Math.abs(noiseFloorDelta) / 12),
-      evidence: "noise floor decreased",
+      evidence:
+        "estimated noise floor decreased without a matching collapse in high-band or punch metrics",
     };
   }
 
@@ -188,11 +208,32 @@ function describeNoiseShift(metricDeltas: MetricDelta[]): SemanticDelta | undefi
     return {
       label: "noisier",
       confidence: confidenceFromMagnitude(Math.abs(noiseFloorDelta) / 12),
-      evidence: "noise floor increased",
+      evidence: "estimated noise floor increased",
     };
   }
 
   return undefined;
+}
+
+function hasPhaseRisk(correlationDelta: number | undefined): boolean {
+  return correlationDelta !== undefined && correlationDelta <= -0.2;
+}
+
+function hasSevereDenoiseCollateralLoss(
+  baseline: AnalysisMeasurements,
+  candidate: AnalysisMeasurements,
+  highBandDelta: number | undefined,
+  centroidDelta: number | undefined,
+  crestFactorDelta: number | undefined,
+): boolean {
+  const highBandLoss = highBandDelta !== undefined && highBandDelta <= -2;
+  const centroidLoss = centroidDelta !== undefined && centroidDelta <= -200;
+  const punchLoss = crestFactorDelta !== undefined && crestFactorDelta <= -1.25;
+
+  return (
+    (highBandLoss && centroidLoss) ||
+    (punchLoss && candidate.spectral_balance.high_band_db < baseline.spectral_balance.high_band_db)
+  );
 }
 
 function getDelta(metricDeltas: MetricDelta[], metric: string): number | undefined {

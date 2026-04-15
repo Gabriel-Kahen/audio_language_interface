@@ -151,9 +151,11 @@ The current regression warning kinds are:
 - `excessive_loudness_shift`
 - `reduced_true_peak_headroom`
 - `stereo_collapse`
+- `stereo_instability`
 - `lost_punch`
 - `over_compression`
 - `peak_control_regression`
+- `denoise_artifacts`
 
 ### Render regressions
 
@@ -178,8 +180,9 @@ Goal alignment is currently heuristic and keyword-driven. `evaluateGoalAlignment
 - harshness reduction: matches fragments like `harsh`, `upper-mid`, or `smoother`
 - darkening / brightness reduction: matches fragments like `bright`, `brightness`, `darker`, `darken`, or `top end`
 - punch preservation: matches fragments like `punch`, `transient`, `attack`, or `impact`
-- peak control / tighter dynamics: matches phrases like `control peaks`, `peak control`, `tighter`, `more controlled`, or `under control`
+- peak control / tighter dynamics: matches phrases like `control peaks`, `control peak excursions`, `peak control`, `tighter`, `more controlled`, or `under control`
 - width increase: matches fragments like `wide` or `wider`
+- width reduction / narrowing: matches fragments like `narrow`, `narrower`, or `reduce width`
 - cleanup / noise reduction: matches phrases like `clean up`, `cleaner`, `noise`, `denoise`, `hiss`, or `hum`
 - clipping avoidance: matches fragments like `clip` or `clipping`
 - loudness and level control: matches fragments like `loud`, `quieter`, `volume`, or `level`
@@ -197,11 +200,11 @@ Goal alignment is currently heuristic and keyword-driven. `evaluateGoalAlignment
 - Unsupported goal wording returns `unknown`.
 - Broad wording like `clean it` or `make it better` is treated as ambiguous and returns `unknown`.
 - A single goal string can trigger multiple checks, and the final status is the most conservative status across those matched checks.
-- The current implementation only supports width increase, not width reduction.
+- Width goals now distinguish widening from narrowing and treat phase-risk widening as `not_met`.
 - Brightness-related matching is currently biased toward darkening goals.
 - Loudness-related matching distinguishes directional requests like `quieter` from stability requests like `keep the level under control`.
 - Punch-related goals are still treated as preservation checks, but they now also use `dynamic_range_db` when present instead of relying only on crest factor and transient density.
-- Cleanup-related goals only score measurable noise-floor reduction or clipping removal.
+- Cleanup-related goals still anchor on measurable noise-floor reduction or clipping removal, but they now reject large top-end or punch losses that suggest denoise artifacts.
 
 ## Summary generation
 
@@ -218,6 +221,8 @@ The summary is intentionally compact and should be treated as a convenience fiel
 - The module compares structured metadata and analysis measurements. It does not inspect raw audio directly.
 - `compareVersions()` requires analysis reports and does not fall back to a thinner path.
 - `compareRenders()` only derives semantic deltas and goal alignment when both analysis reports are provided.
+- `compareVersions()` rejects analysis reports and edit plans whose asset or version provenance does not match the paired baseline or candidate artifacts.
+- `compareRenders()` rejects one-sided analysis input and rejects analysis reports or edit plans whose asset or version provenance does not match the paired renders.
 - Metric coverage is intentionally limited to the fields hard-coded in `src/deltas.ts`.
 - Semantic interpretation is intentionally limited to a fixed rule set in `src/semantic-deltas.ts`.
 - Goal alignment uses string heuristics instead of `EditPlan.steps`, `verification_targets`, or explicit planner-provided evaluation rules.

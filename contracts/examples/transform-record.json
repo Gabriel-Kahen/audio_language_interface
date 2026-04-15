@@ -24,6 +24,7 @@
         "ratio": 2,
         "attack_ms": 15,
         "release_ms": 120,
+        "knee_db": 3,
         "makeup_gain_db": 1.5
       },
       "status": "applied"
@@ -32,8 +33,9 @@
       "operation": "limiter",
       "parameters": {
         "ceiling_dbtp": -1,
-        "release_ms": 60,
-        "lookahead_ms": 5
+        "release_ms": 80,
+        "lookahead_ms": 5,
+        "input_gain_db": 0
       },
       "status": "applied"
     },

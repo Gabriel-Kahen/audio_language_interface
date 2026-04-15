@@ -28,6 +28,7 @@ import {
   planAndApply,
   type RenderArtifact,
   renderAndCompare,
+  resolveFollowUpRequest,
   runRequestCycle,
 } from "../src/index.js";
 
@@ -196,6 +197,96 @@ describe("runRequestCycle", () => {
         editPlan: expect.objectContaining({ user_request: "Make it darker" }),
       },
     } satisfies Partial<OrchestrationStageError>);
+  });
+
+  it("reuses the last recorded request for `more` follow-ups", async () => {
+    const asset = createAsset();
+    const inputVersion = createVersion("ver_input");
+    const dependencies = createDependencies();
+
+    const firstCycle = await runRequestCycle({
+      workspaceRoot: "/workspace",
+      userRequest: "Make it darker",
+      input: {
+        kind: "existing",
+        asset,
+        version: inputVersion,
+      },
+      dependencies,
+    });
+
+    const secondCycle = await runRequestCycle({
+      workspaceRoot: "/workspace",
+      userRequest: "more",
+      input: {
+        kind: "existing",
+        asset,
+        version: firstCycle.outputVersion,
+        sessionGraph: firstCycle.sessionGraph,
+      },
+      dependencies,
+    });
+
+    expect(secondCycle.editPlan.user_request).toBe("Make it darker");
+  });
+
+  it("wraps follow-up resolution failures with partial session context", async () => {
+    const asset = createAsset();
+    const inputVersion = createVersion("ver_input");
+    const dependencies = createDependencies();
+
+    await expect(
+      runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "more",
+        input: {
+          kind: "existing",
+          asset,
+          version: inputVersion,
+        },
+        dependencies,
+      }),
+    ).rejects.toMatchObject({
+      stage: "resolve_follow_up",
+      partialResult: {
+        asset: expect.objectContaining({ asset_id: asset.asset_id }),
+        inputVersion: expect.objectContaining({ version_id: inputVersion.version_id }),
+        inputAnalysis: expect.objectContaining({ version_id: inputVersion.version_id }),
+        sessionGraph: expect.objectContaining({
+          active_refs: expect.objectContaining({ version_id: inputVersion.version_id }),
+        }),
+      },
+    } satisfies Partial<OrchestrationStageError>);
+  });
+});
+
+describe("resolveFollowUpRequest", () => {
+  it("resolves revert-style follow-ups to a previous version id", async () => {
+    const asset = createAsset();
+    const inputVersion = createVersion("ver_input");
+    const dependencies = createDependencies();
+    const result = await runRequestCycle({
+      workspaceRoot: "/workspace",
+      userRequest: "Make it darker",
+      input: {
+        kind: "existing",
+        asset,
+        version: inputVersion,
+      },
+      dependencies,
+    });
+
+    expect(
+      resolveFollowUpRequest({
+        userRequest: "undo",
+        versionId: result.outputVersion.version_id,
+        sessionGraph: result.sessionGraph,
+      }),
+    ).toEqual({
+      kind: "revert",
+      targetVersionId: result.inputVersion.version_id,
+      source: "undo",
+    });
   });
 });
 

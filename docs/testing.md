@@ -50,6 +50,7 @@ pnpm test
 ### `pnpm test`
 
 - runs the Vitest suite across module-local tests and integration tests
+- the current suite covers runtime modules, integration flows, and benchmark scaffolding
 
 ## Module-local testing
 
@@ -69,6 +70,13 @@ pnpm exec biome check modules/transforms
 - `modules/<name>/tests`: unit and module-local behavior
 - `tests/integration`: cross-module workflows
 - `contracts/examples`: contract examples validated by schema checks
+
+The current repository state includes expanded Phase 2 coverage around:
+
+- dynamics transforms (`compressor`, `limiter`)
+- width and denoise behavior
+- repeated request-cycle behavior
+- compare-layer regression logic
 
 ## Thoroughness standard
 

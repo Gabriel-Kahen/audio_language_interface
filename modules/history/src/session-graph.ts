@@ -87,6 +87,7 @@ export interface SessionMetadata {
   active_ref_history?: ActiveRefHistoryEntry[];
   active_ref_history_index?: number;
   provenance?: Record<string, ProvenanceRecord>;
+  plan_requests?: Record<string, string>;
   [key: string]: unknown;
 }
 
@@ -140,6 +141,7 @@ export interface EditPlanRecord {
   asset_id: string;
   version_id: string;
   created_at: string;
+  user_request?: string;
 }
 
 export interface TransformRecordRecord {
@@ -523,6 +525,7 @@ export function normalizeMetadata(metadata?: SessionMetadata): SessionMetadata {
     branches: [...(metadata?.branches ?? [])],
     snapshots: [...(metadata?.snapshots ?? [])],
     active_ref_history: [...(metadata?.active_ref_history ?? [])],
+    plan_requests: { ...(metadata?.plan_requests ?? {}) },
     provenance: { ...(metadata?.provenance ?? {}) },
   };
 
@@ -541,6 +544,20 @@ export function getBranch(graph: SessionGraph, branchId: string): SessionBranch 
   return normalizeMetadata(graph.metadata).branches?.find(
     (branch) => branch.branch_id === branchId,
   );
+}
+
+export function getVersionFollowUpRequest(
+  graph: SessionGraph,
+  versionId: string,
+): string | undefined {
+  const metadata = normalizeMetadata(graph.metadata);
+  const planId = metadata.provenance?.[versionId]?.plan_id;
+
+  if (!planId || !hasNodeRef(graph, planId, "edit_plan")) {
+    return undefined;
+  }
+
+  return metadata.plan_requests?.[planId];
 }
 
 function formatAjvErrors(errors: ErrorObject[]): ValidationIssue[] {

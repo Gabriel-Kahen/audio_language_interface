@@ -13,6 +13,7 @@ The current implementation is a thin integration layer over the existing runtime
 - `planAndApply(options)`
 - `renderAndCompare(options)`
 - `iterativeRefine(options)`
+- `resolveFollowUpRequest(options)`
 - `OrchestrationStageError`
 - `defaultOrchestrationDependencies`
 
@@ -23,6 +24,7 @@ The current implementation is a thin integration layer over the existing runtime
 - `src/flows/plan-and-apply.ts`: planning plus execution path
 - `src/flows/render-and-compare.ts`: output and evaluation path
 - `src/flows/iterative-refine.ts`: repeated adjustment loop
+- `src/follow-up-request.ts`: resolves iterative shorthand against recorded session history
 - `src/failure-policy.ts`: retry and recovery policy
 - `src/index.ts`: public exports only
 
@@ -55,11 +57,13 @@ The current implementation is a thin integration layer over the existing runtime
 
 - `runRequestCycle` supports both `input.kind = "import"` and `input.kind = "existing"`.
 - The default dependency bundle wires the implemented `io`, `analysis`, `semantics`, `planning`, `transforms`, `render`, `compare`, and `history` module entrypoints directly.
-- Flow errors are wrapped as `OrchestrationStageError` values with stage names and partial results when available.
+- Flow errors are wrapped as `OrchestrationStageError` values with stage names and partial results when available, including follow-up resolution failures before planning begins.
 - `iterativeRefine` repeats plan, apply, analyze, and compare until `maxIterations` is reached or the caller stops the loop.
+- `resolveFollowUpRequest` can safely expand `more` to the last recorded request and can resolve revert targets for `less` or `undo`-style prompts.
 
 ## Current limitations
 
 - Orchestration depends on the same narrow first-slice module capabilities as the underlying runtime modules.
+- Revert-like follow-up resolution can identify the correct prior version, but full revert execution still depends on the caller having the referenced `AudioVersion` artifact available.
 - It does not provide hidden persistence, job scheduling, or service hosting behavior.
 - There is no dedicated CLI or app entrypoint that wraps these orchestration APIs yet.

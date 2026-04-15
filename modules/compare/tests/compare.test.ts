@@ -153,6 +153,117 @@ describe("compareVersions", () => {
       ]),
     );
   });
+
+  it("flags width-instability and denoise-artifact regressions", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_width_noise_base"),
+      candidateVersion: createVersion("ver_width_noise_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_width_noise_base",
+        versionId: "ver_width_noise_base",
+        integratedLufs: -16,
+        truePeakDbtp: -1.6,
+        samplePeakDbfs: -2,
+        headroomDb: 2,
+        crestFactorDb: 10.4,
+        transientDensity: 1.9,
+        dynamicRangeDb: 8.3,
+        lowBandDb: -16.2,
+        midBandDb: -11.4,
+        highBandDb: -10.1,
+        spectralCentroidHz: 2500,
+        stereoWidth: 0.3,
+        stereoCorrelation: 0.42,
+        noiseFloorDbfs: -60,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_width_noise_cand",
+        versionId: "ver_width_noise_cand",
+        integratedLufs: -16.1,
+        truePeakDbtp: -1.5,
+        samplePeakDbfs: -1.9,
+        headroomDb: 1.9,
+        crestFactorDb: 8.9,
+        transientDensity: 1.7,
+        dynamicRangeDb: 7.9,
+        lowBandDb: -16.4,
+        midBandDb: -12,
+        highBandDb: -12.5,
+        spectralCentroidHz: 2240,
+        stereoWidth: 0.45,
+        stereoCorrelation: 0.03,
+        noiseFloorDbfs: -66,
+        clippingDetected: false,
+      }),
+      generatedAt: "2026-04-14T20:20:22Z",
+    });
+
+    expect(report.regressions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "stereo_instability" }),
+        expect.objectContaining({ kind: "denoise_artifacts" }),
+      ]),
+    );
+    expect(report.semantic_deltas).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ label: "wider" })]),
+    );
+    expect(report.semantic_deltas).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ label: "cleaner" })]),
+    );
+  });
+
+  it("uses estimated-noise-floor wording for noise semantic deltas", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_noise_wording_base"),
+      candidateVersion: createVersion("ver_noise_wording_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_noise_wording_base",
+        versionId: "ver_noise_wording_base",
+        integratedLufs: -16,
+        truePeakDbtp: -1.6,
+        crestFactorDb: 10.4,
+        transientDensity: 1.9,
+        dynamicRangeDb: 8.3,
+        lowBandDb: -16.2,
+        midBandDb: -11.4,
+        highBandDb: -10.1,
+        spectralCentroidHz: 2500,
+        stereoWidth: 0.3,
+        stereoCorrelation: 0.42,
+        noiseFloorDbfs: -60,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_noise_wording_cand",
+        versionId: "ver_noise_wording_cand",
+        integratedLufs: -16,
+        truePeakDbtp: -1.6,
+        crestFactorDb: 10.3,
+        transientDensity: 1.88,
+        dynamicRangeDb: 8.1,
+        lowBandDb: -16.2,
+        midBandDb: -11.5,
+        highBandDb: -10.3,
+        spectralCentroidHz: 2470,
+        stereoWidth: 0.31,
+        stereoCorrelation: 0.43,
+        noiseFloorDbfs: -64,
+        clippingDetected: false,
+      }),
+      generatedAt: "2026-04-14T20:20:22Z",
+    });
+
+    expect(report.semantic_deltas).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "cleaner",
+          evidence:
+            "estimated noise floor decreased without a matching collapse in high-band or punch metrics",
+        }),
+      ]),
+    );
+  });
 });
 
 describe("evaluateGoalAlignment", () => {
@@ -321,6 +432,176 @@ describe("evaluateGoalAlignment", () => {
     ]);
   });
 
+  it("understands planner-emitted conservative peak-control goal wording", () => {
+    const baseline = createAnalysisReport({
+      reportId: "analysis_peak_goal_base",
+      versionId: "ver_peak_goal_base",
+      integratedLufs: -15.2,
+      truePeakDbtp: -1.1,
+      samplePeakDbfs: -1.4,
+      headroomDb: 1.4,
+      crestFactorDb: 10.5,
+      transientDensity: 1.9,
+      dynamicRangeDb: 8.1,
+      lowBandDb: -16.2,
+      midBandDb: -11.4,
+      highBandDb: -9.5,
+      spectralCentroidHz: 2600,
+      stereoWidth: 0.58,
+      stereoCorrelation: 0.46,
+      noiseFloorDbfs: -73,
+      clippingDetected: false,
+    }).measurements;
+    const candidate = createAnalysisReport({
+      reportId: "analysis_peak_goal_cand",
+      versionId: "ver_peak_goal_cand",
+      integratedLufs: -15.4,
+      truePeakDbtp: -1.7,
+      samplePeakDbfs: -2.1,
+      headroomDb: 2.1,
+      crestFactorDb: 10.2,
+      transientDensity: 1.87,
+      dynamicRangeDb: 7.8,
+      lowBandDb: -16.1,
+      midBandDb: -11.5,
+      highBandDb: -10.4,
+      spectralCentroidHz: 2470,
+      stereoWidth: 0.58,
+      stereoCorrelation: 0.47,
+      noiseFloorDbfs: -73,
+      clippingDetected: false,
+    }).measurements;
+
+    const goalAlignment = evaluateGoalAlignment(
+      ["control peak excursions conservatively"],
+      baseline,
+      candidate,
+      computeAnalysisMetricDeltas(baseline, candidate),
+    );
+
+    expect(goalAlignment).toEqual([
+      { goal: "control peak excursions conservatively", status: "met" },
+    ]);
+  });
+
+  it("scores width and denoise prompt families conservatively", () => {
+    const baseline = createAnalysisReport({
+      reportId: "analysis_width_cleanup_base",
+      versionId: "ver_width_cleanup_base",
+      integratedLufs: -15.5,
+      truePeakDbtp: -1.4,
+      samplePeakDbfs: -1.8,
+      headroomDb: 1.8,
+      crestFactorDb: 10.1,
+      transientDensity: 1.85,
+      dynamicRangeDb: 8,
+      lowBandDb: -16.1,
+      midBandDb: -11.3,
+      highBandDb: -10,
+      spectralCentroidHz: 2480,
+      stereoWidth: 0.31,
+      stereoCorrelation: 0.39,
+      noiseFloorDbfs: -60,
+      clippingDetected: false,
+    }).measurements;
+    const candidate = createAnalysisReport({
+      reportId: "analysis_width_cleanup_cand",
+      versionId: "ver_width_cleanup_cand",
+      integratedLufs: -15.4,
+      truePeakDbtp: -1.5,
+      samplePeakDbfs: -1.9,
+      headroomDb: 1.9,
+      crestFactorDb: 9.9,
+      transientDensity: 1.8,
+      dynamicRangeDb: 7.8,
+      lowBandDb: -16.2,
+      midBandDb: -11.5,
+      highBandDb: -10.6,
+      spectralCentroidHz: 2420,
+      stereoWidth: 0.4,
+      stereoCorrelation: 0.31,
+      noiseFloorDbfs: -64.5,
+      clippingDetected: false,
+    }).measurements;
+
+    const goalAlignment = evaluateGoalAlignment(
+      [
+        "widen this slightly without making it phasey",
+        "reduce steady background noise without obvious denoise artifacts",
+      ],
+      baseline,
+      candidate,
+      computeAnalysisMetricDeltas(baseline, candidate),
+    );
+
+    expect(goalAlignment).toEqual([
+      { goal: "widen this slightly without making it phasey", status: "met" },
+      {
+        goal: "reduce steady background noise without obvious denoise artifacts",
+        status: "met",
+      },
+    ]);
+  });
+
+  it("marks width and denoise goals not met when the measurable side effects are too large", () => {
+    const baseline = createAnalysisReport({
+      reportId: "analysis_width_cleanup_fail_base",
+      versionId: "ver_width_cleanup_fail_base",
+      integratedLufs: -15.5,
+      truePeakDbtp: -1.4,
+      samplePeakDbfs: -1.8,
+      headroomDb: 1.8,
+      crestFactorDb: 10.2,
+      transientDensity: 1.9,
+      dynamicRangeDb: 8.2,
+      lowBandDb: -16.1,
+      midBandDb: -11.3,
+      highBandDb: -10,
+      spectralCentroidHz: 2480,
+      stereoWidth: 0.3,
+      stereoCorrelation: 0.4,
+      noiseFloorDbfs: -60,
+      clippingDetected: false,
+    }).measurements;
+    const candidate = createAnalysisReport({
+      reportId: "analysis_width_cleanup_fail_cand",
+      versionId: "ver_width_cleanup_fail_cand",
+      integratedLufs: -15.6,
+      truePeakDbtp: -1.4,
+      samplePeakDbfs: -1.8,
+      headroomDb: 1.8,
+      crestFactorDb: 8.7,
+      transientDensity: 1.68,
+      dynamicRangeDb: 7.1,
+      lowBandDb: -16.2,
+      midBandDb: -12,
+      highBandDb: -12.4,
+      spectralCentroidHz: 2230,
+      stereoWidth: 0.46,
+      stereoCorrelation: 0.04,
+      noiseFloorDbfs: -66.5,
+      clippingDetected: false,
+    }).measurements;
+
+    const goalAlignment = evaluateGoalAlignment(
+      [
+        "widen this slightly without making it phasey",
+        "reduce steady background noise without obvious denoise artifacts",
+      ],
+      baseline,
+      candidate,
+      computeAnalysisMetricDeltas(baseline, candidate),
+    );
+
+    expect(goalAlignment).toEqual([
+      { goal: "widen this slightly without making it phasey", status: "not_met" },
+      {
+        goal: "reduce steady background noise without obvious denoise artifacts",
+        status: "not_met",
+      },
+    ]);
+  });
+
   it("marks compound goals not met when peak control flattens dynamics", () => {
     const baseline = createAnalysisReport({
       reportId: "analysis_flat_base",
@@ -418,6 +699,153 @@ describe("compareRenders", () => {
         expect.objectContaining({ kind: "render_channel_change" }),
         expect.objectContaining({ kind: "render_sample_rate_change" }),
       ]),
+    );
+  });
+
+  it("rejects unpaired render analysis inputs", () => {
+    expect(() =>
+      compareRenders({
+        baselineRender: createRenderArtifact({
+          renderId: "render_pair_base",
+          versionId: "ver_pair_base",
+          sampleRateHz: 44100,
+          channels: 2,
+          durationSeconds: 4,
+          fileSizeBytes: 48211,
+          integratedLufs: -15.1,
+          truePeakDbtp: -1.2,
+        }),
+        candidateRender: createRenderArtifact({
+          renderId: "render_pair_cand",
+          versionId: "ver_pair_cand",
+          sampleRateHz: 44100,
+          channels: 2,
+          durationSeconds: 4,
+          fileSizeBytes: 48100,
+          integratedLufs: -15,
+          truePeakDbtp: -1.1,
+        }),
+        baselineAnalysis: createAnalysisReport({
+          reportId: "analysis_pair_base",
+          versionId: "ver_pair_base",
+          integratedLufs: -15.1,
+          truePeakDbtp: -1.2,
+          crestFactorDb: 10,
+          transientDensity: 1.8,
+          lowBandDb: -16,
+          midBandDb: -11,
+          highBandDb: -10,
+          spectralCentroidHz: 2500,
+          stereoWidth: 0.5,
+          stereoCorrelation: 0.4,
+          noiseFloorDbfs: -72,
+          clippingDetected: false,
+        }),
+      }),
+    ).toThrow(/requires both baselineAnalysis and candidateAnalysis/i);
+  });
+});
+
+describe("comparison provenance checks", () => {
+  it("rejects version comparisons when analysis provenance does not match the paired version", () => {
+    expect(() =>
+      compareVersions({
+        baselineVersion: createVersion("ver_base_mismatch"),
+        candidateVersion: createVersion("ver_cand_match"),
+        baselineAnalysis: createAnalysisReport({
+          reportId: "analysis_base_mismatch",
+          versionId: "ver_other_base",
+          integratedLufs: -14.8,
+          truePeakDbtp: -1.1,
+          crestFactorDb: 10.3,
+          transientDensity: 2,
+          lowBandDb: -16.4,
+          midBandDb: -11.2,
+          highBandDb: -9.8,
+          spectralCentroidHz: 2650,
+          stereoWidth: 0.62,
+          stereoCorrelation: 0.41,
+          noiseFloorDbfs: -72,
+          clippingDetected: false,
+        }),
+        candidateAnalysis: createAnalysisReport({
+          reportId: "analysis_cand_match",
+          versionId: "ver_cand_match",
+          integratedLufs: -15,
+          truePeakDbtp: -1.2,
+          crestFactorDb: 10.2,
+          transientDensity: 1.98,
+          lowBandDb: -16.3,
+          midBandDb: -11.4,
+          highBandDb: -11.1,
+          spectralCentroidHz: 2440,
+          stereoWidth: 0.62,
+          stereoCorrelation: 0.43,
+          noiseFloorDbfs: -75.5,
+          clippingDetected: false,
+        }),
+      }),
+    ).toThrow(/baseline AnalysisReport version_id must match the paired AudioVersion version_id/i);
+  });
+
+  it("rejects render comparisons when analysis provenance does not match the paired render", () => {
+    expect(() =>
+      compareRenders({
+        baselineRender: createRenderArtifact({
+          renderId: "render_prov_base",
+          versionId: "ver_render_base",
+          sampleRateHz: 44100,
+          channels: 2,
+          durationSeconds: 4,
+          fileSizeBytes: 48211,
+          integratedLufs: -15.1,
+          truePeakDbtp: -1.2,
+        }),
+        candidateRender: createRenderArtifact({
+          renderId: "render_prov_cand",
+          versionId: "ver_render_cand",
+          sampleRateHz: 44100,
+          channels: 2,
+          durationSeconds: 4,
+          fileSizeBytes: 48100,
+          integratedLufs: -15,
+          truePeakDbtp: -1.1,
+        }),
+        baselineAnalysis: createAnalysisReport({
+          reportId: "analysis_render_base",
+          versionId: "ver_other_render_base",
+          integratedLufs: -15.1,
+          truePeakDbtp: -1.2,
+          crestFactorDb: 10,
+          transientDensity: 1.8,
+          lowBandDb: -16,
+          midBandDb: -11,
+          highBandDb: -10,
+          spectralCentroidHz: 2500,
+          stereoWidth: 0.5,
+          stereoCorrelation: 0.4,
+          noiseFloorDbfs: -72,
+          clippingDetected: false,
+        }),
+        candidateAnalysis: createAnalysisReport({
+          reportId: "analysis_render_cand",
+          versionId: "ver_render_cand",
+          integratedLufs: -15,
+          truePeakDbtp: -1.1,
+          crestFactorDb: 10,
+          transientDensity: 1.8,
+          lowBandDb: -16,
+          midBandDb: -11,
+          highBandDb: -10,
+          spectralCentroidHz: 2500,
+          stereoWidth: 0.5,
+          stereoCorrelation: 0.4,
+          noiseFloorDbfs: -72,
+          clippingDetected: false,
+        }),
+      }),
+    ).toThrow(
+      /baseline AnalysisReport version_id must match the paired RenderArtifact version_id/i,
     );
   });
 });

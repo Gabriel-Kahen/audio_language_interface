@@ -20,7 +20,9 @@ export type OperationName =
   | "high_pass_filter"
   | "low_pass_filter"
   | "compressor"
-  | "limiter";
+  | "limiter"
+  | "denoise"
+  | "stereo_width";
 
 export type TargetScope = "full_file" | "time_range" | "segment" | "channel" | "frequency_region";
 
@@ -77,6 +79,9 @@ export interface ParsedEditObjectives {
   wants_quieter: boolean;
   wants_more_controlled_dynamics: boolean;
   wants_peak_control: boolean;
+  wants_denoise: boolean;
+  wants_wider: boolean;
+  wants_narrower: boolean;
   preserve_punch: boolean;
   ambiguous_requests: string[];
   unsupported_requests: string[];

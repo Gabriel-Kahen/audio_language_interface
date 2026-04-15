@@ -145,6 +145,32 @@ function buildEditPlan(versionId: string): Record<string, unknown> {
   };
 }
 
+function buildSingleStepEditPlan(
+  versionId: string,
+  operation: string,
+  parameters: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    schema_version: "1.0.0",
+    plan_id: "plan_123",
+    asset_id: "asset_example",
+    version_id: versionId,
+    user_request: `Run ${operation}.`,
+    goals: [`run ${operation}`],
+    created_at: "2026-04-14T20:20:07Z",
+    steps: [
+      {
+        step_id: "step_1",
+        operation,
+        target: { scope: "full_file" },
+        parameters,
+        expected_effects: ["apply requested transform"],
+        safety_limits: ["stay within supported tool surface"],
+      },
+    ],
+  };
+}
+
 function buildTransformRecord(
   inputVersionId: string,
   outputVersionId: string,
@@ -215,7 +241,10 @@ describe("tools module", () => {
             "parametric_eq",
             "high_pass_filter",
             "low_pass_filter",
+            "compressor",
+            "limiter",
           ],
+          unsupported_phase_2_operations: ["stereo_width", "denoise"],
         },
       }),
       expect.objectContaining({ name: "render_preview" }),
@@ -430,6 +459,55 @@ describe("tools module", () => {
         output_path: "/tmp/workspace/storage/audio/ver_output.wav",
       },
     ]);
+  });
+
+  it("allows supported Phase 2 dynamics operations through to transforms", async () => {
+    const applyEditPlan = vi.fn(async (_options: unknown) => ({
+      outputVersion: buildAudioVersion("ver_output"),
+      transformRecord: {
+        ...buildTransformRecord("ver_input", "ver_output"),
+        operations: [
+          {
+            operation: "compressor",
+            parameters: {
+              threshold_db: -18,
+              ratio: 2,
+              attack_ms: 15,
+              release_ms: 120,
+            },
+            status: "applied",
+          },
+        ],
+      },
+      commands: [],
+      warnings: [],
+    }));
+
+    const response = await executeToolRequest(
+      buildRequest({
+        tool_name: "apply_edit_plan",
+        asset_id: "asset_example",
+        version_id: "ver_input",
+        arguments: {
+          audio_version: buildAudioVersion("ver_input"),
+          edit_plan: buildSingleStepEditPlan("ver_input", "compressor", {
+            threshold_db: -18,
+            ratio: 2,
+            attack_ms: 15,
+            release_ms: 120,
+          }),
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/workspace",
+        runtime: createRuntimeOverrides({
+          applyEditPlan: applyEditPlan as unknown as ToolsRuntime["applyEditPlan"],
+        }),
+      },
+    );
+
+    expect(applyEditPlan).toHaveBeenCalledOnce();
+    expect(response.status).toBe("ok");
   });
 
   it("routes compare_versions and wraps the report", async () => {
@@ -667,7 +745,53 @@ describe("tools module", () => {
     expect(response.error?.details?.field).toBe("result.comparison_report");
   });
 
-  it("rejects unsupported but schema-valid edit-plan operations explicitly", async () => {
+  it("rejects stereo width requests with explicit current-surface details", async () => {
+    const applyEditPlan = vi.fn();
+
+    const response = await executeToolRequest(
+      buildRequest({
+        tool_name: "apply_edit_plan",
+        asset_id: "asset_example",
+        version_id: "ver_input",
+        arguments: {
+          audio_version: buildAudioVersion("ver_input"),
+          edit_plan: buildSingleStepEditPlan("ver_input", "stereo_width", {
+            width_multiplier: 1.15,
+          }),
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/workspace",
+        runtime: createRuntimeOverrides({
+          applyEditPlan: applyEditPlan as unknown as ToolsRuntime["applyEditPlan"],
+        }),
+      },
+    );
+
+    expect(applyEditPlan).not.toHaveBeenCalled();
+    expect(response.status).toBe("error");
+    expect(response.error?.code).toBe("unsupported_operation");
+    expect(response.error?.details).toEqual({
+      field: "arguments.edit_plan.steps[0].operation",
+      operation: "stereo_width",
+      reason:
+        "stereo_width is part of the locked Phase 2 batch, but the current tool surface does not execute width changes yet.",
+      supported_operations: [
+        "gain",
+        "normalize",
+        "trim",
+        "fade",
+        "parametric_eq",
+        "high_pass_filter",
+        "low_pass_filter",
+        "compressor",
+        "limiter",
+      ],
+      tool_name: "apply_edit_plan",
+    });
+  });
+
+  it("rejects unsupported width and denoise combinations explicitly", async () => {
     const applyEditPlan = vi.fn();
 
     const response = await executeToolRequest(
@@ -682,22 +806,29 @@ describe("tools module", () => {
             plan_id: "plan_123",
             asset_id: "asset_example",
             version_id: "ver_input",
-            user_request: "Make it tighter.",
-            goals: ["make it tighter"],
+            user_request: "Widen and denoise this.",
+            goals: ["widen", "reduce noise"],
             created_at: "2026-04-14T20:20:07Z",
             steps: [
               {
                 step_id: "step_1",
-                operation: "compressor",
+                operation: "stereo_width",
                 target: { scope: "full_file" },
                 parameters: {
-                  threshold_db: -18,
-                  ratio: 2,
-                  attack_ms: 15,
-                  release_ms: 120,
+                  width_multiplier: 1.1,
                 },
-                expected_effects: ["reduce dynamics"],
-                safety_limits: ["keep transients"],
+                expected_effects: ["widen image"],
+                safety_limits: ["avoid phase issues"],
+              },
+              {
+                step_id: "step_2",
+                operation: "denoise",
+                target: { scope: "full_file" },
+                parameters: {
+                  reduction_db: 6,
+                },
+                expected_effects: ["reduce noise"],
+                safety_limits: ["avoid artifacts"],
               },
             ],
           },
@@ -714,9 +845,24 @@ describe("tools module", () => {
     expect(applyEditPlan).not.toHaveBeenCalled();
     expect(response.status).toBe("error");
     expect(response.error?.code).toBe("unsupported_operation");
+    expect(response.error?.message).toBe(
+      "apply_edit_plan does not support one or more requested edit-plan operations.",
+    );
     expect(response.error?.details).toEqual({
-      field: "arguments.edit_plan.steps[0].operation",
-      operation: "compressor",
+      unsupported_steps: [
+        {
+          field: "arguments.edit_plan.steps[0].operation",
+          operation: "stereo_width",
+          reason:
+            "stereo_width is part of the locked Phase 2 batch, but the current tool surface does not execute width changes yet.",
+        },
+        {
+          field: "arguments.edit_plan.steps[1].operation",
+          operation: "denoise",
+          reason:
+            "denoise is part of the locked Phase 2 batch, but the current tool surface does not execute noise-reduction changes yet.",
+        },
+      ],
       supported_operations: [
         "gain",
         "normalize",
@@ -725,6 +871,8 @@ describe("tools module", () => {
         "parametric_eq",
         "high_pass_filter",
         "low_pass_filter",
+        "compressor",
+        "limiter",
       ],
       tool_name: "apply_edit_plan",
     });

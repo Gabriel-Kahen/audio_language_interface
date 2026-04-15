@@ -55,6 +55,12 @@ Returns `output_version`, `transform_record`, and normalized FFmpeg `commands`. 
 
 `describeTools()` also exposes `apply_edit_plan.capabilities.supported_operations` so callers can reject unsupported plan steps before execution.
 
+Current Phase 2 tool-surface behavior:
+
+- supported additions: `compressor`, `limiter`
+- explicitly rejected placeholders: `stereo_width`, `denoise`
+- if an edit plan includes multiple unsupported steps, the tool returns one `unsupported_operation` response with `error.details.unsupported_steps`
+
 ### `render_preview`
 
 - backing module: `render`
@@ -107,7 +113,9 @@ Unknown-tool responses include `error.details.available_tools` to help a caller 
 
 Provenance mismatch responses include a `field` plus the conflicting ids so a caller can repair and retry deterministically.
 
+Unsupported-operation responses include the current `supported_operations` list. Width and denoise rejections also include an explicit `reason`, and multi-step unsupported plans include `unsupported_steps` so callers can repair the whole request in one pass.
+
 ## Current non-goals
 
-- `plan_edits` is intentionally not exposed yet because `modules/planning` does not have a runtime implementation.
+- `plan_edits` is intentionally not exposed yet even though `modules/planning` has a runtime implementation; the current tool surface still defers direct planner exposure.
 - The tool layer does not maintain hidden session state or resolve versions from ids.

@@ -48,6 +48,7 @@ export {
   getBranch,
   getNodeById,
   getNodeByRef,
+  getVersionFollowUpRequest,
   hasBranch,
   hasNodeRef,
   normalizeMetadata,

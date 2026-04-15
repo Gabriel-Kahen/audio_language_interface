@@ -21,7 +21,7 @@ The public entry point is `modules/history/src/index.ts`.
 Main API groups:
 
 - graph creation and validation: `createSessionGraph`, `validateSessionGraph`, `assertValidSessionGraph`
-- graph lookup helpers: `deriveNodeId`, `getNodeById`, `getNodeByRef`, `getBranch`, `hasNodeRef`, `hasBranch`
+- graph lookup helpers: `deriveNodeId`, `getNodeById`, `getNodeByRef`, `getVersionFollowUpRequest`, `getBranch`, `hasNodeRef`, `hasBranch`
 - artifact recording: `recordAudioAsset`, `recordAudioVersion`, `recordAnalysisReport`, `recordSemanticProfile`, `recordEditPlan`, `recordTransformRecord`, `recordRenderArtifact`, `recordComparisonReport`
 - low-level mutation helpers: `addNode`, `addEdge`
 - branch and snapshot helpers: `createBranch`, `checkoutBranch`, `createSnapshot`, `listBranches`, `listSnapshots`, `setActiveRefs`
@@ -68,6 +68,7 @@ The module stores provenance in `metadata.provenance`, keyed by artifact ref id.
 Important details:
 
 - version provenance records `asset_id`, `version_id`, optional `parent_version_id`, optional `plan_id`, and optional `transform_record_id`
+- `metadata.plan_requests` may retain a plan's `user_request` so orchestration can resolve shorthand follow-up requests like `more`
 - analysis, semantic, plan, transform, render, and comparison artifacts also get provenance entries
 - `revert` and ancestor traversal use provenance on version ids rather than graph edges
 - branch checkout and branch revert both rely on provenance to recover the owning `asset_id` for a version
@@ -96,6 +97,7 @@ Revert behavior:
 - by default it resolves one step back from the active version, or from a supplied branch head
 - `revertToVersion` changes `active_refs` to the target version
 - when a branch is active, `revertToVersion` also rewrites that branch's `head_version_id`
+- branch revert records one active-ref history entry for the revert; undo can move the active pointer back to the pre-revert version, but it still does not restore the older branch head automatically
 - `undoActiveRef` and `redoActiveRef` only move the active pointer through recorded ref history; they do not restore branch metadata, snapshots, nodes, edges, or provenance
 
 ## Validation Semantics
@@ -126,7 +128,7 @@ Current limitations to be aware of:
 
 - the schema does not require semantic edge correctness; relation meaning is enforced only by calling the recording helpers consistently
 - `recordTransformRecord` requires the output version node to already exist before the transform record can be recorded
-- `resolveRedoTargets` returns all child versions that share the current version as their recorded parent; it is ancestry-based and not a dedicated redo stack
+- `resolveRedoTargets` returns all child versions that share the current version as their recorded parent; it is ancestry-based and not a dedicated redo stack, so it does not infer branch membership unless history recorded that explicitly elsewhere
 - node id derivation via `deriveNodeId(refId)` is the implementation convention, but the schema allows any non-empty node id string
 
 ## Source Files

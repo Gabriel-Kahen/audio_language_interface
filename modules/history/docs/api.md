@@ -22,6 +22,7 @@ Record input types mirror the artifact contracts at a reduced level. They only i
 Examples:
 
 - `AudioVersionRecord` uses lineage fields needed for node timestamps and provenance
+- `EditPlanRecord` may include `user_request` when callers want follow-up-safe plan provenance
 - `TransformRecordRecord` uses input/output version ids and optional `plan_id`
 - `ComparisonReportRecord` uses comparable ref ids and ref types
 
@@ -107,6 +108,8 @@ Adds an `edit_plan` node plus:
 - `audio_version -> edit_plan` via `planned_from`
 - `edit_plan -> audio_asset` via `belongs_to`
 
+When `plan.user_request` is provided, it is retained under `metadata.plan_requests[plan_id]` so orchestration can safely expand shorthand follow-up requests against later derived versions.
+
 ### `recordTransformRecord(graph, record)`
 
 Adds a `transform_record` node plus:
@@ -164,6 +167,7 @@ Behavior:
 - `deriveNodeId(refId)`: returns `node_${refId}`
 - `getNodeById(graph, nodeId)`: lookup by node id
 - `getNodeByRef(graph, refId, nodeType?)`: lookup by artifact ref id and optional type
+- `getVersionFollowUpRequest(graph, versionId)`: returns the recorded `user_request` from `metadata.plan_requests` for the plan that produced the supplied version, when available
 - `hasNodeRef(graph, refId, nodeType?)`: boolean form of the above
 - `getBranch(graph, branchId)` and `hasBranch(graph, branchId)`: branch lookup helpers
 
@@ -238,18 +242,19 @@ Behavior without active branch:
 Behavior with active branch:
 
 - rewrites that branch's `head_version_id`
-- checks out the branch head
-- then records another active-ref history entry for the revert reason
+- records one active-ref history entry for the revert reason
 
 Important consequence:
 
-- a branch revert currently records two active-ref history entries with the same refs and timestamp: one from `checkoutBranch`, one from `setActiveRefs`
+- `undoActiveRef` can move the active pointer back to the pre-revert version, but branch metadata remains at the reverted head because undo and redo do not replay structural history
 
 ### `resolveRedoTargets(graph, versionId?)`
 
 Returns every version whose recorded `parent_version_id` matches the supplied version, or the active version when omitted.
 
 This is lineage discovery, not a strict UI redo stack. In a branching graph it may return multiple candidates.
+
+The returned `branch_id` is optional and is omitted when branch membership cannot be established from explicit history data alone.
 
 ### `undoActiveRef(graph)` and `redoActiveRef(graph)`
 

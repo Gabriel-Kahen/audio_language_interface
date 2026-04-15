@@ -1,4 +1,4 @@
-import { checkoutBranch, setActiveRefs } from "./branching.js";
+import { setActiveRefs } from "./branching.js";
 import { getBranch, normalizeMetadata, type SessionGraph } from "./session-graph.js";
 
 export interface ResolveRevertTargetInput {
@@ -59,11 +59,8 @@ export function resolveRedoTargets(graph: SessionGraph, versionId?: string): Red
 
   return Object.entries(metadata.provenance ?? {})
     .filter(([, record]) => record.parent_version_id === currentVersionId)
-    .map(([candidateVersionId, record]) => ({
+    .map(([candidateVersionId]) => ({
       version_id: candidateVersionId,
-      ...(record.asset_id && graph.active_refs.branch_id
-        ? { branch_id: graph.active_refs.branch_id }
-        : {}),
     }));
 }
 
@@ -88,7 +85,7 @@ export function revertToVersion(
       throw new Error(`Branch '${graph.active_refs.branch_id}' does not exist`);
     }
 
-    const checkedOut = checkoutBranch(
+    return setActiveRefs(
       {
         ...graph,
         metadata: {
@@ -98,19 +95,16 @@ export function revertToVersion(
           ),
         },
       },
-      branch.branch_id,
-      changedAt,
-    );
-
-    return setActiveRefs(checkedOut, {
-      active_refs: {
-        asset_id: assetId,
-        version_id: versionId,
-        branch_id: branch.branch_id,
+      {
+        active_refs: {
+          asset_id: assetId,
+          version_id: versionId,
+          branch_id: branch.branch_id,
+        },
+        changed_at: changedAt,
+        reason,
       },
-      changed_at: changedAt,
-      reason,
-    });
+    );
   }
 
   return setActiveRefs(graph, {

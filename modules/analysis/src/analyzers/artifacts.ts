@@ -103,6 +103,7 @@ function buildNoiseAnnotations(
   let currentMaxRmsDbfs = -120;
   let currentMinCrestDb = Number.POSITIVE_INFINITY;
   let currentMaxZeroCrossingRatio = 0;
+  let currentMaxFloorOffsetDb = 0;
 
   for (const window of windows) {
     const noiseSeverity = estimateNoiseSeverity(window, noiseFloorDbfs);
@@ -120,12 +121,14 @@ function buildNoiseAnnotations(
         currentMaxRmsDbfs = window.rmsDbfs;
         currentMinCrestDb = window.crestDb;
         currentMaxZeroCrossingRatio = window.zeroCrossingRatio;
+        currentMaxFloorOffsetDb = window.rmsDbfs - noiseFloorDbfs;
       }
       currentEnd = window.end;
       currentMaxSeverity = Math.max(currentMaxSeverity, noiseSeverity);
       currentMaxRmsDbfs = Math.max(currentMaxRmsDbfs, window.rmsDbfs);
       currentMinCrestDb = Math.min(currentMinCrestDb, window.crestDb);
       currentMaxZeroCrossingRatio = Math.max(currentMaxZeroCrossingRatio, window.zeroCrossingRatio);
+      currentMaxFloorOffsetDb = Math.max(currentMaxFloorOffsetDb, window.rmsDbfs - noiseFloorDbfs);
       continue;
     }
 
@@ -137,6 +140,7 @@ function buildNoiseAnnotations(
       currentMaxRmsDbfs,
       currentMinCrestDb,
       currentMaxZeroCrossingRatio,
+      currentMaxFloorOffsetDb,
       sampleRateHz,
     });
     currentStart = -1;
@@ -145,6 +149,7 @@ function buildNoiseAnnotations(
     currentMaxRmsDbfs = -120;
     currentMinCrestDb = Number.POSITIVE_INFINITY;
     currentMaxZeroCrossingRatio = 0;
+    currentMaxFloorOffsetDb = 0;
   }
 
   pushNoiseAnnotationIfSustained({
@@ -155,6 +160,7 @@ function buildNoiseAnnotations(
     currentMaxRmsDbfs,
     currentMinCrestDb,
     currentMaxZeroCrossingRatio,
+    currentMaxFloorOffsetDb,
     sampleRateHz,
   });
 
@@ -169,6 +175,7 @@ function pushNoiseAnnotationIfSustained(input: {
   currentMaxRmsDbfs: number;
   currentMinCrestDb: number;
   currentMaxZeroCrossingRatio: number;
+  currentMaxFloorOffsetDb: number;
   sampleRateHz: number;
 }): void {
   if (input.currentStart < 0 || input.currentEnd <= input.currentStart) {
@@ -186,7 +193,7 @@ function pushNoiseAnnotationIfSustained(input: {
     end_seconds: input.currentEnd / input.sampleRateHz,
     bands_hz: [2000, 12000],
     severity: input.currentMaxSeverity,
-    evidence: `sustained low-level broadband activity peaks at ${input.currentMaxRmsDbfs.toFixed(1)} dBFS with ${input.currentMinCrestDb.toFixed(1)} dB crest and ${input.currentMaxZeroCrossingRatio.toFixed(2)} zero-crossing ratio`,
+    evidence: `sustained low-level broadband activity lasts ${durationSeconds.toFixed(2)} seconds, peaks at ${input.currentMaxRmsDbfs.toFixed(1)} dBFS, sits up to ${input.currentMaxFloorOffsetDb.toFixed(1)} dB above the estimated floor, and reaches ${input.currentMaxZeroCrossingRatio.toFixed(2)} zero-crossing ratio with ${input.currentMinCrestDb.toFixed(1)} dB crest`,
   });
 }
 

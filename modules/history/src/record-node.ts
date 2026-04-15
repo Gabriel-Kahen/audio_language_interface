@@ -273,7 +273,7 @@ export function recordEditPlan(graph: SessionGraph, plan: EditPlanRecord): Sessi
   );
 
   return mergeProvenance(
-    nextGraph,
+    setPlanRequest(nextGraph, plan.plan_id, plan.user_request, plan.created_at),
     plan.plan_id,
     {
       asset_id: plan.asset_id,
@@ -536,6 +536,33 @@ function assignBranchHead(
       metadata: {
         ...metadata,
         branches: nextBranches,
+      },
+    },
+    updatedAt,
+  );
+}
+
+function setPlanRequest(
+  graph: SessionGraph,
+  planId: string,
+  userRequest: string | undefined,
+  updatedAt: string,
+): SessionGraph {
+  if (userRequest === undefined) {
+    return graph;
+  }
+
+  const metadata = normalizeMetadata(graph.metadata);
+
+  return withUpdatedTimestamp(
+    {
+      ...graph,
+      metadata: {
+        ...metadata,
+        plan_requests: {
+          ...metadata.plan_requests,
+          [planId]: userRequest,
+        },
       },
     },
     updatedAt,

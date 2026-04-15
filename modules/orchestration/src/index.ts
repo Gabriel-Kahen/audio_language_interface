@@ -22,6 +22,7 @@ import { importAndAnalyze } from "./flows/import-and-analyze.js";
 import { iterativeRefine } from "./flows/iterative-refine.js";
 import { planAndApply } from "./flows/plan-and-apply.js";
 import { renderAndCompare } from "./flows/render-and-compare.js";
+import { resolveFollowUpRequest } from "./follow-up-request.js";
 import { runRequestCycle } from "./run-request-cycle.js";
 import type { OrchestrationDependencies } from "./types.js";
 
@@ -31,6 +32,7 @@ export {
   OrchestrationStageError,
   planAndApply,
   renderAndCompare,
+  resolveFollowUpRequest,
   runRequestCycle,
 };
 
@@ -63,6 +65,7 @@ export type {
   ComparisonReport,
   EditPlan,
   FailurePolicy,
+  FollowUpResolution,
   ImportAndAnalyzeOptions,
   ImportAndAnalyzeResult,
   ImportAudioOptions,

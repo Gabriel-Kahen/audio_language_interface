@@ -14,7 +14,9 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - `warmer`, `more warmth` -> bell-boost `parametric_eq` band around `180 Hz`
 - `rumble`, `subsonic` -> `high_pass_filter` at `40 Hz`
 - `more controlled`, `compression`, `tighter and more controlled` -> conservative `compressor` settings with explicit threshold, ratio, attack, and release
-- `control peaks`, `catch peaks`, `limiter` -> conservative `limiter` settings with explicit threshold and `-1 dBTP` ceiling
+- `control peaks`, `catch peaks`, `limiter` -> conservative `limiter` settings with explicit `ceiling_dbtp`, `release_ms`, `lookahead_ms`, and no added limiter input gain by default
+- `remove noise`, `reduce hiss`, `denoise`, `remove hum` -> conservative `denoise` only when analysis indicates sustained noise
+- `wider`, `widen`, `more width`, `narrower` -> conservative `stereo_width` only for already-stereo material with safe balance and correlation
 - `louder` -> conservative `gain` step limited by measured true-peak headroom to a `-1 dBTP` ceiling
 - `quieter` -> conservative negative `gain` step
 - `trim from Xs to Ys` -> `trim` time-range step with explicit start and end seconds
@@ -26,6 +28,8 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - Time-based requests are checked against the current `AudioVersion` duration before a plan is emitted.
 - Combined `fade in` and `fade out` coverage must not overlap and must stay at or below `50%` of the available duration.
 - If a request cannot be mapped to an explicit supported operation, planning fails instead of guessing.
-- Requests for denoise, dehiss, declick, declip, dereverb, or stereo-width changes fail explicitly because those categories remain outside the currently supported planning slice.
+- Requests for declick, declip, dereverb, and other restoration categories outside steady-noise reduction still fail explicitly.
+- Denoise only proceeds when steady-noise evidence is present; otherwise the planner rejects the request instead of guessing.
+- Stereo-width changes only proceed for two-channel material that is not already too wide, too narrow, or stereo-ambiguous for a conservative move.
 - EQ moves are intentionally small: `1.5 dB`, `2 dB`, or `3 dB` depending on request intensity.
 - `preserve punch` keeps compressor settings conservative by using a slower attack and tighter safety constraints.

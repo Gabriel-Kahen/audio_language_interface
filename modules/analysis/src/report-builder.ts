@@ -34,7 +34,11 @@ export function buildAnalysisReport(input: BuildAnalysisReportInput): AnalysisRe
       version: ANALYZER_VERSION,
     },
     summary: {
-      plain_text: buildPlainTextSummary(input.measurements, input.sourceCharacter),
+      plain_text: buildPlainTextSummary(
+        input.measurements,
+        input.sourceCharacter,
+        input.annotations,
+      ),
       confidence: summaryConfidence,
     },
     measurements: input.measurements,
@@ -63,9 +67,10 @@ function createAnalysisReportId(audioVersion: AudioVersion): string {
 function buildPlainTextSummary(
   measurements: AnalysisMeasurements,
   sourceCharacter: SourceCharacter,
+  annotations: AnalysisAnnotation[],
 ): string {
   const brightness = describeBrightness(measurements.spectral_balance);
-  const stereo = describeStereo(measurements.stereo.width);
+  const stereo = describeStereo(measurements.stereo, annotations);
   const dynamics =
     measurements.dynamics.transient_density_per_second >= 1.5 ||
     (measurements.dynamics.transient_crest_db ?? 0) >= 10
@@ -91,14 +96,34 @@ function describeBrightness(measurements: AnalysisMeasurements["spectral_balance
   return "balanced";
 }
 
-function describeStereo(width: number): string {
-  if (width < 0.05) {
+function describeStereo(
+  measurements: AnalysisMeasurements["stereo"],
+  annotations: AnalysisAnnotation[],
+): string {
+  if (measurements.width < 0.05) {
     return "mono";
   }
-  if (width < 0.2) {
+
+  if (measurements.width < 0.2) {
     return "narrow stereo";
   }
-  return "wide stereo";
+
+  const hasStableWidthEvidence = annotations.some(
+    (annotation) => annotation.kind === "stereo_width",
+  );
+  const hasAmbiguousWidthEvidence = annotations.some(
+    (annotation) => annotation.kind === "stereo_ambiguity",
+  );
+
+  if (hasAmbiguousWidthEvidence || measurements.correlation < 0.1) {
+    return "stereo spread with ambiguous width cues";
+  }
+
+  if (hasStableWidthEvidence && measurements.correlation >= 0.15) {
+    return "wide stereo";
+  }
+
+  return "stereo spread";
 }
 
 function estimateSummaryConfidence(

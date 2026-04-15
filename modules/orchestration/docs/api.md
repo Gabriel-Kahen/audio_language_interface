@@ -17,6 +17,7 @@ The current v1 surface stays thin by:
 - `planAndApply(options)`
 - `renderAndCompare(options)`
 - `iterativeRefine(options)`
+- `resolveFollowUpRequest(options)`
 - `OrchestrationStageError`
 - `defaultOrchestrationDependencies`
 
@@ -70,6 +71,7 @@ Each public flow uses stage-aware error wrapping.
 - Failures throw `OrchestrationStageError`
 - `error.stage` identifies the failed boundary
 - `error.partialResult` contains the latest safe partial artifacts when available
+- follow-up resolution inside `runRequestCycle` is its own `resolve_follow_up` stage, so failures there still include analyzed input context and a partial `sessionGraph`
 - `runRequestCycle` attempts to persist any already-established history into `error.partialResult.sessionGraph`, including imported inputs, completed analysis, completed planning artifacts, and any renders produced before the failure
 - `FailurePolicy` can increase per-stage attempts and add retry decisions
 
@@ -99,3 +101,12 @@ The default behavior is one attempt with no retries.
 - repeats plan, apply, analyze, and compare
 - forwards `analysisOptions` on each analysis pass
 - stops when `maxIterations` is reached or `shouldContinue` returns false
+
+`resolveFollowUpRequest(options)`
+
+- resolves plain requests directly
+- expands shorthand `more` to the recorded `user_request` from the plan that produced the current version
+- resolves `less`, `undo`, and nearby revert-style wording to a concrete prior `version_id` using `modules/history`
+- throws when the current session state is insufficient to resolve the follow-up safely
+
+`runRequestCycle(options)` now uses this resolver for `input.kind = "existing"`, which lets repeated requests such as `more` reuse prior intent without introducing hidden orchestration state.

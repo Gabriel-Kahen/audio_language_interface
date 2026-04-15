@@ -38,10 +38,10 @@
       "user_request": "Clean this loop up a bit, widen it slightly, and control the peaks without crushing it.",
       "created_at": "2026-04-14T20:20:05Z",
       "goals": [
-        "reduce steady background noise",
+        "reduce steady background noise conservatively",
         "slightly increase stereo width",
-        "control short peaks",
-        "preserve punch"
+        "control peak excursions conservatively",
+        "preserve transient impact"
       ],
       "constraints": [
         "keep edits conservative",
@@ -50,7 +50,7 @@
       ],
       "verification_targets": [
         "lower measured noise floor",
-        "lower true peak",
+        "lower peak excursions while keeping the output ceiling near -1 dB true peak",
         "small increase in stereo width",
         "avoid large crest factor loss"
       ],
@@ -80,6 +80,7 @@
             "ratio": 2,
             "attack_ms": 15,
             "release_ms": 120,
+            "knee_db": 3,
             "makeup_gain_db": 1.5
           },
           "expected_effects": ["tighten dynamic swings slightly", "retain punch"],
@@ -93,8 +94,9 @@
           },
           "parameters": {
             "ceiling_dbtp": -1,
-            "release_ms": 60,
-            "lookahead_ms": 5
+            "release_ms": 80,
+            "lookahead_ms": 5,
+            "input_gain_db": 0
           },
           "expected_effects": ["catch short peaks", "leave more consistent peak headroom"],
           "safety_limits": ["avoid pumping", "do not drive the limiter aggressively"]

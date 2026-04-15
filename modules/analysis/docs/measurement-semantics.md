@@ -124,9 +124,10 @@ Interpretation note: `transient_density_per_second` alone is not sufficient punc
 ### Stereo width annotations
 
 - Windowing matches the segment and short-term dynamics window: `0.05` seconds.
-- `stereo_width` marks windows where local width is at least `0.33` and correlation stays between `0.15` and `0.98`.
+- Only windows at or above `-42 dBFS` combined stereo RMS are considered, so quiet tails or silence do not create width evidence by themselves.
+- `stereo_width` marks windows where local width is at least `0.33`, correlation stays between `0.15` and `0.98`, and left-right balance stays within `4.5 dB`.
 - `stereo_ambiguity` marks windows where local width is at least `0.28` while correlation falls below `0.1`.
-- Consecutive qualifying windows are merged into one annotation.
+- Consecutive qualifying windows are merged into one annotation, but merged regions shorter than `0.10` seconds are discarded.
 - These annotations are intended to separate stable width evidence from potentially phase-sensitive width evidence.
 
 ## Artifact analyzer
@@ -148,6 +149,7 @@ Interpretation note: `transient_density_per_second` alone is not sufficient punc
   - zero-crossing ratio is at least `0.12`
 - Consecutive qualifying windows are merged, but regions shorter than `0.12` seconds are discarded.
 - The annotation uses the band hint `[2000, 12000]` to reflect that the current heuristic is mainly tuned for hiss-like broadband noise, not low-frequency hum.
+- Noise evidence strings now include duration and how far the region rises above the estimated file-level floor so downstream modules can distinguish sustained floor evidence from a barely raised bed.
 - Important limitation: this is still a heuristic low-level broadband detector. It does not separate noise from foreground content and should not be treated as a calibrated SNR estimate.
 
 Threshold summary for downstream modules:

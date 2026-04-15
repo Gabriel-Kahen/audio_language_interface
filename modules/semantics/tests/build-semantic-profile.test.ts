@@ -381,6 +381,93 @@ describe("buildSemanticProfile", () => {
     expect(profile.unresolved_terms).toContain("wide");
   });
 
+  it("assigns wide at the threshold when stable width coverage is sustained", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          stereo: {
+            width: 0.35,
+            correlation: 0.2,
+            balance_db: 0,
+          },
+        },
+        annotations: [
+          {
+            kind: "stereo_width",
+            start_seconds: 0,
+            end_seconds: 0.4,
+            severity: 0.25,
+            evidence:
+              "stable side energy reaches width 0.35 with local correlation 0.20 over 0.40 seconds",
+          },
+        ],
+        segments: [{ kind: "loop", start_seconds: 0, end_seconds: 4 }],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).toContain("wide");
+    expect(profile.unresolved_terms ?? []).not.toContain("wide");
+  });
+
+  it("keeps wide unresolved when stable width evidence is too brief", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          stereo: {
+            width: 0.4,
+            correlation: 0.32,
+            balance_db: 0,
+          },
+        },
+        annotations: [
+          {
+            kind: "stereo_width",
+            start_seconds: 0,
+            end_seconds: 0.08,
+            severity: 0.42,
+            evidence:
+              "stable side energy reaches width 0.40 with local correlation 0.32 over 0.08 seconds",
+          },
+        ],
+        segments: [{ kind: "loop", start_seconds: 0, end_seconds: 4 }],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).not.toContain("wide");
+    expect(profile.unresolved_terms).toContain("wide");
+  });
+
+  it("keeps wide unresolved when spread conflicts with major channel imbalance", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          stereo: {
+            width: 0.44,
+            correlation: 0.33,
+            balance_db: 5.2,
+          },
+        },
+        annotations: [
+          {
+            kind: "stereo_width",
+            start_seconds: 0,
+            end_seconds: 1.2,
+            severity: 0.58,
+            evidence:
+              "stable side energy reaches width 0.44 with local correlation 0.33 over 1.20 seconds at up to 5.2 dB channel imbalance",
+          },
+        ],
+        segments: [{ kind: "loop", start_seconds: 0, end_seconds: 4 }],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).not.toContain("wide");
+    expect(profile.unresolved_terms).toContain("wide");
+  });
+
   it("does not assign wide when correlation is strongly negative", () => {
     const profile = buildSemanticProfile(
       createReport({
@@ -397,6 +484,34 @@ describe("buildSemanticProfile", () => {
 
     expect(profile.descriptors.map((descriptor) => descriptor.label)).not.toContain("wide");
     expect(profile.unresolved_terms ?? []).not.toContain("wide");
+  });
+
+  it("keeps wide unresolved when explicit ambiguity evidence remains materially present", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          stereo: {
+            width: 0.44,
+            correlation: -0.55,
+            balance_db: 0,
+          },
+        },
+        annotations: [
+          {
+            kind: "stereo_ambiguity",
+            start_seconds: 0,
+            end_seconds: 0.8,
+            severity: 0.63,
+            evidence: "side energy reaches width 0.46 while local correlation falls to -0.55",
+          },
+        ],
+        segments: [{ kind: "loop", start_seconds: 0, end_seconds: 4 }],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).not.toContain("wide");
+    expect(profile.unresolved_terms).toContain("wide");
   });
 
   it("assigns noisy only when localized noise evidence and elevated floor agree", () => {
@@ -440,6 +555,96 @@ describe("buildSemanticProfile", () => {
           },
         },
         annotations: [],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).not.toContain("noisy");
+    expect(profile.unresolved_terms).toContain("noisy");
+  });
+
+  it("assigns noisy at the threshold when floor and sustained coverage agree", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          artifacts: {
+            clipping_detected: false,
+            noise_floor_dbfs: -50,
+            clipped_sample_count: 0,
+          },
+        },
+        annotations: [
+          {
+            kind: "noise",
+            start_seconds: 0,
+            end_seconds: 0.4,
+            bands_hz: [2000, 12000],
+            severity: 0.45,
+            evidence:
+              "sustained low-level broadband activity lasts 0.40 seconds, peaks at -49.2 dBFS, sits up to 0.8 dB above the estimated floor, and reaches 0.28 zero-crossing ratio with 4.7 dB crest",
+          },
+        ],
+        segments: [{ kind: "loop", start_seconds: 0, end_seconds: 4 }],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).toContain("noisy");
+    expect(profile.unresolved_terms ?? []).not.toContain("noisy");
+  });
+
+  it("keeps noise unresolved when sustained noise evidence is too brief", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          artifacts: {
+            clipping_detected: false,
+            noise_floor_dbfs: -48,
+            clipped_sample_count: 0,
+          },
+        },
+        annotations: [
+          {
+            kind: "noise",
+            start_seconds: 0,
+            end_seconds: 0.08,
+            bands_hz: [2000, 12000],
+            severity: 0.62,
+            evidence:
+              "sustained low-level broadband activity lasts 0.08 seconds, peaks at -47.9 dBFS, sits up to 0.5 dB above the estimated floor, and reaches 0.34 zero-crossing ratio with 4.2 dB crest",
+          },
+        ],
+        segments: [{ kind: "loop", start_seconds: 0, end_seconds: 4 }],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).not.toContain("noisy");
+    expect(profile.unresolved_terms).toContain("noisy");
+  });
+
+  it("keeps noise unresolved when localized noise evidence conflicts with a low floor estimate", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          artifacts: {
+            clipping_detected: false,
+            noise_floor_dbfs: -68,
+            clipped_sample_count: 0,
+          },
+        },
+        annotations: [
+          {
+            kind: "noise",
+            start_seconds: 0,
+            end_seconds: 1.0,
+            bands_hz: [2000, 12000],
+            severity: 0.72,
+            evidence:
+              "sustained low-level broadband activity lasts 1.00 seconds, peaks at -62.5 dBFS, sits up to 5.5 dB above the estimated floor, and reaches 0.41 zero-crossing ratio with 3.8 dB crest",
+          },
+        ],
+        segments: [{ kind: "loop", start_seconds: 0, end_seconds: 4 }],
       }),
     );
 

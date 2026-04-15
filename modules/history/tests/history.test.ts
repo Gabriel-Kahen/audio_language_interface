@@ -6,6 +6,8 @@ import {
   createBranch,
   createSessionGraph,
   createSnapshot,
+  getBranch,
+  getVersionFollowUpRequest,
   recordAnalysisReport,
   recordAudioAsset,
   recordAudioVersion,
@@ -96,6 +98,7 @@ describe("history module", () => {
       asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
       version_id: "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
       created_at: "2026-04-14T20:20:15Z",
+      user_request: "Make it darker",
     });
 
     graph = recordAudioVersion(graph, {
@@ -145,6 +148,9 @@ describe("history module", () => {
     );
     expect(graph.metadata?.provenance?.ver_01HZX8G7J2V3M4N5P6Q7R8S9T0?.transform_record_id).toBe(
       "transform_01HZX8F7J2V3M4N5P6Q7R8S9T0",
+    );
+    expect(getVersionFollowUpRequest(graph, "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0")).toBe(
+      "Make it darker",
     );
     expect(
       graph.edges.some(
@@ -277,6 +283,68 @@ describe("history module", () => {
 
     const redone = redoActiveRef(undone);
     expect(redone.active_refs.version_id).toBe("ver_01HZX8C7J2V3M4N5P6Q7R8S9T2");
+  });
+
+  it("records one branch revert history entry and keeps undo coherent", () => {
+    let graph = createSessionGraph({
+      session_id: "session_01HZX8J7J2V3M4N5P6Q7R8S9T2B",
+      created_at: "2026-04-14T22:05:00Z",
+      active_refs: {
+        asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T2B",
+        version_id: "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2B",
+      },
+    });
+
+    graph = recordAudioAsset(graph, {
+      asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T2B",
+      source: { imported_at: "2026-04-14T22:05:00Z" },
+    });
+    graph = recordAudioVersion(graph, {
+      asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T2B",
+      version_id: "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2B",
+      lineage: {
+        created_at: "2026-04-14T22:05:01Z",
+        created_by: "modules/io",
+      },
+    });
+    graph = createBranch(graph, {
+      branch_id: "branch_darken",
+      source_version_id: "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2B",
+      created_at: "2026-04-14T22:05:02Z",
+    });
+    graph = recordAudioVersion(
+      graph,
+      {
+        asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T2B",
+        version_id: "ver_01HZX8C7J2V3M4N5P6Q7R8S9T2B",
+        parent_version_id: "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2B",
+        lineage: {
+          created_at: "2026-04-14T22:05:03Z",
+          created_by: "modules/transforms",
+        },
+      },
+      { branch_id: "branch_darken" },
+    );
+
+    const reverted = revertToVersion(
+      graph,
+      "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2B",
+      "2026-04-14T22:05:04Z",
+    );
+
+    expect(reverted.metadata?.active_ref_history).toHaveLength(4);
+    expect(reverted.metadata?.active_ref_history?.at(-1)).toMatchObject({
+      version_id: "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2B",
+      branch_id: "branch_darken",
+      reason: "revert_to_version",
+    });
+
+    const undone = undoActiveRef(reverted);
+    expect(undone.active_refs.version_id).toBe("ver_01HZX8C7J2V3M4N5P6Q7R8S9T2B");
+    expect(undone.active_refs.branch_id).toBe("branch_darken");
+    expect(getBranch(undone, "branch_darken")?.head_version_id).toBe(
+      "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2B",
+    );
   });
 
   it("surfaces invalid active refs and broken provenance", () => {
@@ -666,5 +734,6 @@ describe("history module", () => {
       "ver_01HZX8C7J2V3M4N5P6Q7R8S9T4",
       "ver_01HZX8D7J2V3M4N5P6Q7R8S9T4",
     ]);
+    expect(redoTargets.every((target) => target.branch_id === undefined)).toBe(true);
   });
 });

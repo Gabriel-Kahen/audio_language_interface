@@ -5,6 +5,7 @@ import {
   buildParametricEqOperation,
 } from "./operations/eq.js";
 import { buildGainOperation, buildNormalizeOperation } from "./operations/gain.js";
+import { buildDenoiseOperation, buildStereoWidthOperation } from "./operations/spatial-cleanup.js";
 import { buildFadeOperation, buildTrimOperation } from "./operations/trim-fade.js";
 import type { AudioVersion, EditTarget, OperationBuildResult, OperationName } from "./types.js";
 
@@ -37,6 +38,10 @@ export function buildOperation(
       return buildCompressorOperation(audio, parameters, target);
     case "limiter":
       return buildLimiterOperation(audio, parameters, target);
+    case "stereo_width":
+      return buildStereoWidthOperation(audio, parameters, target);
+    case "denoise":
+      return buildDenoiseOperation(audio, parameters, target);
     default:
       throw new Error(`Unsupported transform operation: ${operation satisfies never}`);
   }

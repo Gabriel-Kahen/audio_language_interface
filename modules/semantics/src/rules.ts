@@ -95,11 +95,19 @@ function addSpatialDescriptors(
   const stereo = report.measurements.stereo;
   const evidenceRef = measurementEvidenceRef(report, "stereo");
   const annotations = report.annotations ?? [];
-  const wideAnnotation = findStrongestAnnotation(annotations, "stereo_width");
-  const ambiguityAnnotation = findStrongestAnnotation(annotations, "stereo_ambiguity");
+  const wideAnnotations = findAnnotations(annotations, "stereo_width");
+  const ambiguityAnnotations = findAnnotations(annotations, "stereo_ambiguity");
+  const wideAnnotation = wideAnnotations[0];
+  const ambiguityAnnotation = ambiguityAnnotations[0];
+  const estimatedDurationSeconds = estimateReportDurationSeconds(report);
+  const stableWidthCoverageSeconds = sumAnnotationCoverageSeconds(wideAnnotations);
+  const ambiguityCoverageSeconds = sumAnnotationCoverageSeconds(ambiguityAnnotations);
+  const stableWidthCoverageRatio = stableWidthCoverageSeconds / estimatedDurationSeconds;
+  const ambiguityCoverageRatio = ambiguityCoverageSeconds / estimatedDurationSeconds;
   const hasWidthConflict =
     Math.abs(stereo.balance_db) >= 4.5 ||
     (ambiguityAnnotation?.annotation.severity ?? 0) >= 0.3 ||
+    ambiguityCoverageRatio >= 0.12 ||
     stereo.correlation < 0.1;
 
   if (stereo.width <= 0.05) {
@@ -128,6 +136,8 @@ function addSpatialDescriptors(
     stereo.correlation < 0.95 &&
     Math.abs(stereo.balance_db) < 4.5 &&
     (wideAnnotation?.annotation.severity ?? 0) >= 0.25 &&
+    stableWidthCoverageSeconds >= 0.15 &&
+    stableWidthCoverageRatio >= 0.1 &&
     !hasWidthConflict
   ) {
     descriptors.push({
@@ -135,17 +145,20 @@ function addSpatialDescriptors(
       confidence: clamp(
         0.64 +
           Math.min((stereo.width - 0.35) / 0.45, 0.18) +
-          Math.min((0.95 - stereo.correlation) / 2, 0.1),
+          Math.min((0.95 - stereo.correlation) / 2, 0.1) +
+          Math.min(stableWidthCoverageRatio / 0.8, 0.08),
       ),
       evidence_refs: [evidenceRef, annotationEvidenceRef(report, wideAnnotation?.index ?? 0)],
       rationale:
-        "Side energy is meaningfully present, localized stereo-width evidence is sustained, and correlation remains materially positive rather than ambiguous.",
+        "Side energy is meaningfully present, localized stereo-width evidence covers a sustained portion of the file, and correlation remains materially positive rather than ambiguous.",
     });
     return;
   }
 
   if (
     (stereo.width >= 0.28 && stereo.correlation > -0.2) ||
+    wideAnnotation !== undefined ||
+    ambiguityAnnotation !== undefined ||
     (wideAnnotation && Math.abs(stereo.balance_db) >= 4.5)
   ) {
     unresolvedTerms.add("wide");
@@ -233,31 +246,40 @@ function addNoiseDescriptors(
 ): void {
   const artifacts = report.measurements.artifacts;
   const annotations = report.annotations ?? [];
-  const noiseAnnotation = findStrongestAnnotation(annotations, "noise");
+  const noiseAnnotations = findAnnotations(annotations, "noise");
+  const noiseAnnotation = noiseAnnotations[0];
   const noiseSeverity = noiseAnnotation?.annotation.severity ?? 0;
+  const estimatedDurationSeconds = estimateReportDurationSeconds(report);
+  const noiseCoverageSeconds = sumAnnotationCoverageSeconds(noiseAnnotations);
+  const noiseCoverageRatio = noiseCoverageSeconds / estimatedDurationSeconds;
 
   if (
     noiseAnnotation &&
+    noiseCoverageSeconds >= 0.12 &&
+    noiseCoverageRatio >= 0.1 &&
     ((noiseSeverity >= 0.45 && artifacts.noise_floor_dbfs >= -50) ||
       (noiseSeverity >= 0.6 && artifacts.noise_floor_dbfs >= -56))
   ) {
     descriptors.push({
       label: "noisy",
       confidence: clamp(
-        0.56 + noiseSeverity * 0.24 + Math.min((artifacts.noise_floor_dbfs + 56) / 18, 0.12),
+        0.56 +
+          noiseSeverity * 0.24 +
+          Math.min((artifacts.noise_floor_dbfs + 56) / 18, 0.12) +
+          Math.min(noiseCoverageRatio / 0.8, 0.06),
       ),
       evidence_refs: [
         measurementEvidenceRef(report, "artifacts"),
         annotationEvidenceRef(report, noiseAnnotation.index),
       ],
       rationale: noiseAnnotation.annotation.evidence?.length
-        ? `A sustained noise annotation is present and the estimated floor is elevated: ${noiseAnnotation.annotation.evidence}.`
+        ? `A sustained noise annotation covers a meaningful portion of the file and the estimated floor is elevated: ${noiseAnnotation.annotation.evidence}.`
         : "A sustained noise annotation is present and the estimated floor is elevated.",
     });
     return;
   }
 
-  if (noiseSeverity >= 0.25 || artifacts.noise_floor_dbfs >= -56) {
+  if (noiseSeverity >= 0.25 || artifacts.noise_floor_dbfs >= -56 || noiseCoverageSeconds >= 0.12) {
     unresolvedTerms.add("noisy");
   }
 }
@@ -306,19 +328,48 @@ function findStrongestAnnotation(
   annotations: AnalysisAnnotation[],
   kind: string,
 ): { annotation: AnalysisAnnotation; index: number } | undefined {
-  let strongest: { annotation: AnalysisAnnotation; index: number } | undefined;
+  return findAnnotations(annotations, kind)[0];
+}
+
+function findAnnotations(
+  annotations: AnalysisAnnotation[],
+  kind: string,
+): Array<{ annotation: AnalysisAnnotation; index: number }> {
+  const matches: Array<{ annotation: AnalysisAnnotation; index: number }> = [];
 
   for (const [index, annotation] of annotations.entries()) {
     if (annotation.kind !== kind) {
       continue;
     }
 
-    if (!strongest || annotation.severity > strongest.annotation.severity) {
-      strongest = { annotation, index };
-    }
+    matches.push({ annotation, index });
   }
 
-  return strongest;
+  return matches.sort((left, right) => right.annotation.severity - left.annotation.severity);
+}
+
+function sumAnnotationCoverageSeconds(
+  annotations: Array<{ annotation: AnalysisAnnotation; index: number }>,
+): number {
+  return annotations.reduce(
+    (total, item) =>
+      total + Math.max(0, item.annotation.end_seconds - item.annotation.start_seconds),
+    0,
+  );
+}
+
+function estimateReportDurationSeconds(report: AnalysisReport): number {
+  let maximumEndSeconds = 0;
+
+  for (const segment of report.segments ?? []) {
+    maximumEndSeconds = Math.max(maximumEndSeconds, segment.end_seconds);
+  }
+
+  for (const annotation of report.annotations ?? []) {
+    maximumEndSeconds = Math.max(maximumEndSeconds, annotation.end_seconds);
+  }
+
+  return Math.max(maximumEndSeconds, 1e-6);
 }
 
 function clamp(value: number, minimum = 0, maximum = 1): number {

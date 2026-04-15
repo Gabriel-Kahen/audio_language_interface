@@ -9,7 +9,9 @@ export type OperationName =
   | "high_pass_filter"
   | "low_pass_filter"
   | "compressor"
-  | "limiter";
+  | "limiter"
+  | "stereo_width"
+  | "denoise";
 
 export type OperationStatus = "applied" | "skipped" | "failed";
 export type TargetScope = "full_file" | "time_range" | "segment" | "channel" | "frequency_region";

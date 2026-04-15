@@ -44,11 +44,19 @@ describe("parseUserRequest", () => {
     expect(parsed.intensity).toBe("subtle");
   });
 
+  it("parses supported denoise and stereo-width intent phrases", () => {
+    const parsed = parseUserRequest("Reduce hiss a bit and make it wider.");
+
+    expect(parsed.wants_denoise).toBe(true);
+    expect(parsed.wants_wider).toBe(true);
+    expect(parsed.intensity).toBe("subtle");
+  });
+
   it("classifies ambiguous and unsupported prompt phrases explicitly", () => {
-    const parsed = parseUserRequest("Make it hit harder and wider.");
+    const parsed = parseUserRequest("Make it hit harder and remove clicks.");
 
     expect(parsed.ambiguous_requests).toContain("hit harder");
-    expect(parsed.unsupported_requests).toContain("wider");
+    expect(parsed.unsupported_requests).toContain("click");
   });
 });
 
@@ -205,11 +213,39 @@ describe("planEdits", () => {
     expect(plan.steps.map((step) => step.operation)).toEqual(["limiter"]);
     expect(plan.steps[0]?.parameters).toEqual({
       ceiling_dbtp: -1,
-      input_gain_db: 1.1,
+      input_gain_db: 0,
       release_ms: 80,
       lookahead_ms: 5,
     });
     expect(plan.goals).toContain("control peak excursions conservatively");
+  });
+
+  it("keeps pure peak-control prompts from adding loudness-maximizing limiter gain on low-peak sources", () => {
+    const analysisReport = {
+      ...createAnalysisReportFixture(),
+      measurements: {
+        ...createAnalysisReportFixture().measurements,
+        levels: {
+          ...createAnalysisReportFixture().measurements.levels,
+          true_peak_dbtp: -8,
+        },
+      },
+    } satisfies AnalysisReport;
+
+    const plan = planEdits({
+      userRequest: "Control peaks with a limiter.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport,
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["limiter"]);
+    expect(plan.steps[0]?.parameters).toEqual({
+      ceiling_dbtp: -1,
+      input_gain_db: 0,
+      release_ms: 80,
+      lookahead_ms: 5,
+    });
   });
 
   it("orders compressor before limiter when both supported dynamics intents are requested", () => {
@@ -221,6 +257,45 @@ describe("planEdits", () => {
     });
 
     expect(plan.steps.map((step) => step.operation)).toEqual(["compressor", "limiter"]);
+  });
+
+  it("maps steady-noise prompts to a conservative denoise step", () => {
+    const plan = planEdits({
+      userRequest: "Reduce hiss a bit.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createNoisyAnalysisReportFixture(),
+      semanticProfile: createNoisySemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["denoise"]);
+    expect(plan.steps[0]?.parameters).toEqual({
+      reduction_db: 4,
+      noise_floor_dbfs: -50,
+    });
+    expect(plan.goals).toContain("reduce steady background noise conservatively");
+    expect(plan.constraints).toContain("avoid obvious denoise artifacts or transient smearing");
+    expect(plan.verification_targets).toContain(
+      "lower measured noise floor without obvious denoise artifacts",
+    );
+    expect(validateAgainstSchema(editPlanSchema, plan)).toBe(true);
+  });
+
+  it("maps explicit width prompts to a conservative stereo-width step", () => {
+    const plan = planEdits({
+      userRequest: "Widen this slightly.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createNarrowStereoAnalysisReportFixture(),
+      semanticProfile: createNeutralSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["stereo_width"]);
+    expect(plan.steps[0]?.parameters).toEqual({ width_multiplier: 1.12 });
+    expect(plan.goals).toContain("slightly increase stereo width");
+    expect(plan.constraints).toContain("keep width changes subtle and preserve mono compatibility");
+    expect(plan.verification_targets).toContain(
+      "small increase in stereo width without poorer mono compatibility",
+    );
+    expect(validateAgainstSchema(editPlanSchema, plan)).toBe(true);
   });
 
   it("fails instead of inventing unsupported behavior", () => {
@@ -237,12 +312,12 @@ describe("planEdits", () => {
   it("fails clearly for unsupported cleanup operations", () => {
     expect(() =>
       planEdits({
-        userRequest: "Clean this sample up by removing hiss.",
+        userRequest: "Clean this sample up by removing clicks.",
         audioVersion: createAudioVersionFixture(),
         analysisReport: createAnalysisReportFixture(),
         semanticProfile: createSemanticProfileFixture(),
       }),
-    ).toThrow(/does not support `hiss`/);
+    ).toThrow(/does not support `click`/);
   });
 
   it("fails clearly for ambiguous dynamics language", () => {
@@ -256,15 +331,26 @@ describe("planEdits", () => {
     ).toThrow(/ambiguous phrasing/i);
   });
 
-  it("fails clearly for unsupported stereo width placeholders", () => {
+  it("fails clearly for denoise requests without steady-noise evidence", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Remove hiss.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createAnalysisReportFixture(),
+        semanticProfile: createSemanticProfileFixture(),
+      }),
+    ).toThrow(/only supports conservative denoise when analysis indicates steady noise/i);
+  });
+
+  it("fails clearly for width requests that would overreach current stereo state", () => {
     expect(() =>
       planEdits({
         userRequest: "Make it wider.",
         audioVersion: createAudioVersionFixture(),
         analysisReport: createAnalysisReportFixture(),
-        semanticProfile: createSemanticProfileFixture(),
+        semanticProfile: createWideSemanticProfileFixture(),
       }),
-    ).toThrow(/does not support `wider`/i);
+    ).toThrow(/already reads as materially wide/i);
   });
 
   it("fails clearly for contradictory tonal directions", () => {
@@ -372,6 +458,17 @@ function createAudioVersionFixture(): AudioVersion {
 function createAnalysisReportFixture(): AnalysisReport {
   return {
     ...(analysisExample as unknown as AnalysisReport),
+    measurements: {
+      ...(analysisExample.measurements as AnalysisReport["measurements"]),
+      stereo: {
+        ...(analysisExample.measurements.stereo as AnalysisReport["measurements"]["stereo"]),
+        balance_db: 0,
+      },
+      artifacts: {
+        ...(analysisExample.measurements.artifacts as AnalysisReport["measurements"]["artifacts"]),
+        clipped_sample_count: 0,
+      },
+    },
     annotations: [
       {
         ...(analysisExample.annotations?.[0] as NonNullable<AnalysisReport["annotations"]>[number]),
@@ -383,6 +480,79 @@ function createAnalysisReportFixture(): AnalysisReport {
 
 function createSemanticProfileFixture(): SemanticProfile {
   return semanticExample as unknown as SemanticProfile;
+}
+
+function createNoisyAnalysisReportFixture(): AnalysisReport {
+  return {
+    ...createAnalysisReportFixture(),
+    measurements: {
+      ...createAnalysisReportFixture().measurements,
+      artifacts: {
+        ...createAnalysisReportFixture().measurements.artifacts,
+        noise_floor_dbfs: -50,
+      },
+    },
+    annotations: [
+      {
+        kind: "noise",
+        start_seconds: 0,
+        end_seconds: 4,
+        severity: 0.6,
+        evidence: "sustained broadband noise floor",
+      },
+    ],
+  };
+}
+
+function createNarrowStereoAnalysisReportFixture(): AnalysisReport {
+  return {
+    ...createAnalysisReportFixture(),
+    measurements: {
+      ...createAnalysisReportFixture().measurements,
+      stereo: {
+        ...createAnalysisReportFixture().measurements.stereo,
+        width: 0.18,
+        correlation: 0.48,
+        balance_db: 0.4,
+      },
+    },
+    annotations: [],
+  };
+}
+
+function createNoisySemanticProfileFixture(): SemanticProfile {
+  return {
+    ...createNeutralSemanticProfileFixture(),
+    descriptors: [
+      {
+        label: "noisy",
+        confidence: 0.74,
+        evidence_refs: ["analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:annotations[0]"],
+        rationale: "Sustained broadband noise evidence is present.",
+      },
+    ],
+  };
+}
+
+function createNeutralSemanticProfileFixture(): SemanticProfile {
+  return {
+    ...createSemanticProfileFixture(),
+    descriptors: [],
+  };
+}
+
+function createWideSemanticProfileFixture(): SemanticProfile {
+  return {
+    ...createNeutralSemanticProfileFixture(),
+    descriptors: [
+      {
+        label: "wide",
+        confidence: 0.78,
+        evidence_refs: ["analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:measurements.stereo"],
+        rationale: "Side energy is already materially present.",
+      },
+    ],
+  };
 }
 
 function validateAgainstSchema(schema: unknown, payload: unknown): boolean {
