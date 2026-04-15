@@ -10,7 +10,9 @@ import {
 import {
   assembleRenderArtifact,
   probeOutputMetadata,
+  RenderOutputValidationError,
   readOutputFileSize,
+  validateRenderedOutput,
 } from "./output-metadata.js";
 import { resolveRenderOutputPath, resolveSourceAudioPath } from "./path-policy.js";
 import type { PreviewRenderOptions, RenderResult } from "./types.js";
@@ -45,11 +47,13 @@ export async function renderPreview(options: PreviewRenderOptions): Promise<Rend
     kind: "preview",
   });
 
+  const expectedSampleRateHz = options.sampleRateHz ?? options.version.audio.sample_rate_hz;
+  const expectedChannels = options.channels ?? options.version.audio.channels;
   const command = buildFfmpegRenderCommand({
     inputPath,
     outputPath: renderPath.absolutePath,
-    sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
-    channels: options.channels ?? options.version.audio.channels,
+    sampleRateHz: expectedSampleRateHz,
+    channels: expectedChannels,
     ...(options.ffmpegPath === undefined ? {} : { ffmpegPath: options.ffmpegPath }),
     format: {
       ...PREVIEW_FORMAT,
@@ -66,6 +70,22 @@ export async function renderPreview(options: PreviewRenderOptions): Promise<Rend
   });
   const fileSizeBytes = await readOutputFileSize(renderPath.absolutePath);
 
+  if (fileSizeBytes === undefined) {
+    throw new RenderOutputValidationError(
+      `Rendered preview file was not found after ffmpeg completed: ${renderPath.absolutePath}`,
+    );
+  }
+
+  const validationWarnings = validateRenderedOutput({
+    outputPath: renderPath.relativePath,
+    expectedFormat: PREVIEW_FORMAT.format,
+    expectedSampleRateHz,
+    expectedChannels,
+    expectedDurationSeconds: options.version.audio.duration_seconds,
+    metadata,
+    fileSizeBytes,
+  });
+
   return {
     command,
     artifact: assembleRenderArtifact({
@@ -79,7 +99,9 @@ export async function renderPreview(options: PreviewRenderOptions): Promise<Rend
         ...(fileSizeBytes === undefined ? {} : { fileSizeBytes }),
       },
       loudnessSummary: options.loudnessSummary,
-      ...(warnings.length === 0 ? {} : { warnings }),
+      ...(warnings.length + validationWarnings.length === 0
+        ? {}
+        : { warnings: [...warnings, ...validationWarnings] }),
     }),
   };
 }

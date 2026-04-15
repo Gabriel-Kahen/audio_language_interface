@@ -7,6 +7,7 @@ export function buildSemanticSummary(input: {
   descriptors: SemanticDescriptor[];
   unresolvedTerms: string[];
 }): { plain_text: string; caveats?: string[] } {
+  const strongestDescriptorConfidence = input.descriptors[0]?.confidence ?? 0;
   const topLabels = input.descriptors
     .slice(0, 3)
     .map((descriptor) => formatLabel(descriptor.label));
@@ -27,15 +28,20 @@ export function buildSemanticSummary(input: {
   if (topLabels.length === 0) {
     return {
       plain_text:
-        "No strong semantic descriptors were assigned from the current analysis evidence.",
+        "The current analysis does not justify strong semantic descriptors from the available evidence.",
       ...(caveats.length > 0 ? { caveats } : {}),
     };
   }
 
   const subject = describeSource(input.report);
+  const summaryConfidence = input.report.summary.confidence ?? 0;
+  const usesCautiousLanguage =
+    summaryConfidence < 0.72 ||
+    strongestDescriptorConfidence < 0.72 ||
+    input.unresolvedTerms.length > 0;
 
   return {
-    plain_text: `${subject} ${describeDescriptors(topLabels)}.`,
+    plain_text: `${subject} ${describeDescriptors(topLabels, usesCautiousLanguage)}.`,
     ...(caveats.length > 0 ? { caveats } : {}),
   };
 }
@@ -50,7 +56,11 @@ function describeSource(report: AnalysisReport): string {
   return `The current analysis suggests ${withIndefiniteArticle(formatLabel(sourceCharacter.primary_class))}`;
 }
 
-function describeDescriptors(labels: string[]): string {
+function describeDescriptors(labels: string[], usesCautiousLanguage: boolean): string {
+  if (usesCautiousLanguage) {
+    return `shows evidence of ${joinLabels(labels)} characteristics`;
+  }
+
   return `has ${joinLabels(labels)} characteristics`;
 }
 

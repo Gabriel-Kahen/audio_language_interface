@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/compare-versions-tool-request.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "tool_name", "arguments", "requested_at"],
+  "properties": {
+    "schema_version": { "$ref": "./common.schema.json#/$defs/schemaVersion" },
+    "request_id": { "$ref": "./common.schema.json#/$defs/requestId" },
+    "tool_name": { "const": "compare_versions" },
+    "requested_at": { "$ref": "./common.schema.json#/$defs/isoTimestamp" },
+    "session_id": { "$ref": "./common.schema.json#/$defs/sessionId" },
+    "asset_id": { "$ref": "./common.schema.json#/$defs/assetId" },
+    "version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+    "caller": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+    "arguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseline_version",
+        "candidate_version",
+        "baseline_analysis",
+        "candidate_analysis"
+      ],
+      "properties": {
+        "baseline_version": {
+          "type": "object",
+          "required": ["schema_version", "version_id", "asset_id", "lineage", "audio"],
+          "properties": {
+            "schema_version": { "$ref": "./common.schema.json#/$defs/schemaVersion" },
+            "version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+            "asset_id": { "$ref": "./common.schema.json#/$defs/assetId" },
+            "lineage": { "type": "object" },
+            "audio": { "type": "object" },
+            "state": { "type": "object" }
+          },
+          "additionalProperties": false
+        },
+        "candidate_version": {
+          "type": "object",
+          "required": ["schema_version", "version_id", "asset_id", "lineage", "audio"],
+          "properties": {
+            "schema_version": { "$ref": "./common.schema.json#/$defs/schemaVersion" },
+            "version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+            "asset_id": { "$ref": "./common.schema.json#/$defs/assetId" },
+            "parent_version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+            "lineage": { "type": "object" },
+            "audio": { "type": "object" },
+            "state": { "type": "object" }
+          },
+          "additionalProperties": false
+        },
+        "baseline_analysis": {
+          "type": "object",
+          "required": [
+            "schema_version",
+            "report_id",
+            "asset_id",
+            "version_id",
+            "generated_at",
+            "analyzer",
+            "summary",
+            "measurements"
+          ],
+          "properties": {
+            "schema_version": { "$ref": "./common.schema.json#/$defs/schemaVersion" },
+            "report_id": { "$ref": "./common.schema.json#/$defs/analysisId" },
+            "asset_id": { "$ref": "./common.schema.json#/$defs/assetId" },
+            "version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+            "generated_at": { "$ref": "./common.schema.json#/$defs/isoTimestamp" },
+            "analyzer": { "type": "object" },
+            "summary": { "type": "object" },
+            "measurements": { "type": "object" }
+          },
+          "additionalProperties": false
+        },
+        "candidate_analysis": {
+          "type": "object",
+          "required": [
+            "schema_version",
+            "report_id",
+            "asset_id",
+            "version_id",
+            "generated_at",
+            "analyzer",
+            "summary",
+            "measurements"
+          ],
+          "properties": {
+            "schema_version": { "$ref": "./common.schema.json#/$defs/schemaVersion" },
+            "report_id": { "$ref": "./common.schema.json#/$defs/analysisId" },
+            "asset_id": { "$ref": "./common.schema.json#/$defs/assetId" },
+            "version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+            "generated_at": { "$ref": "./common.schema.json#/$defs/isoTimestamp" },
+            "analyzer": { "type": "object" },
+            "summary": { "type": "object" },
+            "measurements": { "type": "object" },
+            "annotations": { "type": "array" }
+          },
+          "additionalProperties": false
+        },
+        "edit_plan": {
+          "type": "object",
+          "required": [
+            "schema_version",
+            "plan_id",
+            "asset_id",
+            "version_id",
+            "user_request",
+            "created_at",
+            "goals",
+            "steps"
+          ],
+          "properties": {
+            "schema_version": { "$ref": "./common.schema.json#/$defs/schemaVersion" },
+            "plan_id": { "$ref": "./common.schema.json#/$defs/planId" },
+            "asset_id": { "$ref": "./common.schema.json#/$defs/assetId" },
+            "version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+            "user_request": { "type": "string" },
+            "created_at": { "$ref": "./common.schema.json#/$defs/isoTimestamp" },
+            "goals": { "$ref": "./common.schema.json#/$defs/stringArray" },
+            "steps": { "type": "array" }
+          },
+          "additionalProperties": true
+        },
+        "comparison_id": { "$ref": "./common.schema.json#/$defs/comparisonId" },
+        "generated_at": { "$ref": "./common.schema.json#/$defs/isoTimestamp" }
+      }
+    }
+  }
+}

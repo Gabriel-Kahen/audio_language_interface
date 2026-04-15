@@ -25,6 +25,14 @@ describe("parseUserRequest", () => {
     expect(parsed.trim_range).toEqual({ start_seconds: 0.2, end_seconds: 1.2 });
     expect(parsed.fade_out_seconds).toBe(0.1);
   });
+
+  it("parses cleaner and preserve-punch language conservatively", () => {
+    const parsed = parseUserRequest("Clean this sample up a bit without losing punch.");
+
+    expect(parsed.wants_cleaner).toBe(true);
+    expect(parsed.preserve_punch).toBe(true);
+    expect(parsed.intensity).toBe("subtle");
+  });
 });
 
 describe("planEdits", () => {
@@ -41,7 +49,7 @@ describe("planEdits", () => {
     expect(plan.steps[0]?.parameters).toEqual({
       bands: [
         { type: "bell", frequency_hz: 3750, gain_db: -1.5, q: 1.2 },
-        { type: "bell", frequency_hz: 6500, gain_db: -1.13, q: 0.8 },
+        { type: "bell", frequency_hz: 6500, gain_db: -1.01, q: 0.8 },
       ],
     });
     expect(plan.goals).toEqual([
@@ -52,6 +60,56 @@ describe("planEdits", () => {
     expect(plan.constraints).toContain("avoid reducing transient attack more than necessary");
     expect(plan.verification_targets).toContain("reduced energy in the 3 kHz to 4.5 kHz region");
     expect(validateAgainstSchema(editPlanSchema, plan)).toBe(true);
+  });
+
+  it("handles the exact darker-and-less-harsh first-slice prompt", () => {
+    const plan = planEdits({
+      userRequest: "make this loop darker and less harsh",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps).toHaveLength(1);
+    expect(plan.steps[0]?.operation).toBe("parametric_eq");
+    expect(plan.steps[0]?.parameters).toEqual({
+      bands: [
+        { type: "bell", frequency_hz: 3750, gain_db: -2, q: 1.2 },
+        { type: "bell", frequency_hz: 6500, gain_db: -1.5, q: 0.8 },
+      ],
+    });
+  });
+
+  it("maps the exact cleaner first-slice prompt to evidence-backed tonal cleanup", () => {
+    const plan = planEdits({
+      userRequest: "clean this sample up a bit",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps).toHaveLength(1);
+    expect(plan.steps[0]?.operation).toBe("parametric_eq");
+    expect(plan.steps[0]?.parameters).toEqual({
+      bands: [{ type: "bell", frequency_hz: 3750, gain_db: -1.5, q: 1.2 }],
+    });
+    expect(plan.goals).toEqual(["reduce upper-mid harshness"]);
+  });
+
+  it("handles the exact preserve-punch brightness prompt conservatively", () => {
+    const plan = planEdits({
+      userRequest: "reduce brightness without losing punch",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps).toHaveLength(1);
+    expect(plan.steps[0]?.operation).toBe("parametric_eq");
+    expect(plan.steps[0]?.parameters).toEqual({
+      bands: [{ type: "bell", frequency_hz: 6500, gain_db: -1.35, q: 0.8 }],
+    });
+    expect(plan.constraints).toContain("avoid reducing transient attack more than necessary");
   });
 
   it("orders trim before fade and keeps parameters explicit", () => {
@@ -104,6 +162,42 @@ describe("planEdits", () => {
         semanticProfile: createSemanticProfileFixture(),
       }),
     ).toThrow(/could not derive an executable plan/);
+  });
+
+  it("fails clearly for unsupported cleanup operations", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Clean this sample up by removing hiss.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createAnalysisReportFixture(),
+        semanticProfile: createSemanticProfileFixture(),
+      }),
+    ).toThrow(/does not support `hiss`/);
+  });
+
+  it("fails clearly for contradictory tonal directions", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Make it brighter and darker.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createAnalysisReportFixture(),
+        semanticProfile: createSemanticProfileFixture(),
+      }),
+    ).toThrow(/both darker and brighter tonal moves/i);
+  });
+
+  it("fails clearly when cleaner is requested without supported tonal evidence", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Clean this sample up a bit.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: { ...createAnalysisReportFixture(), annotations: [] },
+        semanticProfile: {
+          ...createSemanticProfileFixture(),
+          descriptors: [],
+        },
+      }),
+    ).toThrow(/only supports conservative tonal cleanup/i);
   });
 
   it("rejects time-based requests that exceed the current audio version duration", () => {

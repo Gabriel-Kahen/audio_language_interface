@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0.0",
+  "request_id": "toolreq_01HZZ0LOADAUDIOREQ0000000001",
+  "tool_name": "load_audio",
+  "requested_at": "2026-04-14T20:20:00Z",
+  "session_id": "session_01HZZ0FIRSTSLICE0000000001",
+  "caller": "agent-a-contract-fixture-track",
+  "arguments": {
+    "input_path": "fixtures/audio/phase-1/first-slice-loop.wav",
+    "output_directory": "storage/audio",
+    "normalization_target": {
+      "container_format": "wav",
+      "codec": "pcm_s16le",
+      "sample_rate_hz": 44100,
+      "channels": 2
+    },
+    "tags": ["phase-1", "loop", "tonal-shaping"],
+    "notes": "Import the first-slice drum loop fixture for darker/less-harsh prompt evaluation."
+  }
+}

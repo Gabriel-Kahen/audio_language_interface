@@ -1,4 +1,5 @@
 import { stat } from "node:fs/promises";
+import path from "node:path";
 
 import { execa } from "execa";
 
@@ -47,6 +48,16 @@ export interface ProbeOutputMetadataOptions {
   executor?: FfprobeExecutor | undefined;
 }
 
+export interface ValidateRenderedOutputOptions {
+  outputPath: string;
+  expectedFormat: string;
+  expectedSampleRateHz: number;
+  expectedChannels: number;
+  expectedDurationSeconds: number;
+  metadata: RenderMetadataShape;
+  fileSizeBytes: number;
+}
+
 export class RenderMetadataProbeError extends Error {
   readonly command: FfprobeCommand;
   readonly result: FfprobeExecutionResult;
@@ -58,6 +69,13 @@ export class RenderMetadataProbeError extends Error {
     this.name = "RenderMetadataProbeError";
     this.command = command;
     this.result = result;
+  }
+}
+
+export class RenderOutputValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RenderOutputValidationError";
   }
 }
 
@@ -156,6 +174,58 @@ export function assembleRenderArtifact(options: AssembleRenderArtifactOptions): 
   return artifact;
 }
 
+/** Validates that the emitted artifact metadata matches the materialized file. */
+export function validateRenderedOutput(options: ValidateRenderedOutputOptions): string[] {
+  const outputExtension = path.extname(options.outputPath).replace(/^\./u, "").toLowerCase();
+  const expectedFormat = options.expectedFormat.toLowerCase();
+  const actualFormat = options.metadata.format.toLowerCase();
+  const warnings: string[] = [];
+
+  if (outputExtension.length > 0 && outputExtension !== expectedFormat) {
+    throw new RenderOutputValidationError(
+      `Rendered output path extension .${outputExtension} does not match expected format ${expectedFormat}.`,
+    );
+  }
+
+  if (actualFormat !== expectedFormat) {
+    throw new RenderOutputValidationError(
+      `Rendered output format ${options.metadata.format} does not match expected format ${options.expectedFormat}.`,
+    );
+  }
+
+  if (options.fileSizeBytes <= 0) {
+    throw new RenderOutputValidationError(
+      `Rendered output file is empty or missing size metadata: ${options.outputPath}`,
+    );
+  }
+
+  if (options.metadata.sampleRateHz !== options.expectedSampleRateHz) {
+    warnings.push(
+      `Rendered output sample rate ${options.metadata.sampleRateHz} Hz differs from requested ${options.expectedSampleRateHz} Hz.`,
+    );
+  }
+
+  if (options.metadata.channels !== options.expectedChannels) {
+    warnings.push(
+      `Rendered output channel count ${options.metadata.channels} differs from requested ${options.expectedChannels}.`,
+    );
+  }
+
+  const durationDeltaSeconds = Math.abs(
+    options.metadata.durationSeconds - options.expectedDurationSeconds,
+  );
+  const durationToleranceSeconds =
+    1 / Math.max(options.expectedSampleRateHz, options.metadata.sampleRateHz);
+
+  if (durationDeltaSeconds > durationToleranceSeconds) {
+    warnings.push(
+      `Rendered output duration ${formatNumber(options.metadata.durationSeconds)} s differs from source duration ${formatNumber(options.expectedDurationSeconds)} s.`,
+    );
+  }
+
+  return warnings;
+}
+
 const defaultFfprobeExecutor: FfprobeExecutor = async (
   command,
 ): Promise<FfprobeExecutionResult> => {
@@ -206,4 +276,8 @@ function getErrorCode(error: unknown): string | undefined {
 
   const { code } = error as { code?: unknown };
   return typeof code === "string" ? code : undefined;
+}
+
+function formatNumber(value: number): string {
+  return Number(value.toFixed(6)).toString();
 }

@@ -8,6 +8,7 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 
 - `darker`, `less bright` -> broad high-band `parametric_eq` cut around `6500 Hz`
 - `less harsh`, `smoother` -> bell-cut `parametric_eq` band centered on the analysis harshness annotation, or `3750 Hz` fallback
+- `cleaner`, `clean up a bit` -> conservative tonal cleanup only when analysis or semantics show harshness or muddiness; otherwise reject as underspecified
 - `brighter`, `more presence` -> broad high-band `parametric_eq` boost around `5000 Hz`
 - `less muddy` -> bell-cut `parametric_eq` band around `280 Hz`
 - `warmer`, `more warmth` -> bell-boost `parametric_eq` band around `180 Hz`
@@ -23,5 +24,6 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - Time-based requests are checked against the current `AudioVersion` duration before a plan is emitted.
 - Combined `fade in` and `fade out` coverage must not overlap and must stay at or below `50%` of the available duration.
 - If a request cannot be mapped to an explicit supported operation, planning fails instead of guessing.
+- Requests for denoise, dehiss, declick, declip, or dereverb fail explicitly because those transform categories are not implemented in the current slice.
 - EQ moves are intentionally small: `1.5 dB`, `2 dB`, or `3 dB` depending on request intensity.
 - `preserve punch` currently adds constraints and verification targets rather than dynamics processing, because compressor and limiter planning are not yet supported by the transform implementation.

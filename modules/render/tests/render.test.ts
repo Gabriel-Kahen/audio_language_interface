@@ -1,10 +1,13 @@
+import { execFile as execFileCallback } from "node:child_process";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 
 import Ajv2020Import from "ajv/dist/2020.js";
 import addFormatsImport from "ajv-formats";
 import { afterEach, describe, expect, it } from "vitest";
+import { WaveFile } from "wavefile";
 
 import commonSchema from "../../../contracts/schemas/json/common.schema.json" with { type: "json" };
 import renderArtifactSchema from "../../../contracts/schemas/json/render-artifact.schema.json" with {
@@ -25,6 +28,7 @@ import {
 } from "../src/index.js";
 
 const tempDirs: string[] = [];
+const execFile = promisify(execFileCallback);
 
 afterEach(async () => {
   await Promise.all(
@@ -167,9 +171,9 @@ describe("renderPreview", () => {
       probeExecutor: createFakeProbeExecutor({
         format: "mp3",
         codec: "mp3",
-        sampleRateHz: 32000,
-        channels: 1,
-        durationSeconds: 4.25,
+        sampleRateHz: 44100,
+        channels: 2,
+        durationSeconds: 4,
       }),
     });
 
@@ -184,9 +188,9 @@ describe("renderPreview", () => {
         path: "renders/render_preview123.mp3",
         format: "mp3",
         codec: "mp3",
-        sample_rate_hz: 32000,
-        channels: 1,
-        duration_seconds: 4.25,
+        sample_rate_hz: 44100,
+        channels: 2,
+        duration_seconds: 4,
       },
       loudness_summary: {
         integrated_lufs: -15.1,
@@ -264,6 +268,52 @@ describe("renderPreview", () => {
 
     expect(result.artifact.warnings).toEqual(["[mp3 @ 0x1] Warning: encoder delay mismatch"]);
   });
+
+  it("adds validation warnings when the rendered output differs from the requested shape", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createAudioVersionFixture(workspaceRoot);
+
+    const result = await renderPreview({
+      workspaceRoot,
+      version,
+      sampleRateHz: 44100,
+      channels: 2,
+      executor: createFakeExecutor("preview"),
+      probeExecutor: createFakeProbeExecutor({
+        format: "mp3",
+        codec: "mp3",
+        sampleRateHz: 32000,
+        channels: 1,
+        durationSeconds: 4.05,
+      }),
+    });
+
+    expect(result.artifact.warnings).toEqual([
+      "Rendered output sample rate 32000 Hz differs from requested 44100 Hz.",
+      "Rendered output channel count 1 differs from requested 2.",
+      "Rendered output duration 4.05 s differs from source duration 4 s.",
+    ]);
+  });
+
+  it("rejects renders whose probed format does not match the requested preview format", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createAudioVersionFixture(workspaceRoot);
+
+    await expect(
+      renderPreview({
+        workspaceRoot,
+        version,
+        executor: createFakeExecutor("preview"),
+        probeExecutor: createFakeProbeExecutor({
+          format: "wav",
+          codec: "pcm_s16le",
+          sampleRateHz: 44100,
+          channels: 2,
+          durationSeconds: 4,
+        }),
+      }),
+    ).rejects.toThrow(/does not match expected format/);
+  });
 });
 
 describe("renderExport", () => {
@@ -309,6 +359,36 @@ describe("renderExport", () => {
     expect(result.command.outputPath.endsWith("render_final123.flac")).toBe(true);
     expect(validateRenderArtifact(result.artifact)).toBe(true);
   });
+
+  it("renders a real final export whose artifact metadata matches the materialized file", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createRealAudioVersionFixture(workspaceRoot, {
+      durationSeconds: 0.5,
+      sampleRateHz: 44100,
+      channels: 1,
+    });
+
+    const result = await renderExport({
+      workspaceRoot,
+      version,
+      renderId: "render_finalreal",
+      format: "flac",
+      sampleRateHz: 22050,
+      channels: 1,
+    });
+    const outputPath = path.join(workspaceRoot, result.artifact.output.path);
+    const probed = await probeAudioMetadata(outputPath);
+
+    expect(result.artifact.output.format).toBe("flac");
+    expect(result.artifact.output.sample_rate_hz).toBe(22050);
+    expect(result.artifact.output.channels).toBe(1);
+    expect(result.artifact.output.file_size_bytes).toBeGreaterThan(0);
+    expect(probed.format).toBe(result.artifact.output.format);
+    expect(probed.sampleRateHz).toBe(result.artifact.output.sample_rate_hz);
+    expect(probed.channels).toBe(result.artifact.output.channels);
+    expect(probed.durationSeconds).toBeCloseTo(result.artifact.output.duration_seconds, 3);
+    expect(validateRenderArtifact(result.artifact)).toBe(true);
+  });
 });
 
 async function createWorkspace(): Promise<string> {
@@ -338,6 +418,50 @@ async function createAudioVersionFixture(workspaceRoot: string): Promise<AudioVe
       duration_seconds: 4,
       frame_count: 176400,
       channel_layout: "stereo",
+    },
+    state: {
+      is_original: true,
+      is_preview: false,
+    },
+  };
+}
+
+async function createRealAudioVersionFixture(
+  workspaceRoot: string,
+  options: {
+    durationSeconds: number;
+    sampleRateHz: number;
+    channels: number;
+  },
+): Promise<AudioVersion> {
+  const storageDir = path.join(workspaceRoot, "storage", "audio");
+  await mkdir(storageDir, { recursive: true });
+  const totalFrames = Math.round(options.durationSeconds * options.sampleRateHz);
+  const samples = Array.from({ length: options.channels }, () =>
+    Array.from({ length: totalFrames }, (_, index) =>
+      Math.round(Math.sin((2 * Math.PI * 220 * index) / options.sampleRateHz) * 16000),
+    ),
+  );
+  const wav = new WaveFile();
+  wav.fromScratch(options.channels, options.sampleRateHz, "16", samples);
+  await writeFile(path.join(storageDir, "source.wav"), Buffer.from(wav.toBuffer()));
+
+  return {
+    schema_version: "1.0.0",
+    version_id: "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+    asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+    lineage: {
+      created_at: "2026-04-14T20:20:05Z",
+      created_by: "modules/io",
+      reason: "initial import",
+    },
+    audio: {
+      storage_ref: "storage/audio/source.wav",
+      sample_rate_hz: options.sampleRateHz,
+      channels: options.channels,
+      duration_seconds: options.durationSeconds,
+      frame_count: totalFrames,
+      ...(options.channels === 1 ? { channel_layout: "mono" } : { channel_layout: "stereo" }),
     },
     state: {
       is_original: true,
@@ -410,4 +534,33 @@ function validateRenderArtifact(payload: unknown): boolean {
   }
 
   return true;
+}
+
+async function probeAudioMetadata(absolutePath: string): Promise<{
+  format: string;
+  sampleRateHz: number;
+  channels: number;
+  durationSeconds: number;
+}> {
+  const { stdout } = await execFile("ffprobe", [
+    "-v",
+    "error",
+    "-show_entries",
+    "format=format_name,duration:stream=sample_rate,channels",
+    "-of",
+    "json",
+    absolutePath,
+  ]);
+  const payload = JSON.parse(stdout) as {
+    streams?: Array<{ sample_rate?: string; channels?: number }>;
+    format?: { format_name?: string; duration?: string };
+  };
+  const stream = payload.streams?.[0];
+
+  return {
+    format: String(payload.format?.format_name).split(",")[0] ?? "",
+    sampleRateHz: Number(stream?.sample_rate),
+    channels: Number(stream?.channels),
+    durationSeconds: Number(payload.format?.duration),
+  };
 }

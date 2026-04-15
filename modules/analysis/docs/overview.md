@@ -52,7 +52,7 @@ The emitted `AnalysisReport` always includes these measurement families:
 
 It may also include:
 
-- `annotations` for clipping and broad spectral harshness
+- `annotations` for clipping, localized brightness, localized harshness, and transient-impact hotspots
 - `segments` describing `silence`, `active`, or a synthetic full-file `loop` segment
 - `source_character` for a coarse baseline class such as `drum_loop`, `tonal_phrase`, `ambience`, or `mixed_program`
 - `summary.confidence` as a bounded heuristic confidence score from `0` to `1`
@@ -68,8 +68,12 @@ This baseline is intentionally simple and should be treated as a reproducible he
 - `dynamics.rms_short_term_dbfs` is the median RMS of fixed 50 ms windows.
 - `dynamics.dynamic_range_db` is `p95(window RMS) - p10(window RMS)` over those fixed windows.
 - `dynamics.transient_density_per_second` comes from the segment analyzer and counts windows whose level rises by more than 6 dB and exceeds `-24 dBFS`.
-- `spectral_balance` comes from a simple windowed DFT on the mono signal using a Hann window, 512-sample frames, and at most 256 analysis hops.
+- `dynamics.transient_crest_db` is the 90th-percentile peak-minus-RMS crest value across active 50 ms windows, and `dynamics.punch_window_ratio` is the fraction of active windows whose crest is at least 9 dB at levels above `-30 dBFS`.
+- `spectral_balance` comes from a simple windowed DFT on the mono signal using a Hann window, 512-sample frames, and at most 256 overlapping analysis hops.
 - Spectral bands are hard-coded as low `<250 Hz`, mid `250 Hz to <4000 Hz`, and high `>=4000 Hz`.
+- `spectral_balance.brightness_tilt_db` is `high_band_db - low_band_db`.
+- `spectral_balance.presence_band_db` measures average energy in the `2500 Hz to <6000 Hz` band.
+- `spectral_balance.harshness_ratio_db` is `presence_band_db - low_mid_band_db`, where `low_mid_band_db` is measured over `250 Hz to <2000 Hz`.
 - `stereo.width` is side RMS divided by `mid RMS + side RMS` for the first two channels.
 - `stereo.correlation` is a simple Pearson-style correlation of the first two channels.
 - `stereo.balance_db` is left RMS dBFS minus right RMS dBFS.
@@ -125,7 +129,7 @@ See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, an
 - Only `.wav` inputs are supported by the baseline loader even though `AudioVersion` itself is container-agnostic.
 - Analysis reads the entire file into memory.
 - Multi-channel files beyond stereo are loaded, but stereo metrics only inspect the first two channels.
-- Harshness detection is full-span and broad-band only; it does not localize short events.
+- Brightness, harshness, and transient-impact annotations are threshold-based heuristics, not perceptual models.
 - Segment detection is energy-threshold based and only emits `active`, `silence`, or a synthetic full-length `loop` segment.
 - Source classification is a coarse heuristic and not a trained classifier.
 - Pitch detection uses a short autocorrelation-like pass over the beginning of the file only.
@@ -144,3 +148,6 @@ Current coverage in `modules/analysis/tests/analyze-audio.test.ts` validates:
 - silence and active segment emission on a simple stereo fixture
 - pitched signal classification on a tonal fixture
 - clipping detection and transient density on a pulse-heavy fixture
+- localized brightness annotations and brightness tilt measurements
+- localized harshness annotations and presence-band evidence
+- transient-impact annotations and punch-window metrics

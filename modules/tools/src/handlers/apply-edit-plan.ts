@@ -1,6 +1,6 @@
 import type { AudioVersion, EditPlan, OperationName } from "@audio-language-interface/transforms";
 
-import { ToolInputError } from "../errors.js";
+import { createProvenanceMismatchError, createUnsupportedOperationError } from "../errors.js";
 import type { ToolDefinition, ToolRequest } from "../types.js";
 import {
   assertToolResultAudioVersion,
@@ -43,16 +43,24 @@ function toCommandShape(command: {
 
 function validateVersionConsistency(request: ToolRequest, audioVersion: AudioVersion): void {
   if (request.asset_id !== undefined && request.asset_id !== audioVersion.asset_id) {
-    throw new ToolInputError(
-      "invalid_arguments",
+    throw createProvenanceMismatchError(
+      "request.asset_id",
       "Request asset_id does not match arguments.audio_version.asset_id.",
+      {
+        request_asset_id: request.asset_id,
+        argument_asset_id: audioVersion.asset_id,
+      },
     );
   }
 
   if (request.version_id !== undefined && request.version_id !== audioVersion.version_id) {
-    throw new ToolInputError(
-      "invalid_arguments",
+    throw createProvenanceMismatchError(
+      "request.version_id",
       "Request version_id does not match arguments.audio_version.version_id.",
+      {
+        request_version_id: request.version_id,
+        argument_version_id: audioVersion.version_id,
+      },
     );
   }
 }
@@ -71,30 +79,34 @@ function validateArguments(value: unknown, request: ToolRequest): ApplyEditPlanA
   validateVersionConsistency(request, audioVersion);
 
   if (editPlan.asset_id !== audioVersion.asset_id) {
-    throw new ToolInputError(
-      "invalid_arguments",
+    throw createProvenanceMismatchError(
+      "arguments.edit_plan.asset_id",
       "arguments.edit_plan.asset_id must match arguments.audio_version.asset_id.",
-      { field: "arguments.edit_plan.asset_id" },
+      {
+        plan_asset_id: editPlan.asset_id,
+        audio_version_asset_id: audioVersion.asset_id,
+      },
     );
   }
 
   if (editPlan.version_id !== audioVersion.version_id) {
-    throw new ToolInputError(
-      "invalid_arguments",
+    throw createProvenanceMismatchError(
+      "arguments.edit_plan.version_id",
       "arguments.edit_plan.version_id must match arguments.audio_version.version_id.",
-      { field: "arguments.edit_plan.version_id" },
+      {
+        plan_version_id: editPlan.version_id,
+        audio_version_version_id: audioVersion.version_id,
+      },
     );
   }
 
   for (const [index, step] of editPlan.steps.entries()) {
     if (!SUPPORTED_EDIT_PLAN_OPERATIONS.has(step.operation)) {
-      throw new ToolInputError(
-        "invalid_arguments",
-        `arguments.edit_plan.steps[${index}].operation '${step.operation}' is not supported by apply_edit_plan.`,
-        {
-          field: `arguments.edit_plan.steps[${index}].operation`,
-          supported_operations: [...SUPPORTED_EDIT_PLAN_OPERATIONS],
-        },
+      throw createUnsupportedOperationError(
+        `arguments.edit_plan.steps[${index}].operation`,
+        step.operation,
+        [...SUPPORTED_EDIT_PLAN_OPERATIONS],
+        "apply_edit_plan",
       );
     }
   }
@@ -115,6 +127,16 @@ export const applyEditPlanTool: ToolDefinition<ApplyEditPlanArguments, Record<st
     backing_module: "transforms",
     required_arguments: ["audio_version", "edit_plan"],
     optional_arguments: ["output_dir", "output_version_id", "record_id"],
+    error_codes: [
+      "invalid_arguments",
+      "unsupported_operation",
+      "provenance_mismatch",
+      "invalid_result_contract",
+      "handler_failed",
+    ],
+    capabilities: {
+      supported_operations: [...SUPPORTED_EDIT_PLAN_OPERATIONS],
+    },
   },
   validateArguments,
   async execute(args, context) {

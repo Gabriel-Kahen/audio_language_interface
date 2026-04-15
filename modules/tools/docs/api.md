@@ -10,6 +10,8 @@
 - `assertValidToolResponse(response)`
 - `isValidToolResponse(response)`
 
+`describeTools()` returns stable per-tool metadata including required and optional arguments, supported error codes, and any explicit capabilities exposed by the tool layer.
+
 ## Supported callable tools
 
 ### `load_audio`
@@ -50,6 +52,8 @@ Returns a `report` object containing the `AnalysisReport`. The include flags onl
   - `record_id`
 
 Returns `output_version`, `transform_record`, and normalized FFmpeg `commands`. Runtime warnings are surfaced in top-level `ToolResponse.warnings`.
+
+`describeTools()` also exposes `apply_edit_plan.capabilities.supported_operations` so callers can reject unsupported plan steps before execution.
 
 ### `render_preview`
 
@@ -93,8 +97,15 @@ Returns a `comparison_report`.
 ## Error codes
 
 - `unknown_tool`: the request envelope is valid but `tool_name` is not registered.
+- `provenance_mismatch`: the request envelope metadata does not match the canonical asset/version lineage carried in nested contract objects.
 - `invalid_arguments`: the envelope is valid but the tool-specific `arguments` payload is malformed.
+- `unsupported_operation`: the request is structurally valid but asks a tool to execute an operation that this tool surface does not support.
+- `invalid_result_contract`: a backing module returned a payload that does not satisfy the canonical contract expected at the tool boundary.
 - `handler_failed`: the handler threw an unexpected runtime error.
+
+Unknown-tool responses include `error.details.available_tools` to help a caller recover without an extra capability lookup.
+
+Provenance mismatch responses include a `field` plus the conflicting ids so a caller can repair and retry deterministically.
 
 ## Current non-goals
 

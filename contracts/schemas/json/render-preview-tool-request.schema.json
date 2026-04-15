@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/render-preview-tool-request.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "tool_name", "arguments", "requested_at"],
+  "properties": {
+    "schema_version": { "$ref": "./common.schema.json#/$defs/schemaVersion" },
+    "request_id": { "$ref": "./common.schema.json#/$defs/requestId" },
+    "tool_name": { "const": "render_preview" },
+    "requested_at": { "$ref": "./common.schema.json#/$defs/isoTimestamp" },
+    "session_id": { "$ref": "./common.schema.json#/$defs/sessionId" },
+    "asset_id": { "$ref": "./common.schema.json#/$defs/assetId" },
+    "version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+    "caller": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+    "arguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["audio_version"],
+      "properties": {
+        "audio_version": {
+          "type": "object",
+          "required": ["schema_version", "version_id", "asset_id", "lineage", "audio"],
+          "properties": {
+            "schema_version": { "$ref": "./common.schema.json#/$defs/schemaVersion" },
+            "version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+            "asset_id": { "$ref": "./common.schema.json#/$defs/assetId" },
+            "parent_version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+            "lineage": { "type": "object" },
+            "audio": { "type": "object" },
+            "state": { "type": "object" }
+          },
+          "additionalProperties": false
+        },
+        "output_dir": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+        "output_file_name": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+        "render_id": { "$ref": "./common.schema.json#/$defs/renderId" },
+        "bitrate": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+        "sample_rate_hz": { "type": "integer", "minimum": 1 },
+        "channels": { "type": "integer", "minimum": 1 },
+        "loudness_summary": { "$ref": "./common.schema.json#/$defs/stringMapOfNumbers" }
+      }
+    }
+  }
+}

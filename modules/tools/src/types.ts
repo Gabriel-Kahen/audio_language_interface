@@ -1,5 +1,13 @@
 export const TOOL_SCHEMA_VERSION = "1.0.0" as const;
 
+export type ToolErrorCode =
+  | "unknown_tool"
+  | "invalid_arguments"
+  | "unsupported_operation"
+  | "provenance_mismatch"
+  | "invalid_result_contract"
+  | "handler_failed";
+
 export interface ToolRequest {
   schema_version: typeof TOOL_SCHEMA_VERSION;
   request_id: string;
@@ -13,7 +21,7 @@ export interface ToolRequest {
 }
 
 export interface ToolResponseError {
-  code: string;
+  code: ToolErrorCode;
   message: string;
   details?: Record<string, unknown>;
 }
@@ -40,6 +48,8 @@ export interface ToolDescriptor {
   backing_module: "io" | "analysis" | "transforms" | "render" | "compare";
   required_arguments: readonly string[];
   optional_arguments: readonly string[];
+  error_codes: readonly ToolErrorCode[];
+  capabilities?: Record<string, unknown>;
 }
 
 export interface ToolContext {
@@ -50,11 +60,11 @@ export interface ToolContext {
 
 export interface ToolDefinition<TArgs, TResult extends Record<string, unknown>> {
   descriptor: ToolDescriptor;
-  validateArguments: (value: unknown, request: ToolRequest) => TArgs;
-  execute: (args: TArgs, context: ToolContext) => Promise<ToolHandlerResult<TResult>>;
+  validateArguments(value: unknown, request: ToolRequest): TArgs;
+  execute(args: TArgs, context: ToolContext): Promise<ToolHandlerResult<TResult>>;
 }
 
-export type AnyToolDefinition = ToolDefinition<any, Record<string, unknown>>;
+export type AnyToolDefinition = ToolDefinition<unknown, Record<string, unknown>>;
 
 export interface ToolRegistry {
   get: (toolName: string) => AnyToolDefinition | undefined;

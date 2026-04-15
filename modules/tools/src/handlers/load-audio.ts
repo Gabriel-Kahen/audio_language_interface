@@ -88,6 +88,7 @@ export const loadAudioTool: ToolDefinition<LoadAudioArguments, Record<string, un
     backing_module: "io",
     required_arguments: ["input_path"],
     optional_arguments: ["output_directory", "normalization_target", "tags", "notes"],
+    error_codes: ["invalid_arguments", "invalid_result_contract", "handler_failed"],
   },
   validateArguments,
   async execute(args, context) {

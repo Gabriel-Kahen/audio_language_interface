@@ -5,7 +5,7 @@ import type {
   EditPlan,
 } from "@audio-language-interface/compare";
 
-import { ToolInputError } from "../errors.js";
+import { createProvenanceMismatchError } from "../errors.js";
 import type { ToolDefinition } from "../types.js";
 import {
   assertToolResultComparisonReport,
@@ -32,18 +32,24 @@ function validateAnalysisProvenance(
   analysis: AnalysisReport,
 ): void {
   if (version.asset_id !== analysis.asset_id) {
-    throw new ToolInputError(
-      "invalid_arguments",
+    throw createProvenanceMismatchError(
+      fieldName,
       `${fieldName}.asset_id must match its paired AudioVersion asset_id.`,
-      { field: fieldName },
+      {
+        analysis_asset_id: analysis.asset_id,
+        version_asset_id: version.asset_id,
+      },
     );
   }
 
   if (version.version_id !== analysis.version_id) {
-    throw new ToolInputError(
-      "invalid_arguments",
+    throw createProvenanceMismatchError(
+      fieldName,
       `${fieldName}.version_id must match its paired AudioVersion version_id.`,
-      { field: fieldName },
+      {
+        analysis_version_id: analysis.version_id,
+        version_version_id: version.version_id,
+      },
     );
   }
 }
@@ -57,18 +63,25 @@ function validateEditPlanProvenance(
     editPlan.asset_id !== baselineVersion.asset_id ||
     editPlan.asset_id !== candidateVersion.asset_id
   ) {
-    throw new ToolInputError(
-      "invalid_arguments",
+    throw createProvenanceMismatchError(
+      "arguments.edit_plan.asset_id",
       "arguments.edit_plan.asset_id must match both compared AudioVersion asset_id values.",
-      { field: "arguments.edit_plan.asset_id" },
+      {
+        plan_asset_id: editPlan.asset_id,
+        baseline_asset_id: baselineVersion.asset_id,
+        candidate_asset_id: candidateVersion.asset_id,
+      },
     );
   }
 
   if (editPlan.version_id !== baselineVersion.version_id) {
-    throw new ToolInputError(
-      "invalid_arguments",
+    throw createProvenanceMismatchError(
+      "arguments.edit_plan.version_id",
       "arguments.edit_plan.version_id must match arguments.baseline_version.version_id.",
-      { field: "arguments.edit_plan.version_id" },
+      {
+        plan_version_id: editPlan.version_id,
+        baseline_version_id: baselineVersion.version_id,
+      },
     );
   }
 }
@@ -129,6 +142,12 @@ export const compareVersionsTool: ToolDefinition<
       "candidate_analysis",
     ],
     optional_arguments: ["edit_plan", "comparison_id", "generated_at"],
+    error_codes: [
+      "invalid_arguments",
+      "provenance_mismatch",
+      "invalid_result_contract",
+      "handler_failed",
+    ],
   },
   validateArguments,
   async execute(args, context) {

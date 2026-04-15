@@ -146,6 +146,7 @@ The current regression warning kinds are:
 - `excessive_loudness_shift`
 - `reduced_true_peak_headroom`
 - `stereo_collapse`
+- `lost_punch`
 
 ### Render regressions
 
@@ -167,11 +168,11 @@ Goal alignment is currently heuristic and keyword-driven. `evaluateGoalAlignment
 
 ### Supported goal families
 
-- harshness reduction: matches fragments like `harsh` or `upper-mid`
-- darkening / brightness reduction: matches fragments like `bright`, `darker`, or `darken`
-- punch preservation: matches fragments like `punch`, `transient`, or `attack`
+- harshness reduction: matches fragments like `harsh`, `upper-mid`, or `smoother`
+- darkening / brightness reduction: matches fragments like `bright`, `brightness`, `darker`, `darken`, or `top end`
+- punch preservation: matches fragments like `punch`, `transient`, `attack`, or `impact`
 - width increase: matches fragments like `wide` or `wider`
-- noise reduction: matches fragments like `noise`, `clean`, or `denoise`
+- cleanup / noise reduction: matches phrases like `clean up`, `cleaner`, `noise`, `denoise`, `hiss`, or `hum`
 - clipping avoidance: matches fragments like `clip` or `clipping`
 - loudness stability: matches fragments like `loud`, `quieter`, or `volume`
 
@@ -186,10 +187,12 @@ Goal alignment is currently heuristic and keyword-driven. `evaluateGoalAlignment
 
 - Goal matching is substring-based, not schema-driven or ontology-driven.
 - Unsupported goal wording returns `unknown`.
+- Broad wording like `clean it` or `make it better` is treated as ambiguous and returns `unknown`.
 - The current implementation only supports width increase, not width reduction.
 - Brightness-related matching is currently biased toward darkening goals.
 - Loudness-related matching currently checks magnitude of change more than direction of intent.
 - Punch-related goals are treated as preservation checks, not as explicit punch-increase requests.
+- Cleanup-related goals only score measurable noise-floor reduction or clipping removal.
 
 ## Summary generation
 

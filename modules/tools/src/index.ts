@@ -1,4 +1,4 @@
-export { ToolEnvelopeValidationError, ToolInputError } from "./errors.js";
+export { ToolEnvelopeValidationError, ToolExecutionError, ToolInputError } from "./errors.js";
 export { executeToolRequest } from "./execute-tool-request.js";
 export { defaultToolsRuntime, resolveToolsRuntime, type ToolsRuntime } from "./runtime.js";
 export { createToolRegistry, defaultToolRegistry, describeTools } from "./tool-registry.js";
@@ -7,6 +7,7 @@ export type {
   ToolContext,
   ToolDefinition,
   ToolDescriptor,
+  ToolErrorCode,
   ToolHandlerResult,
   ToolRegistry,
   ToolRequest,

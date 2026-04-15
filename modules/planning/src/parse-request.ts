@@ -20,8 +20,13 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "brighter",
       "brighten",
       "more presence",
-      "clearer",
       "more air",
+    ]),
+    wants_cleaner: containsAny(normalizedRequest, [
+      "cleaner",
+      "clean up",
+      "clean this",
+      "clean it up",
     ]),
     wants_less_harsh: containsAny(normalizedRequest, [
       "less harsh",
@@ -44,9 +49,13 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "keep the punch",
       "keep punch",
       "preserve punch",
+      "preserve the punch",
+      "without losing punch",
+      "without losing the punch",
       "keep the transients",
       "preserve transient",
     ]),
+    unsupported_requests: parseUnsupportedRequests(normalizedRequest),
     intensity: parseIntensity(normalizedRequest),
   };
 
@@ -81,7 +90,7 @@ function containsAny(value: string, phrases: string[]): boolean {
 }
 
 function parseIntensity(value: string): ParsedEditObjectives["intensity"] {
-  if (containsAny(value, ["slightly", "a little", "subtle", "slight"])) {
+  if (containsAny(value, ["slightly", "a little", "a bit", "subtle", "slight"])) {
     return "subtle";
   }
 
@@ -90,6 +99,46 @@ function parseIntensity(value: string): ParsedEditObjectives["intensity"] {
   }
 
   return "default";
+}
+
+function parseUnsupportedRequests(value: string): string[] {
+  const matches = new Set<string>();
+
+  collectMatchedPhrases(matches, value, [
+    "remove noise",
+    "reduce noise",
+    "noise reduction",
+    "denoise",
+    "de noise",
+    "hiss",
+    "dehiss",
+    "de hiss",
+    "hum",
+    "buzz",
+    "click",
+    "clicks",
+    "declick",
+    "de click",
+    "pop",
+    "pops",
+    "declip",
+    "de clip",
+    "repair clipping",
+    "remove reverb",
+    "reduce reverb",
+    "de reverb",
+    "dereverb",
+  ]);
+
+  return [...matches];
+}
+
+function collectMatchedPhrases(matches: Set<string>, value: string, phrases: string[]): void {
+  for (const phrase of phrases) {
+    if (value.includes(phrase)) {
+      matches.add(phrase);
+    }
+  }
 }
 
 function parseTrimRange(value: string): ParsedEditObjectives["trim_range"] {

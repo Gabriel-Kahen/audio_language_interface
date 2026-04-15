@@ -47,7 +47,7 @@ describe("history module", () => {
       "asset_01HZX8A7J2V3M4N5P6Q7R8S9TA",
       "ver_01HZX8B7J2V3M4N5P6Q7R8S9TA",
     ]);
-    expect(graph.metadata?.provenance?.["ver_01HZX8B7J2V3M4N5P6Q7R8S9TA"]?.asset_id).toBe(
+    expect(graph.metadata?.provenance?.ver_01HZX8B7J2V3M4N5P6Q7R8S9TA?.asset_id).toBe(
       "asset_01HZX8A7J2V3M4N5P6Q7R8S9TA",
     );
   });
@@ -140,12 +140,12 @@ describe("history module", () => {
     });
 
     expect(validateSessionGraph(graph).valid).toBe(true);
-    expect(graph.metadata?.provenance?.["ver_01HZX8G7J2V3M4N5P6Q7R8S9T0"]?.parent_version_id).toBe(
+    expect(graph.metadata?.provenance?.ver_01HZX8G7J2V3M4N5P6Q7R8S9T0?.parent_version_id).toBe(
       "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
     );
-    expect(
-      graph.metadata?.provenance?.["ver_01HZX8G7J2V3M4N5P6Q7R8S9T0"]?.transform_record_id,
-    ).toBe("transform_01HZX8F7J2V3M4N5P6Q7R8S9T0");
+    expect(graph.metadata?.provenance?.ver_01HZX8G7J2V3M4N5P6Q7R8S9T0?.transform_record_id).toBe(
+      "transform_01HZX8F7J2V3M4N5P6Q7R8S9T0",
+    );
     expect(
       graph.edges.some(
         (edge) =>

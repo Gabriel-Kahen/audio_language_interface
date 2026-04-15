@@ -1,0 +1,251 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/load-audio-tool-response.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "tool_name", "status", "completed_at"],
+  "properties": {
+    "schema_version": {
+      "$ref": "./common.schema.json#/$defs/schemaVersion"
+    },
+    "request_id": {
+      "$ref": "./common.schema.json#/$defs/requestId"
+    },
+    "tool_name": {
+      "const": "load_audio"
+    },
+    "status": {
+      "$ref": "./common.schema.json#/$defs/toolStatus"
+    },
+    "completed_at": {
+      "$ref": "./common.schema.json#/$defs/isoTimestamp"
+    },
+    "warnings": {
+      "$ref": "./common.schema.json#/$defs/stringArray"
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object"
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset",
+        "version",
+        "source_metadata",
+        "materialized_metadata",
+        "output_path",
+        "normalized"
+      ],
+      "properties": {
+        "asset": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema_version", "asset_id", "display_name", "source", "media"],
+          "properties": {
+            "schema_version": {
+              "$ref": "./common.schema.json#/$defs/schemaVersion"
+            },
+            "asset_id": {
+              "$ref": "./common.schema.json#/$defs/assetId"
+            },
+            "display_name": {
+              "$ref": "./common.schema.json#/$defs/nonEmptyString"
+            },
+            "source": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "imported_at"],
+              "properties": {
+                "kind": {
+                  "$ref": "./common.schema.json#/$defs/sourceKind"
+                },
+                "uri": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "imported_at": {
+                  "$ref": "./common.schema.json#/$defs/isoTimestamp"
+                }
+              }
+            },
+            "media": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "container_format",
+                "codec",
+                "sample_rate_hz",
+                "channels",
+                "duration_seconds"
+              ],
+              "properties": {
+                "container_format": {
+                  "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                },
+                "codec": {
+                  "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                },
+                "sample_rate_hz": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "channels": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "bit_depth": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "channel_layout": {
+                  "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                },
+                "duration_seconds": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              }
+            },
+            "tags": {
+              "$ref": "./common.schema.json#/$defs/stringArray"
+            },
+            "notes": {
+              "type": "string"
+            }
+          }
+        },
+        "version": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema_version", "version_id", "asset_id", "lineage", "audio"],
+          "properties": {
+            "schema_version": {
+              "$ref": "./common.schema.json#/$defs/schemaVersion"
+            },
+            "version_id": {
+              "$ref": "./common.schema.json#/$defs/versionId"
+            },
+            "asset_id": {
+              "$ref": "./common.schema.json#/$defs/assetId"
+            },
+            "lineage": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["created_at", "created_by"],
+              "properties": {
+                "created_at": {
+                  "$ref": "./common.schema.json#/$defs/isoTimestamp"
+                },
+                "created_by": {
+                  "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            },
+            "audio": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "storage_ref",
+                "sample_rate_hz",
+                "channels",
+                "duration_seconds",
+                "frame_count"
+              ],
+              "properties": {
+                "storage_ref": {
+                  "$ref": "./common.schema.json#/$defs/workspacePath"
+                },
+                "sample_rate_hz": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "channels": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "duration_seconds": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "frame_count": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "channel_layout": {
+                  "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                }
+              }
+            },
+            "state": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "is_original": {
+                  "type": "boolean"
+                },
+                "is_preview": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        "source_metadata": {
+          "$ref": "./common.schema.json#/$defs/toolAudioMetadata"
+        },
+        "materialized_metadata": {
+          "$ref": "./common.schema.json#/$defs/toolAudioMetadata"
+        },
+        "output_path": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "normalized": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "error"
+          }
+        }
+      },
+      "then": {
+        "required": ["error"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "required": ["result"]
+      }
+    }
+  ]
+}

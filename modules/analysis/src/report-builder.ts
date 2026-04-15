@@ -67,8 +67,9 @@ function buildPlainTextSummary(
   const brightness = describeBrightness(measurements.spectral_balance);
   const stereo = describeStereo(measurements.stereo.width);
   const dynamics =
-    measurements.dynamics.transient_density_per_second >= 1.5
-      ? "with strong transient activity"
+    measurements.dynamics.transient_density_per_second >= 1.5 ||
+    (measurements.dynamics.transient_crest_db ?? 0) >= 10
+      ? "with strong transient impact"
       : "with restrained transient activity";
   const artifacts = measurements.artifacts.clipping_detected
     ? "Clipping is present."
@@ -78,11 +79,13 @@ function buildPlainTextSummary(
 }
 
 function describeBrightness(measurements: AnalysisMeasurements["spectral_balance"]): string {
-  const highMinusLow = measurements.high_band_db - measurements.low_band_db;
-  if (highMinusLow > 6) {
+  const brightnessTiltDb =
+    measurements.brightness_tilt_db ?? measurements.high_band_db - measurements.low_band_db;
+
+  if (brightnessTiltDb > 6) {
     return "bright";
   }
-  if (highMinusLow < -6) {
+  if (brightnessTiltDb < -6) {
     return "dark";
   }
   return "balanced";

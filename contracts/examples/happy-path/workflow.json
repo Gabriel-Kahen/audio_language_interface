@@ -1,0 +1,39 @@
+{
+  "scenario_id": "first_slice_tonal_cleanup",
+  "prompt": "Make this loop darker and less harsh without losing punch.",
+  "fixture_id": "fixture_phase1_first_slice_loop_synthetic",
+  "contract_paths": {
+    "tool_requests": [
+      "contracts/examples/load-audio-tool-request.json",
+      "contracts/examples/analyze-audio-tool-request.json",
+      "contracts/examples/apply-edit-plan-tool-request.json",
+      "contracts/examples/render-preview-tool-request.json",
+      "contracts/examples/compare-versions-tool-request.json"
+    ],
+    "tool_responses": [
+      "contracts/examples/load-audio-tool-response.json",
+      "contracts/examples/analyze-audio-tool-response.json",
+      "contracts/examples/apply-edit-plan-tool-response.json",
+      "contracts/examples/render-preview-tool-response.json",
+      "contracts/examples/compare-versions-tool-response.json"
+    ],
+    "canonical_artifacts": [
+      "contracts/examples/happy-path/candidate-analysis-report.json",
+      "contracts/examples/happy-path/semantic-profile.json",
+      "contracts/examples/happy-path/session-graph.json"
+    ]
+  },
+  "expected_transitions": {
+    "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+    "baseline_version_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
+    "candidate_version_id": "ver_01HZZ0FIRSTSLICEEDIT00000001",
+    "baseline_analysis_id": "analysis_01HZZ0FIRSTSLICEBASE000001",
+    "candidate_analysis_id": "analysis_01HZZ0FIRSTSLICEEDIT000001",
+    "plan_id": "plan_01HZZ0FIRSTSLICEPLAN00000001",
+    "transform_record_id": "transform_01HZZ0FIRSTSLICERECORD0001",
+    "render_id": "render_01HZZ0FIRSTSLICEPREVIEW00001",
+    "comparison_id": "compare_01HZZ0FIRSTSLICECOMPARE0001",
+    "semantic_profile_id": "semantic_01HZZ0FIRSTSLICEPROFILE00001",
+    "session_id": "session_01HZZ0FIRSTSLICE0000000001"
+  }
+}

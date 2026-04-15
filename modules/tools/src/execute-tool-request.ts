@@ -1,7 +1,12 @@
-import { ToolInputError } from "./errors.js";
+import { ToolExecutionError, ToolInputError } from "./errors.js";
 import { resolveToolsRuntime } from "./runtime.js";
 import { defaultToolRegistry } from "./tool-registry.js";
-import type { ExecuteToolRequestOptions, ToolRequest, ToolResponse } from "./types.js";
+import type {
+  ExecuteToolRequestOptions,
+  ToolErrorCode,
+  ToolRequest,
+  ToolResponse,
+} from "./types.js";
 import { TOOL_SCHEMA_VERSION } from "./types.js";
 import { assertValidToolResponse } from "./validation.js";
 
@@ -12,7 +17,7 @@ function nowIso(now: (() => Date) | undefined): string {
 function createErrorResponse(
   request: ToolRequest,
   completedAt: string,
-  code: string,
+  code: ToolErrorCode,
   message: string,
   details?: Record<string, unknown>,
 ): ToolResponse {
@@ -56,8 +61,14 @@ function normalizeExecutionError(
     return createErrorResponse(request, completedAt, error.code, error.message, error.details);
   }
 
+  if (error instanceof ToolExecutionError) {
+    return createErrorResponse(request, completedAt, error.code, error.message, error.details);
+  }
+
   if (error instanceof Error) {
-    return createErrorResponse(request, completedAt, "handler_failed", error.message);
+    return createErrorResponse(request, completedAt, "handler_failed", error.message, {
+      cause: error.name,
+    });
   }
 
   return createErrorResponse(request, completedAt, "handler_failed", "Tool handler failed.");
@@ -77,6 +88,9 @@ export async function executeToolRequest(
       completedAt,
       "unknown_tool",
       `Unknown tool '${request.tool_name}'.`,
+      {
+        available_tools: registry.list().map((tool) => tool.name),
+      },
     );
   }
 

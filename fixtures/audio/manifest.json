@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0.0",
+  "fixtures": [
+    {
+      "fixture_id": "fixture_phase1_first_slice_loop_synthetic",
+      "display_name": "First Slice Tonal Cleanup Loop",
+      "relative_path": "phase-1/first-slice-loop.wav",
+      "availability": "manifest_only",
+      "format": {
+        "container": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 44100,
+        "channels": 2,
+        "bit_depth": 16,
+        "duration_seconds": 4.0
+      },
+      "provenance": {
+        "source_type": "synthetic_generation_plan",
+        "created_by": "repository fixture scaffold",
+        "license": "CC0-1.0-intended",
+        "redistributable": true,
+        "notes": "Binary audio is not checked in yet. This fixture is reserved for a tiny synthetic drum-loop style WAV generated inside the repository or acquired under a permissive license with equivalent properties."
+      },
+      "intended_use": {
+        "prompt_family": ["darker", "less harsh", "slightly cleaner", "preserve punch"],
+        "used_by": ["contracts", "tests/integration", "benchmarks"],
+        "expected_characteristics": [
+          "moderately bright stereo loop",
+          "persistent 3-4.5 kHz harshness region",
+          "clear transient attacks",
+          "short enough for fast integration runs"
+        ]
+      },
+      "acquisition_or_generation_plan": [
+        "Generate a 4-second stereo WAV fixture under 100 KB if feasible using deterministic repository tooling.",
+        "If synthesis is not ready, replace with a small redistributable CC0 or equivalent licensed WAV and update provenance fields in the same change.",
+        "Keep the stored relative path stable so integration artifacts do not drift."
+      ],
+      "contract_refs": {
+        "happy_path_workflow": "contracts/examples/happy-path/workflow.json",
+        "load_audio_request": "contracts/examples/load-audio-tool-request.json",
+        "load_audio_response": "contracts/examples/load-audio-tool-response.json"
+      }
+    }
+  ]
+}

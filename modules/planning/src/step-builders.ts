@@ -185,7 +185,7 @@ function buildEqStep({
     bands.push({
       type: "bell",
       frequency_hz: 6500,
-      gain_db: resolveEqGainDb(objectives, "cut") * 0.75,
+      gain_db: resolveBrightnessCutGainDb(objectives),
       q: 0.8,
     });
     expectedEffects.push("slightly reduce perceived brightness");
@@ -233,6 +233,16 @@ function buildEqStep({
     expected_effects: expectedEffects,
     safety_limits: buildEqSafetyLimits(objectives),
   };
+}
+
+function resolveBrightnessCutGainDb(objectives: ParsedEditObjectives): number {
+  const baseCut = resolveEqGainDb(objectives, "cut") * 0.75;
+
+  if (objectives.preserve_punch) {
+    return Math.min(-1, Number((baseCut * 0.9).toFixed(2)));
+  }
+
+  return baseCut;
 }
 
 function buildGainStep(

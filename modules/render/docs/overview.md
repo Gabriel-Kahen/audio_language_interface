@@ -73,7 +73,8 @@ Render previews and final outputs from an `AudioVersion` into contract-aligned `
 - `output.format`, `output.codec`, `output.sample_rate_hz`, `output.channels`, and `output.duration_seconds` are probed from the rendered file via `ffprobe`.
 - `output.codec` reflects the rendered stream codec name returned by `ffprobe`, not the encoder library configured for `ffmpeg`.
 - `output.file_size_bytes` is populated from a filesystem stat after the render succeeds.
-- `warnings` contains only stderr lines that appear to be real warnings.
+- successful renders fail if the output file is missing, empty, or probed as the wrong container format.
+- `warnings` contains stderr warning lines plus validation warnings when the materialized file differs from the requested sample rate, channel count, or expected duration.
 - `loudness_summary` is passed through from caller-provided data; this module does not calculate loudness itself.
 
 ## Current limitations

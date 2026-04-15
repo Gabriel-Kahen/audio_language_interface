@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/apply-edit-plan-tool-request.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "tool_name", "arguments", "requested_at"],
+  "properties": {
+    "schema_version": {
+      "$ref": "./common.schema.json#/$defs/schemaVersion"
+    },
+    "request_id": {
+      "$ref": "./common.schema.json#/$defs/requestId"
+    },
+    "tool_name": {
+      "const": "apply_edit_plan"
+    },
+    "requested_at": {
+      "$ref": "./common.schema.json#/$defs/isoTimestamp"
+    },
+    "session_id": {
+      "$ref": "./common.schema.json#/$defs/sessionId"
+    },
+    "asset_id": {
+      "$ref": "./common.schema.json#/$defs/assetId"
+    },
+    "version_id": {
+      "$ref": "./common.schema.json#/$defs/versionId"
+    },
+    "caller": {
+      "$ref": "./common.schema.json#/$defs/nonEmptyString"
+    },
+    "arguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["audio_version", "edit_plan"],
+      "properties": {
+        "audio_version": {
+          "type": "object",
+          "required": ["schema_version", "version_id", "asset_id", "lineage", "audio"],
+          "properties": {
+            "schema_version": { "$ref": "./common.schema.json#/$defs/schemaVersion" },
+            "version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+            "asset_id": { "$ref": "./common.schema.json#/$defs/assetId" },
+            "lineage": { "type": "object" },
+            "audio": { "type": "object" },
+            "state": { "type": "object" }
+          },
+          "additionalProperties": false
+        },
+        "edit_plan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "plan_id",
+            "asset_id",
+            "version_id",
+            "user_request",
+            "goals",
+            "steps",
+            "created_at"
+          ],
+          "properties": {
+            "schema_version": {
+              "$ref": "./common.schema.json#/$defs/schemaVersion"
+            },
+            "plan_id": {
+              "$ref": "./common.schema.json#/$defs/planId"
+            },
+            "asset_id": {
+              "$ref": "./common.schema.json#/$defs/assetId"
+            },
+            "version_id": {
+              "$ref": "./common.schema.json#/$defs/versionId"
+            },
+            "user_request": {
+              "type": "string"
+            },
+            "created_at": {
+              "$ref": "./common.schema.json#/$defs/isoTimestamp"
+            },
+            "goals": {
+              "$ref": "./common.schema.json#/$defs/stringArray"
+            },
+            "constraints": {
+              "$ref": "./common.schema.json#/$defs/stringArray"
+            },
+            "verification_targets": {
+              "$ref": "./common.schema.json#/$defs/stringArray"
+            },
+            "rationale": {
+              "type": "string"
+            },
+            "steps": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "step_id",
+                  "operation",
+                  "target",
+                  "parameters",
+                  "expected_effects",
+                  "safety_limits"
+                ],
+                "properties": {
+                  "step_id": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                  "operation": { "$ref": "./common.schema.json#/$defs/operationName" },
+                  "target": { "type": "object" },
+                  "parameters": { "type": "object" },
+                  "expected_effects": { "$ref": "./common.schema.json#/$defs/stringArray" },
+                  "safety_limits": { "$ref": "./common.schema.json#/$defs/stringArray" }
+                }
+              }
+            }
+          }
+        },
+        "output_dir": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "output_version_id": {
+          "$ref": "./common.schema.json#/$defs/versionId"
+        },
+        "record_id": {
+          "$ref": "./common.schema.json#/$defs/transformId"
+        }
+      }
+    }
+  }
+}

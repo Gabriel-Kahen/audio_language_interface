@@ -4,12 +4,16 @@
 
 Expose a stable LLM-facing tool surface over the internal runtime modules.
 
+The current implementation provides a registry-backed execution layer with schema-aware request validation, module-backed handlers, and contract-valid `ToolResponse` results.
+
 ## Public API surface
 
-- register and describe available tools
-- validate `ToolRequest` payloads
-- route requests to module-backed handlers
-- normalize `ToolResponse` payloads
+- `createToolRegistry(definitions?)`
+- `defaultToolRegistry`
+- `describeTools(registry?)`
+- `validateToolRequestEnvelope(value)`
+- `executeToolRequest(request, options)`
+- `assertValidToolResponse(response)` and `isValidToolResponse(response)`
 
 ## Implemented initial tool set
 
@@ -19,15 +23,18 @@ Expose a stable LLM-facing tool surface over the internal runtime modules.
 - `render_preview` -> `modules/render`
 - `compare_versions` -> `modules/compare`
 
-`plan_edits` is intentionally deferred. `modules/planning` currently has design docs but no runtime implementation to bind at the tool layer.
+`plan_edits` is intentionally deferred. `modules/planning` now has a runtime implementation, but the tool layer does not expose it yet.
 
-## Suggested initial source files
+## Implemented source files
 
 - `src/tool-registry.ts`: tool definitions and discovery
+- `src/execute-tool-request.ts`: top-level tool execution flow
+- `src/runtime.ts`: runtime dependency resolution
+- `src/errors.ts`: tool-surface error types
+- `src/types.ts`: request, response, and handler type shapes
 - `src/validation.ts`: request validation and coercion
 - `src/handlers/load-audio.ts`: import-facing tool handler
 - `src/handlers/analyze-audio.ts`: analysis-facing tool handler
-- `src/handlers/plan-edits.ts`: planner-facing tool handler
 - `src/handlers/apply-edit-plan.ts`: transform-facing tool handler
 - `src/handlers/render-preview.ts`: render-facing tool handler
 - `src/handlers/compare-versions.ts`: compare-facing tool handler
@@ -58,3 +65,10 @@ Expose a stable LLM-facing tool surface over the internal runtime modules.
 - verify contract alignment for `ToolRequest` and `ToolResponse`
 
 See `docs/api.md` for the concrete callable tool surface and payload conventions.
+
+## Current limitations
+
+- The tool surface is intentionally smaller than the set of implemented runtime modules.
+- `plan_edits` is not exposed as a callable tool yet.
+- The tool layer does not maintain session state or resolve artifacts by id.
+- Tool-specific argument validation happens inside handlers rather than through one centralized schema per tool.

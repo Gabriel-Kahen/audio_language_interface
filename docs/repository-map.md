@@ -17,6 +17,10 @@ This file explains the purpose of the current top-level scaffolding so new agent
 
 - `docs/architecture.md`: module map, canonical pipeline, and module boundary rules.
 - `docs/implementation-plan.md`: dependency order, parallelization guidance, and rollout plan for agents.
+- `docs/phase-1-roadmap.md`: current product and engineering delivery roadmap.
+- `docs/agent-assignments.md`: current agent ownership map across roadmap tasks.
+- `docs/current-capabilities.md`: implemented repository scope and current limitations.
+- `docs/contributor-guide.md`: contributor onboarding, happy-path workflow, validation, and extension guidance.
 - `docs/dependency-policy.md`: allowed dependency and license guidance for the repo.
 - `docs/system-dependencies.md`: required external tools and installation posture.
 - `docs/repository-map.md`: purpose of the current scaffolding files.
@@ -51,6 +55,10 @@ Each module directory under `modules/` currently has four responsibilities:
 
 ## Current state
 
-The repository currently defines architecture, contracts, dependency policy, system dependency policy, and the initial TypeScript plus pnpm workspace baseline. Agents should treat these files as the source of truth for what to build next.
+The repository is no longer only a scaffold.
+
+It now includes implemented runtime modules for `core`, `io`, `analysis`, `semantics`, `planning`, `transforms`, `render`, `compare`, `history`, `tools`, and `orchestration`, plus root validation tooling and published contracts.
+
+`modules/benchmarks` now includes a first benchmark harness for the initial prompt family, but it is still synthetic-first and not yet driven by committed real audio fixtures.
 
 At the root level, contributors should expect most day-to-day validation to happen through the shared `pnpm` scripts rather than through bespoke per-module shell commands.

@@ -12,6 +12,7 @@ import {
   compareRenders,
   compareVersions,
   type EditPlan,
+  evaluateGoalAlignment,
   isValidComparisonReport,
   type RenderArtifact,
 } from "../src/index.js";
@@ -123,8 +124,112 @@ describe("compareVersions", () => {
         expect.objectContaining({ kind: "excessive_loudness_shift" }),
         expect.objectContaining({ kind: "reduced_true_peak_headroom" }),
         expect.objectContaining({ kind: "stereo_collapse" }),
+        expect.objectContaining({ kind: "lost_punch" }),
       ]),
     );
+  });
+});
+
+describe("evaluateGoalAlignment", () => {
+  it("supports first-slice prompt wording variants", () => {
+    const baseline = createAnalysisReport({
+      reportId: "analysis_prompt_base",
+      versionId: "ver_prompt_base",
+      integratedLufs: -14.8,
+      truePeakDbtp: -1.1,
+      crestFactorDb: 10.3,
+      transientDensity: 2,
+      lowBandDb: -16.4,
+      midBandDb: -11.2,
+      highBandDb: -9.8,
+      spectralCentroidHz: 2650,
+      stereoWidth: 0.62,
+      stereoCorrelation: 0.41,
+      noiseFloorDbfs: -72,
+      clippingDetected: false,
+    }).measurements;
+    const candidate = createAnalysisReport({
+      reportId: "analysis_prompt_cand",
+      versionId: "ver_prompt_cand",
+      integratedLufs: -15,
+      truePeakDbtp: -1.2,
+      crestFactorDb: 10.2,
+      transientDensity: 1.98,
+      lowBandDb: -16.3,
+      midBandDb: -11.4,
+      highBandDb: -11.1,
+      spectralCentroidHz: 2440,
+      stereoWidth: 0.62,
+      stereoCorrelation: 0.43,
+      noiseFloorDbfs: -75.5,
+      clippingDetected: false,
+    }).measurements;
+
+    const goalAlignment = evaluateGoalAlignment(
+      [
+        "make this loop darker",
+        "make it less harsh",
+        "clean this sample up a bit",
+        "keep the punch",
+      ],
+      baseline,
+      candidate,
+      reportMetricDeltas(baseline, candidate),
+    );
+
+    expect(goalAlignment).toEqual([
+      { goal: "make this loop darker", status: "met" },
+      { goal: "make it less harsh", status: "met" },
+      { goal: "clean this sample up a bit", status: "met" },
+      { goal: "keep the punch", status: "met" },
+    ]);
+  });
+
+  it("returns unknown for broad ambiguous wording", () => {
+    const baseline = createAnalysisReport({
+      reportId: "analysis_ambiguous_base",
+      versionId: "ver_ambiguous_base",
+      integratedLufs: -14.8,
+      truePeakDbtp: -1.1,
+      crestFactorDb: 10.3,
+      transientDensity: 2,
+      lowBandDb: -16.4,
+      midBandDb: -11.2,
+      highBandDb: -9.8,
+      spectralCentroidHz: 2650,
+      stereoWidth: 0.62,
+      stereoCorrelation: 0.41,
+      noiseFloorDbfs: -72,
+      clippingDetected: false,
+    }).measurements;
+    const candidate = createAnalysisReport({
+      reportId: "analysis_ambiguous_cand",
+      versionId: "ver_ambiguous_cand",
+      integratedLufs: -14.8,
+      truePeakDbtp: -1.1,
+      crestFactorDb: 10.3,
+      transientDensity: 2,
+      lowBandDb: -16.4,
+      midBandDb: -11.2,
+      highBandDb: -9.8,
+      spectralCentroidHz: 2650,
+      stereoWidth: 0.62,
+      stereoCorrelation: 0.41,
+      noiseFloorDbfs: -72,
+      clippingDetected: false,
+    }).measurements;
+
+    const goalAlignment = evaluateGoalAlignment(
+      ["make it better", "clean it"],
+      baseline,
+      candidate,
+      reportMetricDeltas(baseline, candidate),
+    );
+
+    expect(goalAlignment).toEqual([
+      { goal: "make it better", status: "unknown" },
+      { goal: "clean it", status: "unknown" },
+    ]);
   });
 });
 
@@ -292,6 +397,81 @@ function createRenderArtifact(options: RenderFixtureOptions): RenderArtifact {
     },
     warnings: [],
   };
+}
+
+function reportMetricDeltas(
+  baseline: AnalysisReport["measurements"],
+  candidate: AnalysisReport["measurements"],
+) {
+  return [
+    {
+      metric: "levels.integrated_lufs",
+      direction: deltaDirection(candidate.levels.integrated_lufs - baseline.levels.integrated_lufs),
+      delta: round(candidate.levels.integrated_lufs - baseline.levels.integrated_lufs),
+    },
+    {
+      metric: "levels.true_peak_dbtp",
+      direction: deltaDirection(candidate.levels.true_peak_dbtp - baseline.levels.true_peak_dbtp),
+      delta: round(candidate.levels.true_peak_dbtp - baseline.levels.true_peak_dbtp),
+    },
+    {
+      metric: "dynamics.crest_factor_db",
+      direction: deltaDirection(
+        candidate.dynamics.crest_factor_db - baseline.dynamics.crest_factor_db,
+      ),
+      delta: round(candidate.dynamics.crest_factor_db - baseline.dynamics.crest_factor_db),
+    },
+    {
+      metric: "dynamics.transient_density_per_second",
+      direction: deltaDirection(
+        candidate.dynamics.transient_density_per_second -
+          baseline.dynamics.transient_density_per_second,
+      ),
+      delta: round(
+        candidate.dynamics.transient_density_per_second -
+          baseline.dynamics.transient_density_per_second,
+      ),
+    },
+    {
+      metric: "spectral_balance.high_band_db",
+      direction: deltaDirection(
+        candidate.spectral_balance.high_band_db - baseline.spectral_balance.high_band_db,
+      ),
+      delta: round(
+        candidate.spectral_balance.high_band_db - baseline.spectral_balance.high_band_db,
+      ),
+    },
+    {
+      metric: "spectral_balance.spectral_centroid_hz",
+      direction: deltaDirection(
+        candidate.spectral_balance.spectral_centroid_hz -
+          baseline.spectral_balance.spectral_centroid_hz,
+      ),
+      delta: round(
+        candidate.spectral_balance.spectral_centroid_hz -
+          baseline.spectral_balance.spectral_centroid_hz,
+      ),
+    },
+    {
+      metric: "artifacts.noise_floor_dbfs",
+      direction: deltaDirection(
+        candidate.artifacts.noise_floor_dbfs - baseline.artifacts.noise_floor_dbfs,
+      ),
+      delta: round(candidate.artifacts.noise_floor_dbfs - baseline.artifacts.noise_floor_dbfs),
+    },
+  ];
+}
+
+function deltaDirection(delta: number): "increased" | "decreased" | "unchanged" {
+  if (Math.abs(delta) <= 1e-6) {
+    return "unchanged";
+  }
+
+  return delta > 0 ? "increased" : "decreased";
+}
+
+function round(value: number): number {
+  return Math.round(value * 1000) / 1000;
 }
 
 function validateComparisonReport(payload: unknown): boolean {

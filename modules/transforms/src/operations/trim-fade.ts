@@ -5,6 +5,7 @@ export function buildTrimOperation(
   parameters: Record<string, unknown>,
   target?: EditTarget,
 ): OperationBuildResult {
+  assertTrimTarget(target);
   const startSeconds = resolveStartSeconds(parameters, target);
   const endSeconds = resolveEndSeconds(parameters, target, audio.duration_seconds);
 
@@ -16,7 +17,7 @@ export function buildTrimOperation(
     throw new Error("trim end_seconds must not exceed the current audio duration.");
   }
 
-  const durationSeconds = endSeconds - startSeconds;
+  const durationSeconds = Number((endSeconds - startSeconds).toFixed(6));
 
   return {
     filterChain: `atrim=start=${formatNumber(startSeconds)}:end=${formatNumber(endSeconds)},asetpts=N/SR/TB`,
@@ -55,6 +56,20 @@ export function buildFadeOperation(
     throw new Error("fade requires fade_in_seconds, fade_out_seconds, or both.");
   }
 
+  if (fadeInSeconds !== undefined && fadeInSeconds > audio.duration_seconds) {
+    throw new Error("fade.fade_in_seconds must not exceed the current audio duration.");
+  }
+
+  if (
+    fadeInSeconds !== undefined &&
+    fadeOutSeconds !== undefined &&
+    fadeInSeconds + fadeOutSeconds > audio.duration_seconds
+  ) {
+    throw new Error(
+      "fade fade_in_seconds and fade_out_seconds must fit within the current audio duration.",
+    );
+  }
+
   const filters: string[] = [];
   const effectiveParameters: Record<string, unknown> = {};
 
@@ -81,6 +96,20 @@ export function buildFadeOperation(
     effectiveParameters,
     nextAudio: { ...audio },
   };
+}
+
+function assertTrimTarget(target?: EditTarget): void {
+  if (
+    target?.scope === undefined ||
+    target.scope === "full_file" ||
+    target.scope === "time_range"
+  ) {
+    return;
+  }
+
+  throw new Error(
+    "trim only supports full_file or time_range targets in the initial implementation.",
+  );
 }
 
 function resolveStartSeconds(parameters: Record<string, unknown>, target?: EditTarget): number {

@@ -6,6 +6,7 @@ import {
   describeTools,
   executeToolRequest,
   isValidToolResponse,
+  type ToolsRuntime,
   validateToolRequestEnvelope,
 } from "../src/index.js";
 import type { ToolRequest, ToolResponse } from "../src/types.js";
@@ -115,6 +116,10 @@ function buildRequest(overrides: Partial<ToolRequest>): ToolRequest {
   };
 }
 
+function createRuntimeOverrides(overrides: Partial<ToolsRuntime>): Partial<ToolsRuntime> {
+  return overrides;
+}
+
 function buildEditPlan(versionId: string): Record<string, unknown> {
   return {
     schema_version: "1.0.0",
@@ -166,26 +171,6 @@ function buildTransformRecord(
   };
 }
 
-function buildRenderArtifact(versionId: string): Record<string, unknown> {
-  return {
-    schema_version: "1.0.0",
-    render_id: "render_123",
-    asset_id: "asset_example",
-    version_id: versionId,
-    kind: "preview",
-    created_at: "2026-04-14T20:20:08Z",
-    output: {
-      path: "renders/previews/render_123.mp3",
-      format: "mp3",
-      codec: "libmp3lame",
-      sample_rate_hz: 44100,
-      channels: 2,
-      duration_seconds: 3,
-    },
-    warnings: ["render warning"],
-  };
-}
-
 describe("tools module", () => {
   it("validates the canonical ToolRequest example", () => {
     const payload = JSON.parse(readFileSync(toolRequestExamplePath, "utf8")) as unknown;
@@ -205,12 +190,36 @@ describe("tools module", () => {
   });
 
   it("describes the supported tool surface", () => {
-    expect(describeTools().map((tool) => tool.name)).toEqual([
-      "load_audio",
-      "analyze_audio",
-      "apply_edit_plan",
-      "render_preview",
-      "compare_versions",
+    expect(describeTools()).toEqual([
+      expect.objectContaining({
+        name: "load_audio",
+        error_codes: ["invalid_arguments", "invalid_result_contract", "handler_failed"],
+      }),
+      expect.objectContaining({
+        name: "analyze_audio",
+        error_codes: [
+          "invalid_arguments",
+          "provenance_mismatch",
+          "invalid_result_contract",
+          "handler_failed",
+        ],
+      }),
+      expect.objectContaining({
+        name: "apply_edit_plan",
+        capabilities: {
+          supported_operations: [
+            "gain",
+            "normalize",
+            "trim",
+            "fade",
+            "parametric_eq",
+            "high_pass_filter",
+            "low_pass_filter",
+          ],
+        },
+      }),
+      expect.objectContaining({ name: "render_preview" }),
+      expect.objectContaining({ name: "compare_versions" }),
     ]);
   });
 
@@ -229,6 +238,15 @@ describe("tools module", () => {
       error: {
         code: "unknown_tool",
         message: "Unknown tool 'plan_edits'.",
+        details: {
+          available_tools: [
+            "load_audio",
+            "analyze_audio",
+            "apply_edit_plan",
+            "render_preview",
+            "compare_versions",
+          ],
+        },
       },
     } satisfies ToolResponse);
     expect(isValidToolResponse(response)).toBe(true);
@@ -268,9 +286,10 @@ describe("tools module", () => {
       }),
       {
         workspaceRoot: "/tmp/workspace",
-        runtime: {
-          importAudioFromFile: importAudioFromFile as any,
-        } as any,
+        runtime: createRuntimeOverrides({
+          importAudioFromFile:
+            importAudioFromFile as unknown as ToolsRuntime["importAudioFromFile"],
+        }),
         now: () => new Date("2026-04-14T20:20:10Z"),
       },
     );
@@ -300,6 +319,36 @@ describe("tools module", () => {
     expect(isValidToolResponse(response)).toBe(true);
   });
 
+  it("returns provenance_mismatch when analyze_audio request ids disagree with the payload", async () => {
+    const analyzeAudioVersion = vi.fn();
+
+    const response = await executeToolRequest(
+      buildRequest({
+        tool_name: "analyze_audio",
+        asset_id: "asset_other",
+        arguments: {
+          audio_version: buildAudioVersion("ver_candidate"),
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/workspace",
+        runtime: createRuntimeOverrides({
+          analyzeAudioVersion:
+            analyzeAudioVersion as unknown as ToolsRuntime["analyzeAudioVersion"],
+        }),
+      },
+    );
+
+    expect(analyzeAudioVersion).not.toHaveBeenCalled();
+    expect(response.status).toBe("error");
+    expect(response.error?.code).toBe("provenance_mismatch");
+    expect(response.error?.details).toEqual({
+      field: "request.asset_id",
+      request_asset_id: "asset_other",
+      argument_asset_id: "asset_example",
+    });
+  });
+
   it("rejects malformed nested contract payloads before analyze_audio runs", async () => {
     const analyzeAudioVersion = vi.fn();
 
@@ -327,9 +376,10 @@ describe("tools module", () => {
       }),
       {
         workspaceRoot: "/tmp/workspace",
-        runtime: {
-          analyzeAudioVersion: analyzeAudioVersion as any,
-        } as any,
+        runtime: createRuntimeOverrides({
+          analyzeAudioVersion:
+            analyzeAudioVersion as unknown as ToolsRuntime["analyzeAudioVersion"],
+        }),
       },
     );
 
@@ -365,9 +415,9 @@ describe("tools module", () => {
       }),
       {
         workspaceRoot: "/tmp/workspace",
-        runtime: {
-          applyEditPlan: applyEditPlan as any,
-        } as any,
+        runtime: createRuntimeOverrides({
+          applyEditPlan: applyEditPlan as unknown as ToolsRuntime["applyEditPlan"],
+        }),
       },
     );
 
@@ -405,9 +455,9 @@ describe("tools module", () => {
       }),
       {
         workspaceRoot: "/tmp/workspace",
-        runtime: {
-          compareVersions: compareVersions as any,
-        } as any,
+        runtime: createRuntimeOverrides({
+          compareVersions: compareVersions as unknown as ToolsRuntime["compareVersions"],
+        }),
       },
     );
 
@@ -433,15 +483,15 @@ describe("tools module", () => {
       }),
       {
         workspaceRoot: "/tmp/workspace",
-        runtime: {
-          compareVersions: compareVersions as any,
-        } as any,
+        runtime: createRuntimeOverrides({
+          compareVersions: compareVersions as unknown as ToolsRuntime["compareVersions"],
+        }),
       },
     );
 
     expect(compareVersions).not.toHaveBeenCalled();
     expect(response.status).toBe("error");
-    expect(response.error?.code).toBe("invalid_arguments");
+    expect(response.error?.code).toBe("provenance_mismatch");
     expect(response.error?.details?.field).toBe("arguments.baseline_analysis");
   });
 
@@ -461,15 +511,15 @@ describe("tools module", () => {
       }),
       {
         workspaceRoot: "/tmp/workspace",
-        runtime: {
-          compareVersions: compareVersions as any,
-        } as any,
+        runtime: createRuntimeOverrides({
+          compareVersions: compareVersions as unknown as ToolsRuntime["compareVersions"],
+        }),
       },
     );
 
     expect(compareVersions).not.toHaveBeenCalled();
     expect(response.status).toBe("error");
-    expect(response.error?.code).toBe("invalid_arguments");
+    expect(response.error?.code).toBe("provenance_mismatch");
     expect(response.error?.details?.field).toBe("arguments.edit_plan.version_id");
   });
 
@@ -506,15 +556,17 @@ describe("tools module", () => {
       }),
       {
         workspaceRoot: "/tmp/workspace",
-        runtime: {
-          importAudioFromFile: importAudioFromFile as any,
-        } as any,
+        runtime: createRuntimeOverrides({
+          importAudioFromFile:
+            importAudioFromFile as unknown as ToolsRuntime["importAudioFromFile"],
+        }),
       },
     );
 
     expect(response.status).toBe("error");
-    expect(response.error?.code).toBe("handler_failed");
+    expect(response.error?.code).toBe("invalid_result_contract");
     expect(response.error?.message).toContain("result.asset");
+    expect(response.error?.details?.field).toBe("result.asset");
   });
 
   it("rejects invalid canonical apply_edit_plan outputs before returning success", async () => {
@@ -539,15 +591,16 @@ describe("tools module", () => {
       }),
       {
         workspaceRoot: "/tmp/workspace",
-        runtime: {
-          applyEditPlan: applyEditPlan as any,
-        } as any,
+        runtime: createRuntimeOverrides({
+          applyEditPlan: applyEditPlan as unknown as ToolsRuntime["applyEditPlan"],
+        }),
       },
     );
 
     expect(response.status).toBe("error");
-    expect(response.error?.code).toBe("handler_failed");
+    expect(response.error?.code).toBe("invalid_result_contract");
     expect(response.error?.message).toContain("result.transform_record");
+    expect(response.error?.details?.field).toBe("result.transform_record");
   });
 
   it("rejects invalid canonical render_preview outputs before returning success", async () => {
@@ -573,15 +626,16 @@ describe("tools module", () => {
       }),
       {
         workspaceRoot: "/tmp/workspace",
-        runtime: {
-          renderPreview: renderPreview as any,
-        } as any,
+        runtime: createRuntimeOverrides({
+          renderPreview: renderPreview as unknown as ToolsRuntime["renderPreview"],
+        }),
       },
     );
 
     expect(response.status).toBe("error");
-    expect(response.error?.code).toBe("handler_failed");
+    expect(response.error?.code).toBe("invalid_result_contract");
     expect(response.error?.message).toContain("result.artifact");
+    expect(response.error?.details?.field).toBe("result.artifact");
   });
 
   it("rejects invalid canonical compare_versions outputs before returning success", async () => {
@@ -601,18 +655,19 @@ describe("tools module", () => {
       }),
       {
         workspaceRoot: "/tmp/workspace",
-        runtime: {
-          compareVersions: compareVersions as any,
-        } as any,
+        runtime: createRuntimeOverrides({
+          compareVersions: compareVersions as unknown as ToolsRuntime["compareVersions"],
+        }),
       },
     );
 
     expect(response.status).toBe("error");
-    expect(response.error?.code).toBe("handler_failed");
+    expect(response.error?.code).toBe("invalid_result_contract");
     expect(response.error?.message).toContain("result.comparison_report");
+    expect(response.error?.details?.field).toBe("result.comparison_report");
   });
 
-  it("rejects unsupported but schema-valid edit-plan operations as invalid arguments", async () => {
+  it("rejects unsupported but schema-valid edit-plan operations explicitly", async () => {
     const applyEditPlan = vi.fn();
 
     const response = await executeToolRequest(
@@ -645,16 +700,29 @@ describe("tools module", () => {
       }),
       {
         workspaceRoot: "/tmp/workspace",
-        runtime: {
-          applyEditPlan: applyEditPlan as any,
-        } as any,
+        runtime: createRuntimeOverrides({
+          applyEditPlan: applyEditPlan as unknown as ToolsRuntime["applyEditPlan"],
+        }),
       },
     );
 
     expect(applyEditPlan).not.toHaveBeenCalled();
     expect(response.status).toBe("error");
-    expect(response.error?.code).toBe("invalid_arguments");
-    expect(response.error?.details?.field).toBe("arguments.edit_plan.steps[0].operation");
+    expect(response.error?.code).toBe("unsupported_operation");
+    expect(response.error?.details).toEqual({
+      field: "arguments.edit_plan.steps[0].operation",
+      operation: "compressor",
+      supported_operations: [
+        "gain",
+        "normalize",
+        "trim",
+        "fade",
+        "parametric_eq",
+        "high_pass_filter",
+        "low_pass_filter",
+      ],
+      tool_name: "apply_edit_plan",
+    });
   });
 
   it("rejects non-integer preview sample rates and channels", async () => {
@@ -673,9 +741,9 @@ describe("tools module", () => {
       }),
       {
         workspaceRoot: "/tmp/workspace",
-        runtime: {
-          renderPreview: renderPreview as any,
-        } as any,
+        runtime: createRuntimeOverrides({
+          renderPreview: renderPreview as unknown as ToolsRuntime["renderPreview"],
+        }),
       },
     );
 
@@ -683,5 +751,35 @@ describe("tools module", () => {
     expect(response.status).toBe("error");
     expect(response.error?.code).toBe("invalid_arguments");
     expect(response.error?.details?.field).toBe("arguments.sample_rate_hz");
+  });
+
+  it("returns provenance_mismatch when render_preview request version_id disagrees with the payload", async () => {
+    const renderPreview = vi.fn();
+
+    const response = await executeToolRequest(
+      buildRequest({
+        tool_name: "render_preview",
+        asset_id: "asset_example",
+        version_id: "ver_other",
+        arguments: {
+          audio_version: buildAudioVersion("ver_candidate"),
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/workspace",
+        runtime: createRuntimeOverrides({
+          renderPreview: renderPreview as unknown as ToolsRuntime["renderPreview"],
+        }),
+      },
+    );
+
+    expect(renderPreview).not.toHaveBeenCalled();
+    expect(response.status).toBe("error");
+    expect(response.error?.code).toBe("provenance_mismatch");
+    expect(response.error?.details).toEqual({
+      field: "request.version_id",
+      request_version_id: "ver_other",
+      argument_version_id: "ver_candidate",
+    });
   });
 });

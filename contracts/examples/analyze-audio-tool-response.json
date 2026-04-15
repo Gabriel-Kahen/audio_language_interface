@@ -1,0 +1,71 @@
+{
+  "schema_version": "1.0.0",
+  "request_id": "toolreq_01HZZ0ANALYZEAUDIOREQ0000001",
+  "tool_name": "analyze_audio",
+  "status": "ok",
+  "completed_at": "2026-04-14T20:20:04Z",
+  "result": {
+    "report": {
+      "schema_version": "1.0.0",
+      "report_id": "analysis_01HZZ0FIRSTSLICEBASE000001",
+      "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+      "version_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
+      "generated_at": "2026-04-14T20:20:04Z",
+      "analyzer": {
+        "name": "default-analysis",
+        "version": "0.1.1"
+      },
+      "summary": {
+        "plain_text": "Bright stereo loop with a persistent upper-mid ridge and intact transient punch.",
+        "confidence": 0.86
+      },
+      "measurements": {
+        "levels": {
+          "integrated_lufs": -15.2,
+          "true_peak_dbtp": -1.5
+        },
+        "dynamics": {
+          "crest_factor_db": 10.4,
+          "transient_density_per_second": 2
+        },
+        "spectral_balance": {
+          "low_band_db": -16.2,
+          "mid_band_db": -11.5,
+          "high_band_db": -9.4,
+          "spectral_centroid_hz": 2720
+        },
+        "stereo": {
+          "width": 0.61,
+          "correlation": 0.38
+        },
+        "artifacts": {
+          "clipping_detected": false,
+          "noise_floor_dbfs": -74
+        }
+      },
+      "annotations": [
+        {
+          "kind": "harshness",
+          "start_seconds": 0,
+          "end_seconds": 4,
+          "bands_hz": [3000, 4500],
+          "severity": 0.52,
+          "evidence": "Persistent upper-mid energy ridge through the loop."
+        }
+      ],
+      "segments": [
+        {
+          "kind": "loop",
+          "start_seconds": 0,
+          "end_seconds": 4
+        }
+      ],
+      "source_character": {
+        "primary_class": "drum_loop",
+        "pitched": false,
+        "confidence": 0.94
+      }
+    }
+  },
+  "warnings": []
+}

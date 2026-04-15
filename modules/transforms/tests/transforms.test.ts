@@ -1,10 +1,13 @@
+import { execFile as execFileCallback } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 
 import Ajv2020Import from "ajv/dist/2020.js";
 import addFormatsImport from "ajv-formats";
 import { afterEach, describe, expect, it } from "vitest";
+import { WaveFile } from "wavefile";
 
 import audioVersionSchema from "../../../contracts/schemas/json/audio-version.schema.json" with {
   type: "json",
@@ -26,6 +29,7 @@ import {
 } from "../src/index.js";
 
 const tempDirs: string[] = [];
+const execFile = promisify(execFileCallback);
 
 afterEach(async () => {
   await Promise.all(
@@ -96,6 +100,29 @@ describe("buildOperation", () => {
 
     expect(result.nextAudio.duration_seconds).toBe(1);
     expect(result.nextAudio.frame_count).toBe(44100);
+  });
+
+  it("rejects unsupported trim target scopes", () => {
+    expect(() =>
+      buildOperation(
+        createAudioVersion("storage/audio/source.wav").audio,
+        "trim",
+        {},
+        {
+          scope: "channel",
+          channel: "left",
+        },
+      ),
+    ).toThrow(/full_file or time_range/);
+  });
+
+  it("rejects fades that exceed the current audio duration", () => {
+    expect(() =>
+      buildOperation(createAudioVersion("storage/audio/source.wav").audio, "fade", {
+        fade_in_seconds: 1.2,
+        fade_out_seconds: 1.1,
+      }),
+    ).toThrow(/fit within the current audio duration/);
   });
 });
 
@@ -206,6 +233,36 @@ describe("applyEditPlan", () => {
     expect(validateAgainstSchema(audioVersionSchema, result.outputVersion)).toBe(true);
     expect(validateAgainstSchema(transformRecordSchema, result.transformRecord)).toBe(true);
   });
+
+  it("applies a real trim transform that matches the emitted duration metadata", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createRealAudioVersionFixture(workspaceRoot, {
+      durationSeconds: 1,
+      sampleRateHz: 44100,
+      channels: 1,
+    });
+
+    const result = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "trim",
+      parameters: { start_seconds: 0.2, end_seconds: 0.7 },
+      outputVersionId: "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
+      recordId: "transform_01HZX8F7J2V3M4N5P6Q7R8S9T0",
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+    });
+
+    const probed = await probeAudioMetadata(
+      path.join(workspaceRoot, result.outputVersion.audio.storage_ref),
+    );
+
+    expect(result.outputVersion.audio.duration_seconds).toBe(0.5);
+    expect(result.outputVersion.audio.frame_count).toBe(22050);
+    expect(probed.sampleRateHz).toBe(result.outputVersion.audio.sample_rate_hz);
+    expect(probed.channels).toBe(result.outputVersion.audio.channels);
+    expect(probed.durationSeconds).toBeCloseTo(result.outputVersion.audio.duration_seconds, 3);
+    expect(result.transformRecord.warnings).toBeUndefined();
+  });
 });
 
 describe("resolveTransformOutputPath", () => {
@@ -235,6 +292,41 @@ async function createFixtureVersion(workspaceRoot: string): Promise<AudioVersion
   await writeFile(path.join(workspaceRoot, storageRef), "source-bytes", { flag: "w" });
 
   return createAudioVersion(storageRef);
+}
+
+async function createRealAudioVersionFixture(
+  workspaceRoot: string,
+  options: {
+    durationSeconds: number;
+    sampleRateHz: number;
+    channels: number;
+  },
+): Promise<AudioVersion> {
+  const storageRef = "storage/audio/source.wav";
+  const absolutePath = path.join(workspaceRoot, storageRef);
+  await mkdir(path.dirname(absolutePath), { recursive: true });
+
+  const totalFrames = Math.round(options.durationSeconds * options.sampleRateHz);
+  const samples = Array.from({ length: options.channels }, () =>
+    Array.from({ length: totalFrames }, (_, index) =>
+      Math.round(Math.sin((2 * Math.PI * 440 * index) / options.sampleRateHz) * 16000),
+    ),
+  );
+  const wav = new WaveFile();
+  wav.fromScratch(options.channels, options.sampleRateHz, "16", samples);
+  await writeFile(absolutePath, Buffer.from(wav.toBuffer()));
+
+  return {
+    ...createAudioVersion(storageRef),
+    audio: {
+      storage_ref: storageRef,
+      sample_rate_hz: options.sampleRateHz,
+      channels: options.channels,
+      duration_seconds: options.durationSeconds,
+      frame_count: totalFrames,
+      ...(options.channels === 1 ? { channel_layout: "mono" } : { channel_layout: "stereo" }),
+    },
+  };
 }
 
 function createAudioVersion(storageRef: string): AudioVersion {
@@ -273,6 +365,33 @@ function createFakeExecutor(
       stdout: `${label} stdout`,
       stderr: "",
     };
+  };
+}
+
+async function probeAudioMetadata(absolutePath: string): Promise<{
+  sampleRateHz: number;
+  channels: number;
+  durationSeconds: number;
+}> {
+  const { stdout } = await execFile("ffprobe", [
+    "-v",
+    "error",
+    "-show_entries",
+    "format=duration:stream=sample_rate,channels",
+    "-of",
+    "json",
+    absolutePath,
+  ]);
+  const payload = JSON.parse(stdout) as {
+    streams?: Array<{ sample_rate?: string; channels?: number }>;
+    format?: { duration?: string };
+  };
+  const stream = payload.streams?.[0];
+
+  return {
+    sampleRateHz: Number(stream?.sample_rate),
+    channels: Number(stream?.channels),
+    durationSeconds: Number(payload.format?.duration),
   };
 }
 

@@ -1,6 +1,10 @@
 import path from "node:path";
 
-import { buildFfmpegTransformCommand, executeFfmpegCommand } from "./ffmpeg-adapter.js";
+import {
+  buildFfmpegTransformCommand,
+  executeFfmpegCommand,
+  extractTransformWarnings,
+} from "./ffmpeg-adapter.js";
 import { buildOperation } from "./operation-spec.js";
 import { createOutputVersionId, resolveTransformOutputPath } from "./path-policy.js";
 import { createAppliedOperation, createTransformRecord } from "./record-builder.js";
@@ -37,7 +41,7 @@ export async function applyOperation(
     filterChain: built.filterChain,
   });
   const execution = await executeFfmpegCommand(command, options.executor);
-  const warnings = execution.stderr ? [execution.stderr] : [];
+  const warnings = extractTransformWarnings(execution.stderr);
   const finishedAtDate = new Date();
   const transformRecord = createTransformRecord({
     ...(options.recordId !== undefined ? { recordId: options.recordId } : {}),

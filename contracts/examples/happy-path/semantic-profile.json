@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0.0",
+  "profile_id": "semantic_01HZZ0FIRSTSLICEPROFILE00001",
+  "analysis_report_id": "analysis_01HZZ0FIRSTSLICEBASE000001",
+  "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+  "version_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
+  "generated_at": "2026-04-14T20:20:05Z",
+  "descriptors": [
+    {
+      "label": "bright",
+      "confidence": 0.84,
+      "evidence_refs": [
+        "analysis_01HZZ0FIRSTSLICEBASE000001:measurements.spectral_balance.high_band_db",
+        "analysis_01HZZ0FIRSTSLICEBASE000001:measurements.spectral_balance.spectral_centroid_hz"
+      ],
+      "rationale": "High-band energy leads the spectrum and the centroid is elevated for the target prompt family."
+    },
+    {
+      "label": "slightly_harsh",
+      "confidence": 0.79,
+      "evidence_refs": ["analysis_01HZZ0FIRSTSLICEBASE000001:annotations[0]"],
+      "rationale": "The analysis marks a persistent 3-4.5 kHz harshness region across the full loop."
+    },
+    {
+      "label": "punchy",
+      "confidence": 0.76,
+      "evidence_refs": [
+        "analysis_01HZZ0FIRSTSLICEBASE000001:measurements.dynamics.crest_factor_db"
+      ],
+      "rationale": "Transient definition is strong enough that the plan should preserve it rather than increase it."
+    }
+  ],
+  "summary": {
+    "plain_text": "The fixture reads as bright, slightly harsh, and already punchy enough for conservative tonal shaping.",
+    "caveats": ["Semantic labels are intentionally conservative for the first prompt family."]
+  },
+  "unresolved_terms": []
+}

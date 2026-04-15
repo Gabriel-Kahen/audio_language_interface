@@ -69,6 +69,7 @@ Detects a small set of analysis-side failure modes:
 - excessive integrated loudness shift
 - reduced true-peak headroom
 - stereo collapse
+- measurable punch loss
 
 ### `detectRenderRegressions(baseline, candidate, metricDeltas)`
 

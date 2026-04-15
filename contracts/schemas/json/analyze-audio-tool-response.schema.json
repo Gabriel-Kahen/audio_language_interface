@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/analyze-audio-tool-response.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "tool_name", "status", "completed_at"],
+  "properties": {
+    "schema_version": {
+      "$ref": "./common.schema.json#/$defs/schemaVersion"
+    },
+    "request_id": {
+      "$ref": "./common.schema.json#/$defs/requestId"
+    },
+    "tool_name": {
+      "const": "analyze_audio"
+    },
+    "status": {
+      "$ref": "./common.schema.json#/$defs/toolStatus"
+    },
+    "completed_at": {
+      "$ref": "./common.schema.json#/$defs/isoTimestamp"
+    },
+    "warnings": {
+      "$ref": "./common.schema.json#/$defs/stringArray"
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object"
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["report"],
+      "properties": {
+        "report": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "report_id",
+            "asset_id",
+            "version_id",
+            "generated_at",
+            "analyzer",
+            "summary",
+            "measurements"
+          ],
+          "properties": {
+            "schema_version": {
+              "$ref": "./common.schema.json#/$defs/schemaVersion"
+            },
+            "report_id": {
+              "$ref": "./common.schema.json#/$defs/analysisId"
+            },
+            "asset_id": {
+              "$ref": "./common.schema.json#/$defs/assetId"
+            },
+            "version_id": {
+              "$ref": "./common.schema.json#/$defs/versionId"
+            },
+            "generated_at": {
+              "$ref": "./common.schema.json#/$defs/isoTimestamp"
+            },
+            "analyzer": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "version"],
+              "properties": {
+                "name": {
+                  "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                },
+                "version": {
+                  "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                }
+              }
+            },
+            "summary": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["plain_text"],
+              "properties": {
+                "plain_text": {
+                  "type": "string"
+                },
+                "confidence": {
+                  "$ref": "./common.schema.json#/$defs/confidence"
+                }
+              }
+            },
+            "measurements": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["levels", "dynamics", "spectral_balance", "stereo", "artifacts"],
+              "properties": {
+                "levels": { "type": "object" },
+                "dynamics": { "type": "object" },
+                "spectral_balance": { "type": "object" },
+                "stereo": { "type": "object" },
+                "artifacts": { "type": "object" }
+              }
+            },
+            "annotations": {
+              "type": "array",
+              "items": { "type": "object" }
+            },
+            "segments": {
+              "type": "array",
+              "items": { "type": "object" }
+            },
+            "source_character": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "error"
+          }
+        }
+      },
+      "then": {
+        "required": ["error"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "required": ["result"]
+      }
+    }
+  ]
+}

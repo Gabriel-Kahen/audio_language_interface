@@ -1,0 +1,14 @@
+{
+  "scenario_id": "first_slice_tonal_cleanup",
+  "fixture_manifest_path": "fixtures/audio/manifest.json",
+  "fixture_id": "fixture_phase1_first_slice_loop_synthetic",
+  "workflow_contract_path": "contracts/examples/happy-path/workflow.json",
+  "required_tools": [
+    "load_audio",
+    "analyze_audio",
+    "apply_edit_plan",
+    "render_preview",
+    "compare_versions"
+  ],
+  "expected_prompt": "Make this loop darker and less harsh without losing punch."
+}

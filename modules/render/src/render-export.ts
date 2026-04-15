@@ -10,7 +10,9 @@ import {
 import {
   assembleRenderArtifact,
   probeOutputMetadata,
+  RenderOutputValidationError,
   readOutputFileSize,
+  validateRenderedOutput,
 } from "./output-metadata.js";
 import { resolveRenderOutputPath, resolveSourceAudioPath } from "./path-policy.js";
 import type { FinalRenderOptions, RenderFormatConfig, RenderResult } from "./types.js";
@@ -44,6 +46,8 @@ export async function renderExport(options: FinalRenderOptions): Promise<RenderR
   await assertFileExists(inputPath);
 
   const format = FINAL_FORMATS[options.format ?? "wav"];
+  const expectedSampleRateHz = options.sampleRateHz ?? options.version.audio.sample_rate_hz;
+  const expectedChannels = options.channels ?? options.version.audio.channels;
   const renderPath = resolveRenderOutputPath({
     workspaceRoot: options.workspaceRoot,
     outputDir: options.outputDir,
@@ -56,8 +60,8 @@ export async function renderExport(options: FinalRenderOptions): Promise<RenderR
   const command = buildFfmpegRenderCommand({
     inputPath,
     outputPath: renderPath.absolutePath,
-    sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
-    channels: options.channels ?? options.version.audio.channels,
+    sampleRateHz: expectedSampleRateHz,
+    channels: expectedChannels,
     ...(options.ffmpegPath === undefined ? {} : { ffmpegPath: options.ffmpegPath }),
     format,
   });
@@ -70,6 +74,22 @@ export async function renderExport(options: FinalRenderOptions): Promise<RenderR
     executor: options.probeExecutor,
   });
   const fileSizeBytes = await readOutputFileSize(renderPath.absolutePath);
+
+  if (fileSizeBytes === undefined) {
+    throw new RenderOutputValidationError(
+      `Rendered export file was not found after ffmpeg completed: ${renderPath.absolutePath}`,
+    );
+  }
+
+  const validationWarnings = validateRenderedOutput({
+    outputPath: renderPath.relativePath,
+    expectedFormat: format.format,
+    expectedSampleRateHz,
+    expectedChannels,
+    expectedDurationSeconds: options.version.audio.duration_seconds,
+    metadata,
+    fileSizeBytes,
+  });
 
   return {
     command,
@@ -84,7 +104,9 @@ export async function renderExport(options: FinalRenderOptions): Promise<RenderR
         ...(fileSizeBytes === undefined ? {} : { fileSizeBytes }),
       },
       loudnessSummary: options.loudnessSummary,
-      ...(warnings.length === 0 ? {} : { warnings }),
+      ...(warnings.length + validationWarnings.length === 0
+        ? {}
+        : { warnings: [...warnings, ...validationWarnings] }),
     }),
   };
 }

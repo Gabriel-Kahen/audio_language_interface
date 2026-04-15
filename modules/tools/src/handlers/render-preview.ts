@@ -1,6 +1,6 @@
 import type { AudioVersion } from "@audio-language-interface/render";
 
-import { ToolInputError } from "../errors.js";
+import { createProvenanceMismatchError } from "../errors.js";
 import type { ToolDefinition, ToolRequest } from "../types.js";
 import {
   assertToolResultRenderArtifact,
@@ -24,16 +24,24 @@ interface RenderPreviewArguments {
 
 function validateVersionConsistency(request: ToolRequest, audioVersion: AudioVersion): void {
   if (request.asset_id !== undefined && request.asset_id !== audioVersion.asset_id) {
-    throw new ToolInputError(
-      "invalid_arguments",
+    throw createProvenanceMismatchError(
+      "request.asset_id",
       "Request asset_id does not match arguments.audio_version.asset_id.",
+      {
+        request_asset_id: request.asset_id,
+        argument_asset_id: audioVersion.asset_id,
+      },
     );
   }
 
   if (request.version_id !== undefined && request.version_id !== audioVersion.version_id) {
-    throw new ToolInputError(
-      "invalid_arguments",
+    throw createProvenanceMismatchError(
+      "request.version_id",
       "Request version_id does not match arguments.audio_version.version_id.",
+      {
+        request_version_id: request.version_id,
+        argument_version_id: audioVersion.version_id,
+      },
     );
   }
 }
@@ -112,6 +120,12 @@ export const renderPreviewTool: ToolDefinition<RenderPreviewArguments, Record<st
       "sample_rate_hz",
       "channels",
       "loudness_summary",
+    ],
+    error_codes: [
+      "invalid_arguments",
+      "provenance_mismatch",
+      "invalid_result_contract",
+      "handler_failed",
     ],
   },
   validateArguments,

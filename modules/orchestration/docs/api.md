@@ -70,6 +70,7 @@ Each public flow uses stage-aware error wrapping.
 - Failures throw `OrchestrationStageError`
 - `error.stage` identifies the failed boundary
 - `error.partialResult` contains the latest safe partial artifacts when available
+- `runRequestCycle` attempts to persist any already-established history into `error.partialResult.sessionGraph`, including imported inputs, completed analysis, completed planning artifacts, and any renders produced before the failure
 - `FailurePolicy` can increase per-stage attempts and add retry decisions
 
 The default behavior is one attempt with no retries.

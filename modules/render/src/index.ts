@@ -9,7 +9,9 @@ export {
   assembleRenderArtifact,
   probeOutputMetadata,
   RenderMetadataProbeError,
+  RenderOutputValidationError,
   readOutputFileSize,
+  validateRenderedOutput,
 } from "./output-metadata.js";
 export { resolveRenderOutputPath, resolveSourceAudioPath } from "./path-policy.js";
 export { renderExport } from "./render-export.js";

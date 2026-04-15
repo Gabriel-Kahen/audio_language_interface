@@ -51,6 +51,7 @@ The initial implementation is a deterministic baseline planner. It uses conserva
 - uses the current `AudioVersion` duration to reject trim and fade requests that exceed the available file
 - rejects combined fade requests that would overlap or cover more than half of the available file duration
 - uses analysis annotations and semantic descriptors to refine frequencies and verification targets
+- maps generic `cleaner` requests only when current evidence supports a conservative tonal cleanup target
 - fails instead of guessing when the request cannot be mapped to an explicit supported operation
 
 See `modules/planning/docs/heuristics.md` for the current phrase-to-operation mappings.

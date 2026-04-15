@@ -25,6 +25,7 @@ This document records the actual semantics of the current `modules/analysis` imp
 - segment window: `0.05` seconds
 - spectrum window size: `512` samples
 - spectrum maximum frame hops: `256`
+- spectrum hop size: evenly spaced overlapping hops across the file, capped at `256` analyzed frames
 
 ## File loading and normalization
 
@@ -65,24 +66,50 @@ Measurement notes:
 - `transient_density_per_second`: forwarded from the segment analyzer
 - `rms_short_term_dbfs`: median of fixed-window RMS dBFS values
 - `dynamic_range_db`: `95th percentile - 10th percentile` of those window RMS dBFS values
+- `transient_crest_db`: `90th percentile` of active-window `(peak dBFS - RMS dBFS)` values
+- `punch_window_ratio`: fraction of active windows whose RMS exceeds `-30 dBFS` and crest is at least `9 dB`
+
+### Transient-impact annotation
+
+- Annotation kind: `transient_impact`
+- Windowing matches the segment and short-term dynamics window: `0.05` seconds
+- Active windows are windows above `-36 dBFS` RMS
+- A punch-sensitive window is one above `-30 dBFS` RMS with crest at least `9 dB`
+- Consecutive punch-sensitive windows are merged into one annotation
+- Annotation severity is `clamp((maxCrestDb - 9) / 9, 0, 1)` within the merged region
+- Band hint is `[60, 4000]` to indicate the broad low-to-presence range most relevant to first-slice punch preservation
 
 ## Spectrum analyzer
 
 - Operates on the mono signal.
 - Uses a Hann window and a direct DFT implementation.
-- Analysis frames advance by `max(windowSize, floor(totalFrames / 256))`, which caps the number of hops.
+- Analysis frames use evenly spaced overlapping hops and stop after at most `256` analyzed frames.
 - Bands are:
   - low: `<250 Hz`
   - mid: `250 Hz` to `<4000 Hz`
   - high: `>=4000 Hz`
+- Additional evidence bands are:
+  - low-mid support: `250 Hz` to `<2000 Hz`
+  - presence: `2500 Hz` to `<6000 Hz`
 - `spectral_centroid_hz` is the magnitude-weighted frequency centroid.
+- `brightness_tilt_db` is `high_band_db - low_band_db`.
+- `presence_band_db` is the average dB value of the presence band.
+- `harshness_ratio_db` is `presence_band_db - low_mid_band_db`.
 - If no full frame fits the file, all band levels are returned as `-120` and centroid as `0`.
+
+### Brightness annotation
+
+- Severity is `clamp((frameHighDb - frameLowDb - 8) / 10, 0, 1)` on each analysis frame.
+- A frame only qualifies when the local centroid is at least `2200 Hz`.
+- Consecutive qualifying frames are merged into one `brightness` annotation.
+- The annotation uses the band hint `[4000, 12000]`.
 
 ### Harshness annotation
 
-- Severity is `clamp((highBandDb - midBandDb - 3) / 12, 0, 1)`.
-- An annotation is emitted when severity exceeds `0.2`.
-- The annotation spans the entire file and uses the band hint `[3000, 4500]`.
+- Severity is `clamp((framePresenceDb - frameLowMidDb - 4) / 8, 0, 1)` on each analysis frame.
+- A frame only qualifies when the local centroid is at least `1800 Hz`.
+- Consecutive qualifying frames are merged into one `harshness` annotation.
+- The annotation uses the band hint `[2500, 6000]`.
 
 ## Stereo analyzer
 
@@ -104,8 +131,10 @@ Threshold summary for downstream modules:
 
 - silence threshold: `-50 dBFS` window RMS
 - transient gate: rise `> 6 dB` and current window `> -24 dBFS`
+- transient-impact window: RMS `> -30 dBFS` and crest `>= 9 dB`
 - clipping threshold: absolute sample amplitude `>= 0.999`
-- harshness annotation threshold: severity `> 0.2`, where severity is based on `highBandDb - midBandDb`
+- brightness annotation threshold: severity `> 0.2` with local centroid `>= 2200 Hz`
+- harshness annotation threshold: severity `> 0.2` with local centroid `>= 1800 Hz`
 - pitched-signal threshold: normalized autocorrelation-style score `> 0.65`
 
 ## Pitched-signal detection
@@ -137,15 +166,15 @@ Confidence values are fixed by class in the current implementation:
 The summary is generated from measurement heuristics only.
 
 - brightness descriptor:
-  - `bright` when `high_band_db - low_band_db > 6`
-  - `dark` when `high_band_db - low_band_db < -6`
+  - `bright` when `brightness_tilt_db > 6`
+  - `dark` when `brightness_tilt_db < -6`
   - otherwise `balanced`
 - stereo descriptor:
   - `mono` when width `< 0.05`
   - `narrow stereo` when width `< 0.2`
   - otherwise `wide stereo`
 - transient phrase:
-  - `with strong transient activity` when transient density is at least `1.5`
+  - `with strong transient impact` when transient density is at least `1.5` or `transient_crest_db >= 10`
   - otherwise `with restrained transient activity`
 - clipping sentence:
   - `Clipping is present.` or `No clipping was detected.`

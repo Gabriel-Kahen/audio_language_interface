@@ -38,6 +38,6 @@ export function createTransformRecord(input: {
     finished_at: input.finishedAt,
     runtime_ms: input.runtimeMs,
     operations: input.operations,
-    warnings: input.warnings,
+    ...(input.warnings.length === 0 ? {} : { warnings: input.warnings }),
   };
 }

@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0.0",
+  "request_id": "toolreq_01HZZ0RENDERPREVIEWREQ000001",
+  "tool_name": "render_preview",
+  "status": "ok",
+  "completed_at": "2026-04-14T20:20:10Z",
+  "result": {
+    "artifact": {
+      "schema_version": "1.0.0",
+      "render_id": "render_01HZZ0FIRSTSLICEPREVIEW00001",
+      "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+      "version_id": "ver_01HZZ0FIRSTSLICEEDIT00000001",
+      "kind": "preview",
+      "created_at": "2026-04-14T20:20:10Z",
+      "output": {
+        "path": "renders/previews/first-slice-preview.mp3",
+        "format": "mp3",
+        "codec": "libmp3lame",
+        "sample_rate_hz": 44100,
+        "channels": 2,
+        "duration_seconds": 4,
+        "file_size_bytes": 98304
+      },
+      "loudness_summary": {
+        "integrated_lufs": -15,
+        "true_peak_dbtp": -1.8
+      },
+      "warnings": []
+    },
+    "command": {
+      "executable": "ffmpeg",
+      "args": ["-i", "input.wav", "-c:a", "libmp3lame", "renders/previews/first-slice-preview.mp3"],
+      "output_path": "/workspace/renders/previews/first-slice-preview.mp3"
+    }
+  },
+  "warnings": []
+}

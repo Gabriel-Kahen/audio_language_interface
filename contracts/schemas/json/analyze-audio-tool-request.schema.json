@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/analyze-audio-tool-request.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "tool_name", "arguments", "requested_at"],
+  "properties": {
+    "schema_version": {
+      "$ref": "./common.schema.json#/$defs/schemaVersion"
+    },
+    "request_id": {
+      "$ref": "./common.schema.json#/$defs/requestId"
+    },
+    "tool_name": {
+      "const": "analyze_audio"
+    },
+    "requested_at": {
+      "$ref": "./common.schema.json#/$defs/isoTimestamp"
+    },
+    "session_id": {
+      "$ref": "./common.schema.json#/$defs/sessionId"
+    },
+    "asset_id": {
+      "$ref": "./common.schema.json#/$defs/assetId"
+    },
+    "version_id": {
+      "$ref": "./common.schema.json#/$defs/versionId"
+    },
+    "caller": {
+      "$ref": "./common.schema.json#/$defs/nonEmptyString"
+    },
+    "arguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["audio_version"],
+      "properties": {
+        "audio_version": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema_version", "version_id", "asset_id", "lineage", "audio"],
+          "properties": {
+            "schema_version": {
+              "$ref": "./common.schema.json#/$defs/schemaVersion"
+            },
+            "version_id": {
+              "$ref": "./common.schema.json#/$defs/versionId"
+            },
+            "asset_id": {
+              "$ref": "./common.schema.json#/$defs/assetId"
+            },
+            "lineage": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["created_at", "created_by"],
+              "properties": {
+                "created_at": {
+                  "$ref": "./common.schema.json#/$defs/isoTimestamp"
+                },
+                "created_by": {
+                  "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            },
+            "audio": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "storage_ref",
+                "sample_rate_hz",
+                "channels",
+                "duration_seconds",
+                "frame_count"
+              ],
+              "properties": {
+                "storage_ref": {
+                  "$ref": "./common.schema.json#/$defs/workspacePath"
+                },
+                "sample_rate_hz": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "channels": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "duration_seconds": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "frame_count": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "channel_layout": {
+                  "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                }
+              }
+            },
+            "state": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "is_original": {
+                  "type": "boolean"
+                },
+                "is_preview": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        "generated_at": {
+          "$ref": "./common.schema.json#/$defs/isoTimestamp"
+        },
+        "include_annotations": {
+          "type": "boolean"
+        },
+        "include_segments": {
+          "type": "boolean"
+        },
+        "include_source_character": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

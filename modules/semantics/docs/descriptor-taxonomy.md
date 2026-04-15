@@ -22,5 +22,7 @@ The initial `semantics` implementation only assigns labels that can be traced di
 
 - The module does not infer descriptors like `muddy`, `warm`, `dry`, or `compressed` yet because the current analysis baseline does not expose enough direct evidence to justify them reliably.
 - The module does not map `artifacts.noise_floor_dbfs` directly to `clean` or `noisy`, because the analysis docs define that field as a low-percentile level estimate rather than a separated noise-only measurement.
-- Borderline evidence is recorded under `unresolved_terms` instead of forcing a descriptor.
+- `balanced` requires both near-neutral low/high band tilt and a mid-range spectral centroid, so unusually high or low centroids remain unresolved instead of being over-normalized.
+- `slightly_harsh` requires both a harshness annotation and enough upper-mid excess to keep the label tied to measurable evidence.
+- Borderline evidence is recorded under `unresolved_terms` instead of forcing a descriptor. This now includes near-threshold `bright`, `dark`, `wide`, `punchy`, and `slightly_harsh` cases.
 - Every assigned descriptor includes one or more `evidence_refs` back to the source `AnalysisReport`.

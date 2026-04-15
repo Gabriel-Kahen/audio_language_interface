@@ -93,7 +93,8 @@ The returned `TransformRecord`:
 
 - stores one operation entry per applied step
 - records `runtime_ms`
-- includes raw `stderr` text in `warnings` when FFmpeg emits it
+- includes normalized, non-routine FFmpeg stderr lines in `warnings` when execution emits actionable diagnostics
+- omits `warnings` entirely when FFmpeg emits only routine logging
 
 ## Contract alignment
 
@@ -112,7 +113,7 @@ This module consumes and emits repository contracts directly:
 - `normalize` supports only `mode: "peak"`.
 - `parametric_eq` supports only bell bands.
 - Filter output format is fixed to 16-bit PCM WAV; the module does not preserve original codec or container.
-- Warnings are raw FFmpeg `stderr` strings, not structured diagnostics.
+- The module validates that ffmpeg materially created a non-empty output file before returning success.
 - `applyEditPlan` leaves intermediate step files on disk; it does not currently clean them up.
 - The executor layer only wraps command execution. It does not retry, probe FFmpeg capabilities, or validate codec/filter availability.
 

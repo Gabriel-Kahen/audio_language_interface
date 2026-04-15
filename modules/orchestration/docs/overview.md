@@ -4,13 +4,19 @@
 
 Compose independent modules into useful end-to-end workflows without absorbing their responsibilities.
 
+The current implementation is a thin integration layer over the existing runtime modules. It exposes both a full request cycle and smaller reusable flow helpers.
+
 ## Public API surface
 
-- run a full request cycle from import or current version to comparison
-- run partial flows for iterative refinement
-- enforce workflow stopping and recovery policies
+- `runRequestCycle(options)`
+- `importAndAnalyze(options)`
+- `planAndApply(options)`
+- `renderAndCompare(options)`
+- `iterativeRefine(options)`
+- `OrchestrationStageError`
+- `defaultOrchestrationDependencies`
 
-## Suggested initial source files
+## Implemented source files
 
 - `src/run-request-cycle.ts`: end-to-end workflow entrypoint
 - `src/flows/import-and-analyze.ts`: ingest plus analysis path
@@ -44,3 +50,16 @@ Compose independent modules into useful end-to-end workflows without absorbing t
 - verify failure handling and partial recovery
 - verify module contracts are respected at boundaries
 - verify orchestration remains thin and explicit
+
+## Current behavior
+
+- `runRequestCycle` supports both `input.kind = "import"` and `input.kind = "existing"`.
+- The default dependency bundle wires the implemented `io`, `analysis`, `semantics`, `planning`, `transforms`, `render`, `compare`, and `history` module entrypoints directly.
+- Flow errors are wrapped as `OrchestrationStageError` values with stage names and partial results when available.
+- `iterativeRefine` repeats plan, apply, analyze, and compare until `maxIterations` is reached or the caller stops the loop.
+
+## Current limitations
+
+- Orchestration depends on the same narrow first-slice module capabilities as the underlying runtime modules.
+- It does not provide hidden persistence, job scheduling, or service hosting behavior.
+- There is no dedicated CLI or app entrypoint that wraps these orchestration APIs yet.

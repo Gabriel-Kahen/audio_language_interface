@@ -1,0 +1,167 @@
+{
+  "schema_version": "1.0.0",
+  "session_id": "session_01HZZ0FIRSTSLICE0000000001",
+  "created_at": "2026-04-14T20:20:00Z",
+  "updated_at": "2026-04-14T20:20:12Z",
+  "nodes": [
+    {
+      "node_id": "node_asset_1",
+      "node_type": "audio_asset",
+      "ref_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+      "created_at": "2026-04-14T20:20:02Z"
+    },
+    {
+      "node_id": "node_version_base",
+      "node_type": "audio_version",
+      "ref_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
+      "created_at": "2026-04-14T20:20:02Z"
+    },
+    {
+      "node_id": "node_analysis_base",
+      "node_type": "analysis_report",
+      "ref_id": "analysis_01HZZ0FIRSTSLICEBASE000001",
+      "created_at": "2026-04-14T20:20:04Z"
+    },
+    {
+      "node_id": "node_semantic_base",
+      "node_type": "semantic_profile",
+      "ref_id": "semantic_01HZZ0FIRSTSLICEPROFILE00001",
+      "created_at": "2026-04-14T20:20:05Z"
+    },
+    {
+      "node_id": "node_plan_1",
+      "node_type": "edit_plan",
+      "ref_id": "plan_01HZZ0FIRSTSLICEPLAN00000001",
+      "created_at": "2026-04-14T20:20:05Z"
+    },
+    {
+      "node_id": "node_transform_1",
+      "node_type": "transform_record",
+      "ref_id": "transform_01HZZ0FIRSTSLICERECORD0001",
+      "created_at": "2026-04-14T20:20:08Z"
+    },
+    {
+      "node_id": "node_version_edit",
+      "node_type": "audio_version",
+      "ref_id": "ver_01HZZ0FIRSTSLICEEDIT00000001",
+      "created_at": "2026-04-14T20:20:08Z"
+    },
+    {
+      "node_id": "node_render_1",
+      "node_type": "render_artifact",
+      "ref_id": "render_01HZZ0FIRSTSLICEPREVIEW00001",
+      "created_at": "2026-04-14T20:20:10Z"
+    },
+    {
+      "node_id": "node_compare_1",
+      "node_type": "comparison_report",
+      "ref_id": "compare_01HZZ0FIRSTSLICECOMPARE0001",
+      "created_at": "2026-04-14T20:20:12Z"
+    }
+  ],
+  "edges": [
+    {
+      "from_node_id": "node_asset_1",
+      "to_node_id": "node_version_base",
+      "relation": "has_version"
+    },
+    {
+      "from_node_id": "node_version_base",
+      "to_node_id": "node_analysis_base",
+      "relation": "analyzed_as"
+    },
+    {
+      "from_node_id": "node_analysis_base",
+      "to_node_id": "node_semantic_base",
+      "relation": "described_as"
+    },
+    {
+      "from_node_id": "node_version_base",
+      "to_node_id": "node_plan_1",
+      "relation": "planned_from"
+    },
+    {
+      "from_node_id": "node_plan_1",
+      "to_node_id": "node_transform_1",
+      "relation": "executed_as"
+    },
+    {
+      "from_node_id": "node_transform_1",
+      "to_node_id": "node_version_edit",
+      "relation": "produced"
+    },
+    {
+      "from_node_id": "node_version_edit",
+      "to_node_id": "node_render_1",
+      "relation": "rendered_as"
+    },
+    {
+      "from_node_id": "node_version_edit",
+      "to_node_id": "node_compare_1",
+      "relation": "compared_to"
+    }
+  ],
+  "active_refs": {
+    "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+    "version_id": "ver_01HZZ0FIRSTSLICEEDIT00000001"
+  },
+  "metadata": {
+    "branches": [],
+    "snapshots": [],
+    "active_ref_history": [
+      {
+        "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+        "version_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
+        "changed_at": "2026-04-14T20:20:02Z",
+        "reason": "record_audio_version"
+      },
+      {
+        "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+        "version_id": "ver_01HZZ0FIRSTSLICEEDIT00000001",
+        "changed_at": "2026-04-14T20:20:08Z",
+        "reason": "apply_edit_plan"
+      }
+    ],
+    "active_ref_history_index": 1,
+    "provenance": {
+      "asset_01HZZ0FIRSTSLICEASSET00000001": {
+        "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001"
+      },
+      "ver_01HZZ0FIRSTSLICEBASE00000001": {
+        "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+        "version_id": "ver_01HZZ0FIRSTSLICEBASE00000001"
+      },
+      "analysis_01HZZ0FIRSTSLICEBASE000001": {
+        "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+        "version_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
+        "analysis_report_id": "analysis_01HZZ0FIRSTSLICEBASE000001"
+      },
+      "plan_01HZZ0FIRSTSLICEPLAN00000001": {
+        "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+        "version_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
+        "plan_id": "plan_01HZZ0FIRSTSLICEPLAN00000001"
+      },
+      "transform_01HZZ0FIRSTSLICERECORD0001": {
+        "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+        "input_version_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
+        "output_version_id": "ver_01HZZ0FIRSTSLICEEDIT00000001",
+        "plan_id": "plan_01HZZ0FIRSTSLICEPLAN00000001"
+      },
+      "ver_01HZZ0FIRSTSLICEEDIT00000001": {
+        "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+        "version_id": "ver_01HZZ0FIRSTSLICEEDIT00000001",
+        "parent_version_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
+        "transform_record_id": "transform_01HZZ0FIRSTSLICERECORD0001",
+        "plan_id": "plan_01HZZ0FIRSTSLICEPLAN00000001"
+      },
+      "compare_01HZZ0FIRSTSLICECOMPARE0001": {
+        "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+        "baseline_ref_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
+        "baseline_ref_type": "version",
+        "candidate_ref_id": "ver_01HZZ0FIRSTSLICEEDIT00000001",
+        "candidate_ref_type": "version"
+      }
+    },
+    "label": "first-slice tonal cleanup happy path"
+  }
+}

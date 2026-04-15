@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0.0",
+  "request_id": "toolreq_01HZZ0COMPAREVERSIONSREQ00001",
+  "tool_name": "compare_versions",
+  "status": "ok",
+  "completed_at": "2026-04-14T20:20:12Z",
+  "result": {
+    "comparison_report": {
+      "schema_version": "1.0.0",
+      "comparison_id": "compare_01HZZ0FIRSTSLICECOMPARE0001",
+      "baseline": {
+        "ref_type": "version",
+        "ref_id": "ver_01HZZ0FIRSTSLICEBASE00000001"
+      },
+      "candidate": {
+        "ref_type": "version",
+        "ref_id": "ver_01HZZ0FIRSTSLICEEDIT00000001"
+      },
+      "generated_at": "2026-04-14T20:20:12Z",
+      "metric_deltas": [
+        {
+          "metric": "spectral_centroid_hz",
+          "direction": "decreased",
+          "delta": -340
+        },
+        {
+          "metric": "harshness_severity_3k_4p5k",
+          "direction": "decreased",
+          "delta": -0.23
+        },
+        {
+          "metric": "crest_factor_db",
+          "direction": "decreased",
+          "delta": -0.3
+        }
+      ],
+      "semantic_deltas": [
+        {
+          "label": "darker",
+          "confidence": 0.83,
+          "evidence": "High-band energy and spectral centroid both moved down."
+        },
+        {
+          "label": "less_harsh",
+          "confidence": 0.8,
+          "evidence": "Upper-mid harshness annotation severity decreased from 0.52 to 0.29."
+        }
+      ],
+      "regressions": [],
+      "goal_alignment": [
+        {
+          "goal": "reduce brightness",
+          "status": "met"
+        },
+        {
+          "goal": "reduce harshness",
+          "status": "met"
+        },
+        {
+          "goal": "preserve punch",
+          "status": "mostly_met"
+        }
+      ],
+      "summary": {
+        "plain_text": "The candidate version is darker and less harsh while keeping transient punch close to baseline."
+      }
+    }
+  },
+  "warnings": []
+}

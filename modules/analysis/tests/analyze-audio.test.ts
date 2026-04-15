@@ -74,6 +74,64 @@ function createStereoClipCountSignal(
   return [left, right];
 }
 
+function createLocalizedBrightnessSignal(
+  sampleRateHz: number,
+  durationSeconds: number,
+): Float32Array[] {
+  const frameCount = Math.round(sampleRateHz * durationSeconds);
+  const mono = new Float32Array(frameCount);
+
+  for (let index = 0; index < frameCount; index += 1) {
+    const time = index / sampleRateHz;
+    mono[index] =
+      time < durationSeconds / 2
+        ? 0.28 * Math.sin(2 * Math.PI * 180 * time)
+        : 0.3 * Math.sin(2 * Math.PI * 6500 * time);
+  }
+
+  return [mono];
+}
+
+function createLocalizedHarshnessSignal(
+  sampleRateHz: number,
+  durationSeconds: number,
+): Float32Array[] {
+  const frameCount = Math.round(sampleRateHz * durationSeconds);
+  const mono = new Float32Array(frameCount);
+
+  for (let index = 0; index < frameCount; index += 1) {
+    const time = index / sampleRateHz;
+    mono[index] =
+      time < durationSeconds / 2
+        ? 0.24 * Math.sin(2 * Math.PI * 300 * time)
+        : 0.05 * Math.sin(2 * Math.PI * 500 * time) + 0.32 * Math.sin(2 * Math.PI * 3600 * time);
+  }
+
+  return [mono];
+}
+
+function createPunchyTransientSignal(
+  sampleRateHz: number,
+  durationSeconds: number,
+): Float32Array[] {
+  const frameCount = Math.round(sampleRateHz * durationSeconds);
+  const mono = new Float32Array(frameCount);
+  const pulseSpacing = Math.floor(sampleRateHz * 0.25);
+
+  for (let index = 0; index < frameCount; index += 1) {
+    const time = index / sampleRateHz;
+    mono[index] = 0.04 * Math.sin(2 * Math.PI * 90 * time);
+  }
+
+  for (let onset = pulseSpacing; onset < frameCount; onset += pulseSpacing) {
+    for (let offset = 0; offset < 48 && onset + offset < frameCount; offset += 1) {
+      mono[onset + offset] = (mono[onset + offset] ?? 0) + 0.85 * Math.exp(-offset / 12);
+    }
+  }
+
+  return [mono];
+}
+
 async function writeWav(
   workspaceRoot: string,
   storageRef: string,
@@ -255,6 +313,90 @@ describe("analyzeAudioVersion", () => {
       expect(
         report.annotations?.find((annotation) => annotation.kind === "clipping")?.evidence,
       ).toContain("4 clipped samples across 3 frames");
+    });
+  });
+
+  it("localizes bright regions and exposes brightness tilt evidence", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 44100;
+      const durationSeconds = 2;
+      const storageRef = "storage/audio/test-brightness.wav";
+      const channels = createLocalizedBrightnessSignal(sampleRateHz, durationSeconds);
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const report = await analyzeAudioVersion(
+        createAudioVersion(storageRef, sampleRateHz, channels.length, getFrameCount(channels)),
+        {
+          workspaceRoot,
+          generatedAt: "2026-04-14T20:20:10Z",
+        },
+      );
+
+      expect(report.measurements.spectral_balance.brightness_tilt_db).toBeGreaterThan(3);
+      const brightnessAnnotation = report.annotations?.find(
+        (annotation) => annotation.kind === "brightness",
+      );
+      expect(brightnessAnnotation).toBeDefined();
+      expect(brightnessAnnotation?.start_seconds).toBeGreaterThan(0.8);
+      expect(brightnessAnnotation?.bands_hz).toEqual([4000, 12000]);
+      expect(brightnessAnnotation?.evidence).toContain("high-minus-low tilt");
+    });
+  });
+
+  it("localizes harsh regions and exposes presence-band evidence", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 44100;
+      const durationSeconds = 2;
+      const storageRef = "storage/audio/test-harshness.wav";
+      const channels = createLocalizedHarshnessSignal(sampleRateHz, durationSeconds);
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const report = await analyzeAudioVersion(
+        createAudioVersion(storageRef, sampleRateHz, channels.length, getFrameCount(channels)),
+        {
+          workspaceRoot,
+          generatedAt: "2026-04-14T20:20:10Z",
+        },
+      );
+
+      expect(report.measurements.spectral_balance.harshness_ratio_db).toBeGreaterThan(1);
+      const harshnessAnnotation = report.annotations?.find(
+        (annotation) => annotation.kind === "harshness",
+      );
+      expect(harshnessAnnotation).toBeDefined();
+      expect(harshnessAnnotation?.start_seconds).toBeGreaterThan(0.8);
+      expect(harshnessAnnotation?.bands_hz).toEqual([2500, 6000]);
+      expect(harshnessAnnotation?.evidence).toContain("presence-band energy");
+    });
+  });
+
+  it("adds transient-impact evidence for punch-sensitive material", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 48000;
+      const durationSeconds = 2;
+      const storageRef = "storage/audio/test-punch.wav";
+      const channels = createPunchyTransientSignal(sampleRateHz, durationSeconds);
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const report = await analyzeAudioVersion(
+        createAudioVersion(storageRef, sampleRateHz, channels.length, getFrameCount(channels)),
+        {
+          workspaceRoot,
+          generatedAt: "2026-04-14T20:20:10Z",
+        },
+      );
+
+      expect(report.measurements.dynamics.transient_crest_db).toBeGreaterThan(10);
+      expect(report.measurements.dynamics.punch_window_ratio).toBeGreaterThan(0.1);
+      const transientAnnotation = report.annotations?.find(
+        (annotation) => annotation.kind === "transient_impact",
+      );
+      expect(transientAnnotation).toBeDefined();
+      expect(transientAnnotation?.bands_hz).toEqual([60, 4000]);
+      expect(transientAnnotation?.evidence).toContain("window crest");
     });
   });
 });

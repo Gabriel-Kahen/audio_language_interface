@@ -52,6 +52,11 @@ Each schema should be stable, documented, and accompanied by at least one exampl
 - `session-graph.md`
 - `tool-request.md`
 - `tool-response.md`
+- `load-audio-tool.md`
+- `analyze-audio-tool.md`
+- `apply-edit-plan-tool.md`
+- `render-preview-tool.md`
+- `compare-versions-tool.md`
 
 ## Machine-readable schemas
 

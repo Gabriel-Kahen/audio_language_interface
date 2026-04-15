@@ -7,12 +7,14 @@ import { averageChannels } from "./math.js";
 
 const { WaveFile } = wavefile;
 
+type TypedArrayConstructor = abstract new (...args: unknown[]) => ArrayLike<number>;
+
 interface DecodedWaveFile {
   fmt: {
     sampleRate?: number;
   };
   toBitDepth(bitDepth: string): void;
-  getSamples(split?: boolean, TypedArrayConstructor?: Function): unknown;
+  getSamples(split?: boolean, TypedArrayConstructor?: TypedArrayConstructor): unknown;
 }
 
 export function resolveAnalysisAudioPath(

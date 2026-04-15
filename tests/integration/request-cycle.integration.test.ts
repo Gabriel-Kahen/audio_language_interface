@@ -1,0 +1,302 @@
+import { copyFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import {
+  getParentVersionId,
+  listAncestorVersionIds,
+  resolveRevertTarget,
+  type SessionGraph,
+  validateSessionGraph,
+} from "@audio-language-interface/history";
+import { importAudioFromFile } from "@audio-language-interface/io";
+import {
+  type FfprobeExecutionResult,
+  renderExport,
+  renderPreview,
+} from "@audio-language-interface/render";
+import { applyEditPlan } from "@audio-language-interface/transforms";
+import { describe, expect, it } from "vitest";
+import { WaveFile } from "wavefile";
+
+import {
+  defaultOrchestrationDependencies,
+  OrchestrationStageError,
+  runRequestCycle,
+} from "../../modules/orchestration/src/index.js";
+
+describe("request cycle integration", () => {
+  it("runs the happy path across real modules and records full provenance", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const inputPath = path.join(workspaceRoot, "fixtures", "tone.wav");
+      await writeFixtureWav(inputPath, { sampleRateHz: 44_100, durationSeconds: 1.5 });
+
+      const result = await runRequestCycle({
+        workspaceRoot,
+        userRequest: "Make this loop darker and less harsh, but keep the punch.",
+        input: {
+          kind: "import",
+          inputPath,
+          importOptions: {
+            importedAt: "2026-04-14T20:20:00Z",
+            tags: ["integration"],
+            notes: "end-to-end request cycle",
+          },
+        },
+        dependencies: {
+          ...defaultOrchestrationDependencies,
+          applyEditPlan: async (options) =>
+            applyEditPlan({ ...options, executor: copyAudioExecutor }),
+          renderPreview: async (options) =>
+            renderPreview({
+              ...options,
+              executor: copyAudioExecutor,
+              probeExecutor: createProbeExecutor({
+                format: "mp3",
+                codec: "mp3",
+                sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
+                channels: options.channels ?? options.version.audio.channels,
+                durationSeconds: options.version.audio.duration_seconds,
+              }),
+            }),
+          renderExport: async (options) =>
+            renderExport({
+              ...options,
+              executor: copyAudioExecutor,
+              probeExecutor: createProbeExecutor({
+                format: options.format ?? "wav",
+                codec: options.format === "flac" ? "flac" : "pcm_s16le",
+                sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
+                channels: options.channels ?? options.version.audio.channels,
+                durationSeconds: options.version.audio.duration_seconds,
+              }),
+            }),
+        },
+      });
+
+      const provenance = result.sessionGraph.metadata?.provenance ?? {};
+
+      expect(validateSessionGraph(result.sessionGraph).valid).toBe(true);
+      expect(result.trace.map((entry) => entry.stage)).toEqual([
+        "import",
+        "analyze_input",
+        "semantic_profile",
+        "plan",
+        "apply",
+        "analyze_output",
+        "render_baseline",
+        "render_candidate",
+        "compare",
+      ]);
+      expect(result.sessionGraph.active_refs).toMatchObject({
+        asset_id: result.asset.asset_id,
+        version_id: result.outputVersion.version_id,
+      });
+      expect(getParentVersionId(result.sessionGraph, result.outputVersion.version_id)).toBe(
+        result.inputVersion.version_id,
+      );
+      expect(listAncestorVersionIds(result.sessionGraph, result.outputVersion.version_id)).toEqual([
+        result.inputVersion.version_id,
+      ]);
+      expect(resolveRevertTarget(result.sessionGraph)).toBe(result.inputVersion.version_id);
+
+      expect(provenance[result.inputAnalysis.report_id]).toMatchObject({
+        asset_id: result.asset.asset_id,
+        version_id: result.inputVersion.version_id,
+      });
+      expect(provenance[result.semanticProfile?.profile_id ?? "missing"]).toMatchObject({
+        asset_id: result.asset.asset_id,
+        version_id: result.inputVersion.version_id,
+        analysis_report_id: result.inputAnalysis.report_id,
+      });
+      expect(provenance[result.editPlan.plan_id]).toMatchObject({
+        asset_id: result.asset.asset_id,
+        version_id: result.inputVersion.version_id,
+        plan_id: result.editPlan.plan_id,
+      });
+      expect(provenance[result.outputVersion.version_id]).toMatchObject({
+        asset_id: result.asset.asset_id,
+        version_id: result.outputVersion.version_id,
+        parent_version_id: result.inputVersion.version_id,
+        plan_id: result.editPlan.plan_id,
+        transform_record_id: result.transformResult.transformRecord.record_id,
+      });
+      expect(provenance[result.transformResult.transformRecord.record_id]).toMatchObject({
+        asset_id: result.asset.asset_id,
+        input_version_id: result.inputVersion.version_id,
+        output_version_id: result.outputVersion.version_id,
+        plan_id: result.editPlan.plan_id,
+      });
+      expect(provenance[result.baselineRender.render_id]).toMatchObject({
+        asset_id: result.asset.asset_id,
+        version_id: result.inputVersion.version_id,
+      });
+      expect(provenance[result.candidateRender.render_id]).toMatchObject({
+        asset_id: result.asset.asset_id,
+        version_id: result.outputVersion.version_id,
+      });
+      expect(provenance[result.comparisonReport.comparison_id]).toMatchObject({
+        baseline_ref_id: result.baselineRender.render_id,
+        baseline_ref_type: "render",
+        candidate_ref_id: result.candidateRender.render_id,
+        candidate_ref_type: "render",
+      });
+
+      expect(result.sessionGraph.nodes.map((node) => node.node_type)).toEqual(
+        expect.arrayContaining([
+          "audio_asset",
+          "audio_version",
+          "analysis_report",
+          "semantic_profile",
+          "edit_plan",
+          "transform_record",
+          "render_artifact",
+          "comparison_report",
+        ]),
+      );
+    });
+  });
+
+  it("returns a valid partial session graph when plan application fails", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const inputPath = path.join(workspaceRoot, "fixtures", "tone.wav");
+      await writeFixtureWav(inputPath, { sampleRateHz: 44_100, durationSeconds: 1 });
+      const imported = await importAudioFromFile(inputPath, {
+        workspaceRoot,
+        importedAt: "2026-04-14T20:25:00Z",
+      });
+
+      await expect(
+        runRequestCycle({
+          workspaceRoot,
+          userRequest: "Make this loop darker and less harsh.",
+          input: {
+            kind: "existing",
+            asset: imported.asset,
+            version: imported.version,
+          },
+          dependencies: {
+            ...defaultOrchestrationDependencies,
+            applyEditPlan: async () => {
+              throw new Error("synthetic transform failure");
+            },
+          },
+        }),
+      ).rejects.toSatisfy((error: unknown) => {
+        expect(error).toBeInstanceOf(OrchestrationStageError);
+
+        const stageError = error as OrchestrationStageError<{
+          sessionGraph?: SessionGraph;
+          semanticProfile?: { profile_id: string };
+          editPlan?: { plan_id: string };
+        }>;
+        const partialGraph = stageError.partialResult?.sessionGraph;
+
+        expect(stageError.stage).toBe("apply");
+        expect(stageError.partialResult?.semanticProfile?.profile_id).toBeTruthy();
+        expect(stageError.partialResult?.editPlan?.plan_id).toBeTruthy();
+        expect(partialGraph).toBeTruthy();
+        if (!partialGraph) {
+          throw new Error("Expected a partial session graph for apply-stage failures.");
+        }
+
+        expect(validateSessionGraph(partialGraph).valid).toBe(true);
+        expect(partialGraph.active_refs.version_id).toBe(imported.version.version_id);
+        expect(partialGraph.nodes.map((node: { node_type: string }) => node.node_type)).toEqual(
+          expect.arrayContaining([
+            "audio_asset",
+            "audio_version",
+            "analysis_report",
+            "semantic_profile",
+            "edit_plan",
+          ]),
+        );
+        expect(partialGraph.nodes.map((node: { node_type: string }) => node.node_type)).not.toEqual(
+          expect.arrayContaining(["transform_record", "render_artifact", "comparison_report"]),
+        );
+
+        const provenance = partialGraph.metadata?.provenance ?? {};
+        expect(
+          provenance[stageError.partialResult?.editPlan?.plan_id ?? "missing"]?.version_id,
+        ).toBe(imported.version.version_id);
+
+        return true;
+      });
+    });
+  });
+});
+
+async function withTempWorkspace(run: (workspaceRoot: string) => Promise<void>): Promise<void> {
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), "orchestration-integration-"));
+
+  try {
+    await run(workspaceRoot);
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+}
+
+async function writeFixtureWav(
+  filePath: string,
+  options: { sampleRateHz: number; durationSeconds: number },
+): Promise<void> {
+  const wav = new WaveFile();
+  const frameCount = Math.round(options.sampleRateHz * options.durationSeconds);
+  const left = new Int16Array(frameCount);
+  const right = new Int16Array(frameCount);
+
+  for (let index = 0; index < frameCount; index += 1) {
+    const time = index / options.sampleRateHz;
+    left[index] = Math.round(Math.sin(2 * Math.PI * 220 * time) * 10_000);
+    right[index] = Math.round(Math.sin(2 * Math.PI * 1760 * time) * 6_000);
+  }
+
+  wav.fromScratch(2, options.sampleRateHz, "16", [left, right]);
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, wav.toBuffer());
+}
+
+async function copyAudioExecutor(command: {
+  args: string[];
+  outputPath: string;
+}): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+  const inputPath = command.args[1] === "-i" ? command.args[2] : undefined;
+  if (!inputPath) {
+    throw new Error("Expected ffmpeg-style command arguments to include an input path.");
+  }
+
+  await mkdir(path.dirname(command.outputPath), { recursive: true });
+  await copyFile(inputPath, command.outputPath);
+
+  return {
+    exitCode: 0,
+    stdout: "copied fixture audio",
+    stderr: "",
+  };
+}
+
+function createProbeExecutor(metadata: {
+  format: string;
+  codec: string;
+  sampleRateHz: number;
+  channels: number;
+  durationSeconds: number;
+}): () => Promise<FfprobeExecutionResult> {
+  return async () => ({
+    exitCode: 0,
+    stdout: JSON.stringify({
+      streams: [
+        {
+          codec_type: "audio",
+          codec_name: metadata.codec,
+          sample_rate: String(metadata.sampleRateHz),
+          channels: metadata.channels,
+        },
+      ],
+      format: {
+        format_name: metadata.format,
+        duration: String(metadata.durationSeconds),
+      },
+    }),
+    stderr: "",
+  });
+}

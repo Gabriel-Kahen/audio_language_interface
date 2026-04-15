@@ -57,6 +57,7 @@ export interface ParsedEditObjectives {
   normalized_request: string;
   wants_darker: boolean;
   wants_brighter: boolean;
+  wants_cleaner: boolean;
   wants_less_harsh: boolean;
   wants_less_muddy: boolean;
   wants_more_warmth: boolean;
@@ -64,6 +65,7 @@ export interface ParsedEditObjectives {
   wants_louder: boolean;
   wants_quieter: boolean;
   preserve_punch: boolean;
+  unsupported_requests: string[];
   trim_range?: {
     start_seconds: number;
     end_seconds: number;

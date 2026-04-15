@@ -35,7 +35,7 @@ import transformRecordSchema from "../../../contracts/schemas/json/transform-rec
   type: "json",
 };
 
-import { ToolEnvelopeValidationError, ToolInputError } from "./errors.js";
+import { ToolEnvelopeValidationError, ToolExecutionError, ToolInputError } from "./errors.js";
 import type { ToolRequest, ToolResponse } from "./types.js";
 
 type ValidateFunction<T> = {
@@ -94,10 +94,14 @@ function invalidToolResultValue(
   contractName: string,
   details?: Record<string, unknown>,
 ): never {
-  throw new Error(
-    `${fieldName} must be a valid ${contractName}.${
-      details === undefined ? "" : ` ${JSON.stringify(details)}`
-    }`,
+  throw new ToolExecutionError(
+    "invalid_result_contract",
+    `${fieldName} must be a valid ${contractName}.`,
+    {
+      field: fieldName,
+      contract: contractName,
+      ...(details === undefined ? {} : details),
+    },
   );
 }
 

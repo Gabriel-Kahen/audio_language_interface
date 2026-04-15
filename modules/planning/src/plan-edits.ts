@@ -44,7 +44,11 @@ export function planEdits(options: PlanEditsOptions): EditPlan {
     );
   }
 
-  const objectives = parseUserRequest(options.userRequest);
+  const objectives = resolvePlannerObjectives(
+    parseUserRequest(options.userRequest),
+    options.analysisReport,
+    options.semanticProfile,
+  );
   const steps = buildPlannedSteps({
     objectives,
     audioVersion: options.audioVersion,
@@ -87,6 +91,62 @@ export function planEdits(options: PlanEditsOptions): EditPlan {
 
   assertValidEditPlan(plan);
   return plan;
+}
+
+function resolvePlannerObjectives(
+  objectives: ReturnType<typeof parseUserRequest>,
+  analysisReport: PlanEditsOptions["analysisReport"],
+  semanticProfile: PlanEditsOptions["semanticProfile"],
+): ReturnType<typeof parseUserRequest> {
+  if (objectives.unsupported_requests.length > 0) {
+    throw new Error(
+      `The baseline planner does not support ${formatQuotedList(objectives.unsupported_requests)}. Supported first-slice planning is limited to tonal EQ, filtering, trim, fade, and gain.`,
+    );
+  }
+
+  if (objectives.wants_darker && objectives.wants_brighter) {
+    throw new Error(
+      "The request asks for both darker and brighter tonal moves. Please choose one tonal direction.",
+    );
+  }
+
+  if (objectives.wants_louder && objectives.wants_quieter) {
+    throw new Error(
+      "The request asks for both louder and quieter level changes. Please choose one level direction.",
+    );
+  }
+
+  if (!objectives.wants_cleaner) {
+    return objectives;
+  }
+
+  const effectiveObjectives = { ...objectives };
+  const semanticLabels = new Set(
+    semanticProfile.descriptors
+      .filter((descriptor) => descriptor.confidence >= 0.6)
+      .map((descriptor) => descriptor.label),
+  );
+  const hasHarshnessEvidence =
+    analysisReport.annotations?.some((annotation) => annotation.kind === "harshness") === true ||
+    semanticLabels.has("harsh") ||
+    semanticLabels.has("slightly_harsh");
+  const hasMudEvidence = semanticLabels.has("muddy") || semanticLabels.has("slightly_muddy");
+
+  if (hasHarshnessEvidence) {
+    effectiveObjectives.wants_less_harsh = true;
+  }
+
+  if (hasMudEvidence) {
+    effectiveObjectives.wants_less_muddy = true;
+  }
+
+  if (effectiveObjectives.wants_less_harsh || effectiveObjectives.wants_less_muddy) {
+    return effectiveObjectives;
+  }
+
+  throw new Error(
+    "The request asks to clean up the audio, but the baseline planner only supports conservative tonal cleanup when analysis or semantics point to harshness or muddiness. Please ask for a supported direction such as less harsh, darker, less muddy, or rumble removal.",
+  );
 }
 
 function createPlanId(options: PlanEditsOptions, normalizedRequest: string): string {
@@ -169,4 +229,8 @@ function buildRationale(goals: string[], stepCount: number): string {
 
 function dedupe(values: string[]): string[] {
   return [...new Set(values)];
+}
+
+function formatQuotedList(values: string[]): string {
+  return values.map((value) => `\`${value}\``).join(", ");
 }

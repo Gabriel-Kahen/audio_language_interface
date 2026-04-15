@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0.0",
+  "report_id": "analysis_01HZZ0FIRSTSLICEEDIT000001",
+  "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+  "version_id": "ver_01HZZ0FIRSTSLICEEDIT00000001",
+  "generated_at": "2026-04-14T20:20:11Z",
+  "analyzer": {
+    "name": "default-analysis",
+    "version": "0.1.1"
+  },
+  "summary": {
+    "plain_text": "Slightly darker loop with reduced upper-mid harshness and preserved transient definition.",
+    "confidence": 0.84
+  },
+  "measurements": {
+    "levels": {
+      "integrated_lufs": -15.4,
+      "true_peak_dbtp": -1.7
+    },
+    "dynamics": {
+      "crest_factor_db": 10.1,
+      "transient_density_per_second": 2
+    },
+    "spectral_balance": {
+      "low_band_db": -16,
+      "mid_band_db": -11.9,
+      "high_band_db": -10.8,
+      "spectral_centroid_hz": 2380
+    },
+    "stereo": {
+      "width": 0.6,
+      "correlation": 0.4
+    },
+    "artifacts": {
+      "clipping_detected": false,
+      "noise_floor_dbfs": -74
+    }
+  },
+  "annotations": [
+    {
+      "kind": "harshness",
+      "start_seconds": 0,
+      "end_seconds": 4,
+      "bands_hz": [3000, 4500],
+      "severity": 0.29,
+      "evidence": "Upper-mid ridge remains present but is notably reduced."
+    }
+  ],
+  "segments": [
+    {
+      "kind": "loop",
+      "start_seconds": 0,
+      "end_seconds": 4
+    }
+  ],
+  "source_character": {
+    "primary_class": "drum_loop",
+    "pitched": false,
+    "confidence": 0.94
+  }
+}

@@ -4,6 +4,21 @@ Audio Language Interface is an audio manipulation platform for LLMs.
 
 The project is not a music creation tool. It is a modular system that lets language models inspect audio, plan changes, apply deterministic edits, compare results, and iterate toward a user's requested sound.
 
+## Current status
+
+The repository now has a real first-slice runtime across most pipeline modules.
+
+Today it is best understood as a narrow, programmatic audio-editing platform for:
+
+- importing one local audio file
+- analyzing a WAV-backed version
+- planning and applying conservative tonal-shaping edits
+- rendering preview or export artifacts
+- comparing before and after
+- recording provenance in session history
+
+See `docs/current-capabilities.md` for the implemented scope and `docs/contributor-guide.md` for the contributor entry path.
+
 ## Project goals
 
 - Give LLMs a reliable tool surface for modifying sound.
@@ -13,7 +28,7 @@ The project is not a music creation tool. It is a modular system that lets langu
 
 ## Pipeline
 
-The intended pipeline is:
+The current pipeline is:
 
 1. `io` loads and validates audio.
 2. `core` provides the canonical in-memory and serialized data models.
@@ -29,6 +44,33 @@ The intended pipeline is:
 12. `benchmarks` evaluates module quality and pipeline reliability.
 
 Every step must also work independently.
+
+## Current capabilities
+
+The strongest supported Phase 1 slice today is:
+
+- single-file editing
+- local file-path imports
+- WAV-backed analysis
+- conservative prompts like `darker`, `less harsh`, `slightly cleaner`, and `preserve punch`
+- deterministic transform execution through a small FFmpeg-backed operation set
+- preview rendering, comparison, and session-history tracking
+
+Current tool entrypoints are:
+
+- `load_audio`
+- `analyze_audio`
+- `apply_edit_plan`
+- `render_preview`
+- `compare_versions`
+
+Important current limitations include:
+
+- no streaming or byte-buffer import path
+- no broad multi-file workflow
+- no tool-exposed `plan_edits` operation yet
+- no dedicated demo CLI or app entrypoint yet
+- benchmark coverage is still synthetic-first and not yet driven by committed real audio fixtures
 
 ## Repository layout
 
@@ -73,6 +115,10 @@ Each module contains:
 - Read `docs/architecture.md` for the module map and pipeline contract.
 - Read `docs/repository-map.md` for the purpose of the current scaffolding files.
 - Read `docs/implementation-plan.md` for agent rollout and dependencies.
+- Read `docs/phase-1-roadmap.md` for the current delivery roadmap.
+- Read `docs/agent-assignments.md` for the current module-task ownership plan.
+- Read `docs/current-capabilities.md` for the actual implemented feature boundary.
+- Read `docs/contributor-guide.md` for setup, happy-path workflow, extension points, and validation.
 - Read `docs/dependency-policy.md` for approved dependencies and license rules.
 - Read `docs/system-dependencies.md` for Node and FFmpeg expectations.
 - Read the target module's `agents.md` before editing that module.
@@ -95,6 +141,15 @@ pnpm run ci
 ```
 
 See `docs/testing.md` for the testing layout, module-local commands, and CI behavior.
+
+## Happy-path usage
+
+The most direct programmatic happy path currently lives in:
+
+- `modules/orchestration/src/index.ts` for composed end-to-end flows
+- `modules/tools/src/index.ts` for the LLM-facing tool execution surface
+
+If you are extending the current slice, prefer building on those published entrypoints instead of reassembling private module internals.
 
 ## Local setup
 
@@ -119,6 +174,16 @@ These commands check the contract layer, formatting and lint rules, TypeScript c
 4. Run the relevant validation commands before finishing.
 
 Repository-level contract changes should keep the human-readable schema spec, machine-readable JSON Schema, and example payload aligned.
+
+## Extension points
+
+Use the narrowest stable boundary that matches the change:
+
+- `contracts/` for cross-module payload changes
+- `modules/<name>/src` for module-owned runtime behavior
+- `modules/<name>/docs` for module-specific public behavior and limitations
+- `tests/integration` for cross-module workflow coverage
+- `fixtures/audio` for shared audio fixtures and fixture documentation
 
 ## Contract-first development
 

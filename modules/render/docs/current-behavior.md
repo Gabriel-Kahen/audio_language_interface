@@ -61,12 +61,14 @@ The module assembles `RenderArtifact.output` from the produced file after a succ
 - `format`, `codec`, `sample_rate_hz`, `channels`, and `duration_seconds` come from `ffprobe`
 - `codec` is the probed stream codec name, not the `ffmpeg` encoder library label
 - `file_size_bytes` is read from the output file after rendering
+- renders fail if the output file is missing, empty, or probed as a different format than requested
 
 ## Warnings and stderr
 
 - Successful renders ignore routine `ffmpeg` stderr logging.
-- Only stderr lines containing `warning` are preserved in `warnings`.
-- If no warning-like stderr lines are present, the `warnings` field is omitted.
+- Stderr lines containing `warning` are preserved in `warnings`.
+- Additional validation warnings are emitted when the materialized file differs from the requested sample rate, channel count, or expected duration.
+- If neither stderr warnings nor validation warnings are present, the `warnings` field is omitted.
 
 ## Loudness summary behavior
 

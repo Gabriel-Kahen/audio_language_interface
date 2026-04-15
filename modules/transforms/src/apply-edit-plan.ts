@@ -1,6 +1,10 @@
 import path from "node:path";
 
-import { buildFfmpegTransformCommand, executeFfmpegCommand } from "./ffmpeg-adapter.js";
+import {
+  buildFfmpegTransformCommand,
+  executeFfmpegCommand,
+  extractTransformWarnings,
+} from "./ffmpeg-adapter.js";
 import { buildOperation } from "./operation-spec.js";
 import { createOutputVersionId, resolveTransformOutputPath } from "./path-policy.js";
 import { createAppliedOperation, createTransformRecord } from "./record-builder.js";
@@ -57,10 +61,7 @@ export async function applyEditPlan(options: ApplyEditPlanOptions): Promise<Appl
       filterChain: built.filterChain,
     });
     const execution = await executeFfmpegCommand(command, options.executor);
-
-    if (execution.stderr) {
-      warnings.push(execution.stderr);
-    }
+    warnings.push(...extractTransformWarnings(execution.stderr));
 
     commands.push(command);
     operations.push(createAppliedOperation(step.operation, built.effectiveParameters));

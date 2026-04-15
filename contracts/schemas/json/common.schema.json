@@ -39,6 +39,15 @@
         "type": "string"
       }
     },
+    "stringMapOfNumbers": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "./common.schema.json#/$defs/nonEmptyString"
+      },
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
     "assetId": {
       "type": "string",
       "pattern": "^asset_[A-Za-z0-9]+$"
@@ -157,6 +166,65 @@
     "targetScope": {
       "type": "string",
       "enum": ["full_file", "time_range", "segment", "channel", "frequency_region"]
+    },
+    "toolAudioMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "container_format",
+        "codec",
+        "sample_rate_hz",
+        "channels",
+        "duration_seconds",
+        "frame_count"
+      ],
+      "properties": {
+        "container_format": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "codec": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "sample_rate_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "channels": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "duration_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "frame_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bit_depth": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "channel_layout": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "toolCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executable", "args", "output_path"],
+      "properties": {
+        "executable": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "args": {
+          "$ref": "./common.schema.json#/$defs/stringArray"
+        },
+        "output_path": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        }
+      }
     }
   }
 }

@@ -43,6 +43,8 @@ Represents the normalized response returned by the platform tool layer.
 
 The base contract validates only the shared envelope. Tool-specific `result` payloads are defined by the callable tool surface and may contain published contract objects such as an `AnalysisReport` under `result.report`.
 
+The base contract also allows machine-readable `error.details` payloads so tool-layer implementations can distinguish unsupported operations, provenance mismatches, and internal contract drift without changing the shared response envelope.
+
 ## Example
 
 See `contracts/examples/tool-response.json`.

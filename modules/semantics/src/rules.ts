@@ -9,7 +9,7 @@ export function assessDescriptors(report: AnalysisReport): SemanticAssessment {
 
   addBrightnessDescriptors(report, descriptors, unresolvedTerms);
   addSpatialDescriptors(report, descriptors, unresolvedTerms);
-  addDynamicsDescriptors(report, descriptors);
+  addDynamicsDescriptors(report, descriptors, unresolvedTerms);
   addArtifactDescriptors(report, descriptors);
   addHarshnessDescriptors(report, descriptors, unresolvedTerms);
 
@@ -26,14 +26,20 @@ function addBrightnessDescriptors(
 ): void {
   const spectralBalance = report.measurements.spectral_balance;
   const highMinusLow = spectralBalance.high_band_db - spectralBalance.low_band_db;
+  const brightnessTiltDb = spectralBalance.brightness_tilt_db ?? highMinusLow;
   const centroidHz = spectralBalance.spectral_centroid_hz;
   const evidenceRef = measurementEvidenceRef(report, "spectral_balance");
 
-  if (highMinusLow >= 6 && centroidHz >= 2200) {
+  if (
+    (brightnessTiltDb >= 6 && centroidHz >= 2400) ||
+    (brightnessTiltDb >= 8 && centroidHz >= 2200)
+  ) {
     descriptors.push({
       label: "bright",
       confidence: clamp(
-        0.62 + Math.min((highMinusLow - 6) / 16, 0.18) + Math.min((centroidHz - 2200) / 6000, 0.12),
+        0.64 +
+          Math.min((brightnessTiltDb - 6) / 14, 0.16) +
+          Math.min((centroidHz - 2400) / 5000, 0.1),
       ),
       evidence_refs: [evidenceRef],
       rationale:
@@ -42,13 +48,16 @@ function addBrightnessDescriptors(
     return;
   }
 
-  if (highMinusLow <= -6 && centroidHz <= 1800) {
+  if (
+    (brightnessTiltDb <= -5 && centroidHz <= 1700) ||
+    (brightnessTiltDb <= -7 && centroidHz <= 2000)
+  ) {
     descriptors.push({
       label: "dark",
       confidence: clamp(
-        0.62 +
-          Math.min((-6 - highMinusLow) / 16, 0.18) +
-          Math.min((1800 - centroidHz) / 3000, 0.12),
+        0.64 +
+          Math.min((-5 - brightnessTiltDb) / 14, 0.16) +
+          Math.min((1700 - centroidHz) / 2500, 0.1),
       ),
       evidence_refs: [evidenceRef],
       rationale:
@@ -57,22 +66,22 @@ function addBrightnessDescriptors(
     return;
   }
 
-  if (Math.abs(highMinusLow) <= 3) {
+  if (Math.abs(brightnessTiltDb) <= 2.5 && centroidHz >= 1600 && centroidHz <= 2600) {
     descriptors.push({
       label: "balanced",
-      confidence: clamp(0.63 + (3 - Math.abs(highMinusLow)) / 12),
+      confidence: clamp(0.63 + (2.5 - Math.abs(brightnessTiltDb)) / 10),
       evidence_refs: [evidenceRef],
       rationale:
-        "Low- and high-band energy remain within a narrow range, with no strong tonal tilt.",
+        "Low- and high-band energy remain within a narrow range and the spectral centroid stays near the middle of the current supported range.",
     });
     return;
   }
 
-  if (highMinusLow >= 4) {
+  if (brightnessTiltDb >= 4 || centroidHz >= 2200) {
     unresolvedTerms.add("bright");
   }
 
-  if (highMinusLow <= -4) {
+  if (brightnessTiltDb <= -4 || centroidHz <= 1800) {
     unresolvedTerms.add("dark");
   }
 }
@@ -129,24 +138,45 @@ function addSpatialDescriptors(
   }
 }
 
-function addDynamicsDescriptors(report: AnalysisReport, descriptors: SemanticDescriptor[]): void {
+function addDynamicsDescriptors(
+  report: AnalysisReport,
+  descriptors: SemanticDescriptor[],
+  unresolvedTerms: Set<string>,
+): void {
   const dynamics = report.measurements.dynamics;
+  const transientCrestDb = dynamics.transient_crest_db ?? dynamics.crest_factor_db;
+  const punchWindowRatio =
+    dynamics.punch_window_ratio ??
+    (dynamics.transient_density_per_second >= 1.5 && dynamics.crest_factor_db >= 10 ? 0.5 : 0.12);
 
-  if (dynamics.transient_density_per_second < 1.5 || dynamics.crest_factor_db < 10) {
+  if (
+    dynamics.transient_density_per_second >= 1.5 &&
+    dynamics.crest_factor_db >= 10 &&
+    transientCrestDb >= 9 &&
+    punchWindowRatio >= 0.3
+  ) {
+    descriptors.push({
+      label: "punchy",
+      confidence: clamp(
+        0.6 +
+          Math.min((dynamics.transient_density_per_second - 1.5) / 4, 0.16) +
+          Math.min((transientCrestDb - 9) / 8, 0.1) +
+          Math.min((punchWindowRatio - 0.3) / 0.5, 0.08),
+      ),
+      evidence_refs: [measurementEvidenceRef(report, "dynamics")],
+      rationale:
+        "Transient activity and crest factor are both elevated, indicating clearly articulated attacks.",
+    });
     return;
   }
 
-  descriptors.push({
-    label: "punchy",
-    confidence: clamp(
-      0.6 +
-        Math.min((dynamics.transient_density_per_second - 1.5) / 4, 0.16) +
-        Math.min((dynamics.crest_factor_db - 10) / 10, 0.12),
-    ),
-    evidence_refs: [measurementEvidenceRef(report, "dynamics")],
-    rationale:
-      "Transient activity and crest factor are both elevated, indicating clearly articulated attacks.",
-  });
+  if (
+    dynamics.transient_density_per_second >= 1.1 &&
+    dynamics.crest_factor_db >= 8.5 &&
+    (transientCrestDb >= 8 || punchWindowRatio >= 0.18)
+  ) {
+    unresolvedTerms.add("punchy");
+  }
 }
 
 function addArtifactDescriptors(report: AnalysisReport, descriptors: SemanticDescriptor[]): void {
@@ -176,10 +206,17 @@ function addHarshnessDescriptors(
   }
 
   const { annotation, index } = harshnessAnnotation;
-  if (annotation.severity >= 0.35) {
+  const upperMidExcessDb =
+    report.measurements.spectral_balance.harshness_ratio_db ??
+    report.measurements.spectral_balance.high_band_db -
+      report.measurements.spectral_balance.mid_band_db;
+
+  if (annotation.severity >= 0.38 && (upperMidExcessDb >= 4 || annotation.severity >= 0.45)) {
     descriptors.push({
       label: "slightly_harsh",
-      confidence: clamp(0.55 + annotation.severity * 0.35),
+      confidence: clamp(
+        0.54 + annotation.severity * 0.3 + Math.min((upperMidExcessDb - 4) / 8, 0.12),
+      ),
       evidence_refs: [
         annotationEvidenceRef(report, index),
         measurementEvidenceRef(report, "spectral_balance"),

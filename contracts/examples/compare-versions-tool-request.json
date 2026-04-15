@@ -1,0 +1,191 @@
+{
+  "schema_version": "1.0.0",
+  "request_id": "toolreq_01HZZ0COMPAREVERSIONSREQ00001",
+  "tool_name": "compare_versions",
+  "requested_at": "2026-04-14T20:20:12Z",
+  "session_id": "session_01HZZ0FIRSTSLICE0000000001",
+  "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+  "caller": "agent-a-contract-fixture-track",
+  "arguments": {
+    "baseline_version": {
+      "schema_version": "1.0.0",
+      "version_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
+      "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+      "lineage": {
+        "created_at": "2026-04-14T20:20:02Z",
+        "created_by": "modules/io",
+        "reason": "initial import"
+      },
+      "audio": {
+        "storage_ref": "storage/audio/ver_01HZZ0FIRSTSLICEBASE00000001.wav",
+        "sample_rate_hz": 44100,
+        "channels": 2,
+        "duration_seconds": 4,
+        "frame_count": 176400,
+        "channel_layout": "stereo"
+      },
+      "state": {
+        "is_original": true,
+        "is_preview": false
+      }
+    },
+    "candidate_version": {
+      "schema_version": "1.0.0",
+      "version_id": "ver_01HZZ0FIRSTSLICEEDIT00000001",
+      "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+      "parent_version_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
+      "lineage": {
+        "created_at": "2026-04-14T20:20:08Z",
+        "created_by": "modules/transforms",
+        "reason": "apply edit plan",
+        "plan_id": "plan_01HZZ0FIRSTSLICEPLAN00000001",
+        "transform_record_id": "transform_01HZZ0FIRSTSLICERECORD0001"
+      },
+      "audio": {
+        "storage_ref": "storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.wav",
+        "sample_rate_hz": 44100,
+        "channels": 2,
+        "duration_seconds": 4,
+        "frame_count": 176400,
+        "channel_layout": "stereo"
+      },
+      "state": {
+        "is_original": false,
+        "is_preview": false
+      }
+    },
+    "baseline_analysis": {
+      "schema_version": "1.0.0",
+      "report_id": "analysis_01HZZ0FIRSTSLICEBASE000001",
+      "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+      "version_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
+      "generated_at": "2026-04-14T20:20:04Z",
+      "analyzer": {
+        "name": "default-analysis",
+        "version": "0.1.1"
+      },
+      "summary": {
+        "plain_text": "Bright stereo loop with a persistent upper-mid ridge and intact transient punch.",
+        "confidence": 0.86
+      },
+      "measurements": {
+        "levels": {
+          "integrated_lufs": -15.2,
+          "true_peak_dbtp": -1.5
+        },
+        "dynamics": {
+          "crest_factor_db": 10.4,
+          "transient_density_per_second": 2
+        },
+        "spectral_balance": {
+          "low_band_db": -16.2,
+          "mid_band_db": -11.5,
+          "high_band_db": -9.4,
+          "spectral_centroid_hz": 2720
+        },
+        "stereo": {
+          "width": 0.61,
+          "correlation": 0.38
+        },
+        "artifacts": {
+          "clipping_detected": false,
+          "noise_floor_dbfs": -74
+        }
+      }
+    },
+    "candidate_analysis": {
+      "schema_version": "1.0.0",
+      "report_id": "analysis_01HZZ0FIRSTSLICEEDIT000001",
+      "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+      "version_id": "ver_01HZZ0FIRSTSLICEEDIT00000001",
+      "generated_at": "2026-04-14T20:20:11Z",
+      "analyzer": {
+        "name": "default-analysis",
+        "version": "0.1.1"
+      },
+      "summary": {
+        "plain_text": "Slightly darker loop with reduced upper-mid harshness and preserved transient definition.",
+        "confidence": 0.84
+      },
+      "measurements": {
+        "levels": {
+          "integrated_lufs": -15.4,
+          "true_peak_dbtp": -1.7
+        },
+        "dynamics": {
+          "crest_factor_db": 10.1,
+          "transient_density_per_second": 2
+        },
+        "spectral_balance": {
+          "low_band_db": -16,
+          "mid_band_db": -11.9,
+          "high_band_db": -10.8,
+          "spectral_centroid_hz": 2380
+        },
+        "stereo": {
+          "width": 0.6,
+          "correlation": 0.4
+        },
+        "artifacts": {
+          "clipping_detected": false,
+          "noise_floor_dbfs": -74
+        }
+      },
+      "annotations": [
+        {
+          "kind": "harshness",
+          "start_seconds": 0,
+          "end_seconds": 4,
+          "bands_hz": [3000, 4500],
+          "severity": 0.29,
+          "evidence": "Upper-mid ridge remains present but is notably reduced."
+        }
+      ]
+    },
+    "edit_plan": {
+      "schema_version": "1.0.0",
+      "plan_id": "plan_01HZZ0FIRSTSLICEPLAN00000001",
+      "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+      "version_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
+      "user_request": "Make this loop darker and less harsh without losing punch.",
+      "created_at": "2026-04-14T20:20:05Z",
+      "goals": ["reduce brightness", "reduce harshness", "preserve punch"],
+      "steps": [
+        {
+          "step_id": "step_eq_1",
+          "operation": "parametric_eq",
+          "target": {
+            "scope": "full_file"
+          },
+          "parameters": {
+            "bands": [
+              {
+                "type": "bell",
+                "frequency_hz": 3600,
+                "gain_db": -2.5,
+                "q": 1.1
+              }
+            ]
+          },
+          "expected_effects": ["reduce upper-mid bite", "reduce harshness"],
+          "safety_limits": ["avoid dulling transients", "avoid broad mid loss"]
+        },
+        {
+          "step_id": "step_filter_1",
+          "operation": "low_pass_filter",
+          "target": {
+            "scope": "full_file"
+          },
+          "parameters": {
+            "cutoff_hz": 14500,
+            "slope_db_per_octave": 12
+          },
+          "expected_effects": ["slightly darker tonal balance"],
+          "safety_limits": ["preserve punch", "avoid audible pumping"]
+        }
+      ]
+    },
+    "comparison_id": "compare_01HZZ0FIRSTSLICECOMPARE0001",
+    "generated_at": "2026-04-14T20:20:12Z"
+  }
+}

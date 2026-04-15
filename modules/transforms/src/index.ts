@@ -3,7 +3,9 @@ export { applyOperation } from "./apply-operation.js";
 export {
   buildFfmpegTransformCommand,
   executeFfmpegCommand,
+  extractTransformWarnings,
   TransformExecutionError,
+  TransformOutputValidationError,
 } from "./ffmpeg-adapter.js";
 export { buildOperation } from "./operation-spec.js";
 export {

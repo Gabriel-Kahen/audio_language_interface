@@ -48,6 +48,23 @@ export function detectAnalysisRegressions(
     });
   }
 
+  const crestFactorDelta = getDelta(metricDeltas, "dynamics.crest_factor_db");
+  const transientDensityDelta = getDelta(metricDeltas, "dynamics.transient_density_per_second");
+  if (
+    crestFactorDelta !== undefined &&
+    transientDensityDelta !== undefined &&
+    crestFactorDelta <= -1 &&
+    transientDensityDelta <= -0.15
+  ) {
+    regressions.push({
+      kind: "lost_punch",
+      severity: roundSeverity(
+        Math.max(Math.abs(crestFactorDelta) / 3, Math.abs(transientDensityDelta) / 0.4),
+      ),
+      description: "Candidate lost measurable transient punch versus the baseline.",
+    });
+  }
+
   return regressions;
 }
 
