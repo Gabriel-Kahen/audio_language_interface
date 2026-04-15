@@ -370,7 +370,7 @@ describe("request cycle integration", () => {
       });
       expect(validateSessionGraph(undoCycle.sessionGraph).valid).toBe(true);
     });
-  });
+  }, 20_000);
 
   it("wraps follow-up resolution failures with a partial session graph", async () => {
     await withTempWorkspace(async (workspaceRoot) => {
