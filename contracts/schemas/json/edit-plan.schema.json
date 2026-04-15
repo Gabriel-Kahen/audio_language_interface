@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/edit-plan.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "plan_id",
+    "asset_id",
+    "version_id",
+    "user_request",
+    "goals",
+    "steps",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "./common.schema.json#/$defs/schemaVersion"
+    },
+    "plan_id": {
+      "$ref": "./common.schema.json#/$defs/planId"
+    },
+    "asset_id": {
+      "$ref": "./common.schema.json#/$defs/assetId"
+    },
+    "version_id": {
+      "$ref": "./common.schema.json#/$defs/versionId"
+    },
+    "user_request": {
+      "type": "string"
+    },
+    "created_at": {
+      "$ref": "./common.schema.json#/$defs/isoTimestamp"
+    },
+    "goals": {
+      "$ref": "./common.schema.json#/$defs/stringArray"
+    },
+    "constraints": {
+      "$ref": "./common.schema.json#/$defs/stringArray"
+    },
+    "verification_targets": {
+      "$ref": "./common.schema.json#/$defs/stringArray"
+    },
+    "rationale": {
+      "type": "string"
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "step_id",
+          "operation",
+          "target",
+          "parameters",
+          "expected_effects",
+          "safety_limits"
+        ],
+        "properties": {
+          "step_id": {
+            "$ref": "./common.schema.json#/$defs/nonEmptyString"
+          },
+          "operation": {
+            "$ref": "./common.schema.json#/$defs/operationName"
+          },
+          "target": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["scope"],
+            "properties": {
+              "scope": {
+                "$ref": "./common.schema.json#/$defs/targetScope"
+              },
+              "start_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "end_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "channel": {
+                "$ref": "./common.schema.json#/$defs/nonEmptyString"
+              },
+              "segment_id": {
+                "$ref": "./common.schema.json#/$defs/nonEmptyString"
+              },
+              "bands_hz": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          },
+          "parameters": {
+            "type": "object"
+          },
+          "expected_effects": {
+            "$ref": "./common.schema.json#/$defs/stringArray"
+          },
+          "safety_limits": {
+            "$ref": "./common.schema.json#/$defs/stringArray"
+          }
+        }
+      }
+    }
+  }
+}

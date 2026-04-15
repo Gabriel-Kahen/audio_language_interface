@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/session-graph.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "session_id",
+    "created_at",
+    "updated_at",
+    "nodes",
+    "edges",
+    "active_refs"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "./common.schema.json#/$defs/schemaVersion"
+    },
+    "session_id": {
+      "$ref": "./common.schema.json#/$defs/sessionId"
+    },
+    "created_at": {
+      "$ref": "./common.schema.json#/$defs/isoTimestamp"
+    },
+    "updated_at": {
+      "$ref": "./common.schema.json#/$defs/isoTimestamp"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["node_id", "node_type", "ref_id", "created_at"],
+        "properties": {
+          "node_id": {
+            "$ref": "./common.schema.json#/$defs/nonEmptyString"
+          },
+          "node_type": {
+            "$ref": "./common.schema.json#/$defs/nodeType"
+          },
+          "ref_id": {
+            "$ref": "./common.schema.json#/$defs/nonEmptyString"
+          },
+          "created_at": {
+            "$ref": "./common.schema.json#/$defs/isoTimestamp"
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from_node_id", "to_node_id", "relation"],
+        "properties": {
+          "from_node_id": {
+            "$ref": "./common.schema.json#/$defs/nonEmptyString"
+          },
+          "to_node_id": {
+            "$ref": "./common.schema.json#/$defs/nonEmptyString"
+          },
+          "relation": {
+            "$ref": "./common.schema.json#/$defs/relation"
+          }
+        }
+      }
+    },
+    "active_refs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_id", "version_id"],
+      "properties": {
+        "asset_id": {
+          "$ref": "./common.schema.json#/$defs/assetId"
+        },
+        "version_id": {
+          "$ref": "./common.schema.json#/$defs/versionId"
+        },
+        "branch_id": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "branches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["branch_id", "head_version_id", "source_version_id", "created_at"],
+            "properties": {
+              "branch_id": {
+                "$ref": "./common.schema.json#/$defs/nonEmptyString"
+              },
+              "head_version_id": {
+                "$ref": "./common.schema.json#/$defs/versionId"
+              },
+              "source_version_id": {
+                "$ref": "./common.schema.json#/$defs/versionId"
+              },
+              "created_at": {
+                "$ref": "./common.schema.json#/$defs/isoTimestamp"
+              },
+              "label": {
+                "$ref": "./common.schema.json#/$defs/nonEmptyString"
+              }
+            }
+          }
+        },
+        "snapshots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["snapshot_id", "version_id", "created_at"],
+            "properties": {
+              "snapshot_id": {
+                "$ref": "./common.schema.json#/$defs/nonEmptyString"
+              },
+              "version_id": {
+                "$ref": "./common.schema.json#/$defs/versionId"
+              },
+              "created_at": {
+                "$ref": "./common.schema.json#/$defs/isoTimestamp"
+              },
+              "branch_id": {
+                "$ref": "./common.schema.json#/$defs/nonEmptyString"
+              },
+              "label": {
+                "$ref": "./common.schema.json#/$defs/nonEmptyString"
+              }
+            }
+          }
+        },
+        "active_ref_history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["asset_id", "version_id", "changed_at"],
+            "properties": {
+              "asset_id": {
+                "$ref": "./common.schema.json#/$defs/assetId"
+              },
+              "version_id": {
+                "$ref": "./common.schema.json#/$defs/versionId"
+              },
+              "branch_id": {
+                "$ref": "./common.schema.json#/$defs/nonEmptyString"
+              },
+              "changed_at": {
+                "$ref": "./common.schema.json#/$defs/isoTimestamp"
+              },
+              "reason": {
+                "$ref": "./common.schema.json#/$defs/nonEmptyString"
+              }
+            }
+          }
+        },
+        "active_ref_history_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "provenance": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "./common.schema.json#/$defs/nonEmptyString"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "asset_id": {
+                "$ref": "./common.schema.json#/$defs/assetId"
+              },
+              "version_id": {
+                "$ref": "./common.schema.json#/$defs/versionId"
+              },
+              "parent_version_id": {
+                "$ref": "./common.schema.json#/$defs/versionId"
+              },
+              "transform_record_id": {
+                "$ref": "./common.schema.json#/$defs/transformId"
+              },
+              "analysis_report_id": {
+                "$ref": "./common.schema.json#/$defs/analysisId"
+              },
+              "plan_id": {
+                "$ref": "./common.schema.json#/$defs/planId"
+              },
+              "input_version_id": {
+                "$ref": "./common.schema.json#/$defs/versionId"
+              },
+              "output_version_id": {
+                "$ref": "./common.schema.json#/$defs/versionId"
+              },
+              "baseline_ref_id": {
+                "$ref": "./common.schema.json#/$defs/nonEmptyString"
+              },
+              "baseline_ref_type": {
+                "$ref": "./common.schema.json#/$defs/comparisonRefType"
+              },
+              "candidate_ref_id": {
+                "$ref": "./common.schema.json#/$defs/nonEmptyString"
+              },
+              "candidate_ref_type": {
+                "$ref": "./common.schema.json#/$defs/comparisonRefType"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

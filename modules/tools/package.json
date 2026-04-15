@@ -1,0 +1,21 @@
+{
+  "name": "@audio-language-interface/tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Stable LLM-facing tool registry and request router for Audio Language Interface.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@audio-language-interface/analysis": "workspace:*",
+    "@audio-language-interface/compare": "workspace:*",
+    "@audio-language-interface/io": "workspace:*",
+    "@audio-language-interface/render": "workspace:*",
+    "@audio-language-interface/transforms": "workspace:*",
+    "ajv": "^8.18.0",
+    "ajv-formats": "^3.0.1"
+  }
+}

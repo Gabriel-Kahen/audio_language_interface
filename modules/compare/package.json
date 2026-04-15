@@ -1,0 +1,12 @@
+{
+  "name": "@audio-language-interface/compare",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic before/after comparison for Audio Language Interface.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

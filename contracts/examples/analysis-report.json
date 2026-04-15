@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0.0",
+  "report_id": "analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0",
+  "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+  "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+  "generated_at": "2026-04-14T20:20:10Z",
+  "analyzer": {
+    "name": "default-analysis",
+    "version": "0.1.1"
+  },
+  "summary": {
+    "plain_text": "Moderately bright stereo drum loop with strong transient attacks and a mild upper-mid harshness region around 3.5 kHz.",
+    "confidence": 0.85
+  },
+  "measurements": {
+    "levels": {
+      "integrated_lufs": -14.8,
+      "true_peak_dbtp": -1.1
+    },
+    "dynamics": {
+      "crest_factor_db": 10.3,
+      "transient_density_per_second": 2.0
+    },
+    "spectral_balance": {
+      "low_band_db": -16.4,
+      "mid_band_db": -11.2,
+      "high_band_db": -9.8,
+      "spectral_centroid_hz": 2650
+    },
+    "stereo": {
+      "width": 0.62,
+      "correlation": 0.41
+    },
+    "artifacts": {
+      "clipping_detected": false,
+      "noise_floor_dbfs": -72.0
+    }
+  },
+  "annotations": [
+    {
+      "kind": "harshness",
+      "start_seconds": 0.0,
+      "end_seconds": 4.0,
+      "bands_hz": [3000, 4500],
+      "severity": 0.48,
+      "evidence": "persistent upper-mid energy ridge"
+    }
+  ],
+  "segments": [
+    {
+      "kind": "loop",
+      "start_seconds": 0.0,
+      "end_seconds": 4.0
+    }
+  ],
+  "source_character": {
+    "primary_class": "drum_loop",
+    "pitched": false,
+    "confidence": 0.93
+  }
+}

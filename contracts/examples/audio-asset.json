@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0.0",
+  "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+  "display_name": "snare_loop.wav",
+  "source": {
+    "kind": "file",
+    "uri": "fixtures/audio/snare_loop.wav",
+    "imported_at": "2026-04-14T20:20:00Z",
+    "checksum_sha256": "b6d3b14f8bcb44288d8d0276ef5ab6f05a275fdb12c889fcd4a3e6158d2f3e88"
+  },
+  "media": {
+    "container_format": "wav",
+    "codec": "pcm_s16le",
+    "sample_rate_hz": 44100,
+    "channels": 2,
+    "bit_depth": 16,
+    "channel_layout": "stereo",
+    "duration_seconds": 4.0
+  },
+  "tags": ["drum", "loop"]
+}

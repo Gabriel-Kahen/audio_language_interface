@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/analysis-report.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_id",
+    "asset_id",
+    "version_id",
+    "generated_at",
+    "analyzer",
+    "summary",
+    "measurements"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "./common.schema.json#/$defs/schemaVersion"
+    },
+    "report_id": {
+      "$ref": "./common.schema.json#/$defs/analysisId"
+    },
+    "asset_id": {
+      "$ref": "./common.schema.json#/$defs/assetId"
+    },
+    "version_id": {
+      "$ref": "./common.schema.json#/$defs/versionId"
+    },
+    "generated_at": {
+      "$ref": "./common.schema.json#/$defs/isoTimestamp"
+    },
+    "analyzer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "version": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plain_text"],
+      "properties": {
+        "plain_text": {
+          "type": "string"
+        },
+        "confidence": {
+          "$ref": "./common.schema.json#/$defs/confidence"
+        }
+      }
+    },
+    "measurements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["levels", "dynamics", "spectral_balance", "stereo", "artifacts"],
+      "properties": {
+        "levels": {
+          "type": "object",
+          "required": ["integrated_lufs", "true_peak_dbtp"],
+          "properties": {
+            "integrated_lufs": {
+              "type": "number"
+            },
+            "true_peak_dbtp": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": true
+        },
+        "dynamics": {
+          "type": "object",
+          "required": ["crest_factor_db", "transient_density_per_second"],
+          "properties": {
+            "crest_factor_db": {
+              "type": "number"
+            },
+            "transient_density_per_second": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": true
+        },
+        "spectral_balance": {
+          "type": "object",
+          "required": ["low_band_db", "mid_band_db", "high_band_db", "spectral_centroid_hz"],
+          "properties": {
+            "low_band_db": {
+              "type": "number"
+            },
+            "mid_band_db": {
+              "type": "number"
+            },
+            "high_band_db": {
+              "type": "number"
+            },
+            "spectral_centroid_hz": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": true
+        },
+        "stereo": {
+          "type": "object",
+          "required": ["width", "correlation"],
+          "properties": {
+            "width": {
+              "type": "number"
+            },
+            "correlation": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": true
+        },
+        "artifacts": {
+          "type": "object",
+          "required": ["clipping_detected", "noise_floor_dbfs"],
+          "properties": {
+            "clipping_detected": {
+              "type": "boolean"
+            },
+            "noise_floor_dbfs": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": true
+        }
+      }
+    },
+    "annotations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "start_seconds", "end_seconds", "severity"],
+        "properties": {
+          "kind": {
+            "$ref": "./common.schema.json#/$defs/nonEmptyString"
+          },
+          "start_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "bands_hz": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "minimum": 0
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "severity": {
+            "$ref": "./common.schema.json#/$defs/severity"
+          },
+          "evidence": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "start_seconds", "end_seconds"],
+        "properties": {
+          "kind": {
+            "$ref": "./common.schema.json#/$defs/nonEmptyString"
+          },
+          "start_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end_seconds": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "source_character": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primary_class", "pitched", "confidence"],
+      "properties": {
+        "primary_class": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "pitched": {
+          "type": "boolean"
+        },
+        "confidence": {
+          "$ref": "./common.schema.json#/$defs/confidence"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,38 @@
+import {
+  buildHighPassFilterOperation,
+  buildLowPassFilterOperation,
+  buildParametricEqOperation,
+} from "./operations/eq.js";
+import { buildGainOperation, buildNormalizeOperation } from "./operations/gain.js";
+import { buildFadeOperation, buildTrimOperation } from "./operations/trim-fade.js";
+import type { AudioVersion, EditTarget, OperationBuildResult, OperationName } from "./types.js";
+
+/**
+ * Validates and normalizes one supported transform into an inspectable FFmpeg
+ * filter chain plus updated output audio metadata.
+ */
+export function buildOperation(
+  audio: AudioVersion["audio"],
+  operation: OperationName,
+  parameters: Record<string, unknown>,
+  target?: EditTarget,
+): OperationBuildResult {
+  switch (operation) {
+    case "gain":
+      return buildGainOperation(audio, parameters, target);
+    case "normalize":
+      return buildNormalizeOperation(audio, parameters, target);
+    case "trim":
+      return buildTrimOperation(audio, parameters, target);
+    case "fade":
+      return buildFadeOperation(audio, parameters, target);
+    case "parametric_eq":
+      return buildParametricEqOperation(audio, parameters, target);
+    case "high_pass_filter":
+      return buildHighPassFilterOperation(audio, parameters, target);
+    case "low_pass_filter":
+      return buildLowPassFilterOperation(audio, parameters, target);
+    default:
+      throw new Error(`Unsupported transform operation: ${operation satisfies never}`);
+  }
+}

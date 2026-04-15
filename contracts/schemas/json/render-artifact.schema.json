@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/render-artifact.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "render_id",
+    "asset_id",
+    "version_id",
+    "kind",
+    "created_at",
+    "output"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "./common.schema.json#/$defs/schemaVersion"
+    },
+    "render_id": {
+      "$ref": "./common.schema.json#/$defs/renderId"
+    },
+    "asset_id": {
+      "$ref": "./common.schema.json#/$defs/assetId"
+    },
+    "version_id": {
+      "$ref": "./common.schema.json#/$defs/versionId"
+    },
+    "kind": {
+      "$ref": "./common.schema.json#/$defs/renderKind"
+    },
+    "created_at": {
+      "$ref": "./common.schema.json#/$defs/isoTimestamp"
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "format", "codec", "sample_rate_hz", "channels", "duration_seconds"],
+      "properties": {
+        "path": {
+          "$ref": "./common.schema.json#/$defs/workspacePath"
+        },
+        "format": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "codec": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "sample_rate_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "channels": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "duration_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "file_size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "loudness_summary": {
+      "type": "object",
+      "properties": {
+        "integrated_lufs": {
+          "type": "number"
+        },
+        "true_peak_dbtp": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": true
+    },
+    "warnings": {
+      "$ref": "./common.schema.json#/$defs/stringArray"
+    }
+  }
+}

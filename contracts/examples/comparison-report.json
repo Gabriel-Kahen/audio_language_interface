@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0.0",
+  "comparison_id": "compare_01HZX8I7J2V3M4N5P6Q7R8S9T0",
+  "baseline": {
+    "ref_type": "version",
+    "ref_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0"
+  },
+  "candidate": {
+    "ref_type": "version",
+    "ref_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0"
+  },
+  "generated_at": "2026-04-14T20:20:22Z",
+  "metric_deltas": [
+    {
+      "metric": "spectral_energy_3k_5k_db",
+      "direction": "decreased",
+      "delta": -1.8
+    },
+    {
+      "metric": "crest_factor_db",
+      "direction": "decreased",
+      "delta": -0.2
+    }
+  ],
+  "semantic_deltas": [
+    {
+      "label": "less_harsh",
+      "confidence": 0.77,
+      "evidence": "upper-mid energy decreased with minimal crest-factor change"
+    }
+  ],
+  "regressions": [],
+  "goal_alignment": [
+    {
+      "goal": "reduce upper-mid harshness",
+      "status": "met"
+    },
+    {
+      "goal": "preserve transient impact",
+      "status": "mostly_met"
+    }
+  ],
+  "summary": {
+    "plain_text": "The edited version is less harsh with only a minor reduction in transient punch."
+  }
+}

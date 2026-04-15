@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/comparison-report.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "comparison_id",
+    "baseline",
+    "candidate",
+    "generated_at",
+    "metric_deltas",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "./common.schema.json#/$defs/schemaVersion"
+    },
+    "comparison_id": {
+      "$ref": "./common.schema.json#/$defs/comparisonId"
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref_type", "ref_id"],
+      "properties": {
+        "ref_type": {
+          "$ref": "./common.schema.json#/$defs/comparisonRefType"
+        },
+        "ref_id": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref_type", "ref_id"],
+      "properties": {
+        "ref_type": {
+          "$ref": "./common.schema.json#/$defs/comparisonRefType"
+        },
+        "ref_id": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "generated_at": {
+      "$ref": "./common.schema.json#/$defs/isoTimestamp"
+    },
+    "metric_deltas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["metric", "direction", "delta"],
+        "properties": {
+          "metric": {
+            "$ref": "./common.schema.json#/$defs/nonEmptyString"
+          },
+          "direction": {
+            "$ref": "./common.schema.json#/$defs/metricDirection"
+          },
+          "delta": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "semantic_deltas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "confidence", "evidence"],
+        "properties": {
+          "label": {
+            "$ref": "./common.schema.json#/$defs/nonEmptyString"
+          },
+          "confidence": {
+            "$ref": "./common.schema.json#/$defs/confidence"
+          },
+          "evidence": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "regressions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "severity", "description"],
+        "properties": {
+          "kind": {
+            "$ref": "./common.schema.json#/$defs/nonEmptyString"
+          },
+          "severity": {
+            "$ref": "./common.schema.json#/$defs/severity"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "goal_alignment": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["goal", "status"],
+        "properties": {
+          "goal": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "./common.schema.json#/$defs/goalStatus"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plain_text"],
+      "properties": {
+        "plain_text": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

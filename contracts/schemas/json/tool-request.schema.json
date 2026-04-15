@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/tool-request.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "tool_name", "arguments", "requested_at"],
+  "properties": {
+    "schema_version": {
+      "$ref": "./common.schema.json#/$defs/schemaVersion"
+    },
+    "request_id": {
+      "$ref": "./common.schema.json#/$defs/requestId"
+    },
+    "tool_name": {
+      "$ref": "./common.schema.json#/$defs/nonEmptyString"
+    },
+    "arguments": {
+      "type": "object"
+    },
+    "requested_at": {
+      "$ref": "./common.schema.json#/$defs/isoTimestamp"
+    },
+    "session_id": {
+      "$ref": "./common.schema.json#/$defs/sessionId"
+    },
+    "asset_id": {
+      "$ref": "./common.schema.json#/$defs/assetId"
+    },
+    "version_id": {
+      "$ref": "./common.schema.json#/$defs/versionId"
+    },
+    "caller": {
+      "$ref": "./common.schema.json#/$defs/nonEmptyString"
+    }
+  }
+}

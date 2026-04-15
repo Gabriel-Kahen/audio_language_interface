@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0.0",
+  "profile_id": "semantic_01HZX8D7J2V3M4N5P6Q7R8S9T0",
+  "analysis_report_id": "analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0",
+  "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+  "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+  "generated_at": "2026-04-14T20:20:12Z",
+  "descriptors": [
+    {
+      "label": "bright",
+      "confidence": 0.81,
+      "evidence_refs": ["analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:measurements.spectral_balance"],
+      "rationale": "High-band energy exceeds low-band energy and the spectral centroid is elevated."
+    },
+    {
+      "label": "slightly_harsh",
+      "confidence": 0.72,
+      "evidence_refs": ["analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:annotations[0]"],
+      "rationale": "Upper-mid buildup is present across the full loop."
+    }
+  ],
+  "summary": {
+    "plain_text": "The loop reads as bright and somewhat aggressive, with mild upper-mid harshness.",
+    "caveats": ["Descriptor confidence may change after source-specific tuning."]
+  },
+  "unresolved_terms": []
+}

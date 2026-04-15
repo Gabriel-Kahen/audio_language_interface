@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/common.schema.json",
+  "$defs": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "isoTimestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "severity": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "workspacePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:[\\\\/]).+"
+    },
+    "hexSha256": {
+      "type": "string",
+      "pattern": "^[A-Fa-f0-9]{64}$"
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "assetId": {
+      "type": "string",
+      "pattern": "^asset_[A-Za-z0-9]+$"
+    },
+    "versionId": {
+      "type": "string",
+      "pattern": "^ver_[A-Za-z0-9]+$"
+    },
+    "analysisId": {
+      "type": "string",
+      "pattern": "^analysis_[A-Za-z0-9]+$"
+    },
+    "semanticId": {
+      "type": "string",
+      "pattern": "^semantic_[A-Za-z0-9]+$"
+    },
+    "planId": {
+      "type": "string",
+      "pattern": "^plan_[A-Za-z0-9]+$"
+    },
+    "transformId": {
+      "type": "string",
+      "pattern": "^transform_[A-Za-z0-9]+$"
+    },
+    "renderId": {
+      "type": "string",
+      "pattern": "^render_[A-Za-z0-9]+$"
+    },
+    "comparisonId": {
+      "type": "string",
+      "pattern": "^compare_[A-Za-z0-9]+$"
+    },
+    "sessionId": {
+      "type": "string",
+      "pattern": "^session_[A-Za-z0-9]+$"
+    },
+    "requestId": {
+      "type": "string",
+      "pattern": "^toolreq_[A-Za-z0-9]+$"
+    },
+    "sourceKind": {
+      "type": "string",
+      "enum": ["file", "bytes", "stream", "generated"]
+    },
+    "renderKind": {
+      "type": "string",
+      "enum": ["preview", "final"]
+    },
+    "comparisonRefType": {
+      "type": "string",
+      "enum": ["version", "render"]
+    },
+    "metricDirection": {
+      "type": "string",
+      "enum": ["increased", "decreased", "unchanged"]
+    },
+    "toolStatus": {
+      "type": "string",
+      "enum": ["ok", "error"]
+    },
+    "operationStatus": {
+      "type": "string",
+      "enum": ["applied", "skipped", "failed"]
+    },
+    "goalStatus": {
+      "type": "string",
+      "enum": ["met", "mostly_met", "not_met", "unknown"]
+    },
+    "nodeType": {
+      "type": "string",
+      "enum": [
+        "audio_asset",
+        "audio_version",
+        "analysis_report",
+        "semantic_profile",
+        "edit_plan",
+        "transform_record",
+        "render_artifact",
+        "comparison_report"
+      ]
+    },
+    "relation": {
+      "type": "string",
+      "enum": [
+        "has_version",
+        "analyzed_as",
+        "described_as",
+        "planned_from",
+        "executed_as",
+        "produced",
+        "rendered_as",
+        "compared_to",
+        "belongs_to"
+      ]
+    },
+    "operationName": {
+      "type": "string",
+      "enum": [
+        "gain",
+        "normalize",
+        "trim",
+        "fade",
+        "parametric_eq",
+        "high_pass_filter",
+        "low_pass_filter",
+        "compressor",
+        "limiter",
+        "saturate",
+        "denoise",
+        "declick",
+        "pitch_shift",
+        "time_stretch",
+        "stereo_width"
+      ]
+    },
+    "targetScope": {
+      "type": "string",
+      "enum": ["full_file", "time_range", "segment", "channel", "frequency_region"]
+    }
+  }
+}

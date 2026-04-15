@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/audio-asset.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "asset_id", "display_name", "source", "media"],
+  "properties": {
+    "schema_version": {
+      "$ref": "./common.schema.json#/$defs/schemaVersion"
+    },
+    "asset_id": {
+      "$ref": "./common.schema.json#/$defs/assetId"
+    },
+    "display_name": {
+      "$ref": "./common.schema.json#/$defs/nonEmptyString"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "imported_at"],
+      "properties": {
+        "kind": {
+          "$ref": "./common.schema.json#/$defs/sourceKind"
+        },
+        "uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "imported_at": {
+          "$ref": "./common.schema.json#/$defs/isoTimestamp"
+        },
+        "checksum_sha256": {
+          "$ref": "./common.schema.json#/$defs/hexSha256"
+        }
+      }
+    },
+    "media": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["container_format", "codec", "sample_rate_hz", "channels", "duration_seconds"],
+      "properties": {
+        "container_format": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "codec": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "sample_rate_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "channels": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "bit_depth": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "channel_layout": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "duration_seconds": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "tags": {
+      "$ref": "./common.schema.json#/$defs/stringArray"
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

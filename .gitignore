@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+.DS_Store
+tmp/
+.turbo/
+*.log
+
+# Generated renders and local artifacts
+renders/
+storage/
+
+# Vitest
+.vitest/

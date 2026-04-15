@@ -1,0 +1,289 @@
+import {
+  assertValidFadeSpans,
+  buildEqSafetyLimits,
+  buildFadeSafetyLimits,
+  buildFilterSafetyLimits,
+  buildGainSafetyLimits,
+  buildTrimSafetyLimits,
+  resolveEqGainDb,
+  resolveGainStepDb,
+} from "./safety.js";
+import type {
+  AnalysisReport,
+  AudioVersion,
+  EditPlanStep,
+  ParsedEditObjectives,
+  SemanticProfile,
+} from "./types.js";
+
+interface StepBuildContext {
+  objectives: ParsedEditObjectives;
+  audioVersion: AudioVersion;
+  analysisReport: AnalysisReport;
+  semanticProfile: SemanticProfile;
+}
+
+export function buildPlannedSteps(context: StepBuildContext): EditPlanStep[] {
+  const steps: EditPlanStep[] = [];
+
+  const trimStep = buildTrimStep(context.objectives, context.audioVersion);
+  if (trimStep) {
+    steps.push(trimStep);
+  }
+
+  const fadeStep = buildFadeStep(context.objectives, context.audioVersion);
+  if (fadeStep) {
+    steps.push(fadeStep);
+  }
+
+  const filterStep = buildRumbleStep(context.objectives);
+  if (filterStep) {
+    steps.push(filterStep);
+  }
+
+  const eqStep = buildEqStep(context);
+  if (eqStep) {
+    steps.push(eqStep);
+  }
+
+  const gainStep = buildGainStep(context.objectives, context.analysisReport);
+  if (gainStep) {
+    steps.push(gainStep);
+  }
+
+  return steps;
+}
+
+function buildTrimStep(
+  objectives: ParsedEditObjectives,
+  audioVersion: AudioVersion,
+): EditPlanStep | undefined {
+  if (!objectives.trim_range) {
+    return undefined;
+  }
+
+  if (objectives.trim_range.end_seconds > audioVersion.audio.duration_seconds) {
+    throw new Error("Requested trim range must stay within the provided AudioVersion duration.");
+  }
+
+  return {
+    step_id: "step_trim_1",
+    operation: "trim",
+    target: {
+      scope: "time_range",
+      start_seconds: objectives.trim_range.start_seconds,
+      end_seconds: objectives.trim_range.end_seconds,
+    },
+    parameters: {},
+    expected_effects: [
+      `retain audio from ${objectives.trim_range.start_seconds}s to ${objectives.trim_range.end_seconds}s only`,
+    ],
+    safety_limits: buildTrimSafetyLimits(),
+  };
+}
+
+function buildFadeStep(
+  objectives: ParsedEditObjectives,
+  audioVersion: AudioVersion,
+): EditPlanStep | undefined {
+  if (objectives.fade_in_seconds === undefined && objectives.fade_out_seconds === undefined) {
+    return undefined;
+  }
+
+  const availableDurationSeconds = objectives.trim_range
+    ? objectives.trim_range.end_seconds - objectives.trim_range.start_seconds
+    : audioVersion.audio.duration_seconds;
+  const parameters: Record<string, unknown> = {};
+  const expectedEffects: string[] = [];
+
+  if (objectives.fade_in_seconds !== undefined) {
+    if (objectives.fade_in_seconds > availableDurationSeconds) {
+      throw new Error(
+        "Requested fade in duration must not exceed the available AudioVersion duration.",
+      );
+    }
+
+    parameters.fade_in_seconds = objectives.fade_in_seconds;
+    expectedEffects.push(`add a ${objectives.fade_in_seconds}s fade in`);
+  }
+
+  if (objectives.fade_out_seconds !== undefined) {
+    if (objectives.fade_out_seconds > availableDurationSeconds) {
+      throw new Error(
+        "Requested fade out duration must not exceed the available AudioVersion duration.",
+      );
+    }
+
+    parameters.fade_out_seconds = objectives.fade_out_seconds;
+    expectedEffects.push(`add a ${objectives.fade_out_seconds}s fade out`);
+  }
+
+  assertValidFadeSpans(
+    objectives.fade_in_seconds,
+    objectives.fade_out_seconds,
+    availableDurationSeconds,
+  );
+
+  return {
+    step_id: "step_fade_1",
+    operation: "fade",
+    target: { scope: "full_file" },
+    parameters,
+    expected_effects: expectedEffects,
+    safety_limits: buildFadeSafetyLimits(),
+  };
+}
+
+function buildRumbleStep(objectives: ParsedEditObjectives): EditPlanStep | undefined {
+  if (!objectives.wants_remove_rumble) {
+    return undefined;
+  }
+
+  return {
+    step_id: "step_high_pass_1",
+    operation: "high_pass_filter",
+    target: { scope: "full_file" },
+    parameters: { frequency_hz: 40 },
+    expected_effects: ["reduce low-frequency rumble below 40 Hz"],
+    safety_limits: buildFilterSafetyLimits(),
+  };
+}
+
+function buildEqStep({
+  objectives,
+  analysisReport,
+  semanticProfile,
+}: StepBuildContext): EditPlanStep | undefined {
+  const bands: Array<Record<string, unknown>> = [];
+  const expectedEffects: string[] = [];
+  const harshnessAnnotation = analysisReport.annotations?.find(
+    (annotation) => annotation.kind === "harshness",
+  );
+  const semanticLabels = new Set(
+    semanticProfile.descriptors
+      .filter((descriptor) => descriptor.confidence >= 0.6)
+      .map((descriptor) => descriptor.label),
+  );
+
+  if (
+    objectives.wants_less_harsh &&
+    (semanticLabels.has("slightly_harsh") ||
+      semanticLabels.has("harsh") ||
+      harshnessAnnotation !== undefined)
+  ) {
+    const harshBand = harshnessAnnotation?.bands_hz ?? [3000, 4500];
+    bands.push({
+      type: "bell",
+      frequency_hz: midpoint(harshBand[0], harshBand[1]),
+      gain_db: resolveEqGainDb(objectives, "cut"),
+      q: 1.2,
+    });
+    expectedEffects.push("reduce upper-mid harshness");
+  }
+
+  if (objectives.wants_darker) {
+    bands.push({
+      type: "bell",
+      frequency_hz: 6500,
+      gain_db: resolveEqGainDb(objectives, "cut") * 0.75,
+      q: 0.8,
+    });
+    expectedEffects.push("slightly reduce perceived brightness");
+  }
+
+  if (objectives.wants_brighter) {
+    bands.push({
+      type: "bell",
+      frequency_hz: 5000,
+      gain_db: resolveEqGainDb(objectives, "boost") * 0.75,
+      q: 0.8,
+    });
+    expectedEffects.push("slightly increase upper-band presence");
+  }
+
+  if (objectives.wants_less_muddy) {
+    bands.push({
+      type: "bell",
+      frequency_hz: 280,
+      gain_db: resolveEqGainDb(objectives, "cut") * 0.75,
+      q: 1,
+    });
+    expectedEffects.push("reduce low-mid mud");
+  }
+
+  if (objectives.wants_more_warmth) {
+    bands.push({
+      type: "bell",
+      frequency_hz: 180,
+      gain_db: resolveEqGainDb(objectives, "boost") * 0.75,
+      q: 0.9,
+    });
+    expectedEffects.push("slightly increase warmth");
+  }
+
+  if (bands.length === 0) {
+    return undefined;
+  }
+
+  return {
+    step_id: "step_eq_1",
+    operation: "parametric_eq",
+    target: { scope: "full_file" },
+    parameters: { bands: bands.map(roundBandValues) },
+    expected_effects: expectedEffects,
+    safety_limits: buildEqSafetyLimits(objectives),
+  };
+}
+
+function buildGainStep(
+  objectives: ParsedEditObjectives,
+  analysisReport: AnalysisReport,
+): EditPlanStep | undefined {
+  if (objectives.wants_louder === objectives.wants_quieter) {
+    return undefined;
+  }
+
+  if (objectives.wants_quieter) {
+    const gainDb = Math.abs(resolveEqGainDb(objectives, "cut"));
+
+    return {
+      step_id: "step_gain_1",
+      operation: "gain",
+      target: { scope: "full_file" },
+      parameters: { gain_db: -gainDb },
+      expected_effects: ["reduce output level conservatively"],
+      safety_limits: buildGainSafetyLimits(),
+    };
+  }
+
+  const availableHeadroomDb = Math.max(0, -1 - analysisReport.measurements.levels.true_peak_dbtp);
+  const gainDb = resolveGainStepDb(objectives, availableHeadroomDb);
+  if (gainDb <= 0) {
+    return undefined;
+  }
+
+  return {
+    step_id: "step_gain_1",
+    operation: "gain",
+    target: { scope: "full_file" },
+    parameters: { gain_db: gainDb },
+    expected_effects: ["increase level within measured peak headroom"],
+    safety_limits: buildGainSafetyLimits(),
+  };
+}
+
+function midpoint(start: number, end: number): number {
+  return Number(((start + end) / 2).toFixed(2));
+}
+
+function roundBandValues(band: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...band,
+    frequency_hz:
+      typeof band.frequency_hz === "number"
+        ? Number(band.frequency_hz.toFixed(2))
+        : band.frequency_hz,
+    gain_db: typeof band.gain_db === "number" ? Number(band.gain_db.toFixed(2)) : band.gain_db,
+    q: typeof band.q === "number" ? Number(band.q.toFixed(2)) : band.q,
+  };
+}

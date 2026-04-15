@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/semantic-profile.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_id",
+    "analysis_report_id",
+    "asset_id",
+    "version_id",
+    "generated_at",
+    "descriptors",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "./common.schema.json#/$defs/schemaVersion"
+    },
+    "profile_id": {
+      "$ref": "./common.schema.json#/$defs/semanticId"
+    },
+    "analysis_report_id": {
+      "$ref": "./common.schema.json#/$defs/analysisId"
+    },
+    "asset_id": {
+      "$ref": "./common.schema.json#/$defs/assetId"
+    },
+    "version_id": {
+      "$ref": "./common.schema.json#/$defs/versionId"
+    },
+    "generated_at": {
+      "$ref": "./common.schema.json#/$defs/isoTimestamp"
+    },
+    "descriptors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "confidence", "evidence_refs", "rationale"],
+        "properties": {
+          "label": {
+            "$ref": "./common.schema.json#/$defs/nonEmptyString"
+          },
+          "confidence": {
+            "$ref": "./common.schema.json#/$defs/confidence"
+          },
+          "evidence_refs": {
+            "$ref": "./common.schema.json#/$defs/stringArray"
+          },
+          "rationale": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plain_text"],
+      "properties": {
+        "plain_text": {
+          "type": "string"
+        },
+        "caveats": {
+          "$ref": "./common.schema.json#/$defs/stringArray"
+        }
+      }
+    },
+    "unresolved_terms": {
+      "$ref": "./common.schema.json#/$defs/stringArray"
+    }
+  }
+}

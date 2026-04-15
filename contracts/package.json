@@ -1,0 +1,11 @@
+{
+  "name": "@audio-language-interface/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Canonical schemas and example payloads for Audio Language Interface.",
+  "files": [
+    "schemas/",
+    "examples/"
+  ]
+}

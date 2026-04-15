@@ -1,0 +1,19 @@
+{
+  "name": "@audio-language-interface/analysis",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic baseline analysis for workspace-relative WAV AudioVersion inputs.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@audio-language-interface/core": "workspace:*",
+    "ajv": "^8.18.0",
+    "ajv-formats": "^3.0.1",
+    "execa": "^9.6.1",
+    "wavefile": "^11.0.0"
+  }
+}
