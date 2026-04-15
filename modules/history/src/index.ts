@@ -27,9 +27,11 @@ export {
   listAncestorVersionIds,
   type RedoTarget,
   type ResolveRevertTargetInput,
+  type ResolveUndoTargetInput,
   redoActiveRef,
   resolveRedoTargets,
   resolveRevertTarget,
+  resolveUndoTarget,
   revertToVersion,
   undoActiveRef,
 } from "./revert.js";

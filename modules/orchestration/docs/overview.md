@@ -59,11 +59,11 @@ The current implementation is a thin integration layer over the existing runtime
 - The default dependency bundle wires the implemented `io`, `analysis`, `semantics`, `planning`, `transforms`, `render`, `compare`, and `history` module entrypoints directly.
 - Flow errors are wrapped as `OrchestrationStageError` values with stage names and partial results when available, including follow-up resolution failures before planning begins.
 - `iterativeRefine` repeats plan, apply, analyze, and compare until `maxIterations` is reached or the caller stops the loop.
-- `resolveFollowUpRequest` can safely expand `more` to the last recorded request and can resolve revert targets for `less` or `undo`-style prompts.
+- `resolveFollowUpRequest` can safely expand `more` to the last recorded request, resolve `less` against version ancestry, and resolve `undo` against explicit active-ref history.
 
 ## Current limitations
 
 - Orchestration depends on the same narrow first-slice module capabilities as the underlying runtime modules.
-- Revert-like follow-up resolution can identify the correct prior version, but full revert execution still depends on the caller having the referenced `AudioVersion` artifact available.
+- Revert-like follow-ups are fully executable when the caller provides `getAudioVersionById`, which lets orchestration materialize the referenced `AudioVersion` artifact explicitly before re-analyzing and re-rendering it.
 - It does not provide hidden persistence, job scheduling, or service hosting behavior.
 - There is no dedicated CLI or app entrypoint that wraps these orchestration APIs yet.

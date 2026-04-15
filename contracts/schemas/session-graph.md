@@ -88,6 +88,7 @@ Each edge should include:
 - `snapshots[]`: snapshot records with `snapshot_id`, `version_id`, `created_at`, and optional `branch_id` and `label`
 - `active_ref_history[]`: ordered active selection history entries with `asset_id`, `version_id`, `changed_at`, and optional `branch_id` and `reason`
 - `active_ref_history_index`: zero-based pointer into `active_ref_history`
+- `plan_requests`: map keyed by `plan_id` storing the original user request text needed for safe `more`-style follow-up resolution
 - `provenance`: map keyed by artifact `ref_id` with structured lineage links used by branch and revert helpers
 
 Important provenance fields:

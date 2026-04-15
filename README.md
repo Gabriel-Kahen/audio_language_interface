@@ -71,8 +71,8 @@ Important current limitations include:
 
 - no streaming or byte-buffer import path
 - no broad multi-file workflow
-- the tool surface still exposes a narrower subset than the full runtime and does not yet expose `plan_edits`
-- width and denoise behavior are implemented conservatively and not yet fully opened through every external entrypoint
+- the tool surface still does not expose `plan_edits`
+- width and denoise behavior are implemented conservatively and may still reject unsafe input conditions explicitly
 - no dedicated demo CLI or app entrypoint yet
 - benchmark coverage is still synthetic-first and not yet driven by committed real audio fixtures
 

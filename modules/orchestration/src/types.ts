@@ -38,6 +38,7 @@ export type WorkflowStage =
   | "import"
   | "analyze_input"
   | "resolve_follow_up"
+  | "load_revert_target"
   | "semantic_profile"
   | "plan"
   | "apply"
@@ -75,6 +76,7 @@ export interface OrchestrationDependencies {
   compareVersions: typeof import("@audio-language-interface/compare").compareVersions;
   compareRenders: typeof import("@audio-language-interface/compare").compareRenders;
   createSessionGraph: typeof import("@audio-language-interface/history").createSessionGraph;
+  revertToVersion: typeof import("@audio-language-interface/history").revertToVersion;
   recordAudioAsset: typeof import("@audio-language-interface/history").recordAudioAsset;
   recordAudioVersion: typeof import("@audio-language-interface/history").recordAudioVersion;
   recordAnalysisReport: typeof import("@audio-language-interface/history").recordAnalysisReport;
@@ -83,6 +85,13 @@ export interface OrchestrationDependencies {
   recordTransformRecord: typeof import("@audio-language-interface/history").recordTransformRecord;
   recordRenderArtifact: typeof import("@audio-language-interface/history").recordRenderArtifact;
   recordComparisonReport: typeof import("@audio-language-interface/history").recordComparisonReport;
+  getAudioVersionById?:
+    | ((input: {
+        asset: AudioAsset;
+        sessionGraph: SessionGraph;
+        versionId: string;
+      }) => Promise<AudioVersion | undefined>)
+    | undefined;
 }
 
 export type SharedRenderPassThroughOptions = Omit<
@@ -224,13 +233,15 @@ export interface RunRequestCycleOptions {
 }
 
 export interface RequestCycleResult {
+  result_kind: "applied" | "reverted";
   asset: AudioAsset;
   inputVersion: AudioVersion;
   inputAnalysis: AnalysisReport;
+  followUpResolution: FollowUpResolution;
   semanticProfile?: SemanticProfile;
-  editPlan: EditPlan;
+  editPlan?: EditPlan;
   outputVersion: AudioVersion;
-  transformResult: ApplyTransformsResult;
+  transformResult?: ApplyTransformsResult;
   outputAnalysis: AnalysisReport;
   baselineRender: RenderArtifact;
   candidateRender: RenderArtifact;

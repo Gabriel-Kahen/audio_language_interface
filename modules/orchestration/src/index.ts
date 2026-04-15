@@ -10,6 +10,7 @@ import {
   recordRenderArtifact,
   recordSemanticProfile,
   recordTransformRecord,
+  revertToVersion,
 } from "@audio-language-interface/history";
 import { importAudioFromFile } from "@audio-language-interface/io";
 import { planEdits } from "@audio-language-interface/planning";
@@ -47,6 +48,7 @@ export const defaultOrchestrationDependencies: OrchestrationDependencies = {
   compareVersions,
   compareRenders,
   createSessionGraph,
+  revertToVersion,
   recordAudioAsset,
   recordAudioVersion,
   recordAnalysisReport,

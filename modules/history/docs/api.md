@@ -231,6 +231,16 @@ Returns the ancestor version id after walking `steps` parents from:
 
 Returns `undefined` when there is no ancestor that far back.
 
+### `resolveUndoTarget(graph, input?)`
+
+Returns the version id from a prior `active_ref_history` entry.
+
+Behavior:
+
+- defaults to one step back from the current `active_ref_history_index`
+- returns `undefined` when there is no earlier recorded active selection
+- differs from `resolveRevertTarget` because it follows explicit active-ref history rather than ancestry, so it can undo a prior branch checkout or revert operation predictably
+
 ### `revertToVersion(graph, versionId, changedAt, reason?)`
 
 Moves the active selection to a previously recorded version.

@@ -8,6 +8,7 @@ import {
   recordRenderArtifact,
   recordSemanticProfile,
   recordTransformRecord,
+  revertToVersion,
   validateSessionGraph,
 } from "@audio-language-interface/history";
 import { planEdits } from "@audio-language-interface/planning";
@@ -152,7 +153,8 @@ describe("runRequestCycle", () => {
       dependencies,
     });
 
-    expect(result.editPlan.user_request).toBe("Make it darker");
+    expect(result.result_kind).toBe("applied");
+    expect(result.editPlan?.user_request).toBe("Make it darker");
     expect(result.outputVersion.version_id).toBe("ver_output");
     expect(result.comparisonReport.candidate.ref_id).toBe("render_ver_output");
     expect(validateSessionGraph(result.sessionGraph).valid).toBe(true);
@@ -227,7 +229,101 @@ describe("runRequestCycle", () => {
       dependencies,
     });
 
-    expect(secondCycle.editPlan.user_request).toBe("Make it darker");
+    expect(secondCycle.result_kind).toBe("applied");
+    expect(secondCycle.editPlan?.user_request).toBe("Make it darker");
+  });
+
+  it("executes undo follow-ups by reverting to the prior active version", async () => {
+    const asset = createAsset();
+    const inputVersion = createVersion("ver_input");
+    const dependencies = createDependencies();
+
+    const firstCycle = await runRequestCycle({
+      workspaceRoot: "/workspace",
+      userRequest: "Make it darker",
+      input: {
+        kind: "existing",
+        asset,
+        version: inputVersion,
+      },
+      dependencies,
+    });
+
+    const secondCycle = await runRequestCycle({
+      workspaceRoot: "/workspace",
+      userRequest: "more",
+      input: {
+        kind: "existing",
+        asset,
+        version: firstCycle.outputVersion,
+        sessionGraph: firstCycle.sessionGraph,
+      },
+      dependencies,
+    });
+
+    const undoCycle = await runRequestCycle({
+      workspaceRoot: "/workspace",
+      userRequest: "undo",
+      input: {
+        kind: "existing",
+        asset,
+        version: secondCycle.outputVersion,
+        sessionGraph: secondCycle.sessionGraph,
+      },
+      dependencies,
+    });
+
+    expect(undoCycle.result_kind).toBe("reverted");
+    expect(undoCycle.followUpResolution).toEqual({
+      kind: "revert",
+      targetVersionId: firstCycle.outputVersion.version_id,
+      source: "undo",
+    });
+    expect(undoCycle.outputVersion.version_id).toBe(firstCycle.outputVersion.version_id);
+    expect(undoCycle.sessionGraph.active_refs.version_id).toBe(firstCycle.outputVersion.version_id);
+    expect(validateSessionGraph(undoCycle.sessionGraph).valid).toBe(true);
+  });
+
+  it("rejects revert execution when getAudioVersionById returns the wrong version payload", async () => {
+    const asset = createAsset();
+    const inputVersion = createVersion("ver_input");
+    const dependencies = createDependencies({
+      getAudioVersionById: async () => createVersion("ver_wrong"),
+    });
+
+    const firstCycle = await runRequestCycle({
+      workspaceRoot: "/workspace",
+      userRequest: "Make it darker",
+      input: {
+        kind: "existing",
+        asset,
+        version: inputVersion,
+      },
+      dependencies,
+    });
+
+    await expect(
+      runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "undo",
+        input: {
+          kind: "existing",
+          asset,
+          version: firstCycle.outputVersion,
+          sessionGraph: firstCycle.sessionGraph,
+        },
+        dependencies,
+      }),
+    ).rejects.toMatchObject({
+      stage: "load_revert_target",
+      partialResult: {
+        followUpResolution: {
+          kind: "revert",
+          targetVersionId: inputVersion.version_id,
+          source: "undo",
+        },
+      },
+    } satisfies Partial<OrchestrationStageError>);
   });
 
   it("wraps follow-up resolution failures with partial session context", async () => {
@@ -318,7 +414,7 @@ describe("iterativeRefine", () => {
     });
 
     expect(result.iterations).toHaveLength(2);
-    expect(result.finalVersion.version_id).toBe("ver_output");
+    expect(result.finalVersion.version_id).toBe("ver_output2");
     expect(result.iterations[0]?.comparisonReport.baseline.ref_type).toBe("version");
     expect(analyzeCalls).toEqual([
       { workspaceRoot: "/workspace", generatedAt: "2026-04-14T20:20:03Z" },
@@ -330,17 +426,35 @@ describe("iterativeRefine", () => {
 function createDependencies(
   overrides: Partial<OrchestrationDependencies> = {},
 ): OrchestrationDependencies {
+  const versions = new Map<string, AudioVersion>();
+  let transformCount = 0;
+
   return {
     importAudioFromFile: async () => createImportResult(),
     analyzeAudioVersion: async (version) =>
       createAnalysisReport(
         version.version_id,
-        version.version_id === "ver_output" ? "analysis_output" : "analysis_input",
+        version.version_id === "ver_input"
+          ? "analysis_input"
+          : `analysis_${version.version_id.replace(/[^A-Za-z0-9]/g, "")}`,
       ),
     buildSemanticProfile,
     planEdits,
-    applyEditPlan: async ({ version, plan }) =>
-      createTransformResult(version as AudioVersion, plan),
+    applyEditPlan: async ({ version, plan }) => {
+      versions.set(version.version_id, version as AudioVersion);
+      transformCount += 1;
+      const transformResult = createTransformResult(
+        version as AudioVersion,
+        plan,
+        transformCount === 1 ? "ver_output" : `ver_output${transformCount}`,
+        transformCount === 1 ? "transform_input" : `transform_input${transformCount}`,
+      );
+      versions.set(
+        transformResult.outputVersion.version_id,
+        transformResult.outputVersion as AudioVersion,
+      );
+      return transformResult;
+    },
     renderPreview: async ({ version }) => ({
       artifact: createRenderArtifact(version.version_id),
       command: createCommand(),
@@ -354,6 +468,7 @@ function createDependencies(
     compareRenders: ({ baselineRender, candidateRender }) =>
       createComparisonReport(baselineRender.render_id, candidateRender.render_id, "render"),
     createSessionGraph,
+    revertToVersion,
     recordAudioAsset,
     recordAudioVersion,
     recordAnalysisReport,
@@ -362,6 +477,7 @@ function createDependencies(
     recordTransformRecord,
     recordRenderArtifact,
     recordComparisonReport,
+    getAudioVersionById: async ({ versionId }) => versions.get(versionId),
     ...overrides,
   };
 }
@@ -501,19 +617,26 @@ function createAnalysisReport(versionId: string, reportId: string): AnalysisRepo
   };
 }
 
-function createTransformResult(version: AudioVersion, plan: EditPlan): ApplyTransformsResult {
+function createTransformResult(
+  version: AudioVersion,
+  plan: EditPlan,
+  outputVersionId: AudioVersion["version_id"] = "ver_output",
+  recordId: ApplyTransformsResult["transformRecord"]["record_id"] = "transform_input",
+): ApplyTransformsResult {
   const outputVersion = createVersion(
-    "ver_output",
+    outputVersionId,
     version.version_id,
     plan.plan_id as AudioVersion["lineage"]["plan_id"],
   );
-  outputVersion.lineage.transform_record_id = "transform_input";
+  outputVersion.lineage.transform_record_id = recordId as NonNullable<
+    AudioVersion["lineage"]["transform_record_id"]
+  >;
 
   return {
     outputVersion,
     transformRecord: {
       schema_version: "1.0.0",
-      record_id: "transform_input",
+      record_id: recordId,
       plan_id: plan.plan_id,
       asset_id: version.asset_id,
       input_version_id: version.version_id,

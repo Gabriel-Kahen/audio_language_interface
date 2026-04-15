@@ -43,6 +43,7 @@ The current v1 surface stays thin by:
 - `recordTransformRecord`
 - `recordRenderArtifact`
 - `recordComparisonReport`
+- `revertToVersion`
 
 Callers may still override any dependency for testing or alternate runtimes, but the default orchestration surface now tracks the implemented module APIs.
 
@@ -55,10 +56,12 @@ Callers may still override any dependency for testing or alternate runtimes, but
 
 The returned result includes:
 
+- `result_kind = "applied" | "reverted"`
 - input and output versions
 - input and output analyses
+- follow-up resolution metadata
 - optional semantic profile
-- edit plan and transform result
+- edit plan and transform result for applied cycles
 - baseline and candidate render artifacts
 - comparison report
 - updated `SessionGraph`
@@ -106,7 +109,22 @@ The default behavior is one attempt with no retries.
 
 - resolves plain requests directly
 - expands shorthand `more` to the recorded `user_request` from the plan that produced the current version
-- resolves `less`, `undo`, and nearby revert-style wording to a concrete prior `version_id` using `modules/history`
+- resolves `less` and nearby revert-style wording to a concrete ancestor `version_id` using `modules/history`
+- resolves `undo` to the previously active version using explicit `active_ref_history`
 - throws when the current session state is insufficient to resolve the follow-up safely
 
-`runRequestCycle(options)` now uses this resolver for `input.kind = "existing"`, which lets repeated requests such as `more` reuse prior intent without introducing hidden orchestration state.
+`runRequestCycle(options)` now uses this resolver for `input.kind = "existing"`, which lets repeated requests such as `more`, `less`, and `undo` reuse explicit session history without introducing hidden orchestration state.
+
+For revert-style execution, callers must provide `dependencies.getAudioVersionById({ asset, sessionGraph, versionId })`.
+
+Orchestration now verifies that the loaded `AudioVersion` matches:
+
+- the requested revert `versionId`
+- the current session `asset_id`
+- the recorded session provenance when that provenance exists
+
+That keeps orchestration thin:
+
+- `history` resolves where the session should move
+- the caller explicitly materializes the referenced `AudioVersion` artifact
+- orchestration re-analyzes, re-renders, compares, and records the resulting session state

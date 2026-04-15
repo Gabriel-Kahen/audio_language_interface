@@ -19,6 +19,7 @@ import {
   redoActiveRef,
   resolveRedoTargets,
   resolveRevertTarget,
+  resolveUndoTarget,
   revertToVersion,
   type SessionGraph,
   undoActiveRef,
@@ -283,6 +284,60 @@ describe("history module", () => {
 
     const redone = redoActiveRef(undone);
     expect(redone.active_refs.version_id).toBe("ver_01HZX8C7J2V3M4N5P6Q7R8S9T2");
+  });
+
+  it("resolves undo targets from explicit active ref history", () => {
+    let graph = createSessionGraph({
+      session_id: "session_01HZX8J7J2V3M4N5P6Q7R8S9T2A",
+      created_at: "2026-04-14T22:02:00Z",
+      active_refs: {
+        asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T2A",
+        version_id: "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2A",
+      },
+    });
+
+    graph = recordAudioAsset(graph, {
+      asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T2A",
+      source: { imported_at: "2026-04-14T22:02:00Z" },
+    });
+    graph = recordAudioVersion(graph, {
+      asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T2A",
+      version_id: "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2A",
+      lineage: {
+        created_at: "2026-04-14T22:02:01Z",
+        created_by: "modules/io",
+      },
+    });
+    graph = recordAudioVersion(graph, {
+      asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T2A",
+      version_id: "ver_01HZX8C7J2V3M4N5P6Q7R8S9T2A",
+      parent_version_id: "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2A",
+      lineage: {
+        created_at: "2026-04-14T22:02:02Z",
+        created_by: "modules/transforms",
+      },
+    });
+    graph = recordAudioVersion(graph, {
+      asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T2A",
+      version_id: "ver_01HZX8D7J2V3M4N5P6Q7R8S9T2A",
+      parent_version_id: "ver_01HZX8C7J2V3M4N5P6Q7R8S9T2A",
+      lineage: {
+        created_at: "2026-04-14T22:02:03Z",
+        created_by: "modules/transforms",
+      },
+    });
+
+    expect(resolveUndoTarget(graph)).toBe("ver_01HZX8C7J2V3M4N5P6Q7R8S9T2A");
+    expect(resolveUndoTarget(graph, { steps: 2 })).toBe("ver_01HZX8B7J2V3M4N5P6Q7R8S9T2A");
+
+    const reverted = revertToVersion(
+      graph,
+      "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2A",
+      "2026-04-14T22:02:04Z",
+      "follow_up_undo",
+    );
+
+    expect(resolveUndoTarget(reverted)).toBe("ver_01HZX8D7J2V3M4N5P6Q7R8S9T2A");
   });
 
   it("records one branch revert history entry and keeps undo coherent", () => {

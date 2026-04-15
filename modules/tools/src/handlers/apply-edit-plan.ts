@@ -1,10 +1,6 @@
 import type { AudioVersion, EditPlan, OperationName } from "@audio-language-interface/transforms";
 
-import {
-  createProvenanceMismatchError,
-  createUnsupportedOperationCombinationError,
-  createUnsupportedOperationError,
-} from "../errors.js";
+import { createProvenanceMismatchError, ToolInputError } from "../errors.js";
 import type { ToolDefinition, ToolRequest } from "../types.js";
 import {
   assertToolResultAudioVersion,
@@ -33,17 +29,8 @@ const SUPPORTED_EDIT_PLAN_OPERATIONS = new Set<OperationName>([
   "low_pass_filter",
   "compressor",
   "limiter",
-]);
-
-const PHASE_2_DECLARED_BUT_UNSUPPORTED_OPERATIONS = new Map<string, string>([
-  [
-    "stereo_width",
-    "stereo_width is part of the locked Phase 2 batch, but the current tool surface does not execute width changes yet.",
-  ],
-  [
-    "denoise",
-    "denoise is part of the locked Phase 2 batch, but the current tool surface does not execute noise-reduction changes yet.",
-  ],
+  "stereo_width",
+  "denoise",
 ]);
 
 function toCommandShape(command: {
@@ -117,46 +104,35 @@ function validateArguments(value: unknown, request: ToolRequest): ApplyEditPlanA
     );
   }
 
-  const unsupportedSteps = editPlan.steps.flatMap((step, index) => {
-    if (SUPPORTED_EDIT_PLAN_OPERATIONS.has(step.operation)) {
-      return [];
-    }
-
-    const reason = PHASE_2_DECLARED_BUT_UNSUPPORTED_OPERATIONS.get(step.operation);
-
-    return [
-      {
-        field: `arguments.edit_plan.steps[${index}].operation`,
-        operation: step.operation,
-        reason:
-          reason ??
-          `${step.operation} is outside the current apply_edit_plan tool surface. Use describeTools() to inspect the supported operation subset.`,
-      },
-    ];
-  });
-
-  if (unsupportedSteps.length === 1) {
-    const [unsupportedStep] = unsupportedSteps;
-
-    if (unsupportedStep) {
-      throw createUnsupportedOperationError(
-        unsupportedStep.field,
-        unsupportedStep.operation,
-        [...SUPPORTED_EDIT_PLAN_OPERATIONS],
-        "apply_edit_plan",
+  for (const [index, step] of editPlan.steps.entries()) {
+    if (
+      ["compressor", "limiter", "stereo_width", "denoise"].includes(step.operation) &&
+      step.target.scope !== "full_file"
+    ) {
+      throw new ToolInputError(
+        "invalid_arguments",
+        `arguments.edit_plan.steps[${index}].target.scope must be 'full_file' for ${step.operation}.`,
         {
-          reason: unsupportedStep.reason,
+          field: `arguments.edit_plan.steps[${index}].target.scope`,
+          operation: step.operation,
+          required_scope: "full_file",
+          received_scope: step.target.scope,
         },
       );
     }
-  }
 
-  if (unsupportedSteps.length > 1) {
-    throw createUnsupportedOperationCombinationError(
-      unsupportedSteps,
-      [...SUPPORTED_EDIT_PLAN_OPERATIONS],
-      "apply_edit_plan",
-    );
+    if (step.operation === "stereo_width" && audioVersion.audio.channels !== 2) {
+      throw new ToolInputError(
+        "invalid_arguments",
+        `arguments.edit_plan.steps[${index}].operation 'stereo_width' requires stereo 2-channel audio.`,
+        {
+          field: `arguments.edit_plan.steps[${index}].operation`,
+          operation: step.operation,
+          required_channels: 2,
+          received_channels: audioVersion.audio.channels,
+        },
+      );
+    }
   }
 
   return {
@@ -177,14 +153,12 @@ export const applyEditPlanTool: ToolDefinition<ApplyEditPlanArguments, Record<st
     optional_arguments: ["output_dir", "output_version_id", "record_id"],
     error_codes: [
       "invalid_arguments",
-      "unsupported_operation",
       "provenance_mismatch",
       "invalid_result_contract",
       "handler_failed",
     ],
     capabilities: {
       supported_operations: [...SUPPORTED_EDIT_PLAN_OPERATIONS],
-      unsupported_phase_2_operations: [...PHASE_2_DECLARED_BUT_UNSUPPORTED_OPERATIONS.keys()],
     },
   },
   validateArguments,

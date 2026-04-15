@@ -1,6 +1,7 @@
 import {
   getVersionFollowUpRequest,
   resolveRevertTarget,
+  resolveUndoTarget,
   type SessionGraph,
 } from "@audio-language-interface/history";
 
@@ -51,12 +52,17 @@ export function resolveFollowUpRequest(input: {
       );
     }
 
-    const targetVersionId = resolveRevertTarget(input.sessionGraph, {
-      version_id: input.versionId,
-    });
+    const targetVersionId =
+      revertSource === "undo"
+        ? resolveUndoTarget(input.sessionGraph)
+        : resolveRevertTarget(input.sessionGraph, {
+            version_id: input.versionId,
+          });
     if (!targetVersionId) {
       throw new Error(
-        "There is no previously recorded version to revert to from the current session state.",
+        revertSource === "undo"
+          ? "There is no previously active version to undo to from the current session state."
+          : "There is no previously recorded version to revert to from the current session state.",
       );
     }
 

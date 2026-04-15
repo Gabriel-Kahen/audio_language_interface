@@ -25,7 +25,7 @@ The current implementation provides a registry-backed execution layer with schem
 
 `plan_edits` is intentionally deferred. `modules/planning` now has a runtime implementation, but the tool layer does not expose it yet.
 
-Within `apply_edit_plan`, the currently supported operation subset is narrower than the full Phase 2 contract surface. The tool layer allows the stable baseline operations plus `compressor` and `limiter`, while rejecting `stereo_width` and `denoise` explicitly until that execution path is supported end to end.
+`apply_edit_plan` now exposes the full currently implemented locked Phase 2 runtime subset: the stable baseline operations plus `compressor`, `limiter`, `stereo_width`, and `denoise`.
 
 ## Implemented source files
 
@@ -72,6 +72,7 @@ See `docs/api.md` for the concrete callable tool surface and payload conventions
 
 - The tool surface is intentionally smaller than the set of implemented runtime modules and contract-declared operations.
 - `plan_edits` is not exposed as a callable tool yet.
-- `apply_edit_plan` rejects `stereo_width` and `denoise` with explicit `unsupported_operation` responses, including multi-step unsupported combinations.
+- `apply_edit_plan` stays schema-aligned with the published `EditPlan` contract and forwards supported locked Phase 2 operations directly to `modules/transforms`.
+- `apply_edit_plan` also preflights a small set of stable runtime prerequisites such as stereo-only width processing and full-file-only Phase 2 transform targets.
 - The tool layer does not maintain session state or resolve artifacts by id.
 - Tool-specific argument validation happens inside handlers rather than through one centralized schema per tool.

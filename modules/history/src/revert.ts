@@ -7,6 +7,10 @@ export interface ResolveRevertTargetInput {
   steps?: number;
 }
 
+export interface ResolveUndoTargetInput {
+  steps?: number;
+}
+
 export interface RedoTarget {
   version_id: string;
   branch_id?: string;
@@ -47,6 +51,24 @@ export function resolveRevertTarget(
   }
 
   return cursor;
+}
+
+/** Resolves a prior active version from explicit active ref history. */
+export function resolveUndoTarget(
+  graph: SessionGraph,
+  input: ResolveUndoTargetInput = {},
+): string | undefined {
+  const steps = input.steps ?? 1;
+  const metadata = normalizeMetadata(graph.metadata);
+  const history = metadata.active_ref_history ?? [];
+  const startIndex = metadata.active_ref_history_index ?? history.length - 1;
+  const targetIndex = startIndex - steps;
+
+  if (targetIndex < 0) {
+    return undefined;
+  }
+
+  return history[targetIndex]?.version_id;
 }
 
 /**

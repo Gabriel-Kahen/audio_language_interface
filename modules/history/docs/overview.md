@@ -25,7 +25,7 @@ Main API groups:
 - artifact recording: `recordAudioAsset`, `recordAudioVersion`, `recordAnalysisReport`, `recordSemanticProfile`, `recordEditPlan`, `recordTransformRecord`, `recordRenderArtifact`, `recordComparisonReport`
 - low-level mutation helpers: `addNode`, `addEdge`
 - branch and snapshot helpers: `createBranch`, `checkoutBranch`, `createSnapshot`, `listBranches`, `listSnapshots`, `setActiveRefs`
-- revert helpers: `getParentVersionId`, `listAncestorVersionIds`, `resolveRevertTarget`, `revertToVersion`, `resolveRedoTargets`, `undoActiveRef`, `redoActiveRef`
+- revert helpers: `getParentVersionId`, `listAncestorVersionIds`, `resolveRevertTarget`, `resolveUndoTarget`, `revertToVersion`, `resolveRedoTargets`, `undoActiveRef`, `redoActiveRef`
 
 Detailed behavior is documented in `docs/api.md`.
 
@@ -94,6 +94,7 @@ Snapshot behavior:
 Revert behavior:
 
 - `resolveRevertTarget` walks version ancestry using `parent_version_id`
+- `resolveUndoTarget` walks explicit `active_ref_history`, which lets callers undo the last active selection even when that last move was itself a revert
 - by default it resolves one step back from the active version, or from a supplied branch head
 - `revertToVersion` changes `active_refs` to the target version
 - when a branch is active, `revertToVersion` also rewrites that branch's `head_version_id`

@@ -20,7 +20,7 @@ The current repository supports a first end-to-end slice for single-file audio e
 - record provenance in a `SessionGraph`
 - access the flow through `tools` or `orchestration`
 
-The repository is now in an early Phase 2 state: the runtime layer supports a broader internal transform set than the external tool surface currently exposes.
+The repository is now in an advanced Phase 2 state: the core runtime and the currently exposed tool surface support the locked Phase 2 transform batch, while some higher-level product surfaces remain intentionally narrow.
 
 ## What works today
 
@@ -53,7 +53,7 @@ The repository is now in an early Phase 2 state: the runtime layer supports a br
 - more controlled
 - control peaks
 
-Partially supported or runtime-only Phase 2 areas:
+Supported but conservative Phase 2 areas:
 
 - wider or narrower, when stereo evidence is safe enough
 - denoise or reduce hiss, when steady-noise evidence is strong enough
@@ -80,9 +80,10 @@ Partially supported or runtime-only Phase 2 areas:
 - `render_preview`
 - `compare_versions`
 
-Current tool-surface caveat:
+Current tool-surface caveats:
 
-- `apply_edit_plan` currently supports the narrower runtime subset through the exposed tool contract and does not yet fully open every Phase 2 runtime operation externally
+- `apply_edit_plan` supports the locked Phase 2 runtime operation set, but still validates explicit runtime prerequisites such as stereo-only width processing and full-file-only Phase 2 targets
+- the tool surface still does not expose a direct `plan_edits` operation
 
 ## Important current limitations
 
@@ -91,8 +92,7 @@ Current tool-surface caveat:
 - analysis reads the whole file into memory
 - semantic descriptor coverage is intentionally small and conservative
 - planning fails on unsupported requests instead of trying to generalize broadly
-- tool exposure still lags behind the full runtime transform surface
-- iterative orchestration currently supports only an early subset of follow-up behavior, with `more` being the most complete path today
+- iterative orchestration now supports early `more`, `less`, and `undo` follow-up behavior, but still relies on explicit version materialization through orchestration dependencies for safe revert execution
 - transforms still do not cover pitch shifting or time stretching
 - render preview is MP3-only
 - final render export is limited to WAV and FLAC

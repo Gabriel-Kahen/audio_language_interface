@@ -57,9 +57,9 @@ Returns `output_version`, `transform_record`, and normalized FFmpeg `commands`. 
 
 Current Phase 2 tool-surface behavior:
 
-- supported additions: `compressor`, `limiter`
-- explicitly rejected placeholders: `stereo_width`, `denoise`
-- if an edit plan includes multiple unsupported steps, the tool returns one `unsupported_operation` response with `error.details.unsupported_steps`
+- supported additions: `compressor`, `limiter`, `stereo_width`, `denoise`
+- tool-layer validation accepts the full currently implemented locked Phase 2 `EditPlan` operation set and forwards execution to `modules/transforms`
+- tool-layer validation also preflights a small set of runtime constraints that are stable enough to expose explicitly today, such as `stereo_width` requiring stereo 2-channel input and Phase 2 transforms requiring `full_file` scope
 
 ### `render_preview`
 
@@ -113,7 +113,9 @@ Unknown-tool responses include `error.details.available_tools` to help a caller 
 
 Provenance mismatch responses include a `field` plus the conflicting ids so a caller can repair and retry deterministically.
 
-Unsupported-operation responses include the current `supported_operations` list. Width and denoise rejections also include an explicit `reason`, and multi-step unsupported plans include `unsupported_steps` so callers can repair the whole request in one pass.
+Unsupported-operation responses include the current `supported_operations` list when a tool advertises a narrower callable subset than its surrounding contracts.
+
+For currently supported operations that still have input-shape or runtime-prerequisite constraints, the tool layer uses `invalid_arguments` with machine-readable field details rather than `unsupported_operation`.
 
 ## Current non-goals
 

@@ -1,6 +1,7 @@
 import { copyFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import type { AudioVersion } from "@audio-language-interface/core";
 import {
   getParentVersionId,
   listAncestorVersionIds,
@@ -109,23 +110,25 @@ describe("request cycle integration", () => {
         version_id: result.inputVersion.version_id,
         analysis_report_id: result.inputAnalysis.report_id,
       });
-      expect(provenance[result.editPlan.plan_id]).toMatchObject({
+      expect(provenance[result.editPlan?.plan_id ?? "missing"]).toMatchObject({
         asset_id: result.asset.asset_id,
         version_id: result.inputVersion.version_id,
-        plan_id: result.editPlan.plan_id,
+        plan_id: result.editPlan?.plan_id,
       });
       expect(provenance[result.outputVersion.version_id]).toMatchObject({
         asset_id: result.asset.asset_id,
         version_id: result.outputVersion.version_id,
         parent_version_id: result.inputVersion.version_id,
-        plan_id: result.editPlan.plan_id,
-        transform_record_id: result.transformResult.transformRecord.record_id,
+        plan_id: result.editPlan?.plan_id,
+        transform_record_id: result.transformResult?.transformRecord.record_id,
       });
-      expect(provenance[result.transformResult.transformRecord.record_id]).toMatchObject({
+      expect(
+        provenance[result.transformResult?.transformRecord.record_id ?? "missing"],
+      ).toMatchObject({
         asset_id: result.asset.asset_id,
         input_version_id: result.inputVersion.version_id,
         output_version_id: result.outputVersion.version_id,
-        plan_id: result.editPlan.plan_id,
+        plan_id: result.editPlan?.plan_id,
       });
       expect(provenance[result.baselineRender.render_id]).toMatchObject({
         asset_id: result.asset.asset_id,
@@ -225,14 +228,26 @@ describe("request cycle integration", () => {
     });
   });
 
-  it("supports repeated `more` cycles and resolves revert-like follow-ups from session history", async () => {
+  it("supports repeated apply, less, and undo cycles with valid session history", async () => {
     await withTempWorkspace(async (workspaceRoot) => {
       const inputPath = path.join(workspaceRoot, "fixtures", "tone.wav");
       await writeFixtureWav(inputPath, { sampleRateHz: 44_100, durationSeconds: 1.25 });
+      const versions = new Map<string, AudioVersion>();
       const dependencies = {
         ...defaultOrchestrationDependencies,
+        importAudioFromFile: async (
+          sourcePath: string,
+          options?: Parameters<typeof importAudioFromFile>[1],
+        ) => {
+          const imported = await importAudioFromFile(sourcePath, options);
+          versions.set(imported.version.version_id, imported.version);
+          return imported;
+        },
         applyEditPlan: async (options: Parameters<typeof applyEditPlan>[0]) =>
-          applyEditPlan({ ...options, executor: copyAudioExecutor }),
+          applyEditPlan({ ...options, executor: copyAudioExecutor }).then((result) => {
+            versions.set(result.outputVersion.version_id, result.outputVersion as AudioVersion);
+            return result;
+          }),
         renderPreview: async (options: Parameters<typeof renderPreview>[0]) =>
           renderPreview({
             ...options,
@@ -257,6 +272,8 @@ describe("request cycle integration", () => {
               durationSeconds: options.version.audio.duration_seconds,
             }),
           }),
+        getAudioVersionById: async ({ versionId }: { versionId: string }) =>
+          versions.get(versionId),
       };
 
       const firstCycle = await runRequestCycle({
@@ -284,8 +301,33 @@ describe("request cycle integration", () => {
         dependencies,
       });
 
+      const lessCycle = await runRequestCycle({
+        workspaceRoot,
+        userRequest: "less",
+        input: {
+          kind: "existing",
+          asset: secondCycle.asset,
+          version: secondCycle.outputVersion,
+          sessionGraph: secondCycle.sessionGraph,
+        },
+        dependencies,
+      });
+
+      const undoCycle = await runRequestCycle({
+        workspaceRoot,
+        userRequest: "undo",
+        input: {
+          kind: "existing",
+          asset: lessCycle.asset,
+          version: lessCycle.outputVersion,
+          sessionGraph: lessCycle.sessionGraph,
+        },
+        dependencies,
+      });
+
       expect(validateSessionGraph(secondCycle.sessionGraph).valid).toBe(true);
-      expect(secondCycle.editPlan.user_request).toBe("Make this loop darker and less harsh.");
+      expect(secondCycle.result_kind).toBe("applied");
+      expect(secondCycle.editPlan?.user_request).toBe("Make this loop darker and less harsh.");
       expect(
         getParentVersionId(secondCycle.sessionGraph, secondCycle.outputVersion.version_id),
       ).toBe(firstCycle.outputVersion.version_id);
@@ -303,6 +345,30 @@ describe("request cycle integration", () => {
         targetVersionId: firstCycle.outputVersion.version_id,
         source: "undo",
       });
+
+      expect(lessCycle.result_kind).toBe("reverted");
+      expect(lessCycle.outputVersion.version_id).toBe(firstCycle.outputVersion.version_id);
+      expect(lessCycle.sessionGraph.active_refs.version_id).toBe(
+        firstCycle.outputVersion.version_id,
+      );
+      expect(lessCycle.followUpResolution).toEqual({
+        kind: "revert",
+        targetVersionId: firstCycle.outputVersion.version_id,
+        source: "less",
+      });
+      expect(validateSessionGraph(lessCycle.sessionGraph).valid).toBe(true);
+
+      expect(undoCycle.result_kind).toBe("reverted");
+      expect(undoCycle.outputVersion.version_id).toBe(secondCycle.outputVersion.version_id);
+      expect(undoCycle.sessionGraph.active_refs.version_id).toBe(
+        secondCycle.outputVersion.version_id,
+      );
+      expect(undoCycle.followUpResolution).toEqual({
+        kind: "revert",
+        targetVersionId: secondCycle.outputVersion.version_id,
+        source: "undo",
+      });
+      expect(validateSessionGraph(undoCycle.sessionGraph).valid).toBe(true);
     });
   });
 

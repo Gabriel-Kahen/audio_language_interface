@@ -164,6 +164,15 @@
           "type": "integer",
           "minimum": 0
         },
+        "plan_requests": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "./common.schema.json#/$defs/planId"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
         "provenance": {
           "type": "object",
           "propertyNames": {

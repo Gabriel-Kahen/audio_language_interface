@@ -4,7 +4,7 @@ import { importAndAnalyze } from "./flows/import-and-analyze.js";
 import { planAndApply } from "./flows/plan-and-apply.js";
 import { renderAndCompare } from "./flows/render-and-compare.js";
 import { resolveFollowUpRequest } from "./follow-up-request.js";
-import type { RequestCycleResult, RunRequestCycleOptions } from "./types.js";
+import type { FollowUpResolution, RequestCycleResult, RunRequestCycleOptions } from "./types.js";
 
 /** Runs one explicit request cycle from import or current version through comparison. */
 export async function runRequestCycle(
@@ -23,6 +23,11 @@ export async function runRequestCycle(
   let transformResult: RequestCycleResult["transformResult"] | undefined;
   let outputVersion: RequestCycleResult["outputVersion"] | undefined;
   let resolvedUserRequest = options.userRequest;
+  let followUpResolution: FollowUpResolution = {
+    kind: "apply",
+    resolvedUserRequest: options.userRequest,
+    source: "direct_request",
+  };
 
   if (options.input.kind === "import") {
     try {
@@ -140,10 +145,18 @@ export async function runRequestCycle(
       trace,
     });
 
+    followUpResolution = followUp;
+
     if (followUp.kind === "revert") {
-      throw new Error(
-        `The follow-up request resolves to reverting to version '${followUp.targetVersionId}'. Orchestration can resolve that target, but applying the revert still requires the caller to load the referenced AudioVersion artifact explicitly.`,
-      );
+      return runRevertRequestCycle({
+        options,
+        asset,
+        inputVersion,
+        inputAnalysis,
+        sessionGraph,
+        followUp,
+        trace,
+      });
     }
 
     resolvedUserRequest = followUp.resolvedUserRequest;
@@ -278,19 +291,185 @@ export async function runRequestCycle(
   sessionGraph = options.dependencies.recordComparisonReport(sessionGraph, comparisonReport);
 
   return {
+    result_kind: "applied",
     asset,
     inputVersion,
     inputAnalysis,
+    followUpResolution,
     ...(semanticProfile === undefined ? {} : { semanticProfile }),
-    editPlan,
+    ...(editPlan === undefined ? {} : { editPlan }),
     outputVersion,
-    transformResult,
+    ...(transformResult === undefined ? {} : { transformResult }),
     outputAnalysis,
     baselineRender,
     candidateRender,
     comparisonReport,
     sessionGraph,
     trace,
+  };
+}
+
+async function runRevertRequestCycle(input: {
+  options: RunRequestCycleOptions;
+  asset: RequestCycleResult["asset"];
+  inputVersion: RequestCycleResult["inputVersion"];
+  inputAnalysis: RequestCycleResult["inputAnalysis"];
+  sessionGraph: RequestCycleResult["sessionGraph"];
+  followUp: Extract<FollowUpResolution, { kind: "revert" }>;
+  trace: RequestCycleResult["trace"];
+}): Promise<RequestCycleResult> {
+  const targetVersion = await executeWithFailurePolicy({
+    stage: "load_revert_target",
+    operation: async () => {
+      const loadVersion = input.options.dependencies.getAudioVersionById;
+      if (!loadVersion) {
+        throw new Error(
+          "Revert-style follow-up requests require a getAudioVersionById dependency so orchestration can materialize the target AudioVersion artifact.",
+        );
+      }
+
+      const resolvedVersion = await loadVersion({
+        asset: input.asset,
+        sessionGraph: input.sessionGraph,
+        versionId: input.followUp.targetVersionId,
+      });
+      if (!resolvedVersion) {
+        throw new Error(
+          `Could not load AudioVersion '${input.followUp.targetVersionId}' for revert execution.`,
+        );
+      }
+
+      const recordedAssetId =
+        input.sessionGraph.metadata?.provenance?.[input.followUp.targetVersionId]?.asset_id;
+
+      if (resolvedVersion.version_id !== input.followUp.targetVersionId) {
+        throw new Error(
+          `Loaded AudioVersion '${resolvedVersion.version_id}' does not match requested revert target '${input.followUp.targetVersionId}'.`,
+        );
+      }
+
+      if (resolvedVersion.asset_id !== input.asset.asset_id) {
+        throw new Error(
+          `Loaded AudioVersion '${resolvedVersion.version_id}' belongs to asset '${resolvedVersion.asset_id}', but the current session asset is '${input.asset.asset_id}'.`,
+        );
+      }
+
+      if (recordedAssetId && resolvedVersion.asset_id !== recordedAssetId) {
+        throw new Error(
+          `Loaded AudioVersion '${resolvedVersion.version_id}' does not match the recorded session provenance for asset '${recordedAssetId}'.`,
+        );
+      }
+
+      return resolvedVersion;
+    },
+    failurePolicy: input.options.failurePolicy,
+    getPartialResult: () => ({
+      asset: input.asset,
+      inputVersion: input.inputVersion,
+      inputAnalysis: input.inputAnalysis,
+      sessionGraph: input.sessionGraph,
+      followUpResolution: input.followUp,
+    }),
+    trace: input.trace,
+  });
+
+  let sessionGraph = input.options.dependencies.revertToVersion(
+    input.sessionGraph,
+    targetVersion.version_id,
+    new Date().toISOString(),
+    `follow_up_${input.followUp.source}`,
+  );
+
+  const outputAnalysis = await executeWithFailurePolicy({
+    stage: "analyze_output",
+    operation: () =>
+      input.options.dependencies.analyzeAudioVersion(targetVersion, {
+        workspaceRoot: input.options.workspaceRoot,
+        ...input.options.analysisOptions,
+      }),
+    failurePolicy: input.options.failurePolicy,
+    getPartialResult: () => ({
+      asset: input.asset,
+      inputVersion: input.inputVersion,
+      inputAnalysis: input.inputAnalysis,
+      outputVersion: targetVersion,
+      sessionGraph,
+      followUpResolution: input.followUp,
+    }),
+    trace: input.trace,
+  });
+  sessionGraph = input.options.dependencies.recordAnalysisReport(sessionGraph, outputAnalysis);
+
+  let baselineRender: RequestCycleResult["baselineRender"] | undefined;
+  let candidateRender: RequestCycleResult["candidateRender"] | undefined;
+  let comparisonReport: RequestCycleResult["comparisonReport"] | undefined;
+
+  try {
+    const renderCompareResult = await renderAndCompare({
+      workspaceRoot: input.options.workspaceRoot,
+      baselineVersion: input.inputVersion,
+      candidateVersion: targetVersion,
+      baselineAnalysis: input.inputAnalysis,
+      candidateAnalysis: outputAnalysis,
+      renderKind: input.options.renderKind,
+      dependencies: input.options.dependencies,
+      failurePolicy: input.options.failurePolicy,
+    });
+    input.trace.push(...renderCompareResult.trace);
+
+    baselineRender = renderCompareResult.baselineRender;
+    candidateRender = renderCompareResult.candidateRender;
+    comparisonReport = renderCompareResult.comparisonReport;
+  } catch (error) {
+    if (!(error instanceof OrchestrationStageError)) {
+      throw error;
+    }
+
+    const partialBaselineRender = error.partialResult?.baselineRenderResult?.artifact;
+    const partialCandidateRender = error.partialResult?.candidateRenderResult?.artifact;
+
+    if (partialBaselineRender) {
+      sessionGraph = input.options.dependencies.recordRenderArtifact(
+        sessionGraph,
+        partialBaselineRender,
+      );
+    }
+    if (partialCandidateRender) {
+      sessionGraph = input.options.dependencies.recordRenderArtifact(
+        sessionGraph,
+        partialCandidateRender,
+      );
+    }
+
+    throw rethrowStageError(error, {
+      asset: input.asset,
+      inputVersion: input.inputVersion,
+      inputAnalysis: input.inputAnalysis,
+      outputVersion: targetVersion,
+      outputAnalysis,
+      sessionGraph,
+      followUpResolution: input.followUp,
+      ...error.partialResult,
+    });
+  }
+
+  sessionGraph = input.options.dependencies.recordRenderArtifact(sessionGraph, baselineRender);
+  sessionGraph = input.options.dependencies.recordRenderArtifact(sessionGraph, candidateRender);
+  sessionGraph = input.options.dependencies.recordComparisonReport(sessionGraph, comparisonReport);
+
+  return {
+    result_kind: "reverted",
+    asset: input.asset,
+    inputVersion: input.inputVersion,
+    inputAnalysis: input.inputAnalysis,
+    followUpResolution: input.followUp,
+    outputVersion: targetVersion,
+    outputAnalysis,
+    baselineRender,
+    candidateRender,
+    comparisonReport,
+    sessionGraph,
+    trace: input.trace,
   };
 }
 
