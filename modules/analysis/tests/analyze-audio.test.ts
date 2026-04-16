@@ -5,8 +5,8 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import wavefile from "wavefile";
 
-import type { AudioVersion } from "../src/index.js";
-import { analyzeAudioVersion, isValidAnalysisReport } from "../src/index.js";
+import type { AudioVersion } from "@audio-language-interface/core";
+import { analyzeAudioVersion, isValidAnalysisReport } from "@audio-language-interface/analysis";
 
 const { WaveFile } = wavefile;
 

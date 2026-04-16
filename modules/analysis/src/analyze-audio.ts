@@ -1,6 +1,6 @@
 import { cwd } from "node:process";
 
-import { assertValidAudioVersion } from "../../core/src/index.js";
+import { assertValidAudioVersion } from "@audio-language-interface/core";
 import { analyzeArtifacts } from "./analyzers/artifacts.js";
 import { analyzeDynamics } from "./analyzers/dynamics.js";
 import { analyzeLevels } from "./analyzers/levels.js";

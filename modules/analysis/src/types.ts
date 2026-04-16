@@ -1,4 +1,4 @@
-import type { AudioVersion as CoreAudioVersion } from "../../core/src/index.js";
+import type { AudioVersion as CoreAudioVersion } from "@audio-language-interface/core";
 
 /** Contract-aligned audio version input consumed by the analysis module. */
 export type AudioVersion = CoreAudioVersion;
