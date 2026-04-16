@@ -1,3 +1,5 @@
+import type { TransientMap as AnalysisTransientMap } from "@audio-language-interface/analysis";
+
 export const CONTRACT_SCHEMA_VERSION = "1.0.0" as const;
 
 export type OperationName =
@@ -49,6 +51,34 @@ export interface EditTarget {
   channel?: string;
   segment_id?: string;
   bands_hz?: [number, number];
+}
+
+export interface SliceBoundary {
+  start_seconds: number;
+  end_seconds: number;
+}
+
+export interface SliceDefinition extends SliceBoundary {
+  slice_id: string;
+  peak_time_seconds?: number;
+  label?: string;
+  confidence?: number;
+}
+
+export type TransientMap = AnalysisTransientMap;
+
+export interface SliceMap {
+  schema_version: typeof CONTRACT_SCHEMA_VERSION;
+  slice_map_id: string;
+  asset_id: string;
+  version_id: string;
+  generated_at: string;
+  source_transient_map_id?: string;
+  slicer: {
+    name: string;
+    version: string;
+  };
+  slices: SliceDefinition[];
 }
 
 export interface EditPlanStep {
@@ -145,4 +175,79 @@ export interface OperationBuildResult {
   filterChain: string;
   effectiveParameters: Record<string, unknown>;
   nextAudio: AudioVersion["audio"];
+}
+
+export interface ExtractSliceOptions {
+  workspaceRoot: string;
+  version: AudioVersion;
+  slice: SliceDefinition;
+  outputDir?: string;
+  outputVersionId?: string;
+  recordId?: string;
+  createdAt?: Date;
+  ffmpegPath?: string;
+  executor?: FfmpegExecutor;
+}
+
+export interface ExtractSlicesOptions {
+  workspaceRoot: string;
+  version: AudioVersion;
+  slices?: SliceDefinition[];
+  sliceMap?: SliceMap;
+  outputDir?: string;
+  outputVersionIds?: string[];
+  recordIds?: string[];
+  createdAt?: Date;
+  ffmpegPath?: string;
+  executor?: FfmpegExecutor;
+}
+
+export interface DeriveSliceMapFromTransientsOptions {
+  version: AudioVersion;
+  transientMap: TransientMap;
+  generatedAt?: string;
+  preRollSeconds?: number;
+  postRollSeconds?: number;
+  minimumSliceDurationSeconds?: number;
+}
+
+export interface SliceTransformRecordOperation {
+  operation: "slice_extract";
+  parameters: {
+    slice_id: string;
+    slice_index: number;
+    start_seconds: number;
+    end_seconds: number;
+    duration_seconds: number;
+  };
+  status: OperationStatus;
+}
+
+export interface SliceTransformRecord {
+  schema_version: typeof CONTRACT_SCHEMA_VERSION;
+  record_id: string;
+  asset_id: string;
+  input_version_id: string;
+  output_version_id: string;
+  slice_id: string;
+  slice_index: number;
+  started_at: string;
+  finished_at: string;
+  runtime_ms?: number;
+  warnings?: string[];
+  operations: SliceTransformRecordOperation[];
+}
+
+export interface SliceExtractionResultItem {
+  slice_id: string;
+  slice_index: number;
+  source_range: SliceBoundary & { duration_seconds: number };
+  outputVersion: AudioVersion;
+  transformRecord: SliceTransformRecord;
+  commands: FfmpegCommand[];
+  warnings: string[];
+}
+
+export interface SliceExtractionResult {
+  outputs: SliceExtractionResultItem[];
 }

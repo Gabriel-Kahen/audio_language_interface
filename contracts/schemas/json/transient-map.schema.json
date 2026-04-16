@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/transient-map.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "transient_map_id",
+    "asset_id",
+    "version_id",
+    "generated_at",
+    "detector",
+    "transients"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "./common.schema.json#/$defs/schemaVersion"
+    },
+    "transient_map_id": {
+      "type": "string",
+      "pattern": "^transientmap_[A-Za-z0-9]+$"
+    },
+    "asset_id": {
+      "$ref": "./common.schema.json#/$defs/assetId"
+    },
+    "version_id": {
+      "$ref": "./common.schema.json#/$defs/versionId"
+    },
+    "generated_at": {
+      "$ref": "./common.schema.json#/$defs/isoTimestamp"
+    },
+    "detector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "version": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "transients": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["time_seconds", "strength"],
+        "properties": {
+          "time_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "strength": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "kind": {
+            "$ref": "./common.schema.json#/$defs/nonEmptyString"
+          },
+          "confidence": {
+            "$ref": "./common.schema.json#/$defs/confidence"
+          }
+        }
+      }
+    }
+  }
+}

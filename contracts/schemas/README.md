@@ -16,7 +16,7 @@ Common conventions:
 
 - Every artifact includes `schema_version`.
 - IDs are explicit and stable within a session.
-- Initial artifact IDs should use stable prefixed forms such as `asset_`, `ver_`, `analysis_`, `semantic_`, `plan_`, `transform_`, `render_`, `compare_`, `session_`, and `toolreq_`.
+- Initial artifact IDs should use stable prefixed forms such as `asset_`, `ver_`, `analysis_`, `semantic_`, `plan_`, `transform_`, `render_`, `compare_`, `session_`, `toolreq_`, `transientmap_`, and `slicemap_`.
 - Timestamps use ISO 8601 UTC strings.
 - Paths or storage references are explicit and never implied.
 - Optional fields should be omitted when unknown. Do not use `null` unless the contract explicitly allows it.
@@ -28,6 +28,8 @@ Expected schema families include:
 - `audio-asset`
 - `audio-version`
 - `analysis-report`
+- `transient-map`
+- `slice-map`
 - `semantic-profile`
 - `edit-plan`
 - `transform-record`

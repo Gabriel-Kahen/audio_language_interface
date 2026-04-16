@@ -1,7 +1,12 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { analyzeAudioVersion, isValidAnalysisReport } from "@audio-language-interface/analysis";
+import {
+  analyzeAudioVersion,
+  detectTransients,
+  isValidAnalysisReport,
+  isValidTransientMap,
+} from "@audio-language-interface/analysis";
 import type { AudioVersion } from "@audio-language-interface/core";
 
 import { describe, expect, it } from "vitest";
@@ -125,6 +130,36 @@ function createPunchyTransientSignal(
   for (let onset = pulseSpacing; onset < frameCount; onset += pulseSpacing) {
     for (let offset = 0; offset < 48 && onset + offset < frameCount; offset += 1) {
       mono[onset + offset] = (mono[onset + offset] ?? 0) + 0.85 * Math.exp(-offset / 12);
+    }
+  }
+
+  return [mono];
+}
+
+function createTransientBurstSignal(sampleRateHz: number, durationSeconds: number): Float32Array[] {
+  const frameCount = Math.round(sampleRateHz * durationSeconds);
+  const mono = new Float32Array(frameCount);
+  const burstStartsSeconds = [0.35, 1.1];
+  const burstDurationSeconds = 0.05;
+  const burstDurationFrames = Math.max(1, Math.round(sampleRateHz * burstDurationSeconds));
+
+  for (let index = 0; index < frameCount; index += 1) {
+    const time = index / sampleRateHz;
+    mono[index] = 0.004 * Math.sin(2 * Math.PI * 110 * time);
+  }
+
+  for (const burstStartSeconds of burstStartsSeconds) {
+    const burstStartFrame = Math.round(burstStartSeconds * sampleRateHz);
+    for (let offset = 0; offset < burstDurationFrames; offset += 1) {
+      const frameIndex = burstStartFrame + offset;
+      if (frameIndex >= frameCount) {
+        break;
+      }
+
+      const localTime = offset / sampleRateHz;
+      const envelope = Math.exp(-offset / Math.max(sampleRateHz * 0.004, 1));
+      mono[frameIndex] =
+        (mono[frameIndex] ?? 0) + 0.78 * envelope * Math.sin(2 * Math.PI * 1400 * localTime);
     }
   }
 
@@ -424,6 +459,67 @@ describe("analyzeAudioVersion", () => {
       expect(
         report.annotations?.find((annotation) => annotation.kind === "clipping")?.evidence,
       ).toContain("4 clipped samples across 3 frames");
+    });
+  });
+
+  it("detects transient events as a standalone transient map", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 48000;
+      const durationSeconds = 2;
+      const storageRef = "storage/audio/test-transients.wav";
+      const channels = createTransientBurstSignal(sampleRateHz, durationSeconds);
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const audioVersion = createAudioVersion(
+        storageRef,
+        sampleRateHz,
+        channels.length,
+        getFrameCount(channels),
+      );
+
+      const firstMap = detectTransients(audioVersion, {
+        workspaceRoot,
+        generatedAt: "2026-04-14T20:20:10Z",
+      });
+      const secondMap = detectTransients(audioVersion, {
+        workspaceRoot,
+        generatedAt: "2026-04-14T20:20:10Z",
+      });
+
+      expect(firstMap).toEqual(secondMap);
+      expect(isValidTransientMap(firstMap)).toBe(true);
+      expect(firstMap.transients).toHaveLength(2);
+      const firstEvent = firstMap.transients[0];
+      const secondEvent = firstMap.transients[1];
+      expect(firstEvent?.kind).toBe("transient");
+      expect(firstEvent?.time_seconds).toBeLessThan(0.4);
+      expect(firstEvent?.strength).toBeGreaterThan(0.3);
+      expect(secondEvent?.time_seconds).toBeGreaterThan(1);
+      expect(firstMap.transient_map_id).toMatch(/^transientmap_/);
+    });
+  });
+
+  it("does not emit transient events for silence", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 44100;
+      const durationSeconds = 1;
+      const storageRef = "storage/audio/test-silent.wav";
+      const channels = [new Float32Array(Math.round(sampleRateHz * durationSeconds))];
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const audioVersion = createAudioVersion(
+        storageRef,
+        sampleRateHz,
+        channels.length,
+        getFrameCount(channels),
+      );
+
+      const transientMap = detectTransients(audioVersion, { workspaceRoot });
+
+      expect(isValidTransientMap(transientMap)).toBe(true);
+      expect(transientMap.transients).toHaveLength(0);
     });
   });
 

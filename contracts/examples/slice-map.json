@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0.0",
+  "slice_map_id": "slicemap_01HZX8L7J2V3M4N5P6Q7R8S9T0",
+  "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+  "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+  "generated_at": "2026-04-14T20:20:12Z",
+  "source_transient_map_id": "transientmap_01HZX8K7J2V3M4N5P6Q7R8S9T0",
+  "slicer": {
+    "name": "transient-slicer",
+    "version": "0.1.0"
+  },
+  "slices": [
+    {
+      "slice_id": "slice_01HZX8M7J2V3M4N5P6Q7R8S9T0",
+      "start_seconds": 0.0,
+      "end_seconds": 0.12,
+      "peak_time_seconds": 0.012,
+      "label": "first transient",
+      "confidence": 0.96
+    },
+    {
+      "slice_id": "slice_01HZX8N7J2V3M4N5P6Q7R8S9T0",
+      "start_seconds": 0.44,
+      "end_seconds": 0.65,
+      "peak_time_seconds": 0.503,
+      "label": "second transient",
+      "confidence": 0.88
+    },
+    {
+      "slice_id": "slice_01HZX8P7J2V3M4N5P6Q7R8S9T0",
+      "start_seconds": 0.96,
+      "end_seconds": 1.12,
+      "peak_time_seconds": 1.018,
+      "label": "third transient",
+      "confidence": 0.79
+    }
+  ]
+}

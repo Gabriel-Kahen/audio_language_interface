@@ -22,7 +22,10 @@ import {
   applyOperation,
   buildFfmpegTransformCommand,
   buildOperation,
+  deriveSliceMapFromTransients,
   type EditPlan,
+  extractSlice,
+  extractSlices,
   type FfmpegCommand,
   type FfmpegExecutionResult,
   resolveTransformOutputPath,
@@ -638,6 +641,186 @@ describe("applyEditPlan", () => {
     expect(probed.channels).toBe(result.outputVersion.audio.channels);
     expect(probed.durationSeconds).toBeCloseTo(result.outputVersion.audio.duration_seconds, 3);
     expect(result.transformRecord.warnings).toBeUndefined();
+  });
+});
+
+describe("extractSlice and extractSlices", () => {
+  it("extracts one explicit slice and preserves clear derived lineage", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createRealAudioVersionFixture(workspaceRoot, {
+      durationSeconds: 2,
+      sampleRateHz: 44100,
+      channels: 1,
+    });
+
+    const result = await extractSlice({
+      workspaceRoot,
+      version,
+      slice: {
+        slice_id: "slice_intro",
+        start_seconds: 0.25,
+        end_seconds: 1.25,
+      },
+      outputVersionId: "ver_01HZY00000000000000000008",
+      recordId: "transform_01HZY0000000000000000008",
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+    });
+
+    const probed = await probeAudioMetadata(
+      path.join(workspaceRoot, result.outputVersion.audio.storage_ref),
+    );
+
+    expect(result.source_range).toEqual({
+      start_seconds: 0.25,
+      end_seconds: 1.25,
+      duration_seconds: 1,
+    });
+    expect(result.commands).toHaveLength(1);
+    expect(result.outputVersion.audio.duration_seconds).toBe(1);
+    expect(result.outputVersion.audio.frame_count).toBe(44100);
+    expect(result.outputVersion.lineage.reason).toContain("slice extraction #1 (slice_intro)");
+    expect(result.transformRecord.slice_id).toBe("slice_intro");
+    expect(result.transformRecord.operations).toEqual([
+      {
+        operation: "slice_extract",
+        parameters: {
+          slice_id: "slice_intro",
+          slice_index: 0,
+          start_seconds: 0.25,
+          end_seconds: 1.25,
+          duration_seconds: 1,
+        },
+        status: "applied",
+      },
+    ]);
+    expect(probed.durationSeconds).toBeCloseTo(1, 3);
+    expect(validateAgainstSchema(audioVersionSchema, result.outputVersion)).toBe(true);
+  });
+
+  it("derives a contract-aligned slice map from transient markers", async () => {
+    const version: AudioVersion = {
+      ...createAudioVersion("storage/audio/source.wav"),
+      audio: {
+        ...createAudioVersion("storage/audio/source.wav").audio,
+        duration_seconds: 2,
+        frame_count: 88200,
+      },
+    };
+
+    const sliceMap = deriveSliceMapFromTransients({
+      version,
+      transientMap: {
+        schema_version: "1.0.0",
+        transient_map_id: "transientmap_01HZY0000000000000000001",
+        asset_id: version.asset_id,
+        version_id: version.version_id,
+        generated_at: "2026-04-14T20:20:18Z",
+        detector: {
+          name: "default-analysis",
+          version: "0.1.2",
+        },
+        transients: [
+          { time_seconds: 0.25, strength: 0.82, confidence: 0.8, kind: "transient" },
+          { time_seconds: 0.75, strength: 0.77, confidence: 0.74, kind: "transient" },
+        ],
+      },
+    });
+
+    expect(sliceMap.source_transient_map_id).toBe("transientmap_01HZY0000000000000000001");
+    expect(sliceMap.slices).toEqual([
+      {
+        slice_id: "slice_001",
+        start_seconds: 0.25,
+        end_seconds: 0.75,
+        peak_time_seconds: 0.25,
+        confidence: 0.8,
+      },
+      {
+        slice_id: "slice_002",
+        start_seconds: 0.75,
+        end_seconds: 2,
+        peak_time_seconds: 0.75,
+        confidence: 0.74,
+      },
+    ]);
+  });
+
+  it("extracts slices from a contract-aligned slice map", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createFixtureVersion(workspaceRoot);
+
+    const result = await extractSlices({
+      workspaceRoot,
+      version,
+      sliceMap: {
+        schema_version: "1.0.0",
+        slice_map_id: "slicemap_01HZY0000000000000000001",
+        asset_id: version.asset_id,
+        version_id: version.version_id,
+        generated_at: "2026-04-14T20:20:18Z",
+        slicer: {
+          name: "transient-slice-builder",
+          version: "0.1.0",
+        },
+        slices: [
+          { slice_id: "a_intro", start_seconds: 0.25, end_seconds: 0.75 },
+          { slice_id: "z_outro", start_seconds: 1, end_seconds: 1.5 },
+        ],
+      },
+      outputVersionIds: ["ver_01HZY00000000000000000009", "ver_01HZY00000000000000000010"],
+      recordIds: ["transform_01HZY0000000000000000009", "transform_01HZY0000000000000000010"],
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+      executor: createFakeExecutor("slice"),
+    });
+
+    expect(result.outputs.map((output) => output.slice_id)).toEqual(["a_intro", "z_outro"]);
+    expect(
+      result.outputs[0]?.commands[0]?.outputPath.endsWith("ver_01HZY00000000000000000009.wav"),
+    ).toBe(true);
+    expect(result.outputs[1]?.transformRecord.slice_index).toBe(1);
+    expect(result.outputs[0]?.source_range).toEqual({
+      start_seconds: 0.25,
+      end_seconds: 0.75,
+      duration_seconds: 0.5,
+    });
+    const firstOutput = result.outputs[0];
+    if (firstOutput === undefined) {
+      throw new Error("Expected the first slice output to exist.");
+    }
+    expect(
+      await readFile(path.join(workspaceRoot, firstOutput.outputVersion.audio.storage_ref), "utf8"),
+    ).toBe("slice-bytes");
+  });
+
+  it("rejects invalid slice boundaries before executing anything", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createFixtureVersion(workspaceRoot);
+    let executions = 0;
+
+    await expect(
+      extractSlices({
+        workspaceRoot,
+        version,
+        slices: [
+          {
+            slice_id: "bad_slice",
+            start_seconds: 1.1,
+            end_seconds: 1.1,
+          },
+        ],
+        executor: async (command) => {
+          executions += 1;
+          await writeFile(command.outputPath, "should-not-run");
+          return {
+            exitCode: 0,
+            stdout: "",
+            stderr: "",
+          };
+        },
+      }),
+    ).rejects.toThrow(/greater than start_seconds/);
+
+    expect(executions).toBe(0);
   });
 });
 

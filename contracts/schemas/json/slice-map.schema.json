@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/slice-map.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "slice_map_id",
+    "asset_id",
+    "version_id",
+    "generated_at",
+    "slicer",
+    "slices"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "./common.schema.json#/$defs/schemaVersion"
+    },
+    "slice_map_id": {
+      "type": "string",
+      "pattern": "^slicemap_[A-Za-z0-9]+$"
+    },
+    "asset_id": {
+      "$ref": "./common.schema.json#/$defs/assetId"
+    },
+    "version_id": {
+      "$ref": "./common.schema.json#/$defs/versionId"
+    },
+    "generated_at": {
+      "$ref": "./common.schema.json#/$defs/isoTimestamp"
+    },
+    "source_transient_map_id": {
+      "type": "string",
+      "pattern": "^transientmap_[A-Za-z0-9]+$"
+    },
+    "slicer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "version": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "slices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["slice_id", "start_seconds", "end_seconds"],
+        "properties": {
+          "slice_id": {
+            "type": "string",
+            "pattern": "^slice_[A-Za-z0-9]+$"
+          },
+          "start_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "peak_time_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "label": {
+            "$ref": "./common.schema.json#/$defs/nonEmptyString"
+          },
+          "confidence": {
+            "$ref": "./common.schema.json#/$defs/confidence"
+          }
+        }
+      }
+    }
+  }
+}

@@ -27,6 +27,28 @@ export interface SourceCharacter {
   confidence: number;
 }
 
+/** Single machine-readable transient event emitted by the transient detector. */
+export interface TransientEvent {
+  time_seconds: number;
+  strength: number;
+  kind?: string;
+  confidence?: number;
+}
+
+/** Structured output emitted by the standalone transient detector. */
+export interface TransientMap {
+  schema_version: "1.0.0";
+  transient_map_id: string;
+  asset_id: string;
+  version_id: string;
+  generated_at: string;
+  detector: {
+    name: string;
+    version: string;
+  };
+  transients: TransientEvent[];
+}
+
 /** Structured measurement groups emitted by the baseline analyzer. */
 export interface AnalysisMeasurements {
   levels: {
@@ -105,6 +127,12 @@ export interface SegmentAnalysisResult {
 
 /** Optional controls for path resolution and deterministic timestamps. */
 export interface AnalyzeAudioOptions {
+  workspaceRoot?: string;
+  generatedAt?: string;
+}
+
+/** Optional controls for transient-map generation. */
+export interface TransientDetectionOptions {
   workspaceRoot?: string;
   generatedAt?: string;
 }

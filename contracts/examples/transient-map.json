@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0.0",
+  "transient_map_id": "transientmap_01HZX8K7J2V3M4N5P6Q7R8S9T0",
+  "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+  "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+  "generated_at": "2026-04-14T20:20:11Z",
+  "detector": {
+    "name": "transient-detector",
+    "version": "0.1.0"
+  },
+  "transients": [
+    {
+      "time_seconds": 0.012,
+      "strength": 0.94,
+      "kind": "attack",
+      "confidence": 0.98
+    },
+    {
+      "time_seconds": 0.503,
+      "strength": 0.81,
+      "kind": "attack",
+      "confidence": 0.91
+    },
+    {
+      "time_seconds": 1.018,
+      "strength": 0.76,
+      "kind": "click",
+      "confidence": 0.74
+    }
+  ]
+}
