@@ -972,6 +972,58 @@ describe("applyEditPlan", () => {
     expect(validateAgainstSchema(transformRecordSchema, result.transformRecord)).toBe(true);
   });
 
+  it("preflights later steps before execution so invalid stereo ops do not partially run", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createFixtureVersion(workspaceRoot);
+    const plan: EditPlan = {
+      schema_version: "1.0.0",
+      plan_id: "plan_01HZY2INVALID000000000001",
+      asset_id: version.asset_id,
+      version_id: version.version_id,
+      user_request: "Collapse to mono, then widen it.",
+      goals: ["collapse to mono", "widen image"],
+      created_at: "2026-04-14T20:20:15Z",
+      steps: [
+        {
+          step_id: "step_mono_1",
+          operation: "mono_sum",
+          target: { scope: "full_file" },
+          parameters: {},
+          expected_effects: ["collapse image"],
+          safety_limits: ["keep it deterministic"],
+        },
+        {
+          step_id: "step_width_1",
+          operation: "stereo_width",
+          target: { scope: "full_file" },
+          parameters: { width_multiplier: 1.1 },
+          expected_effects: ["widen image"],
+          safety_limits: ["stay within supported surface"],
+        },
+      ],
+    };
+    let executionCount = 0;
+
+    await expect(() =>
+      applyEditPlan({
+        workspaceRoot,
+        version,
+        plan,
+        executor: async (command) => {
+          executionCount += 1;
+          await writeFile(command.outputPath, "unexpected");
+          return {
+            exitCode: 0,
+            stdout: "",
+            stderr: "",
+          };
+        },
+      }),
+    ).rejects.toThrow(/requires stereo 2-channel audio/);
+
+    expect(executionCount).toBe(0);
+  });
+
   it("applies a real trim transform that matches the emitted duration metadata", async () => {
     const workspaceRoot = await createWorkspace();
     const version = await createRealAudioVersionFixture(workspaceRoot, {

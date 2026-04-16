@@ -34,15 +34,19 @@ export async function applyEditPlan(options: ApplyEditPlanOptions): Promise<Appl
   const commands: FfmpegCommand[] = [];
   const operations: TransformRecordOperation[] = [];
   const warnings: string[] = [];
+  const builtSteps: Array<{
+    step: ApplyEditPlanOptions["plan"]["steps"][number];
+    built: ReturnType<typeof buildOperation>;
+  }> = [];
+  let currentAudio = options.version.audio;
+  for (const step of options.plan.steps) {
+    const built = buildOperation(currentAudio, step.operation, step.parameters, step.target);
+    builtSteps.push({ step, built });
+    currentAudio = built.nextAudio;
+  }
   let currentVersion = options.version;
 
-  for (const [index, step] of options.plan.steps.entries()) {
-    const built = buildOperation(
-      currentVersion.audio,
-      step.operation,
-      step.parameters,
-      step.target,
-    );
+  for (const [index, { step, built }] of builtSteps.entries()) {
     const resolvedPath = resolveTransformOutputPath({
       workspaceRoot: options.workspaceRoot,
       ...(options.outputDir !== undefined ? { outputDir: options.outputDir } : {}),
