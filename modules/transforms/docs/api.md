@@ -321,7 +321,7 @@ Important constraints:
 ## Example
 
 ```ts
-import { applyOperation } from "modules/transforms/src/index.js";
+import { applyOperation } from "@audio-language-interface/transforms";
 
 const result = await applyOperation({
   workspaceRoot,
