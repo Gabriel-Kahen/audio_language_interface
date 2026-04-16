@@ -34,6 +34,10 @@ and returns a standalone transient map.
 `estimatePitchCenter` also uses the same decode and normalization path as the report pipeline but
 skips the loudness, annotation, and report-building stages.
 
+`suggestLoopBoundaries` uses the same decode and normalization path, calls the transient
+detector to build candidate boundary anchors, and then scores repeated adjacent regions
+without extending `AnalysisReport`.
+
 ## Shared constants
 
 - segment window: `0.05` seconds
@@ -127,6 +131,25 @@ Interpretation note: `transient_density_per_second` alone is not sufficient punc
 - When confidence falls below `0.35`, the estimator returns `bpm: null` and only surfaces the top candidate list as ambiguity evidence.
 
 Important limitation: this is still a coarse onset-spacing heuristic. It is designed for clear rhythmic material such as click tracks, drum loops, or pulse-driven fixtures. It does not infer musical meter, does not disambiguate subdivision-heavy material reliably, and can expose half-time or double-time alternates even when one BPM is chosen as the best fit.
+
+## Loop-boundary suggestion detector
+
+- Candidate boundaries come from file edges plus the strongest transient anchors.
+- Candidate spans are evaluated only in seconds; the detector does not infer bars, beats, BPM, swing, or grid placement.
+- A span is considered loop-like only when it has strong adjacent-repeat support. The current baseline compares the candidate region against the immediately preceding or following region of the same duration.
+- Similarity is a bounded blend of raw waveform correlation, absolute-envelope correlation, and normalized RMSE over a deterministic downsample of the mono signal.
+- Boundary confidence is a bounded combination of:
+  - best adjacent-repeat similarity
+  - proximity to transient/file-edge anchors
+  - how many consecutive repeats of the same span were found
+- The baseline prefers shorter repeated cycles over longer composite repeats when the shorter span appears more times consecutively.
+- The detector returns multiple candidates when nearby spans score similarly. Rationales call out this ambiguity instead of presenting one span as exact truth.
+
+Important limitations:
+
+- It can miss valid loops when repetitions are approximate rather than adjacent and nearly repeated.
+- It can miss boundaries that do not land near detected transients or file edges.
+- It can surface both a single cycle and a larger phrase when both repeat cleanly. Downstream modules should treat the result as suggestions for inspection, not as a final edit decision.
 
 ## Spectrum analyzer
 
