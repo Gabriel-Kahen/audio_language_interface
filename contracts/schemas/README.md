@@ -28,6 +28,7 @@ Expected schema families include:
 - `audio-asset`
 - `audio-version`
 - `analysis-report`
+- `pitch-center-estimate`
 - `transient-map`
 - `tempo-estimate`
 - `slice-map`
@@ -47,6 +48,7 @@ Each schema should be stable, documented, and accompanied by at least one exampl
 - `audio-asset.md`
 - `audio-version.md`
 - `analysis-report.md`
+- `pitch-center-estimate.md`
 - `tempo-estimate.md`
 - `semantic-profile.md`
 - `edit-plan.md`

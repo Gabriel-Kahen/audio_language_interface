@@ -1,7 +1,10 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { estimatePitchCenter } from "@audio-language-interface/analysis";
+import {
+  estimatePitchCenter,
+  isValidPitchCenterEstimate,
+} from "@audio-language-interface/analysis";
 import type { AudioVersion } from "@audio-language-interface/core";
 
 import { describe, expect, it } from "vitest";
@@ -135,6 +138,7 @@ describe("estimatePitchCenter", () => {
       expect(estimate.confidence).toBeGreaterThan(0.9);
       expect(estimate.uncertainty_cents).toBeLessThan(5);
       expect(estimate.voiced_window_ratio).toBe(1);
+      expect(isValidPitchCenterEstimate(estimate)).toBe(true);
     });
   });
 
@@ -157,6 +161,7 @@ describe("estimatePitchCenter", () => {
       expect(estimate.note_name).toBeUndefined();
       expect(estimate.confidence).toBeLessThan(0.5);
       expect(estimate.voiced_window_count).toBe(0);
+      expect(isValidPitchCenterEstimate(estimate)).toBe(true);
     });
   });
 
@@ -179,6 +184,28 @@ describe("estimatePitchCenter", () => {
       expect(estimate.frequency_hz).toBeLessThan(334);
       expect(estimate.note_name).toBe("E4");
       expect(estimate.voiced_window_count).toBeGreaterThan(1);
+      expect(isValidPitchCenterEstimate(estimate)).toBe(true);
+    });
+  });
+
+  it("samples the tail of short clips so late pitch does not get missed", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 44100;
+      const storageRef = "storage/audio/test-short-delayed-tone.wav";
+      const channels = createDelayedToneSignal(sampleRateHz, 0.07, 330);
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const estimate = estimatePitchCenter(
+        createAudioVersion(storageRef, sampleRateHz, channels.length, getFrameCount(channels)),
+        { workspaceRoot },
+      );
+
+      expect(estimate.voicing).not.toBe("unvoiced");
+      expect(estimate.frequency_hz).toBeDefined();
+      expect(estimate.frequency_hz).toBeGreaterThan(325);
+      expect(estimate.frequency_hz).toBeLessThan(334);
+      expect(isValidPitchCenterEstimate(estimate)).toBe(true);
     });
   });
 });

@@ -1,0 +1,11 @@
+{
+  "voicing": "voiced",
+  "confidence": 0.93,
+  "frequency_hz": 220,
+  "midi_note": 57,
+  "note_name": "A3",
+  "uncertainty_cents": 3.4,
+  "analyzed_window_count": 3,
+  "voiced_window_count": 3,
+  "voiced_window_ratio": 1
+}

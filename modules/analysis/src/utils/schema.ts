@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
-import type { AnalysisReport, TempoEstimate, TransientMap } from "../types.js";
+import type { AnalysisReport, PitchCenterEstimate, TempoEstimate, TransientMap } from "../types.js";
 
 const require = createRequire(import.meta.url);
 const { default: Ajv2020 } = require("ajv/dist/2020.js") as {
@@ -20,6 +20,9 @@ const commonSchema = loadJson("../../../../contracts/schemas/json/common.schema.
 const analysisReportSchema = loadJson(
   "../../../../contracts/schemas/json/analysis-report.schema.json",
 );
+const pitchCenterEstimateSchema = loadJson(
+  "../../../../contracts/schemas/json/pitch-center-estimate.schema.json",
+);
 const tempoEstimateSchema = loadJson(
   "../../../../contracts/schemas/json/tempo-estimate.schema.json",
 );
@@ -33,6 +36,8 @@ function buildAjv() {
 }
 
 const analysisReportValidator = buildAjv().compile<AnalysisReport>(analysisReportSchema);
+const pitchCenterEstimateValidator =
+  buildAjv().compile<PitchCenterEstimate>(pitchCenterEstimateSchema);
 const tempoEstimateValidator = buildAjv().compile<TempoEstimate>(tempoEstimateSchema);
 const transientMapValidator = buildAjv().compile<TransientMap>(transientMapSchema);
 
@@ -48,6 +53,20 @@ export function assertValidAnalysisReport(report: AnalysisReport): void {
 
 export function isValidAnalysisReport(report: AnalysisReport): boolean {
   return analysisReportValidator(report) === true;
+}
+
+export function assertValidPitchCenterEstimate(estimate: PitchCenterEstimate): void {
+  if (pitchCenterEstimateValidator(estimate)) {
+    return;
+  }
+
+  throw new Error(
+    `PitchCenterEstimate schema validation failed: ${JSON.stringify(pitchCenterEstimateValidator.errors)}`,
+  );
+}
+
+export function isValidPitchCenterEstimate(estimate: PitchCenterEstimate): boolean {
+  return pitchCenterEstimateValidator(estimate) === true;
 }
 
 export function assertValidTempoEstimate(tempoEstimate: TempoEstimate): void {

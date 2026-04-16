@@ -8,6 +8,7 @@ import type {
   PitchCenterEstimate,
 } from "./types.js";
 import { clamp, rms, sliceFrames, toDecibels } from "./utils/math.js";
+import { assertValidPitchCenterEstimate } from "./utils/schema.js";
 import { loadNormalizedAudioData } from "./utils/wav.js";
 
 const ANALYSIS_WINDOW_FRAMES = 2048;
@@ -67,13 +68,15 @@ export function estimatePitchCenterFromAudioData(
   }
 
   if (analyzedWindowCount === 0 || candidates.length === 0) {
-    return {
+    const estimate: PitchCenterEstimate = {
       voicing: "unvoiced",
       confidence: 0,
       analyzed_window_count: analyzedWindowCount,
       voiced_window_count: candidates.length,
       voiced_window_ratio: 0,
     };
+    assertValidPitchCenterEstimate(estimate);
+    return estimate;
   }
 
   const voicedWindowRatio = candidates.length / analyzedWindowCount;
@@ -109,17 +112,20 @@ export function estimatePitchCenterFromAudioData(
   };
 
   if (estimate.voicing === "unvoiced") {
+    assertValidPitchCenterEstimate(estimate);
     return estimate;
   }
 
   const roundedMidi = Math.round(weightedMidi);
-  return {
+  const result: PitchCenterEstimate = {
     ...estimate,
     frequency_hz: frequencyHz,
     midi_note: roundedMidi,
     note_name: midiToNoteName(roundedMidi),
     uncertainty_cents: uncertaintyCents,
   };
+  assertValidPitchCenterEstimate(result);
+  return result;
 }
 
 function collectWindowStarts(frameCount: number, windowFrames: number): number[] {
@@ -131,16 +137,23 @@ function collectWindowStarts(frameCount: number, windowFrames: number): number[]
     return [0];
   }
 
-  const steps = Math.min(MAX_ANALYSIS_WINDOWS, Math.max(1, Math.floor(frameCount / windowFrames)));
   const lastStart = Math.max(frameCount - windowFrames, 0);
+  if (lastStart === 0) {
+    return [0];
+  }
+
+  if (frameCount < windowFrames * 2) {
+    return [0, lastStart];
+  }
+
   const starts: number[] = [];
 
-  for (let step = 0; step < steps; step += 1) {
-    const ratio = steps === 1 ? 0 : step / (steps - 1);
+  for (let step = 0; step < MAX_ANALYSIS_WINDOWS; step += 1) {
+    const ratio = step / (MAX_ANALYSIS_WINDOWS - 1);
     starts.push(Math.round(lastStart * ratio));
   }
 
-  return starts;
+  return Array.from(new Set(starts)).sort((left, right) => left - right);
 }
 
 function estimateWindowPitch(
