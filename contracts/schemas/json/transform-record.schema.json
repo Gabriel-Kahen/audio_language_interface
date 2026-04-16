@@ -97,6 +97,14 @@
             }
           },
           {
+            "if": { "properties": { "operation": { "const": "pitch_shift" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/pitchShiftParameters" }
+              }
+            }
+          },
+          {
             "if": { "properties": { "operation": { "const": "parametric_eq" } } },
             "then": {
               "properties": {

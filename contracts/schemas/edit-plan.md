@@ -48,6 +48,7 @@ The current published contract allows these operation names in `steps[].operatio
 - `normalize`
 - `trim`
 - `fade`
+- `pitch_shift`
 - `parametric_eq`
 - `high_pass_filter`
 - `low_pass_filter`
@@ -85,6 +86,12 @@ Locked Phase 2 parameter surfaces:
 - `denoise`: `reduction_db`, with optional `noise_floor_dbfs`
 
 The machine-readable schema also keeps the existing baseline operation shapes explicit for `gain`, `normalize`, `trim`, `fade`, `parametric_eq`, `high_pass_filter`, and `low_pass_filter`.
+
+Published pitch-shift surface:
+
+- `pitch_shift`: `semitones`
+
+`pitch_shift` is currently documented as a whole-file transform that keeps duration close to the original. The runtime may record optional derived fields such as FFmpeg rate and tempo-compensation factors in the emitted `TransformRecord`.
 
 ## Optional fields
 

@@ -10,6 +10,17 @@
   "runtime_ms": 42,
   "operations": [
     {
+      "operation": "pitch_shift",
+      "parameters": {
+        "semitones": 2,
+        "pitch_ratio": 1.122449,
+        "asetrate_hz": 49500,
+        "tempo_ratio": 0.890909,
+        "atempo_factors": [0.890909]
+      },
+      "status": "applied"
+    },
+    {
       "operation": "denoise",
       "parameters": {
         "reduction_db": 6,

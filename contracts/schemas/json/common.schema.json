@@ -150,6 +150,7 @@
         "normalize",
         "trim",
         "fade",
+        "pitch_shift",
         "parametric_eq",
         "high_pass_filter",
         "low_pass_filter",
@@ -341,6 +342,39 @@
           "required": ["fade_out_seconds"]
         }
       ]
+    },
+    "pitchShiftParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["semitones"],
+      "properties": {
+        "semitones": {
+          "type": "number",
+          "minimum": -24,
+          "maximum": 24
+        },
+        "pitch_ratio": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "asetrate_hz": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "tempo_ratio": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "atempo_factors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 2
+          }
+        }
+      }
     },
     "parametricEqBand": {
       "type": "object",
