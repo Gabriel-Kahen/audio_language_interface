@@ -911,7 +911,6 @@ describe("applyOperation", () => {
       0,
     );
   });
-  });
 });
 
 describe("applyEditPlan", () => {
