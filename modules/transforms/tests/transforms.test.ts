@@ -105,6 +105,31 @@ describe("buildOperation", () => {
     expect(result.nextAudio.frame_count).toBe(44100);
   });
 
+  it("normalizes trim_silence parameters into an explicit FFmpeg filter", () => {
+    const result = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "trim_silence",
+      {
+        threshold_dbfs: -42,
+        trim_leading: true,
+        trim_trailing: true,
+        window_seconds: 0.03,
+      },
+      { scope: "full_file" },
+    );
+
+    expect(result.filterChain).toBe(
+      "silenceremove=start_periods=1:start_threshold=-42dB:start_mode=all:detection=rms:window=0.03,areverse,silenceremove=start_periods=1:start_threshold=-42dB:start_mode=all:detection=rms:window=0.03,areverse,asetpts=N/SR/TB",
+    );
+    expect(result.effectiveParameters).toEqual({
+      threshold_dbfs: -42,
+      trim_leading: true,
+      trim_trailing: true,
+      window_seconds: 0.03,
+    });
+    expect(result.requiresOutputProbe).toBe(true);
+  });
+
   it("normalizes reverse and mono_sum into explicit FFmpeg filters", () => {
     const reverseResult = buildOperation(
       createAudioVersion("storage/audio/source.wav").audio,
@@ -311,6 +336,21 @@ describe("buildOperation", () => {
         },
       ),
     ).toThrow(/full_file or time_range/);
+  });
+
+  it("rejects trim_silence requests that do not trim either edge", () => {
+    expect(() =>
+      buildOperation(
+        createAudioVersion("storage/audio/source.wav").audio,
+        "trim_silence",
+        {
+          threshold_dbfs: -48,
+          trim_leading: false,
+          trim_trailing: false,
+        },
+        { scope: "full_file" },
+      ),
+    ).toThrow(/requires trim_leading, trim_trailing, or both/);
   });
 
   it("rejects fades that exceed the current audio duration", () => {
@@ -834,6 +874,49 @@ describe("applyOperation", () => {
     ]);
   });
 
+  it("applies a real trim_silence transform and updates output metadata from the rendered file", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createSilencePaddedAudioVersionFixture(workspaceRoot);
+
+    const result = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "trim_silence",
+      parameters: {
+        threshold_dbfs: -45,
+        trim_leading: true,
+        trim_trailing: true,
+        window_seconds: 0.02,
+      },
+      outputVersionId: "ver_01HZY00000000000000000013",
+      recordId: "transform_01HZY0000000000000000013",
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+    });
+
+    const outputPath = path.join(workspaceRoot, result.outputVersion.audio.storage_ref);
+    const probed = await probeAudioMetadata(outputPath);
+
+    expect(result.outputVersion.audio.duration_seconds).toBeLessThan(
+      version.audio.duration_seconds,
+    );
+    expect(result.outputVersion.audio.duration_seconds).toBeCloseTo(probed.durationSeconds, 3);
+    expect(result.transformRecord.operations).toEqual([
+      {
+        operation: "trim_silence",
+        parameters: expect.objectContaining({
+          threshold_dbfs: -45,
+          trim_leading: true,
+          trim_trailing: true,
+          window_seconds: 0.02,
+        }),
+        status: "applied",
+      },
+    ]);
+    expect(
+      Number(result.transformRecord.operations[0]?.parameters.trimmed_duration_seconds ?? 0),
+    ).toBeGreaterThan(0.1);
+  });
+
   it("applies reverse, mono_sum, channel_swap, and stereo_balance_correction deterministically", async () => {
     const workspaceRoot = await createWorkspace();
     const version = await createAsymmetricStereoFixture(workspaceRoot);
@@ -845,8 +928,8 @@ describe("applyOperation", () => {
       version,
       operation: "reverse",
       parameters: {},
-      outputVersionId: "ver_01HZY00000000000000000013",
-      recordId: "transform_01HZY0000000000000000013",
+      outputVersionId: "ver_01HZY00000000000000000014",
+      recordId: "transform_01HZY0000000000000000014",
       createdAt: new Date("2026-04-14T20:20:18Z"),
     });
     const monoResult = await applyOperation({
@@ -854,8 +937,8 @@ describe("applyOperation", () => {
       version,
       operation: "mono_sum",
       parameters: {},
-      outputVersionId: "ver_01HZY00000000000000000014",
-      recordId: "transform_01HZY0000000000000000014",
+      outputVersionId: "ver_01HZY00000000000000000015",
+      recordId: "transform_01HZY0000000000000000015",
       createdAt: new Date("2026-04-14T20:20:18Z"),
     });
     const swapResult = await applyOperation({
@@ -863,8 +946,8 @@ describe("applyOperation", () => {
       version,
       operation: "channel_swap",
       parameters: {},
-      outputVersionId: "ver_01HZY00000000000000000015",
-      recordId: "transform_01HZY0000000000000000015",
+      outputVersionId: "ver_01HZY00000000000000000016",
+      recordId: "transform_01HZY0000000000000000016",
       createdAt: new Date("2026-04-14T20:20:18Z"),
     });
     const balanceResult = await applyOperation({
@@ -875,8 +958,8 @@ describe("applyOperation", () => {
         target_channel: "left",
         correction_db: 6,
       },
-      outputVersionId: "ver_01HZY00000000000000000016",
-      recordId: "transform_01HZY0000000000000000016",
+      outputVersionId: "ver_01HZY00000000000000000017",
+      recordId: "transform_01HZY0000000000000000017",
       createdAt: new Date("2026-04-14T20:20:18Z"),
     });
 
@@ -1357,6 +1440,31 @@ async function createNoisyAudioVersionFixture(workspaceRoot: string): Promise<Au
     const toneSample =
       index < sampleRateHz * 0.25 ? 0 : Math.sin((2 * Math.PI * 440 * index) / sampleRateHz) * 9000;
     return Math.round(toneSample + noiseSample);
+  });
+
+  return createCustomAudioVersionFixture(workspaceRoot, {
+    sampleRateHz,
+    channels: 1,
+    channelLayout: "mono",
+    samples: [mono],
+  });
+}
+
+async function createSilencePaddedAudioVersionFixture(
+  workspaceRoot: string,
+): Promise<AudioVersion> {
+  const sampleRateHz = 44100;
+  const totalFrames = sampleRateHz;
+  const leadingSilenceFrames = Math.round(sampleRateHz * 0.1);
+  const trailingSilenceFrames = Math.round(sampleRateHz * 0.12);
+  const activeFrames = totalFrames - leadingSilenceFrames - trailingSilenceFrames;
+  const mono = Array.from({ length: totalFrames }, (_, index) => {
+    if (index < leadingSilenceFrames || index >= leadingSilenceFrames + activeFrames) {
+      return 0;
+    }
+
+    const activeIndex = index - leadingSilenceFrames;
+    return Math.round(Math.sin((2 * Math.PI * 330 * activeIndex) / sampleRateHz) * 10000);
   });
 
   return createCustomAudioVersionFixture(workspaceRoot, {

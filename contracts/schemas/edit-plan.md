@@ -47,6 +47,7 @@ The current published contract allows these operation names in `steps[].operatio
 - `gain`
 - `normalize`
 - `trim`
+- `trim_silence`
 - `fade`
 - `pitch_shift`
 - `parametric_eq`
@@ -96,6 +97,17 @@ Locked Phase 2 parameter surfaces:
 - `denoise`: `reduction_db`, with optional `noise_floor_dbfs`
 
 The machine-readable schema also keeps the existing baseline operation shapes explicit for `gain`, `normalize`, `trim`, `fade`, `parametric_eq`, `high_pass_filter`, and `low_pass_filter`.
+
+`trim_silence` is a separate full-file operation for deterministic edge cropping. It keeps manual time-range trimming (`trim`) distinct from silence-detection-driven auto-cropping.
+
+`trim_silence` parameters:
+
+- `threshold_dbfs`
+- `trim_leading`
+- `trim_trailing`
+- optional `window_seconds`
+
+Execution-time payloads may also add derived fields such as `result_duration_seconds` and `trimmed_duration_seconds`.
 
 Published pitch-shift surface:
 

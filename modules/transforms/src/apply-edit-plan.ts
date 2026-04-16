@@ -6,6 +6,7 @@ import {
   extractTransformWarnings,
 } from "./ffmpeg-adapter.js";
 import { buildOperation } from "./operation-spec.js";
+import { probeOutputAudioMetadata } from "./output-metadata.js";
 import { createOutputVersionId, resolveTransformOutputPath } from "./path-policy.js";
 import { createAppliedOperation, createTransformRecord } from "./record-builder.js";
 import type {
@@ -66,9 +67,21 @@ export async function applyEditPlan(options: ApplyEditPlanOptions): Promise<Appl
     });
     const execution = await executeFfmpegCommand(command, options.executor);
     warnings.push(...extractTransformWarnings(execution.stderr));
+    const outputAudio = built.requiresOutputProbe
+      ? await probeOutputAudioMetadata({
+          outputPath: resolvedPath.absolutePath,
+          fallbackAudio: built.nextAudio,
+        })
+      : built.nextAudio;
+    const effectiveParameters = finalizeOperationParameters(
+      step.operation,
+      built.effectiveParameters,
+      currentVersion.audio,
+      outputAudio,
+    );
 
     commands.push(command);
-    operations.push(createAppliedOperation(step.operation, built.effectiveParameters));
+    operations.push(createAppliedOperation(step.operation, effectiveParameters));
     currentVersion = {
       schema_version: CONTRACT_SCHEMA_VERSION,
       version_id:
@@ -84,7 +97,7 @@ export async function applyEditPlan(options: ApplyEditPlanOptions): Promise<Appl
         plan_id: options.plan.plan_id,
       },
       audio: {
-        ...built.nextAudio,
+        ...outputAudio,
         storage_ref: resolvedPath.relativePath,
       },
       state: {
@@ -125,5 +138,24 @@ export async function applyEditPlan(options: ApplyEditPlanOptions): Promise<Appl
     transformRecord,
     commands,
     warnings,
+  };
+}
+
+function finalizeOperationParameters(
+  operation: TransformRecordOperation["operation"],
+  parameters: Record<string, unknown>,
+  inputAudio: ApplyEditPlanOptions["version"]["audio"],
+  outputAudio: ApplyEditPlanOptions["version"]["audio"],
+): Record<string, unknown> {
+  if (operation !== "trim_silence") {
+    return parameters;
+  }
+
+  return {
+    ...parameters,
+    result_duration_seconds: outputAudio.duration_seconds,
+    trimmed_duration_seconds: Number(
+      Math.max(0, inputAudio.duration_seconds - outputAudio.duration_seconds).toFixed(6),
+    ),
   };
 }

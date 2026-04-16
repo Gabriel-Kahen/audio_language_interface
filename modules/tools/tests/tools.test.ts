@@ -280,6 +280,7 @@ describe("tools module", () => {
             "gain",
             "normalize",
             "trim",
+            "trim_silence",
             "fade",
             "pitch_shift",
             "parametric_eq",
@@ -697,6 +698,57 @@ describe("tools module", () => {
     expect(response.error?.details).toMatchObject({
       field: "arguments.edit_plan",
     });
+  });
+
+  it("allows trim_silence plans through to transforms", async () => {
+    const applyEditPlan = vi.fn(async (_options: unknown) => ({
+      outputVersion: buildAudioVersion("ver_output"),
+      transformRecord: {
+        ...buildTransformRecord("ver_input", "ver_output"),
+        operations: [
+          {
+            operation: "trim_silence",
+            parameters: {
+              threshold_dbfs: -45,
+              trim_leading: true,
+              trim_trailing: true,
+              window_seconds: 0.03,
+              result_duration_seconds: 0.82,
+              trimmed_duration_seconds: 0.18,
+            },
+            status: "applied",
+          },
+        ],
+      },
+      commands: [],
+      warnings: [],
+    }));
+
+    const response = await executeToolRequest(
+      buildRequest({
+        tool_name: "apply_edit_plan",
+        asset_id: "asset_example",
+        version_id: "ver_input",
+        arguments: {
+          audio_version: buildAudioVersion("ver_input"),
+          edit_plan: buildSingleStepEditPlan("ver_input", "trim_silence", {
+            threshold_dbfs: -45,
+            trim_leading: true,
+            trim_trailing: true,
+            window_seconds: 0.03,
+          }),
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/workspace",
+        runtime: createRuntimeOverrides({
+          applyEditPlan: applyEditPlan as unknown as ToolsRuntime["applyEditPlan"],
+        }),
+      },
+    );
+
+    expect(applyEditPlan).toHaveBeenCalledOnce();
+    expect(response.status).toBe("ok");
   });
 
   it("allows reverse plans through to transforms", async () => {

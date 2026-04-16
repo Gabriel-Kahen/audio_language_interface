@@ -191,6 +191,31 @@ FFmpeg filter:
 atrim=start=<start>:end=<end>,asetpts=N/SR/TB
 ```
 
+### `trim_silence`
+
+Parameters:
+
+- `threshold_dbfs: number`
+- `trim_leading: boolean`
+- `trim_trailing: boolean`
+- optional `window_seconds: number`, default `0.02`
+
+Rules:
+
+- target support is `full_file` only
+- at least one of `trim_leading` or `trim_trailing` must be `true`
+- `threshold_dbfs` must be between `-80` and `0`
+- `window_seconds` must be greater than `0` when provided
+- the emitted `TransformRecord` adds `result_duration_seconds` and `trimmed_duration_seconds`
+
+Fixed execution behavior:
+
+- silence detection uses FFmpeg `silenceremove`
+- detector mode is fixed to `rms`
+- channel trigger mode is fixed to `all`
+- trailing silence removal is implemented by reversing the file, applying the same start-trim logic, then reversing back
+- the module probes the rendered output with `ffprobe` before finalizing `AudioVersion.audio`
+
 ### `fade`
 
 Parameters:

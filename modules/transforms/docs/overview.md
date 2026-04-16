@@ -37,6 +37,7 @@ The implemented operation set is currently:
 - `gain`
 - `normalize`
 - `trim`
+- `trim_silence`
 - `fade`
 - `pitch_shift`
 - `parametric_eq`
@@ -70,8 +71,11 @@ Target support is intentionally narrow in the initial implementation:
 - `stereo_balance_correction` only accepts `full_file` and requires stereo 2-channel input
 - `stereo_width` only accepts `full_file` and requires stereo 2-channel input
 - `denoise` only accepts `full_file`
+- `trim_silence` only accepts `full_file`
 - `fade` only accepts `full_file`
 - `trim` supports `time_range` via `target.start_seconds` and `target.end_seconds`, or explicit `parameters.start_seconds` and `parameters.end_seconds`
+
+`trim_silence` removes only leading and/or trailing silence. It preserves interior gaps by composing `silenceremove` with `areverse` rather than using `silenceremove` stop-period modes directly.
 
 Slice extraction support:
 
@@ -93,6 +97,7 @@ The implementation assumes:
 - video, subtitle, and data streams are ignored with `-vn`, `-sn`, and `-dn`
 - input metadata is stripped with `-map_metadata -1`
 - each transform is represented as an `-af` filter chain
+- `trim_silence` additionally probes the rendered WAV with `ffprobe` so output duration metadata matches the actual cropped file
 
 The default command shape is:
 
@@ -151,6 +156,7 @@ This module consumes and emits repository contracts directly:
 - `stereo_balance_correction` attenuates one named stereo channel by an explicit amount. It does not auto-measure the source imbalance or boost the quieter channel.
 - `stereo_width` uses FFmpeg `extrastereo` with clipping disabled and only supports stereo 2-channel material. It is intended for subtle widening or narrowing, not aggressive spatial effects or multichannel imaging.
 - `denoise` uses FFmpeg `afftdn` with a fixed broadband profile, explicit reduction, explicit or defaulted noise floor, and adaptive tracking disabled. It is intentionally conservative and is best suited to steady broadband noise rather than clicks, hum removal, or profile-learned restoration.
+- `trim_silence` uses a fixed RMS detector with `start_mode=all`; callers control only threshold, optional analysis window, and whether to crop the head, tail, or both.
 - `pitch_shift` uses FFmpeg `asetrate`, `aresample`, and an explicit `atempo` compensation chain to keep duration close to the original. It is deterministic and inspectable, but it is not formant-preserving and is best suited to moderate shifts rather than transparent vocal correction.
 - No automatic loudness or peak measurement. `normalize` requires caller-supplied `measured_peak_dbfs`.
 - `normalize` supports only `mode: "peak"`.
