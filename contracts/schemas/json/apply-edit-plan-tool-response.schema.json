@@ -163,7 +163,7 @@
                     "then": {
                       "properties": {
                         "parameters": {
-                          "$ref": "./common.schema.json#/$defs/timeStretchParameters"
+                          "$ref": "./common.schema.json#/$defs/timeStretchRecordedParameters"
                         }
                       }
                     }

@@ -502,12 +502,43 @@
         }
       }
     },
-    "timeStretchParameters": {
+    "timeStretchRequestParameters": {
       "oneOf": [
         {
           "type": "object",
           "additionalProperties": false,
           "required": ["stretch_ratio"],
+          "properties": {
+            "stretch_ratio": {
+              "type": "number",
+              "minimum": 0.25,
+              "maximum": 4
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source_tempo_bpm", "target_tempo_bpm"],
+          "properties": {
+            "source_tempo_bpm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "target_tempo_bpm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        }
+      ]
+    },
+    "timeStretchRecordedParameters": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["stretch_ratio", "applied_tempo_ratio"],
           "properties": {
             "stretch_ratio": {
               "type": "number",
@@ -523,7 +554,12 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["source_tempo_bpm", "target_tempo_bpm"],
+          "required": [
+            "source_tempo_bpm",
+            "target_tempo_bpm",
+            "stretch_ratio",
+            "applied_tempo_ratio"
+          ],
           "properties": {
             "source_tempo_bpm": {
               "type": "number",

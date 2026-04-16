@@ -243,7 +243,7 @@
                       "properties": {
                         "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
                         "parameters": {
-                          "$ref": "./common.schema.json#/$defs/timeStretchParameters"
+                          "$ref": "./common.schema.json#/$defs/timeStretchRequestParameters"
                         }
                       }
                     }
