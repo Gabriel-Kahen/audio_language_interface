@@ -12,6 +12,7 @@ This module is currently a deterministic baseline analyzer for materialized WAV 
 - `analyzeAudioVersion(audioVersion, options?) => Promise<AnalysisReport>`
 - `detectTransients(audioVersion, options?) => TransientMap`
 - `estimateTempo(audioVersion, options?) => TempoEstimate`
+- `estimatePitchCenter(audioVersion, options?) => PitchCenterEstimate`
 - `assertValidAnalysisReport(report)` and `isValidAnalysisReport(report)` for contract checks
 - exported contract-aligned types from `src/types.ts`
 
@@ -20,7 +21,12 @@ This module is currently a deterministic baseline analyzer for materialized WAV 
 Import from the published package name:
 
 ```ts
-import { analyzeAudioVersion, detectTransients } from "@audio-language-interface/analysis";
+import {
+  analyzeAudioVersion,
+  detectTransients,
+  estimateTempo,
+  estimatePitchCenter,
+} from "@audio-language-interface/analysis";
 ```
 
 `analyzeAudioVersion` performs the full baseline analysis pipeline:
@@ -42,6 +48,15 @@ deterministic BPM estimate from transient spacing and returns a narrow local `Te
 type with `bpm`, `confidence`, optional `beat_interval_seconds`, and optional ambiguity
 candidates. This output remains local to `modules/analysis`; there is no cross-module schema
 artifact yet because the current capability is intentionally small and heuristic.
+
+`estimatePitchCenter` reuses the same input validation and normalized WAV loading path, then
+returns a narrow machine-readable pitch-center estimate. It exposes:
+
+- `voicing` as `voiced`, `mixed`, or `unvoiced`
+- `confidence` as a bounded heuristic score from `0` to `1`
+- `frequency_hz`, `midi_note`, and `note_name` only when a conservative pitch center is available
+- `uncertainty_cents`, `analyzed_window_count`, `voiced_window_count`, and `voiced_window_ratio`
+  so downstream consumers can inspect stability instead of trusting a bare boolean
 
 ## Input assumptions
 
@@ -126,6 +141,7 @@ See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, an
 - `src/analyzers/source-character.ts`: coarse source classification
 - `src/detect-transients.ts`: public transient-map entrypoint
 - `src/estimate-tempo.ts`: public tempo-estimation entrypoint
+- `src/estimate-pitch-center.ts`: public pitch-center estimation entrypoint
 - `src/report-builder.ts`: `AnalysisReport` construction
 - `src/index.ts`: public exports only
 
@@ -163,7 +179,7 @@ See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, an
 - Stereo-width annotations are local side-versus-mid heuristics gated to active windows, so brief or very low-level spread may remain intentionally unannotated. They do not model perceptual spaciousness or all phase artifacts.
 - Segment detection is energy-threshold based and only emits `active`, `silence`, or a synthetic full-length `loop` segment.
 - Source classification is a coarse heuristic and not a trained classifier.
-- Pitch detection uses a short autocorrelation-like pass over the beginning of the file only.
+- Pitch-center estimation uses a conservative multi-window normalized autocorrelation pass and can still miss very weak, heavily inharmonic, or rapidly gliding material.
 - Summary text is generated from heuristics and should not be treated as a complete verbal description of the signal.
 
 ## Test expectations
@@ -186,3 +202,8 @@ Current coverage in `modules/analysis/tests/analyze-audio.test.ts` validates:
 - localized stereo-width and stereo-ambiguity annotations
 - transient-map event detection with stable onset timestamps
 - standalone tempo estimation on synthetic metronomic pulse fixtures
+Additional coverage in `modules/analysis/tests/estimate-pitch-center.test.ts` validates:
+
+- stable voiced estimates on tonal synthetic fixtures
+- conservative `unvoiced` output on broadband noise
+- later-onset tone detection so the estimator is not limited to the first analysis window

@@ -27,6 +27,22 @@ export interface SourceCharacter {
   confidence: number;
 }
 
+/** Discrete voicing state emitted by the standalone pitch-center estimator. */
+export type PitchCenterVoicing = "voiced" | "mixed" | "unvoiced";
+
+/** Narrow machine-readable output emitted by `estimatePitchCenter`. */
+export interface PitchCenterEstimate {
+  voicing: PitchCenterVoicing;
+  confidence: number;
+  frequency_hz?: number;
+  midi_note?: number;
+  note_name?: string;
+  uncertainty_cents?: number;
+  analyzed_window_count: number;
+  voiced_window_count: number;
+  voiced_window_ratio: number;
+}
+
 /** Single machine-readable transient event emitted by the transient detector. */
 export interface TransientEvent {
   time_seconds: number;
@@ -137,6 +153,11 @@ export interface SegmentAnalysisResult {
 export interface AnalyzeAudioOptions {
   workspaceRoot?: string;
   generatedAt?: string;
+}
+
+/** Optional controls for standalone pitch-center estimation. */
+export interface EstimatePitchCenterOptions {
+  workspaceRoot?: string;
 }
 
 /** Optional controls for transient-map generation. */
