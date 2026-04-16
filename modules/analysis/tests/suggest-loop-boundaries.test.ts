@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 import {
+  isValidLoopBoundarySuggestionSet,
   type LoopBoundarySuggestionSet,
   suggestLoopBoundaries,
 } from "@audio-language-interface/analysis";
@@ -111,6 +112,11 @@ function createNonRepeatingFixture(sampleRateHz: number, durationSeconds: number
   return [mono];
 }
 
+function createSilentFixture(sampleRateHz: number, durationSeconds: number): Float32Array[] {
+  const frameCount = Math.round(sampleRateHz * durationSeconds);
+  return [new Float32Array(frameCount)];
+}
+
 function expectTopSuggestion(
   suggestions: LoopBoundarySuggestionSet,
 ): NonNullable<LoopBoundarySuggestionSet["suggestions"][number]> {
@@ -146,6 +152,7 @@ describe("suggestLoopBoundaries", () => {
       expect(topSuggestion.duration_seconds).toBeCloseTo(0.5, 2);
       expect(topSuggestion.confidence).toBeGreaterThan(0.85);
       expect(topSuggestion.rationale).toContain("repeats in adjacent audio");
+      expect(isValidLoopBoundarySuggestionSet(suggestions)).toBe(true);
     });
   });
 
@@ -174,6 +181,7 @@ describe("suggestLoopBoundaries", () => {
       expect(topSuggestion.end_seconds).toBeCloseTo(0.6, 2);
       expect(topSuggestion.duration_seconds).toBeCloseTo(0.4, 2);
       expect(topSuggestion.confidence).toBeGreaterThan(0.8);
+      expect(isValidLoopBoundarySuggestionSet(suggestions)).toBe(true);
     });
   });
 
@@ -196,6 +204,30 @@ describe("suggestLoopBoundaries", () => {
       );
 
       expect(suggestions.suggestions).toHaveLength(0);
+      expect(isValidLoopBoundarySuggestionSet(suggestions)).toBe(true);
+    });
+  });
+
+  it("does not score silence-only regions as loop candidates", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 44100;
+      const durationSeconds = 1.6;
+      const storageRef = "storage/audio/silent.wav";
+      const channels = createSilentFixture(sampleRateHz, durationSeconds);
+      const frameCount = channels[0]?.length ?? 0;
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const suggestions = suggestLoopBoundaries(
+        createAudioVersion(storageRef, sampleRateHz, channels.length, frameCount),
+        {
+          workspaceRoot,
+          generatedAt: "2026-04-16T12:00:10Z",
+        },
+      );
+
+      expect(suggestions.suggestions).toHaveLength(0);
+      expect(isValidLoopBoundarySuggestionSet(suggestions)).toBe(true);
     });
   });
 });

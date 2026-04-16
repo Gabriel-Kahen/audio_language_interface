@@ -10,6 +10,7 @@ import {
   LOOP_SUGGESTION_MAX_TRANSIENT_ANCHORS,
   LOOP_SUGGESTION_MIN_CONFIDENCE,
   LOOP_SUGGESTION_MIN_DURATION_SECONDS,
+  LOOP_SUGGESTION_MIN_REGION_RMS_DBFS,
   LOOP_SUGGESTION_MIN_REPEAT_SIMILARITY,
   SCHEMA_VERSION,
 } from "./constants.js";
@@ -20,7 +21,8 @@ import type {
   LoopBoundarySuggestionSet,
   NormalizedAudioData,
 } from "./types.js";
-import { clamp, correlation, rms } from "./utils/math.js";
+import { clamp, correlation, rms, toDecibels } from "./utils/math.js";
+import { assertValidLoopBoundarySuggestionSet } from "./utils/schema.js";
 import { loadNormalizedAudioData } from "./utils/wav.js";
 
 interface CandidateMetrics {
@@ -65,7 +67,7 @@ export function suggestLoopBoundaries(
   });
   const suggestions = buildLoopSuggestions(audioData, transientMap.transients, options);
 
-  return {
+  const suggestionSet: LoopBoundarySuggestionSet = {
     schema_version: SCHEMA_VERSION,
     loop_boundary_suggestion_id: createLoopBoundarySuggestionId(audioVersion, options),
     asset_id: audioVersion.asset_id,
@@ -77,6 +79,8 @@ export function suggestLoopBoundaries(
     },
     suggestions,
   };
+  assertValidLoopBoundarySuggestionSet(suggestionSet);
+  return suggestionSet;
 }
 
 function buildLoopSuggestions(
@@ -357,6 +361,10 @@ function measureRegionSimilarity(
     0,
     1,
   );
+  const activityRms = Math.max(rms(firstSamples), rms(secondSamples));
+  if (toDecibels(activityRms) < LOOP_SUGGESTION_MIN_REGION_RMS_DBFS) {
+    return 0;
+  }
   const normalization = Math.max(rms(firstSamples), rms(secondSamples), 1e-6);
   const normalizedRmse = Math.sqrt(squaredErrorSum / sampleCount) / normalization;
   const errorScore = clamp(1 - normalizedRmse, 0, 1);

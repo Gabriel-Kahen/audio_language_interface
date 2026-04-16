@@ -1,7 +1,13 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
-import type { AnalysisReport, PitchCenterEstimate, TempoEstimate, TransientMap } from "../types.js";
+import type {
+  AnalysisReport,
+  LoopBoundarySuggestionSet,
+  PitchCenterEstimate,
+  TempoEstimate,
+  TransientMap,
+} from "../types.js";
 
 const require = createRequire(import.meta.url);
 const { default: Ajv2020 } = require("ajv/dist/2020.js") as {
@@ -20,6 +26,9 @@ const commonSchema = loadJson("../../../../contracts/schemas/json/common.schema.
 const analysisReportSchema = loadJson(
   "../../../../contracts/schemas/json/analysis-report.schema.json",
 );
+const loopBoundarySuggestionSetSchema = loadJson(
+  "../../../../contracts/schemas/json/loop-boundary-suggestion-set.schema.json",
+);
 const pitchCenterEstimateSchema = loadJson(
   "../../../../contracts/schemas/json/pitch-center-estimate.schema.json",
 );
@@ -36,6 +45,9 @@ function buildAjv() {
 }
 
 const analysisReportValidator = buildAjv().compile<AnalysisReport>(analysisReportSchema);
+const loopBoundarySuggestionSetValidator = buildAjv().compile<LoopBoundarySuggestionSet>(
+  loopBoundarySuggestionSetSchema,
+);
 const pitchCenterEstimateValidator =
   buildAjv().compile<PitchCenterEstimate>(pitchCenterEstimateSchema);
 const tempoEstimateValidator = buildAjv().compile<TempoEstimate>(tempoEstimateSchema);
@@ -53,6 +65,24 @@ export function assertValidAnalysisReport(report: AnalysisReport): void {
 
 export function isValidAnalysisReport(report: AnalysisReport): boolean {
   return analysisReportValidator(report) === true;
+}
+
+export function assertValidLoopBoundarySuggestionSet(
+  suggestionSet: LoopBoundarySuggestionSet,
+): void {
+  if (loopBoundarySuggestionSetValidator(suggestionSet)) {
+    return;
+  }
+
+  throw new Error(
+    `LoopBoundarySuggestionSet schema validation failed: ${JSON.stringify(loopBoundarySuggestionSetValidator.errors)}`,
+  );
+}
+
+export function isValidLoopBoundarySuggestionSet(
+  suggestionSet: LoopBoundarySuggestionSet,
+): boolean {
+  return loopBoundarySuggestionSetValidator(suggestionSet) === true;
 }
 
 export function assertValidPitchCenterEstimate(estimate: PitchCenterEstimate): void {
