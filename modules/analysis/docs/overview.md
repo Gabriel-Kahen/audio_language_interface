@@ -3,7 +3,7 @@
 ## Purpose
 
 Measure what is present in an audio signal and publish the result as an `AnalysisReport`,
-plus standalone transient-event data for downstream slice-map consumers.
+plus standalone transient-event and tempo data for downstream consumers.
 
 This module is currently a deterministic baseline analyzer for materialized WAV audio referenced by an `AudioVersion`. It produces contract-aligned measurements, annotations, segments, and a coarse source classification without making edit recommendations.
 
@@ -11,6 +11,7 @@ This module is currently a deterministic baseline analyzer for materialized WAV 
 
 - `analyzeAudioVersion(audioVersion, options?) => Promise<AnalysisReport>`
 - `detectTransients(audioVersion, options?) => TransientMap`
+- `estimateTempo(audioVersion, options?) => TempoEstimate`
 - `assertValidAnalysisReport(report)` and `isValidAnalysisReport(report)` for contract checks
 - exported contract-aligned types from `src/types.ts`
 
@@ -35,6 +36,12 @@ import { analyzeAudioVersion, detectTransients } from "@audio-language-interface
 
 `detectTransients` reuses the same input validation and normalized WAV loading path, then
 returns a standalone transient map built from short-window onset scoring and peak picking.
+
+`estimateTempo` also reuses the same validation and WAV loading path. It derives a coarse,
+deterministic BPM estimate from transient spacing and returns a narrow local `TempoEstimate`
+type with `bpm`, `confidence`, optional `beat_interval_seconds`, and optional ambiguity
+candidates. This output remains local to `modules/analysis`; there is no cross-module schema
+artifact yet because the current capability is intentionally small and heuristic.
 
 ## Input assumptions
 
@@ -66,6 +73,10 @@ It may also include:
 The standalone transient detector does not extend `AnalysisReport`; it returns a separate
 machine-readable `TransientMap` with transient timestamps and bounded strengths that can be
 consumed by downstream slice derivation.
+
+The standalone tempo estimator also does not extend `AnalysisReport`; it returns a separate
+`TempoEstimate` so downstream modules can opt into BPM reasoning without depending on a
+broader report payload.
 
 ## Measurement semantics
 
@@ -114,6 +125,7 @@ See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, an
 - `src/analyzers/transients.ts`: transient-map detection and event picking
 - `src/analyzers/source-character.ts`: coarse source classification
 - `src/detect-transients.ts`: public transient-map entrypoint
+- `src/estimate-tempo.ts`: public tempo-estimation entrypoint
 - `src/report-builder.ts`: `AnalysisReport` construction
 - `src/index.ts`: public exports only
 
@@ -146,6 +158,7 @@ See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, an
 - Multi-channel files beyond stereo are loaded, but stereo metrics only inspect the first two channels.
 - Brightness, harshness, and transient-impact annotations are threshold-based heuristics, not perceptual models.
 - Transient-map events are short-window local-contrast heuristics, not a source-separation model or a replacement for slice-accurate manual edits.
+- Tempo estimation is transient-spacing based. It works best on material with clear repeated onsets and can surface half-time or double-time ambiguity on sparse pulse trains.
 - Noise annotations are broadband-floor heuristics and can miss tonal hum, sparse clicks, or noise that only appears under louder foreground material.
 - Stereo-width annotations are local side-versus-mid heuristics gated to active windows, so brief or very low-level spread may remain intentionally unannotated. They do not model perceptual spaciousness or all phase artifacts.
 - Segment detection is energy-threshold based and only emits `active`, `silence`, or a synthetic full-length `loop` segment.
@@ -172,3 +185,4 @@ Current coverage in `modules/analysis/tests/analyze-audio.test.ts` validates:
 - sustained noise annotations tied to elevated broadband floor evidence
 - localized stereo-width and stereo-ambiguity annotations
 - transient-map event detection with stable onset timestamps
+- standalone tempo estimation on synthetic metronomic pulse fixtures

@@ -49,6 +49,14 @@ export interface TransientMap {
   transients: TransientEvent[];
 }
 
+/** Narrow structured output emitted by the standalone tempo estimator. */
+export interface TempoEstimate {
+  bpm: number | null;
+  confidence: number;
+  beat_interval_seconds?: number;
+  ambiguity_candidates_bpm?: number[];
+}
+
 /** Structured measurement groups emitted by the baseline analyzer. */
 export interface AnalysisMeasurements {
   levels: {
@@ -135,4 +143,12 @@ export interface AnalyzeAudioOptions {
 export interface TransientDetectionOptions {
   workspaceRoot?: string;
   generatedAt?: string;
+}
+
+/** Optional controls for standalone tempo estimation. */
+export interface TempoEstimationOptions {
+  workspaceRoot?: string;
+  minBpm?: number;
+  maxBpm?: number;
+  maxCandidates?: number;
 }
