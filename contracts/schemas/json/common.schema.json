@@ -156,8 +156,9 @@
         "low_pass_filter",
         "compressor",
         "limiter",
-        "denoise",
-        "stereo_width"
+        "time_stretch",
+        "stereo_width",
+        "denoise"
       ]
     },
     "targetScope": {
@@ -500,6 +501,50 @@
           "type": "number"
         }
       }
+    },
+    "timeStretchParameters": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["stretch_ratio"],
+          "properties": {
+            "stretch_ratio": {
+              "type": "number",
+              "minimum": 0.25,
+              "maximum": 4
+            },
+            "applied_tempo_ratio": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source_tempo_bpm", "target_tempo_bpm"],
+          "properties": {
+            "source_tempo_bpm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "target_tempo_bpm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "stretch_ratio": {
+              "type": "number",
+              "minimum": 0.25,
+              "maximum": 4
+            },
+            "applied_tempo_ratio": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        }
+      ]
     },
     "stereoWidthParameters": {
       "type": "object",
