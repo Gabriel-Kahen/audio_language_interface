@@ -2,12 +2,14 @@ import { analyzeAudioTool } from "./handlers/analyze-audio.js";
 import { applyEditPlanTool } from "./handlers/apply-edit-plan.js";
 import { compareVersionsTool } from "./handlers/compare-versions.js";
 import { loadAudioTool } from "./handlers/load-audio.js";
+import { planEditsTool } from "./handlers/plan-edits.js";
 import { renderPreviewTool } from "./handlers/render-preview.js";
 import type { AnyToolDefinition, ToolDescriptor, ToolRegistry } from "./types.js";
 
 const DEFAULT_DEFINITIONS = [
   loadAudioTool,
   analyzeAudioTool,
+  planEditsTool,
   applyEditPlanTool,
   renderPreviewTool,
   compareVersionsTool,
