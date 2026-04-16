@@ -57,6 +57,7 @@ The current implementation is a thin integration layer over the existing runtime
 
 - `runRequestCycle` supports both `input.kind = "import"` and `input.kind = "existing"`.
 - The default dependency bundle wires the implemented `io`, `analysis`, `semantics`, `planning`, `transforms`, `render`, `compare`, and `history` module entrypoints directly.
+- `importAndAnalyze` now defaults imports to `io`'s shared WAV normalization target when callers do not supply a normalization target, so the imported version remains compatible with the current WAV-only analysis baseline.
 - Flow errors are wrapped as `OrchestrationStageError` values with stage names and partial results when available, including follow-up resolution failures before planning begins.
 - `iterativeRefine` repeats plan, apply, analyze, and compare until `maxIterations` is reached or the caller stops the loop.
 - `resolveFollowUpRequest` can safely expand `more` to the last recorded request, resolve `less` against version ancestry, and resolve `undo` against explicit active-ref history.

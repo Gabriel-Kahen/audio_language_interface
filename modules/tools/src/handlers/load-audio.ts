@@ -1,4 +1,7 @@
-import type { NormalizationTarget } from "@audio-language-interface/io";
+import {
+  DEFAULT_NORMALIZATION_TARGET,
+  type NormalizationTarget,
+} from "@audio-language-interface/io";
 
 import type { ToolDefinition } from "../types.js";
 import {
@@ -95,9 +98,7 @@ export const loadAudioTool: ToolDefinition<LoadAudioArguments, Record<string, un
     const imported = await context.runtime.importAudioFromFile(args.inputPath, {
       workspaceRoot: context.workspaceRoot,
       ...(args.outputDirectory === undefined ? {} : { outputDirectory: args.outputDirectory }),
-      ...(args.normalizationTarget === undefined
-        ? {}
-        : { normalizationTarget: args.normalizationTarget }),
+      normalizationTarget: args.normalizationTarget ?? DEFAULT_NORMALIZATION_TARGET,
       ...(args.tags === undefined ? {} : { tags: args.tags }),
       ...(args.notes === undefined ? {} : { notes: args.notes }),
     });

@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 
+import { DEFAULT_NORMALIZATION_TARGET } from "@audio-language-interface/io";
+
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -327,6 +329,7 @@ describe("tools module", () => {
     expect(importAudioFromFile).toHaveBeenCalledWith("fixtures/example.wav", {
       workspaceRoot: "/tmp/workspace",
       outputDirectory: "storage/audio",
+      normalizationTarget: DEFAULT_NORMALIZATION_TARGET,
     });
     expect(response.status).toBe("ok");
     expect(response.result?.output_path).toBe("/tmp/workspace/storage/audio/ver_example.wav");

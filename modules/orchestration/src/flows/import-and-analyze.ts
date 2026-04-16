@@ -1,3 +1,5 @@
+import { DEFAULT_NORMALIZATION_TARGET } from "@audio-language-interface/io";
+
 import { executeWithFailurePolicy } from "../failure-policy.js";
 import type { ImportAndAnalyzeOptions, ImportAndAnalyzeResult } from "../types.js";
 
@@ -11,7 +13,11 @@ export async function importAndAnalyze(
   importResult = await executeWithFailurePolicy({
     stage: "import",
     operation: () =>
-      options.dependencies.importAudioFromFile(options.inputPath, options.importOptions),
+      options.dependencies.importAudioFromFile(options.inputPath, {
+        ...options.importOptions,
+        normalizationTarget:
+          options.importOptions?.normalizationTarget ?? DEFAULT_NORMALIZATION_TARGET,
+      }),
     failurePolicy: options.failurePolicy,
     getPartialResult: () => ({ importResult }),
     trace,

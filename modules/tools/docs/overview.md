@@ -27,6 +27,8 @@ The current implementation provides a registry-backed execution layer with schem
 
 `apply_edit_plan` now exposes the full currently implemented locked Phase 2 runtime subset: the stable baseline operations plus `compressor`, `limiter`, `stereo_width`, and `denoise`.
 
+`load_audio` now defaults to `io`'s shared WAV normalization target when callers omit `normalization_target`, so versions materialized through the tool surface remain compatible with the current analysis baseline.
+
 ## Implemented source files
 
 - `src/tool-registry.ts`: tool definitions and discovery
