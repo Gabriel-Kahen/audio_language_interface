@@ -6,7 +6,7 @@ Evaluate module quality and end-to-end reliability for LLM-driven audio manipula
 
 The current implementation provides a first benchmark harness for compare-driven evaluation of the initial prompt family. It is not yet backed by committed real audio fixtures.
 
-This area is still documentation-first. The repository does not currently include a benchmark runtime implementation under `modules/benchmarks/src`.
+The benchmark runtime is implemented under `modules/benchmarks/src` and is currently focused on a compare-driven, synthetic-first prompt suite.
 
 ## Public API surface
 
@@ -72,9 +72,3 @@ Each benchmark case declares explicit expected outcomes:
 - forbidden regression kinds that must stay absent
 
 Scores are simple check-pass ratios so regressions are measurable and easy to inspect in CI output.
-
-## Current limitations
-
-- No benchmark harness has been implemented yet.
-- No shared prompt suite or scoring runtime exists in code yet.
-- Contributors should treat this module's docs as planning guidance, not as an implemented package surface.
