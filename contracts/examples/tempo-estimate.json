@@ -1,0 +1,6 @@
+{
+  "bpm": 120,
+  "confidence": 0.87,
+  "beat_interval_seconds": 0.5,
+  "ambiguity_candidates_bpm": [60, 240]
+}

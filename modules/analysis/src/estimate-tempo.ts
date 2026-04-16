@@ -11,6 +11,7 @@ import type {
   TransientEvent,
 } from "./types.js";
 import { clamp } from "./utils/math.js";
+import { assertValidTempoEstimate } from "./utils/schema.js";
 
 const MIN_REQUIRED_TRANSIENTS = 3;
 const MAX_PAIR_SPAN = 4;
@@ -47,46 +48,55 @@ export function estimateTempo(
   const transients = transientMap.transients;
 
   if (transients.length < MIN_REQUIRED_TRANSIENTS) {
-    return {
+    const estimate = {
       bpm: null,
       confidence: 0,
       ambiguity_candidates_bpm: [],
     };
+    assertValidTempoEstimate(estimate);
+    return estimate;
   }
 
-  const candidateBpms = collectCandidateBpms(transients, minBpm, maxBpm);
+  const directSupportBpms = collectDirectSupportBpms(transients, minBpm, maxBpm);
+  const candidateBpms = collectCandidateBpms(transients, minBpm, maxBpm, directSupportBpms);
   const scoredCandidates = scoreTempoCandidates(transients, candidateBpms);
 
   if (scoredCandidates.length === 0) {
-    return {
+    const estimate = {
       bpm: null,
       confidence: 0,
       ambiguity_candidates_bpm: [],
     };
+    assertValidTempoEstimate(estimate);
+    return estimate;
   }
 
   const bestCandidate = scoredCandidates[0];
   const secondCandidate = scoredCandidates[1];
   if (bestCandidate === undefined) {
-    return {
+    const estimate = {
       bpm: null,
       confidence: 0,
       ambiguity_candidates_bpm: [],
     };
+    assertValidTempoEstimate(estimate);
+    return estimate;
   }
 
   const confidence = computeConfidence(bestCandidate, secondCandidate, transients.length);
   if (confidence < 0.35) {
-    return {
+    const estimate = {
       bpm: null,
       confidence,
       ambiguity_candidates_bpm: scoredCandidates
         .slice(0, maxCandidates)
         .map((candidate) => roundToTwoDecimals(candidate.bpm)),
     };
+    assertValidTempoEstimate(estimate);
+    return estimate;
   }
 
-  return {
+  const estimate = {
     bpm: roundToTwoDecimals(bestCandidate.bpm),
     confidence,
     beat_interval_seconds: roundToSixDecimals(60 / bestCandidate.bpm),
@@ -96,6 +106,8 @@ export function estimateTempo(
       .slice(0, Math.max(0, maxCandidates - 1))
       .map((candidate) => roundToTwoDecimals(candidate.bpm)),
   };
+  assertValidTempoEstimate(estimate);
+  return estimate;
 }
 
 function validateTempoOptions(minBpm: number, maxBpm: number, maxCandidates: number): void {
@@ -116,6 +128,7 @@ function collectCandidateBpms(
   transients: readonly TransientEvent[],
   minBpm: number,
   maxBpm: number,
+  directSupportBpms: readonly number[],
 ): number[] {
   const candidates = new Set<number>();
 
@@ -139,12 +152,45 @@ function collectCandidateBpms(
 
       const baseBpm = (60 * pulseSpan) / intervalSeconds;
       addCandidateIfInRange(candidates, baseBpm, minBpm, maxBpm);
-      addCandidateIfInRange(candidates, baseBpm / 2, minBpm, maxBpm);
-      addCandidateIfInRange(candidates, baseBpm * 2, minBpm, maxBpm);
+
+      const halfTimeBpm = baseBpm / 2;
+      if (hasDirectSupport(directSupportBpms, halfTimeBpm)) {
+        addCandidateIfInRange(candidates, halfTimeBpm, minBpm, maxBpm);
+      }
+
+      const doubleTimeBpm = baseBpm * 2;
+      if (hasDirectSupport(directSupportBpms, doubleTimeBpm)) {
+        addCandidateIfInRange(candidates, doubleTimeBpm, minBpm, maxBpm);
+      }
     }
   }
 
   return [...candidates].sort((a, b) => a - b);
+}
+
+function collectDirectSupportBpms(
+  transients: readonly TransientEvent[],
+  minBpm: number,
+  maxBpm: number,
+): number[] {
+  const candidates = new Set<number>();
+
+  for (let index = 0; index < transients.length - 1; index += 1) {
+    const start = transients[index];
+    const end = transients[index + 1];
+    if (start === undefined || end === undefined) {
+      continue;
+    }
+
+    const intervalSeconds = end.time_seconds - start.time_seconds;
+    if (!Number.isFinite(intervalSeconds) || intervalSeconds <= 0) {
+      continue;
+    }
+
+    addCandidateIfInRange(candidates, 60 / intervalSeconds, minBpm, maxBpm);
+  }
+
+  return [...candidates];
 }
 
 function addCandidateIfInRange(
@@ -158,6 +204,11 @@ function addCandidateIfInRange(
   }
 
   candidates.add(roundToTwoDecimals(bpm));
+}
+
+function hasDirectSupport(directSupportBpms: readonly number[], bpm: number): boolean {
+  const roundedBpm = roundToTwoDecimals(bpm);
+  return directSupportBpms.some((candidate) => Math.abs(candidate - roundedBpm) <= 0.25);
 }
 
 function scoreTempoCandidates(

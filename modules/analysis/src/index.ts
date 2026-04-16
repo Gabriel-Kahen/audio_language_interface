@@ -17,7 +17,9 @@ export type {
 } from "./types.js";
 export {
   assertValidAnalysisReport,
+  assertValidTempoEstimate,
   assertValidTransientMap,
   isValidAnalysisReport,
+  isValidTempoEstimate,
   isValidTransientMap,
 } from "./utils/schema.js";

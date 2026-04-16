@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { estimateTempo } from "@audio-language-interface/analysis";
+import { estimateTempo, isValidTempoEstimate } from "@audio-language-interface/analysis";
 import type { AudioVersion } from "@audio-language-interface/core";
 import { describe, expect, it } from "vitest";
 import wavefile from "wavefile";
@@ -126,6 +126,7 @@ describe("estimateTempo", () => {
         { workspaceRoot },
       );
 
+      expect(isValidTempoEstimate(estimate)).toBe(true);
       expect(estimate.bpm).toBeCloseTo(120, 1);
       expect(estimate.beat_interval_seconds).toBeCloseTo(0.5, 2);
       expect(estimate.confidence).toBeGreaterThan(0.75);
@@ -151,6 +152,7 @@ describe("estimateTempo", () => {
       const secondEstimate = estimateTempo(audioVersion, { workspaceRoot });
 
       expect(firstEstimate).toEqual(secondEstimate);
+      expect(isValidTempoEstimate(firstEstimate)).toBe(true);
       expect(firstEstimate.bpm).toBeCloseTo(90, 1);
       expect(firstEstimate.confidence).toBeGreaterThan(0.6);
     });
@@ -177,6 +179,31 @@ describe("estimateTempo", () => {
       expect(estimate.bpm).toBeNull();
       expect(estimate.confidence).toBeLessThan(0.35);
       expect(estimate.ambiguity_candidates_bpm?.length ?? 0).toBeGreaterThan(0);
+    });
+  });
+
+  it("stays conservative when sparse regular pulses only support a slower out-of-range grid", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 48000;
+      const durationSeconds = 6;
+      const storageRef = "storage/audio/test-tempo-sparse.wav";
+      const channels = createIrregularPulseSignal(
+        sampleRateHz,
+        durationSeconds,
+        [0.5, 2.0, 3.5, 5.0],
+      );
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const estimate = estimateTempo(
+        createAudioVersion(storageRef, sampleRateHz, channels.length, getFrameCount(channels)),
+        { workspaceRoot },
+      );
+
+      expect(isValidTempoEstimate(estimate)).toBe(true);
+      expect(estimate.bpm).toBeNull();
+      expect(estimate.confidence).toBeLessThan(0.7);
+      expect(estimate.ambiguity_candidates_bpm ?? []).not.toContain(80);
     });
   });
 });
