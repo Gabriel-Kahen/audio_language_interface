@@ -1,3 +1,4 @@
+import { DEFAULT_NORMALIZATION_TARGET } from "@audio-language-interface/io";
 import { readFileSync } from "node:fs";
 
 import { DEFAULT_NORMALIZATION_TARGET } from "@audio-language-interface/io";
