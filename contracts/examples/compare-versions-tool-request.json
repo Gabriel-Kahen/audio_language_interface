@@ -62,7 +62,7 @@
       "generated_at": "2026-04-14T20:20:04Z",
       "analyzer": {
         "name": "default-analysis",
-        "version": "0.1.1"
+        "version": "0.1.3"
       },
       "summary": {
         "plain_text": "Bright stereo loop with a persistent upper-mid ridge and intact transient punch.",
@@ -101,7 +101,7 @@
       "generated_at": "2026-04-14T20:20:11Z",
       "analyzer": {
         "name": "default-analysis",
-        "version": "0.1.1"
+        "version": "0.1.3"
       },
       "summary": {
         "plain_text": "Slightly darker loop with reduced upper-mid harshness and preserved transient definition.",
