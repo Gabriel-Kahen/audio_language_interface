@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs";
-
 import { DEFAULT_NORMALIZATION_TARGET } from "@audio-language-interface/io";
 
 import { describe, expect, it, vi } from "vitest";
@@ -104,6 +103,38 @@ function buildAnalysis(reportId: string, versionId: string): Record<string, unkn
         noise_floor_dbfs: -60,
       },
     },
+  };
+}
+
+function buildSemanticProfile(reportId: string, versionId: string): Record<string, unknown> {
+  return {
+    schema_version: "1.0.0",
+    profile_id: "semantic_example",
+    analysis_report_id: reportId,
+    asset_id: "asset_example",
+    version_id: versionId,
+    generated_at: "2026-04-14T20:20:12Z",
+    descriptors: [
+      {
+        label: "bright",
+        confidence: 0.81,
+        evidence_refs: [`${reportId}:measurements.spectral_balance`],
+        rationale:
+          "High-band energy exceeds low-band energy and the spectral centroid is elevated.",
+      },
+      {
+        label: "slightly_harsh",
+        confidence: 0.72,
+        evidence_refs: [`${reportId}:annotations[0]`],
+        rationale: "Upper-mid buildup is present across the full loop.",
+      },
+    ],
+    summary: {
+      plain_text:
+        "The loop reads as bright and somewhat aggressive, with mild upper-mid harshness.",
+      caveats: ["Descriptor confidence may change after source-specific tuning."],
+    },
+    unresolved_terms: [],
   };
 }
 
@@ -233,6 +264,16 @@ describe("tools module", () => {
         ],
       }),
       expect.objectContaining({
+        name: "plan_edits",
+        backing_module: "planning",
+        required_arguments: [
+          "audio_version",
+          "analysis_report",
+          "semantic_profile",
+          "user_request",
+        ],
+      }),
+      expect.objectContaining({
         name: "apply_edit_plan",
         capabilities: {
           supported_operations: [
@@ -256,7 +297,7 @@ describe("tools module", () => {
   });
 
   it("returns a normalized error response for unknown tools", async () => {
-    const response = await executeToolRequest(buildRequest({ tool_name: "plan_edits" }), {
+    const response = await executeToolRequest(buildRequest({ tool_name: "summarize_audio" }), {
       workspaceRoot: "/tmp/workspace",
       now: () => new Date("2026-04-14T20:20:10Z"),
     });
@@ -264,16 +305,17 @@ describe("tools module", () => {
     expect(response).toEqual({
       schema_version: "1.0.0",
       request_id: "toolreq_abc123",
-      tool_name: "plan_edits",
+      tool_name: "summarize_audio",
       status: "error",
       completed_at: "2026-04-14T20:20:10.000Z",
       error: {
         code: "unknown_tool",
-        message: "Unknown tool 'plan_edits'.",
+        message: "Unknown tool 'summarize_audio'.",
         details: {
           available_tools: [
             "load_audio",
             "analyze_audio",
+            "plan_edits",
             "apply_edit_plan",
             "render_preview",
             "compare_versions",
@@ -382,6 +424,79 @@ describe("tools module", () => {
     });
   });
 
+  it("routes plan_edits requests through the injected runtime", async () => {
+    const planEdits = vi.fn(async (_options: unknown) => buildEditPlan("ver_candidate"));
+
+    const response = await executeToolRequest(
+      buildRequest({
+        tool_name: "plan_edits",
+        asset_id: "asset_example",
+        version_id: "ver_candidate",
+        arguments: {
+          audio_version: buildAudioVersion("ver_candidate"),
+          analysis_report: buildAnalysis("analysis_candidate", "ver_candidate"),
+          semantic_profile: buildSemanticProfile("analysis_candidate", "ver_candidate"),
+          user_request: "Make it less harsh.",
+          constraints: ["keep the vocal clear"],
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/workspace",
+        runtime: createRuntimeOverrides({
+          planEdits: planEdits as unknown as ToolsRuntime["planEdits"],
+        }),
+      },
+    );
+
+    expect(planEdits).toHaveBeenCalledWith({
+      userRequest: "Make it less harsh.",
+      audioVersion: buildAudioVersion("ver_candidate"),
+      analysisReport: buildAnalysis("analysis_candidate", "ver_candidate"),
+      semanticProfile: buildSemanticProfile("analysis_candidate", "ver_candidate"),
+      constraints: ["keep the vocal clear"],
+    });
+    expect(response.status).toBe("ok");
+    expect(response.result?.edit_plan).toEqual(
+      expect.objectContaining({
+        plan_id: "plan_123",
+        version_id: "ver_candidate",
+      }),
+    );
+    expect(isValidToolResponse(response)).toBe(true);
+  });
+
+  it("rejects plan_edits request provenance mismatches before execution", async () => {
+    const planEdits = vi.fn();
+
+    const response = await executeToolRequest(
+      buildRequest({
+        tool_name: "plan_edits",
+        asset_id: "asset_other",
+        arguments: {
+          audio_version: buildAudioVersion("ver_candidate"),
+          analysis_report: buildAnalysis("analysis_candidate", "ver_candidate"),
+          semantic_profile: buildSemanticProfile("analysis_candidate", "ver_candidate"),
+          user_request: "Make it less harsh.",
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/workspace",
+        runtime: createRuntimeOverrides({
+          planEdits: planEdits as unknown as ToolsRuntime["planEdits"],
+        }),
+      },
+    );
+
+    expect(planEdits).not.toHaveBeenCalled();
+    expect(response.status).toBe("error");
+    expect(response.error?.code).toBe("provenance_mismatch");
+    expect(response.error?.details).toEqual({
+      field: "request.asset_id",
+      request_asset_id: "asset_other",
+      argument_asset_id: "asset_example",
+    });
+  });
+
   it("rejects malformed nested contract payloads before analyze_audio runs", async () => {
     const analyzeAudioVersion = vi.fn();
 
@@ -420,6 +535,37 @@ describe("tools module", () => {
     expect(response.status).toBe("error");
     expect(response.error?.code).toBe("invalid_arguments");
     expect(response.error?.details?.field).toBe("arguments.audio_version");
+  });
+
+  it("rejects invalid canonical plan_edits outputs before returning success", async () => {
+    const planEdits = vi.fn(async (_options: unknown) => ({
+      plan_id: "plan_123",
+    }));
+
+    const response = await executeToolRequest(
+      buildRequest({
+        tool_name: "plan_edits",
+        asset_id: "asset_example",
+        version_id: "ver_candidate",
+        arguments: {
+          audio_version: buildAudioVersion("ver_candidate"),
+          analysis_report: buildAnalysis("analysis_candidate", "ver_candidate"),
+          semantic_profile: buildSemanticProfile("analysis_candidate", "ver_candidate"),
+          user_request: "Make it less harsh.",
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/workspace",
+        runtime: createRuntimeOverrides({
+          planEdits: planEdits as unknown as ToolsRuntime["planEdits"],
+        }),
+      },
+    );
+
+    expect(response.status).toBe("error");
+    expect(response.error?.code).toBe("invalid_result_contract");
+    expect(response.error?.message).toContain("result.edit_plan");
+    expect(response.error?.details?.field).toBe("result.edit_plan");
   });
 
   it("surfaces handler warnings in normalized success responses", async () => {

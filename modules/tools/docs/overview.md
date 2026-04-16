@@ -19,11 +19,10 @@ The current implementation provides a registry-backed execution layer with schem
 
 - `load_audio` -> `modules/io`
 - `analyze_audio` -> `modules/analysis`
+- `plan_edits` -> `modules/planning`
 - `apply_edit_plan` -> `modules/transforms`
 - `render_preview` -> `modules/render`
 - `compare_versions` -> `modules/compare`
-
-`plan_edits` is intentionally deferred. `modules/planning` now has a runtime implementation, but the tool layer does not expose it yet.
 
 `apply_edit_plan` now exposes the full currently implemented locked Phase 2 runtime subset: the stable baseline operations plus `compressor`, `limiter`, `stereo_width`, and `denoise`.
 
@@ -39,6 +38,7 @@ The current implementation provides a registry-backed execution layer with schem
 - `src/validation.ts`: request validation and coercion
 - `src/handlers/load-audio.ts`: import-facing tool handler
 - `src/handlers/analyze-audio.ts`: analysis-facing tool handler
+- `src/handlers/plan-edits.ts`: planning-facing tool handler
 - `src/handlers/apply-edit-plan.ts`: transform-facing tool handler
 - `src/handlers/render-preview.ts`: render-facing tool handler
 - `src/handlers/compare-versions.ts`: compare-facing tool handler
@@ -73,7 +73,7 @@ See `docs/api.md` for the concrete callable tool surface and payload conventions
 ## Current limitations
 
 - The tool surface is intentionally smaller than the set of implemented runtime modules and contract-declared operations.
-- `plan_edits` is not exposed as a callable tool yet.
+- `plan_edits` is exposed as a callable tool and returns a contract-valid `EditPlan`.
 - `apply_edit_plan` stays schema-aligned with the published `EditPlan` contract and forwards supported locked Phase 2 operations directly to `modules/transforms`.
 - `apply_edit_plan` also preflights a small set of stable runtime prerequisites such as stereo-only width processing and full-file-only Phase 2 transform targets.
 - The tool layer does not maintain session state or resolve artifacts by id.

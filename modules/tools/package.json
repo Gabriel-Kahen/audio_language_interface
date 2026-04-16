@@ -13,6 +13,8 @@
     "@audio-language-interface/analysis": "workspace:*",
     "@audio-language-interface/compare": "workspace:*",
     "@audio-language-interface/io": "workspace:*",
+    "@audio-language-interface/planning": "workspace:*",
+    "@audio-language-interface/semantics": "workspace:*",
     "@audio-language-interface/render": "workspace:*",
     "@audio-language-interface/transforms": "workspace:*",
     "ajv": "^8.18.0",

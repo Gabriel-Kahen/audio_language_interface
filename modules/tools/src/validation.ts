@@ -9,7 +9,12 @@ import {
   assertValidAudioAsset,
   assertValidAudioVersion,
 } from "@audio-language-interface/io";
+import { assertValidEditPlan } from "@audio-language-interface/planning";
 import type { RenderArtifact } from "@audio-language-interface/render";
+import {
+  assertValidSemanticProfile,
+  type SemanticProfile,
+} from "@audio-language-interface/semantics";
 import type { EditPlan, TransformRecord } from "@audio-language-interface/transforms";
 import type { ErrorObject } from "ajv";
 import Ajv2020Import from "ajv/dist/2020.js";
@@ -277,6 +282,19 @@ export function expectAnalysisReport(value: unknown, fieldName: string): Analysi
   }
 }
 
+export function expectSemanticProfile(value: unknown, fieldName: string): SemanticProfile {
+  const record = expectRecord(value, fieldName);
+
+  try {
+    assertValidSemanticProfile(record as unknown as SemanticProfile);
+    return record as unknown as SemanticProfile;
+  } catch (error) {
+    invalidContractValue(fieldName, "SemanticProfile", {
+      reason: toErrorMessage(error),
+    });
+  }
+}
+
 export function expectEditPlan(value: unknown, fieldName: string): EditPlan {
   const record = expectRecord(value, fieldName);
 
@@ -287,6 +305,17 @@ export function expectEditPlan(value: unknown, fieldName: string): EditPlan {
   invalidContractValue(fieldName, "EditPlan", {
     issues: formatAjvErrors(editPlanValidator.errors),
   });
+}
+
+export function assertToolResultEditPlan(value: unknown, fieldName: string): EditPlan {
+  try {
+    assertValidEditPlan(value as EditPlan);
+    return assertSchemaValidatedOutput(value, fieldName, "EditPlan", editPlanValidator);
+  } catch (error) {
+    invalidToolResultValue(fieldName, "EditPlan", {
+      reason: toErrorMessage(error),
+    });
+  }
 }
 
 export function assertToolResultAudioAsset(value: unknown, fieldName: string): AudioAsset {

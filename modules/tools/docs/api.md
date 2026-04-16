@@ -40,6 +40,20 @@ Returns imported `asset`, imported `version`, source and materialized metadata, 
 
 Returns a `report` object containing the `AnalysisReport`. The include flags only trim response sections after the analysis runs.
 
+### `plan_edits`
+
+- backing module: `planning`
+- required arguments:
+  - `audio_version`
+  - `analysis_report`
+  - `semantic_profile`
+  - `user_request`
+- optional arguments:
+  - `generated_at`
+  - `constraints`
+
+Returns an `edit_plan` object containing the canonical `EditPlan`.
+
 ### `apply_edit_plan`
 
 - backing module: `transforms`
@@ -119,5 +133,4 @@ For currently supported operations that still have input-shape or runtime-prereq
 
 ## Current non-goals
 
-- `plan_edits` is intentionally not exposed yet even though `modules/planning` has a runtime implementation; the current tool surface still defers direct planner exposure.
 - The tool layer does not maintain hidden session state or resolve versions from ids.
