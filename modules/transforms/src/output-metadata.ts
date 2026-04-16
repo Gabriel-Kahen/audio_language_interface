@@ -76,7 +76,7 @@ export async function probeOutputAudioMetadata(options: {
   const audioStream = payload.streams?.find((stream) => stream.codec_type === "audio");
   const sampleRateHz = parsePositiveNumber(audioStream?.sample_rate);
   const channels = audioStream?.channels;
-  const durationSeconds = parseNonNegativeNumber(payload.format?.duration);
+  const durationSeconds = parseNonNegativeNumber(payload.format?.duration) ?? 0;
 
   if (sampleRateHz === undefined || channels === undefined || durationSeconds === undefined) {
     throw new Error(`ffprobe returned incomplete output metadata for ${options.outputPath}`);

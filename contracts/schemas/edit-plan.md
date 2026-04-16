@@ -107,7 +107,9 @@ The machine-readable schema also keeps the existing baseline operation shapes ex
 - `trim_trailing`
 - optional `window_seconds`
 
-Execution-time payloads may also add derived fields such as `result_duration_seconds` and `trimmed_duration_seconds`.
+`window_seconds`, when provided, must stay within `0.001` to `10`.
+
+Execution-time payloads may also add derived fields such as `result_duration_seconds` and `trimmed_duration_seconds`. `result_duration_seconds` may be `0` when silence trimming removes the entire file.
 
 Published pitch-shift surface:
 

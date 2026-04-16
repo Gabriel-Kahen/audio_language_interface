@@ -205,8 +205,8 @@ Rules:
 - target support is `full_file` only
 - at least one of `trim_leading` or `trim_trailing` must be `true`
 - `threshold_dbfs` must be between `-80` and `0`
-- `window_seconds` must be greater than `0` when provided
-- the emitted `TransformRecord` adds `result_duration_seconds` and `trimmed_duration_seconds`
+- `window_seconds` must be between `0.001` and `10` when provided
+- the emitted `TransformRecord` adds `result_duration_seconds` and `trimmed_duration_seconds`, and `result_duration_seconds` may be `0` when the crop removes the full file
 
 Fixed execution behavior:
 

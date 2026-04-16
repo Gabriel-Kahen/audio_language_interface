@@ -329,11 +329,12 @@
         },
         "window_seconds": {
           "type": "number",
-          "exclusiveMinimum": 0
+          "minimum": 0.001,
+          "maximum": 10
         },
         "result_duration_seconds": {
           "type": "number",
-          "exclusiveMinimum": 0
+          "minimum": 0
         },
         "trimmed_duration_seconds": {
           "type": "number",

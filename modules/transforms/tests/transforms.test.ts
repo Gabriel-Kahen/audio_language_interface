@@ -353,6 +353,22 @@ describe("buildOperation", () => {
     ).toThrow(/requires trim_leading, trim_trailing, or both/);
   });
 
+  it("rejects trim_silence window sizes outside the supported runtime range", () => {
+    expect(() =>
+      buildOperation(
+        createAudioVersion("storage/audio/source.wav").audio,
+        "trim_silence",
+        {
+          threshold_dbfs: -48,
+          trim_leading: true,
+          trim_trailing: true,
+          window_seconds: 0.0005,
+        },
+        { scope: "full_file" },
+      ),
+    ).toThrow(/must be a finite number between 0.001 and 10/);
+  });
+
   it("rejects fades that exceed the current audio duration", () => {
     expect(() =>
       buildOperation(createAudioVersion("storage/audio/source.wav").audio, "fade", {
@@ -994,6 +1010,39 @@ describe("applyOperation", () => {
       0,
     );
   });
+
+  it("allows trim_silence to collapse fully silent files to zero duration", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createSilentAudioVersionFixture(workspaceRoot);
+
+    const result = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "trim_silence",
+      parameters: {
+        threshold_dbfs: -45,
+        trim_leading: true,
+        trim_trailing: true,
+        window_seconds: 0.02,
+      },
+      outputVersionId: "ver_01HZY00000000000000000012",
+      recordId: "transform_01HZY0000000000000000012",
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+    });
+
+    expect(result.outputVersion.audio.duration_seconds).toBe(0);
+    expect(result.outputVersion.audio.frame_count).toBe(0);
+    expect(result.transformRecord.operations).toEqual([
+      {
+        operation: "trim_silence",
+        parameters: expect.objectContaining({
+          result_duration_seconds: 0,
+          trimmed_duration_seconds: version.audio.duration_seconds,
+        }),
+        status: "applied",
+      },
+    ]);
+  });
 });
 
 describe("applyEditPlan", () => {
@@ -1466,6 +1515,19 @@ async function createSilencePaddedAudioVersionFixture(
     const activeIndex = index - leadingSilenceFrames;
     return Math.round(Math.sin((2 * Math.PI * 330 * activeIndex) / sampleRateHz) * 10000);
   });
+
+  return createCustomAudioVersionFixture(workspaceRoot, {
+    sampleRateHz,
+    channels: 1,
+    channelLayout: "mono",
+    samples: [mono],
+  });
+}
+
+async function createSilentAudioVersionFixture(workspaceRoot: string): Promise<AudioVersion> {
+  const sampleRateHz = 44100;
+  const totalFrames = sampleRateHz;
+  const mono = Array.from({ length: totalFrames }, () => 0);
 
   return createCustomAudioVersionFixture(workspaceRoot, {
     sampleRateHz,
