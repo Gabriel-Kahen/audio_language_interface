@@ -5,9 +5,10 @@ import { analyzeArtifacts } from "./analyzers/artifacts.js";
 import { analyzeDynamics } from "./analyzers/dynamics.js";
 import { analyzeLevels } from "./analyzers/levels.js";
 import { analyzeSegments } from "./analyzers/segments.js";
-import { analyzeSourceCharacter, detectPitchedSignal } from "./analyzers/source-character.js";
+import { analyzeSourceCharacter } from "./analyzers/source-character.js";
 import { analyzeSpectrum } from "./analyzers/spectrum.js";
 import { analyzeStereo } from "./analyzers/stereo.js";
+import { estimatePitchCenterFromAudioData } from "./estimate-pitch-center.js";
 import { buildAnalysisReport } from "./report-builder.js";
 import type { AnalysisReport, AnalyzeAudioOptions, AudioVersion } from "./types.js";
 import { measureLoudnessWithFfmpeg } from "./utils/loudness.js";
@@ -34,13 +35,13 @@ export async function analyzeAudioVersion(
   const spectrum = analyzeSpectrum(audioData);
   const stereo = analyzeStereo(audioData);
   const artifacts = analyzeArtifacts(audioData);
-  const pitched = detectPitchedSignal(audioData.mono, audioData.sampleRateHz);
+  const pitchCenter = estimatePitchCenterFromAudioData(audioData);
   const sourceCharacter = analyzeSourceCharacter({
     transientDensityPerSecond: dynamics.transient_density_per_second,
     spectralCentroidHz: spectrum.spectral_centroid_hz,
     stereoWidth: stereo.width,
     activeFrameRatio: segments.activeFrameRatio,
-    pitched,
+    pitched: pitchCenter.voicing !== "unvoiced",
   });
 
   const report = buildAnalysisReport({

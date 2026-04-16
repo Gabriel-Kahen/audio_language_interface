@@ -16,7 +16,7 @@ This document records the actual semantics of the current `modules/analysis` imp
 6. spectrum
 7. stereo
 8. artifacts
-9. pitched-signal detection
+9. pitch-center estimation
 10. source-character classification
 11. report construction and schema validation
 
@@ -30,6 +30,9 @@ and returns a standalone transient map.
 3. scores each candidate against pairwise onset alignment
 4. returns one best BPM plus confidence and close alternates when ambiguity remains
 
+`estimatePitchCenter` also uses the same decode and normalization path as the report pipeline but
+skips the loudness, annotation, and report-building stages.
+
 ## Shared constants
 
 - segment window: `0.05` seconds
@@ -38,6 +41,8 @@ and returns a standalone transient map.
 - spectrum hop size: evenly spaced overlapping hops across the file, capped at `256` analyzed frames
 - transient window: `0.02` seconds
 - transient hop: `0.01` seconds
+- pitch window size: `2048` samples
+- pitch maximum analysis windows: `3`
 
 ## File loading and normalization
 
@@ -205,17 +210,31 @@ Threshold summary for downstream modules:
 - brightness annotation threshold: severity `> 0.2` with local centroid `>= 2200 Hz`
 - harshness annotation threshold: severity `> 0.2` with local centroid `>= 1800 Hz`
 - noise annotation threshold: severity `>= 0.25`, crest `<= 6 dB`, zero-crossing ratio `>= 0.12`, and RMS near the estimated floor
-- pitched-signal threshold: normalized autocorrelation-style score `> 0.65`
 - tempo search window: `60 BPM` to `200 BPM` by default
 - tempo confidence floor for emitting a BPM: `0.35`
+- pitch active-window threshold: RMS `>= -42 dBFS`
+- pitch candidate threshold: normalized autocorrelation-style score `>= 0.68`
+- voiced pitch-center threshold: voiced-window ratio `>= 0.6`, uncertainty `<= 35 cents`, confidence `>= 0.7`
+- mixed pitch-center threshold: voiced-window ratio `>= 0.25`, uncertainty `<= 80 cents`, confidence `>= 0.45`
 
-## Pitched-signal detection
+## Pitch-center estimation
 
-- Uses up to the first `4096` mono samples only.
+- Operates on the mono signal.
+- Samples up to `3` evenly spaced `2048`-sample windows across the file instead of only the beginning.
+- Only windows at or above `-42 dBFS` RMS are considered active enough for pitch estimation.
 - Searches lags corresponding roughly to `80 Hz` through `1000 Hz`.
-- Returns `true` when the best normalized autocorrelation-style score exceeds `0.65`.
+- For each active window, the estimator keeps the strongest normalized autocorrelation-style candidate when its score is at least `0.68`.
+- Window candidates are merged with a score-weighted center in MIDI space, then converted back to `frequency_hz`.
+- `uncertainty_cents` is the score-weighted average absolute deviation from that center.
+- `voicing` is:
+  - `voiced` when enough active windows agree on a stable center
+  - `mixed` when some windows support a center but stability or coverage is weaker
+  - `unvoiced` when no conservative center is available
+- `midi_note` is the nearest integer MIDI note to the estimated center, and `note_name` is the corresponding chromatic note label with octave.
 
-Important limitation: if pitch evidence occurs later in the file, the current detector may miss it.
+Important limitation: this estimator still assumes a roughly stable center inside each analysis
+window. Strong vibrato, fast glides, dense polyphony, or inharmonic material can degrade the
+reported confidence or push the result to `mixed` or `unvoiced`.
 
 ## Source-character classification
 
@@ -225,6 +244,8 @@ Classification is heuristic and rule-based:
 - `tonal_phrase` when the signal is pitched and transient density is below `1`
 - `ambience` when active-frame ratio is below `0.5`, spectral centroid is below `1500 Hz`, and stereo width is above `0.2`
 - otherwise `mixed_program`
+
+The current source-character path treats a non-`unvoiced` pitch-center estimate as pitched.
 
 Confidence values are fixed by class in the current implementation:
 
