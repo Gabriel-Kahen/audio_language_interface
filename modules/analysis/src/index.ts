@@ -10,6 +10,8 @@ export type {
   AnalyzeAudioOptions,
   AudioVersion,
   EstimatePitchCenterOptions,
+  MaterialCharacter,
+  MaterialCharacterClassification,
   PitchCenterEstimate,
   PitchCenterVoicing,
   SourceCharacter,

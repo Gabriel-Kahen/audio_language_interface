@@ -121,6 +121,9 @@
             },
             "source_character": {
               "type": "object"
+            },
+            "material_character": {
+              "type": "object"
             }
           }
         }

@@ -64,6 +64,7 @@ Additional fields may be added without breaking this baseline.
 | `annotations` | array | Localized findings with time and frequency ranges. |
 | `segments` | array | Time-ordered structural regions or events. |
 | `source_character` | object | Coarse classification and confidence. |
+| `material_character` | object | Conservative one-shot vs loop classification with explicit uncertainty. |
 | `summary.confidence` | number | Confidence from `0` to `1`. |
 
 ## Invariants

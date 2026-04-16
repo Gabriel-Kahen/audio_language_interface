@@ -7,6 +7,7 @@ import type {
   AnalysisReport,
   AnalysisSegment,
   AudioVersion,
+  MaterialCharacter,
   SourceCharacter,
 } from "./types.js";
 import { clamp } from "./utils/math.js";
@@ -18,6 +19,7 @@ interface BuildAnalysisReportInput {
   annotations: AnalysisAnnotation[];
   segments: AnalysisSegment[];
   sourceCharacter: SourceCharacter;
+  materialCharacter: MaterialCharacter;
 }
 
 export function buildAnalysisReport(input: BuildAnalysisReportInput): AnalysisReport {
@@ -45,6 +47,7 @@ export function buildAnalysisReport(input: BuildAnalysisReportInput): AnalysisRe
     annotations: input.annotations,
     segments: input.segments,
     source_character: input.sourceCharacter,
+    material_character: input.materialCharacter,
   };
 }
 

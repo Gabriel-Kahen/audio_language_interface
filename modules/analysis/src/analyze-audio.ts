@@ -4,6 +4,7 @@ import { assertValidAudioVersion } from "@audio-language-interface/core";
 import { analyzeArtifacts } from "./analyzers/artifacts.js";
 import { analyzeDynamics } from "./analyzers/dynamics.js";
 import { analyzeLevels } from "./analyzers/levels.js";
+import { classifyMaterialCharacter } from "./analyzers/material-character.js";
 import { analyzeSegments } from "./analyzers/segments.js";
 import { analyzeSourceCharacter } from "./analyzers/source-character.js";
 import { analyzeSpectrum } from "./analyzers/spectrum.js";
@@ -43,6 +44,11 @@ export async function analyzeAudioVersion(
     activeFrameRatio: segments.activeFrameRatio,
     pitched: pitchCenter.voicing !== "unvoiced",
   });
+  const materialCharacter = classifyMaterialCharacter({
+    durationSeconds: audioData.durationSeconds,
+    segments: segments.segments,
+    transientDensityPerSecond: dynamics.transient_density_per_second,
+  });
 
   const report = buildAnalysisReport({
     audioVersion,
@@ -70,6 +76,7 @@ export async function analyzeAudioVersion(
     ],
     segments: segments.segments,
     sourceCharacter,
+    materialCharacter,
   });
 
   assertValidAnalysisReport(report);
