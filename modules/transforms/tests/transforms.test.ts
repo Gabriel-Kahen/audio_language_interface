@@ -157,6 +157,47 @@ describe("buildOperation", () => {
     });
   });
 
+  it("keeps explicit time-stretch ratio behavior working", () => {
+    const result = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "time_stretch",
+      {
+        stretch_ratio: 1.5,
+      },
+      { scope: "full_file" },
+    );
+
+    expect(result.filterChain).toBe("atempo=0.666667");
+    expect(result.effectiveParameters).toEqual({
+      stretch_ratio: 1.5,
+      applied_tempo_ratio: 0.666667,
+    });
+    expect(result.nextAudio.duration_seconds).toBe(3);
+    expect(result.nextAudio.frame_count).toBe(132300);
+  });
+
+  it("derives time-stretch ratio from source and target tempo", () => {
+    const result = buildOperation(
+      createRealAudioVersionFixtureAudio(1, 44100, 1),
+      "time_stretch",
+      {
+        source_tempo_bpm: 120,
+        target_tempo_bpm: 90,
+      },
+      { scope: "full_file" },
+    );
+
+    expect(result.filterChain).toBe("atempo=0.75");
+    expect(result.effectiveParameters).toEqual({
+      source_tempo_bpm: 120,
+      target_tempo_bpm: 90,
+      stretch_ratio: 1.333333,
+      applied_tempo_ratio: 0.75,
+    });
+    expect(result.nextAudio.duration_seconds).toBe(1.333333);
+    expect(result.nextAudio.frame_count).toBe(58800);
+  });
+
   it("normalizes stereo width parameters into an explicit FFmpeg filter", () => {
     const result = buildOperation(
       createAudioVersion("storage/audio/source.wav").audio,
@@ -263,6 +304,35 @@ describe("buildOperation", () => {
         { scope: "full_file" },
       ),
     ).toThrow(/between -24 and 0/);
+  });
+
+  it("rejects time stretch parameters when ratio and tempo-match inputs are mixed", () => {
+    expect(() =>
+      buildOperation(
+        createAudioVersion("storage/audio/source.wav").audio,
+        "time_stretch",
+        {
+          stretch_ratio: 1.1,
+          source_tempo_bpm: 120,
+          target_tempo_bpm: 110,
+        },
+        { scope: "full_file" },
+      ),
+    ).toThrow(/either stretch_ratio or source_tempo_bpm \+ target_tempo_bpm, not both/);
+  });
+
+  it("rejects tempo-match inputs that derive an unsupported stretch ratio", () => {
+    expect(() =>
+      buildOperation(
+        createAudioVersion("storage/audio/source.wav").audio,
+        "time_stretch",
+        {
+          source_tempo_bpm: 300,
+          target_tempo_bpm: 50,
+        },
+        { scope: "full_file" },
+      ),
+    ).toThrow(/derived stretch_ratio must be between 0.25 and 4/);
   });
 
   it("rejects stereo width for mono input", () => {
@@ -525,6 +595,52 @@ describe("applyOperation", () => {
         status: "applied",
       },
     ]);
+  });
+
+  it("applies a real tempo-match time stretch and records derived parameters", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createRealAudioVersionFixture(workspaceRoot, {
+      durationSeconds: 1,
+      sampleRateHz: 44100,
+      channels: 1,
+    });
+
+    const result = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "time_stretch",
+      parameters: {
+        source_tempo_bpm: 120,
+        target_tempo_bpm: 90,
+      },
+      outputVersionId: "ver_01HZY00000000000000000011",
+      recordId: "transform_01HZY0000000000000000011",
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+    });
+
+    const probed = await probeAudioMetadata(
+      path.join(workspaceRoot, result.outputVersion.audio.storage_ref),
+    );
+
+    expect(result.transformRecord.operations).toEqual([
+      {
+        operation: "time_stretch",
+        parameters: {
+          source_tempo_bpm: 120,
+          target_tempo_bpm: 90,
+          stretch_ratio: 1.333333,
+          applied_tempo_ratio: 0.75,
+        },
+        status: "applied",
+      },
+    ]);
+    expect(result.outputVersion.audio.duration_seconds).toBe(1.333333);
+    expect(result.outputVersion.audio.frame_count).toBe(58800);
+    expect(probed.sampleRateHz).toBe(result.outputVersion.audio.sample_rate_hz);
+    expect(probed.channels).toBe(result.outputVersion.audio.channels);
+    expect(probed.durationSeconds).toBeGreaterThan(1.3);
+    expect(probed.durationSeconds).toBeLessThan(1.34);
+    expect(validateAgainstSchema(transformRecordSchema, result.transformRecord)).toBe(true);
   });
 
   it("applies a real denoise transform deterministically and reduces noise-only energy", async () => {
@@ -1098,6 +1214,21 @@ function createAudioVersion(storageRef: string): AudioVersion {
       is_original: true,
       is_preview: false,
     },
+  };
+}
+
+function createRealAudioVersionFixtureAudio(
+  durationSeconds: number,
+  sampleRateHz: number,
+  channels: number,
+): AudioVersion["audio"] {
+  return {
+    ...createAudioVersion("storage/audio/source.wav").audio,
+    sample_rate_hz: sampleRateHz,
+    channels,
+    duration_seconds: durationSeconds,
+    frame_count: Math.round(durationSeconds * sampleRateHz),
+    ...(channels === 1 ? { channel_layout: "mono" } : { channel_layout: "stereo" }),
   };
 }
 

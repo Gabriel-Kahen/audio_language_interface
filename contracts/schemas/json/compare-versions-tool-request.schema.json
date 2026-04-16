@@ -238,6 +238,17 @@
                     }
                   },
                   {
+                    "if": { "properties": { "operation": { "const": "time_stretch" } } },
+                    "then": {
+                      "properties": {
+                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/timeStretchRequestParameters"
+                        }
+                      }
+                    }
+                  },
+                  {
                     "if": { "properties": { "operation": { "const": "stereo_width" } } },
                     "then": {
                       "properties": {

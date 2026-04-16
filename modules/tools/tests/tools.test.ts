@@ -287,6 +287,7 @@ describe("tools module", () => {
             "low_pass_filter",
             "compressor",
             "limiter",
+            "time_stretch",
             "stereo_width",
             "denoise",
           ],
@@ -659,6 +660,39 @@ describe("tools module", () => {
 
     expect(applyEditPlan).toHaveBeenCalledOnce();
     expect(response.status).toBe("ok");
+  });
+
+  it("rejects mixed time_stretch parameter modes before execution", async () => {
+    const applyEditPlan = vi.fn();
+
+    const response = await executeToolRequest(
+      buildRequest({
+        tool_name: "apply_edit_plan",
+        asset_id: "asset_example",
+        version_id: "ver_input",
+        arguments: {
+          audio_version: buildAudioVersion("ver_input"),
+          edit_plan: buildSingleStepEditPlan("ver_input", "time_stretch", {
+            stretch_ratio: 1.1,
+            source_tempo_bpm: 120,
+            target_tempo_bpm: 110,
+          }),
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/workspace",
+        runtime: createRuntimeOverrides({
+          applyEditPlan: applyEditPlan as unknown as ToolsRuntime["applyEditPlan"],
+        }),
+      },
+    );
+
+    expect(applyEditPlan).not.toHaveBeenCalled();
+    expect(response.status).toBe("error");
+    expect(response.error?.code).toBe("invalid_arguments");
+    expect(response.error?.details).toMatchObject({
+      field: "arguments.edit_plan",
+    });
   });
 
   it("routes compare_versions and wraps the report", async () => {

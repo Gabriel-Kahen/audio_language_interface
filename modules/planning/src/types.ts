@@ -22,6 +22,7 @@ export type OperationName =
   | "low_pass_filter"
   | "compressor"
   | "limiter"
+  | "time_stretch"
   | "denoise"
   | "stereo_width";
 

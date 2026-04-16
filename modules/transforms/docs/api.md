@@ -353,6 +353,35 @@ Fixed execution behavior:
 - `level=false`
 - `latency=true`
 
+### `time_stretch`
+
+Parameters:
+
+- either `stretch_ratio: number`
+- or `source_tempo_bpm: number` plus `target_tempo_bpm: number`
+
+Rules:
+
+- `stretch_ratio` uses the convention `output_duration / input_duration`
+- `stretch_ratio` must be between `0.25` and `4`
+- values greater than `1` lengthen the output
+- values less than `1` shorten the output
+- tempo-match mode derives `stretch_ratio = source_tempo_bpm / target_tempo_bpm`
+- `source_tempo_bpm` and `target_tempo_bpm` must both be finite numbers greater than `0`
+- callers must provide either the ratio or the tempo pair, not both
+- the module records the derived `stretch_ratio` and `applied_tempo_ratio` in the `TransformRecord`
+
+Target support:
+
+- `full_file` only
+
+Fixed execution behavior:
+
+- FFmpeg `atempo` is used to preserve pitch while changing duration
+- the reciprocal tempo factor is decomposed into a deterministic comma-separated filter chain when needed
+- the module does not estimate tempo; it only applies an explicit requested match
+- `outputVersion.audio.duration_seconds` and `frame_count` are updated from the applied ratio
+
 ### `stereo_width`
 
 Parameters:

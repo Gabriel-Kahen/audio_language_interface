@@ -30,6 +30,7 @@ const SUPPORTED_EDIT_PLAN_OPERATIONS = new Set<OperationName>([
   "low_pass_filter",
   "compressor",
   "limiter",
+  "time_stretch",
   "stereo_width",
   "denoise",
 ]);
@@ -107,7 +108,7 @@ function validateArguments(value: unknown, request: ToolRequest): ApplyEditPlanA
 
   for (const [index, step] of editPlan.steps.entries()) {
     if (
-      ["pitch_shift", "compressor", "limiter", "stereo_width", "denoise"].includes(
+      ["pitch_shift", "compressor", "limiter", "time_stretch", "stereo_width", "denoise"].includes(
         step.operation,
       ) &&
       step.target.scope !== "full_file"

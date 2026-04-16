@@ -7,6 +7,7 @@ import {
 import { buildGainOperation, buildNormalizeOperation } from "./operations/gain.js";
 import { buildPitchShiftOperation } from "./operations/pitch.js";
 import { buildDenoiseOperation, buildStereoWidthOperation } from "./operations/spatial-cleanup.js";
+import { buildTimeStretchOperation } from "./operations/time-stretch.js";
 import { buildFadeOperation, buildTrimOperation } from "./operations/trim-fade.js";
 import type { AudioVersion, EditTarget, OperationBuildResult, OperationName } from "./types.js";
 
@@ -41,6 +42,8 @@ export function buildOperation(
       return buildCompressorOperation(audio, parameters, target);
     case "limiter":
       return buildLimiterOperation(audio, parameters, target);
+    case "time_stretch":
+      return buildTimeStretchOperation(audio, parameters, target);
     case "stereo_width":
       return buildStereoWidthOperation(audio, parameters, target);
     case "denoise":

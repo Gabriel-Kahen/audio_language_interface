@@ -58,7 +58,7 @@ Each operation should include:
 - Recorded parameters must reflect executed behavior, not only requested behavior.
 - Operation order must match actual execution order.
 - `operations[].parameters` should use the same operation-specific surface as `EditPlan.steps[].parameters`.
-- Execution-time normalization may add derived fields such as `applied_gain_db`, `duration_seconds`, or `fade_out_start_seconds` when those values reflect the exact applied behavior.
+- Execution-time normalization may add derived fields such as `applied_gain_db`, `applied_tempo_ratio`, `duration_seconds`, or `fade_out_start_seconds` when those values reflect the exact applied behavior.
 
 ## Example
 

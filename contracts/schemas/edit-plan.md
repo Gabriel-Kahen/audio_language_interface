@@ -54,6 +54,7 @@ The current published contract allows these operation names in `steps[].operatio
 - `low_pass_filter`
 - `compressor`
 - `limiter`
+- `time_stretch`
 - `denoise`
 - `stereo_width`
 
@@ -82,6 +83,7 @@ Locked Phase 2 parameter surfaces:
 
 - `compressor`: `threshold_db`, `ratio`, `attack_ms`, `release_ms`, with optional `knee_db` and `makeup_gain_db`
 - `limiter`: `ceiling_dbtp`, with optional `release_ms`, `lookahead_ms`, and `input_gain_db`
+- `time_stretch`: either `stretch_ratio`, or `source_tempo_bpm` plus `target_tempo_bpm`
 - `stereo_width`: `width_multiplier`
 - `denoise`: `reduction_db`, with optional `noise_floor_dbfs`
 
