@@ -39,6 +39,87 @@ Additional behavior:
 - emits one `TransformRecord.operations[]` item per applied step
 - returns every FFmpeg command used, including intermediate step renders
 
+## `extractSlice(options)`
+
+Extracts one explicit slice from an `AudioVersion`.
+
+Required inputs:
+
+- `workspaceRoot`
+- `version`
+- `slice`: an object with `slice_id`, `start_seconds`, and `end_seconds`
+
+Optional inputs:
+
+- `outputDir`
+- `outputVersionId`
+- `recordId`
+- `createdAt`
+- `ffmpegPath`
+- `executor`
+
+Returns one derived output item with:
+
+- `outputVersion`
+- `transformRecord`
+- `commands`
+- `warnings`
+- `source_range`
+
+## `extractSlices(options)`
+
+Extracts one or many slices from an `AudioVersion`.
+
+Required inputs:
+
+- `workspaceRoot`
+- `version`
+
+Provide exactly one of:
+
+- `slices`: an ordered array of explicit slice definitions
+- `sliceMap`: a contract-aligned slice map with ordered `slices[]`
+
+Optional inputs:
+
+- `outputDir`
+- `outputVersionIds`
+- `recordIds`
+- `createdAt`
+- `ffmpegPath`
+- `executor`
+
+Behavior:
+
+- slice-map asset and version IDs must match the input `AudioVersion`
+- each slice is validated before execution starts
+- slice boundaries must be non-negative, ascending, meaningfully positive in duration, and inside the source duration
+- each derived output gets a separate FFmpeg render, output version, and local transform record
+- the emitted local record operation name is `slice_extract`
+
+## `deriveSliceMapFromTransients(options)`
+
+Derives a contract-aligned `SliceMap` from an analysis `TransientMap`.
+
+Required inputs:
+
+- `version`
+- `transientMap`
+
+Optional inputs:
+
+- `generatedAt`
+- `preRollSeconds`
+- `postRollSeconds`
+- `minimumSliceDurationSeconds`
+
+Behavior:
+
+- the transient map must reference the same asset and version as the input audio version
+- transient anchors are sorted by `time_seconds`
+- each slice starts at the transient anchor minus optional preroll and ends at the next transient or file end
+- the result records `source_transient_map_id` and a deterministic `slice_map_id`
+
 ## `buildOperation(audio, operation, parameters, target)`
 
 Validates one operation and converts it into an inspectable intermediate form:
@@ -321,7 +402,7 @@ Important constraints:
 ## Example
 
 ```ts
-import { applyOperation } from "@audio-language-interface/transforms";
+import { applyOperation } from "modules/transforms/src/index.js";
 
 const result = await applyOperation({
   workspaceRoot,

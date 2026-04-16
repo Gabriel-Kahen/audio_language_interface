@@ -2,13 +2,15 @@
 
 ## Purpose
 
-Measure what is present in an audio signal and publish the result as an `AnalysisReport`.
+Measure what is present in an audio signal and publish the result as an `AnalysisReport`,
+plus standalone transient-event data for downstream slice-map consumers.
 
 This module is currently a deterministic baseline analyzer for materialized WAV audio referenced by an `AudioVersion`. It produces contract-aligned measurements, annotations, segments, and a coarse source classification without making edit recommendations.
 
 ## Public API surface
 
 - `analyzeAudioVersion(audioVersion, options?) => Promise<AnalysisReport>`
+- `detectTransients(audioVersion, options?) => TransientMap`
 - `assertValidAnalysisReport(report)` and `isValidAnalysisReport(report)` for contract checks
 - exported contract-aligned types from `src/types.ts`
 
@@ -17,7 +19,7 @@ This module is currently a deterministic baseline analyzer for materialized WAV 
 Import from the published package name:
 
 ```ts
-import { analyzeAudioVersion } from "@audio-language-interface/analysis";
+import { analyzeAudioVersion, detectTransients } from "@audio-language-interface/analysis";
 ```
 
 `analyzeAudioVersion` performs the full baseline analysis pipeline:
@@ -30,6 +32,9 @@ import { analyzeAudioVersion } from "@audio-language-interface/analysis";
 6. runs levels, segments, dynamics, spectrum, stereo, artifact, and source-character analyzers
 7. builds a contract-aligned `AnalysisReport`
 8. validates the final report against the `AnalysisReport` schema before returning it
+
+`detectTransients` reuses the same input validation and normalized WAV loading path, then
+returns a standalone transient map built from short-window onset scoring and peak picking.
 
 ## Input assumptions
 
@@ -57,6 +62,10 @@ It may also include:
 - `segments` describing `silence`, `active`, or a synthetic full-file `loop` segment
 - `source_character` for a coarse baseline class such as `drum_loop`, `tonal_phrase`, `ambience`, or `mixed_program`
 - `summary.confidence` as a bounded heuristic confidence score from `0` to `1`
+
+The standalone transient detector does not extend `AnalysisReport`; it returns a separate
+machine-readable `TransientMap` with transient timestamps and bounded strengths that can be
+consumed by downstream slice derivation.
 
 ## Measurement semantics
 
@@ -102,7 +111,9 @@ See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, an
 - `src/analyzers/stereo.ts`: width, correlation, balance
 - `src/analyzers/artifacts.ts`: clipping, noise, hum, click detection
 - `src/analyzers/segments.ts`: silence, onsets, sections, events
+- `src/analyzers/transients.ts`: transient-map detection and event picking
 - `src/analyzers/source-character.ts`: coarse source classification
+- `src/detect-transients.ts`: public transient-map entrypoint
 - `src/report-builder.ts`: `AnalysisReport` construction
 - `src/index.ts`: public exports only
 
@@ -134,6 +145,7 @@ See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, an
 - Analysis reads the entire file into memory.
 - Multi-channel files beyond stereo are loaded, but stereo metrics only inspect the first two channels.
 - Brightness, harshness, and transient-impact annotations are threshold-based heuristics, not perceptual models.
+- Transient-map events are short-window local-contrast heuristics, not a source-separation model or a replacement for slice-accurate manual edits.
 - Noise annotations are broadband-floor heuristics and can miss tonal hum, sparse clicks, or noise that only appears under louder foreground material.
 - Stereo-width annotations are local side-versus-mid heuristics gated to active windows, so brief or very low-level spread may remain intentionally unannotated. They do not model perceptual spaciousness or all phase artifacts.
 - Segment detection is energy-threshold based and only emits `active`, `silence`, or a synthetic full-length `loop` segment.
@@ -159,3 +171,4 @@ Current coverage in `modules/analysis/tests/analyze-audio.test.ts` validates:
 - transient-impact annotations and punch-window metrics
 - sustained noise annotations tied to elevated broadband floor evidence
 - localized stereo-width and stereo-ambiguity annotations
+- transient-map event detection with stable onset timestamps

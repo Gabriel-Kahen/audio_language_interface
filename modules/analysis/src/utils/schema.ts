@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
-import type { AnalysisReport } from "../types.js";
+import type { AnalysisReport, TransientMap } from "../types.js";
 
 const require = createRequire(import.meta.url);
 const { default: Ajv2020 } = require("ajv/dist/2020.js") as {
@@ -20,6 +20,7 @@ const commonSchema = loadJson("../../../../contracts/schemas/json/common.schema.
 const analysisReportSchema = loadJson(
   "../../../../contracts/schemas/json/analysis-report.schema.json",
 );
+const transientMapSchema = loadJson("../../../../contracts/schemas/json/transient-map.schema.json");
 
 function buildAjv() {
   const ajv = new Ajv2020({ allErrors: true, strict: false });
@@ -29,6 +30,7 @@ function buildAjv() {
 }
 
 const analysisReportValidator = buildAjv().compile<AnalysisReport>(analysisReportSchema);
+const transientMapValidator = buildAjv().compile<TransientMap>(transientMapSchema);
 
 export function assertValidAnalysisReport(report: AnalysisReport): void {
   if (analysisReportValidator(report)) {
@@ -42,4 +44,18 @@ export function assertValidAnalysisReport(report: AnalysisReport): void {
 
 export function isValidAnalysisReport(report: AnalysisReport): boolean {
   return analysisReportValidator(report) === true;
+}
+
+export function assertValidTransientMap(transientMap: TransientMap): void {
+  if (transientMapValidator(transientMap)) {
+    return;
+  }
+
+  throw new Error(
+    `TransientMap schema validation failed: ${JSON.stringify(transientMapValidator.errors)}`,
+  );
+}
+
+export function isValidTransientMap(transientMap: TransientMap): boolean {
+  return transientMapValidator(transientMap) === true;
 }

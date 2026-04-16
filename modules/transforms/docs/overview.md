@@ -5,7 +5,7 @@
 `modules/transforms` executes deterministic audio edits against an input `AudioVersion` and emits:
 
 - a new `AudioVersion`
-- a contract-aligned `TransformRecord`
+- a contract-aligned `TransformRecord` for standard edit operations, or a local slice-extraction record for batch slicing
 - the explicit FFmpeg command or command sequence used to materialize the output
 
 This module is the pipeline execution layer. It does not decide whether an edit is desirable, infer semantic intent, or inspect audio to derive transform parameters.
@@ -16,6 +16,8 @@ Primary entry points:
 
 - `applyOperation(options)`: apply one explicit transform to an input `AudioVersion`
 - `applyEditPlan(options)`: execute ordered `EditPlan.steps` sequentially
+- `extractSlice(options)`: extract one explicit slice from an input `AudioVersion`
+- `extractSlices(options)`: extract one or many slices from an input `AudioVersion`
 - `buildOperation(audio, operation, parameters, target)`: validate and normalize a single operation into an inspectable FFmpeg audio filter chain plus updated output metadata
 
 Supporting exports:
@@ -46,6 +48,8 @@ The implemented operation set is currently:
 
 Anything else listed in the module agent guide is still a future capability and is not implemented in `src/` yet.
 
+Slice extraction is implemented separately from the published edit-plan operation list. It reuses the deterministic `trim` filter path internally, emits a local `slice_extract` transform record operation, and exposes a helper to derive a contract-aligned `SliceMap` from a `TransientMap`.
+
 ## Operation and target support
 
 Target support is intentionally narrow in the initial implementation:
@@ -56,6 +60,14 @@ Target support is intentionally narrow in the initial implementation:
 - `denoise` only accepts `full_file`
 - `fade` only accepts `full_file`
 - `trim` supports `time_range` via `target.start_seconds` and `target.end_seconds`, or explicit `parameters.start_seconds` and `parameters.end_seconds`
+
+Slice extraction support:
+
+- `extractSlice` accepts one `slice` with `slice_id`, `start_seconds`, and `end_seconds`
+- `deriveSliceMapFromTransients` converts a `TransientMap` into a contract-aligned `SliceMap`
+- `extractSlices` accepts either `slices[]` or a contract-aligned `sliceMap`
+- slice boundaries must be non-negative, ascending, meaningfully positive in duration, and inside the source duration
+- each derived output gets its own output version, transform record, and lineage reason
 
 The module validates parameters before building a filter chain and throws on unsupported target scopes or invalid numeric ranges.
 
@@ -77,6 +89,8 @@ ffmpeg -y -i <input> -vn -sn -dn -map_metadata -1 -af <filters> -ar <sample_rate
 ```
 
 `applyEditPlan` executes one FFmpeg command per step in order. It materializes intermediate WAV files for non-final steps before producing the final output file.
+
+`extractSlices` executes one FFmpeg command per slice and returns one derived output item for each slice.
 
 ## Output conventions
 
@@ -126,6 +140,7 @@ This module consumes and emits repository contracts directly:
 - Filter output format is fixed to 16-bit PCM WAV; the module does not preserve original codec or container.
 - The module validates that ffmpeg materially created a non-empty output file before returning success.
 - `applyEditPlan` leaves intermediate step files on disk; it does not currently clean them up.
+- `extractSlices` is intentionally local to `modules/transforms`; its `slice_extract` record operation is not yet part of the published `EditPlan` contract.
 - The executor layer only wraps command execution. It does not retry, probe FFmpeg capabilities, or validate codec/filter availability.
 
 ## Tests

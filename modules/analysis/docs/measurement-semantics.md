@@ -20,12 +20,17 @@ This document records the actual semantics of the current `modules/analysis` imp
 10. source-character classification
 11. report construction and schema validation
 
+`detectTransients` uses the same decode and normalization path but skips report construction
+and returns a standalone transient map.
+
 ## Shared constants
 
 - segment window: `0.05` seconds
 - spectrum window size: `512` samples
 - spectrum maximum frame hops: `256`
 - spectrum hop size: evenly spaced overlapping hops across the file, capped at `256` analyzed frames
+- transient window: `0.02` seconds
+- transient hop: `0.01` seconds
 
 ## File loading and normalization
 
@@ -80,6 +85,17 @@ Interpretation note: `transient_density_per_second` alone is not sufficient punc
 - Consecutive punch-sensitive windows are merged into one annotation
 - Annotation severity is `clamp((maxCrestDb - 9) / 9, 0, 1)` within the merged region
 - Band hint is `[60, 4000]` to indicate the broad low-to-presence range most relevant to first-slice punch preservation
+
+## Transient-map detector
+
+- Uses overlapping windows of `max(64, sampleRateHz * 0.02)` frames.
+- Uses a hop of `max(32, sampleRateHz * 0.01)` frames.
+- For each window, the detector measures RMS dBFS, peak dBFS, crest factor, and contrast against the immediately preceding window.
+- A window qualifies as a transient candidate when it is a local score maximum, has at least `3 dB` contrast above the preceding frame, and its RMS is at least `-48 dBFS`.
+- Nearby candidates are de-duplicated with a minimum separation of `0.05` seconds.
+- Each transient reports a single `time_seconds` anchor, a bounded `strength`, and optional `confidence`.
+- `transient_map_id` is deterministic for the version, storage reference, analyzer name/version, and the detector window settings.
+- The detector is intentionally conservative and is meant for slice-map guidance, not sample-accurate edit placement.
 
 ## Spectrum analyzer
 
@@ -157,6 +173,7 @@ Threshold summary for downstream modules:
 - silence threshold: `-50 dBFS` window RMS
 - transient gate: rise `> 6 dB` and current window `> -24 dBFS`
 - transient-impact window: RMS `> -30 dBFS` and crest `>= 9 dB`
+- transient-map candidate gate: local contrast `>= 3 dB`, window RMS `>= -48 dBFS`, and onset strength `>= 0.35`
 - clipping threshold: absolute sample amplitude `>= 0.999`
 - stereo-width annotation threshold: local width `>= 0.33` with correlation `>= 0.15`
 - stereo-ambiguity threshold: local width `>= 0.28` with correlation `< 0.1`

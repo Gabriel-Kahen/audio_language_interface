@@ -14,22 +14,34 @@ export {
   resolveTransformOutputPath,
 } from "./path-policy.js";
 export { createAppliedOperation, createTransformRecord } from "./record-builder.js";
+export { deriveSliceMapFromTransients, extractSlice, extractSlices } from "./slice-extraction.js";
 export type {
   ApplyEditPlanOptions,
   ApplyOperationOptions,
   ApplyTransformsResult,
   AudioVersion,
+  DeriveSliceMapFromTransientsOptions,
   EditPlan,
   EditPlanStep,
   EditTarget,
+  ExtractSliceOptions,
+  ExtractSlicesOptions,
   FfmpegCommand,
   FfmpegExecutionResult,
   FfmpegExecutor,
   OperationBuildResult,
   OperationName,
   OperationStatus,
+  SliceBoundary,
+  SliceDefinition,
+  SliceExtractionResult,
+  SliceExtractionResultItem,
+  SliceMap,
+  SliceTransformRecord,
+  SliceTransformRecordOperation,
   TargetScope,
   TransformRecord,
   TransformRecordOperation,
+  TransientMap,
 } from "./types.js";
 export { CONTRACT_SCHEMA_VERSION } from "./types.js";
