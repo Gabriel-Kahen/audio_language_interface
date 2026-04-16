@@ -1,12 +1,11 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { analyzeAudioVersion, isValidAnalysisReport } from "@audio-language-interface/analysis";
+import type { AudioVersion } from "@audio-language-interface/core";
 
 import { describe, expect, it } from "vitest";
 import wavefile from "wavefile";
-
-import type { AudioVersion } from "../src/index.js";
-import { analyzeAudioVersion, isValidAnalysisReport } from "../src/index.js";
 
 const { WaveFile } = wavefile;
 

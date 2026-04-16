@@ -14,10 +14,10 @@ This module is currently a deterministic baseline analyzer for materialized WAV 
 
 ## Entry point
 
-Import from `modules/analysis/src/index.ts`:
+Import from the published package name:
 
 ```ts
-import { analyzeAudioVersion } from "../src/index.js";
+import { analyzeAudioVersion } from "@audio-language-interface/analysis";
 ```
 
 `analyzeAudioVersion` performs the full baseline analysis pipeline:
