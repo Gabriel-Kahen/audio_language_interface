@@ -1,7 +1,7 @@
 export { analyzeAudioVersion } from "./analyze-audio.js";
 export { detectTransients } from "./detect-transients.js";
-export { estimateTempo } from "./estimate-tempo.js";
 export { estimatePitchCenter } from "./estimate-pitch-center.js";
+export { estimateTempo } from "./estimate-tempo.js";
 export type {
   AnalysisAnnotation,
   AnalysisMeasurements,
