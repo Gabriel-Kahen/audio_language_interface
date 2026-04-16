@@ -24,6 +24,7 @@ const SUPPORTED_EDIT_PLAN_OPERATIONS = new Set<OperationName>([
   "normalize",
   "trim",
   "fade",
+  "pitch_shift",
   "parametric_eq",
   "high_pass_filter",
   "low_pass_filter",
@@ -106,7 +107,9 @@ function validateArguments(value: unknown, request: ToolRequest): ApplyEditPlanA
 
   for (const [index, step] of editPlan.steps.entries()) {
     if (
-      ["compressor", "limiter", "stereo_width", "denoise"].includes(step.operation) &&
+      ["pitch_shift", "compressor", "limiter", "stereo_width", "denoise"].includes(
+        step.operation,
+      ) &&
       step.target.scope !== "full_file"
     ) {
       throw new ToolInputError(

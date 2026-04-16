@@ -7,6 +7,7 @@ export type OperationName =
   | "normalize"
   | "trim"
   | "fade"
+  | "pitch_shift"
   | "parametric_eq"
   | "high_pass_filter"
   | "low_pass_filter"

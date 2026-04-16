@@ -208,6 +208,28 @@ Target support:
 
 - `full_file` only
 
+### `pitch_shift`
+
+Parameters:
+
+- `semitones: number`
+
+Rules:
+
+- supports values from `-24` to `24`
+- uses FFmpeg `asetrate`, `aresample`, and one or more `atempo` stages to keep duration close to the original
+- records derived backend values in the emitted `TransformRecord`: `pitch_ratio`, `asetrate_hz`, `tempo_ratio`, and `atempo_factors`
+
+Target support:
+
+- `full_file` only
+
+FFmpeg filter shape:
+
+```text
+asetrate=<derived_rate_hz>,aresample=<input_rate_hz>,atempo=<factor>[,atempo=<factor>...]
+```
+
 ### `parametric_eq`
 
 Parameters:

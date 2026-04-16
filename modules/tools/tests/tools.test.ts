@@ -281,6 +281,7 @@ describe("tools module", () => {
             "normalize",
             "trim",
             "fade",
+            "pitch_shift",
             "parametric_eq",
             "high_pass_filter",
             "low_pass_filter",
@@ -1062,8 +1063,28 @@ describe("tools module", () => {
     });
   });
 
-  it("rejects edit plans with operations outside the published contract before execution", async () => {
-    const applyEditPlan = vi.fn();
+  it("allows published pitch shift operations through to transforms", async () => {
+    const applyEditPlan = vi.fn(async (_options: unknown) => ({
+      outputVersion: buildAudioVersion("ver_output"),
+      transformRecord: {
+        ...buildTransformRecord("ver_input", "ver_output"),
+        operations: [
+          {
+            operation: "pitch_shift",
+            parameters: {
+              semitones: 2,
+              pitch_ratio: 1.122449,
+              asetrate_hz: 49500,
+              tempo_ratio: 0.890909,
+              atempo_factors: [0.890909],
+            },
+            status: "applied",
+          },
+        ],
+      },
+      commands: [],
+      warnings: [],
+    }));
 
     const response = await executeToolRequest(
       buildRequest({
@@ -1072,27 +1093,9 @@ describe("tools module", () => {
         version_id: "ver_input",
         arguments: {
           audio_version: buildAudioVersion("ver_input"),
-          edit_plan: {
-            schema_version: "1.0.0",
-            plan_id: "plan_123",
-            asset_id: "asset_example",
-            version_id: "ver_input",
-            user_request: "Widen and denoise this.",
-            goals: ["widen", "reduce noise"],
-            created_at: "2026-04-14T20:20:07Z",
-            steps: [
-              {
-                step_id: "step_1",
-                operation: "pitch_shift",
-                target: { scope: "full_file" },
-                parameters: {
-                  semitones: 2,
-                },
-                expected_effects: ["shift pitch"],
-                safety_limits: ["stay within supported tool surface"],
-              },
-            ],
-          },
+          edit_plan: buildSingleStepEditPlan("ver_input", "pitch_shift", {
+            semitones: 2,
+          }),
         },
       }),
       {
@@ -1103,11 +1106,8 @@ describe("tools module", () => {
       },
     );
 
-    expect(applyEditPlan).not.toHaveBeenCalled();
-    expect(response.status).toBe("error");
-    expect(response.error?.code).toBe("invalid_arguments");
-    expect(response.error?.message).toBe("arguments.edit_plan must be a valid EditPlan.");
-    expect(response.error?.details?.field).toBe("arguments.edit_plan");
+    expect(applyEditPlan).toHaveBeenCalledOnce();
+    expect(response.status).toBe("ok");
   });
 
   it("rejects non-integer preview sample rates and channels", async () => {

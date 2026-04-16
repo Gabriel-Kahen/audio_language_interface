@@ -191,6 +191,26 @@ describe("buildOperation", () => {
     });
   });
 
+  it("normalizes pitch shift parameters into an explicit FFmpeg filter", () => {
+    const result = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "pitch_shift",
+      {
+        semitones: 12,
+      },
+      { scope: "full_file" },
+    );
+
+    expect(result.filterChain).toBe("asetrate=88200,aresample=44100,atempo=0.5");
+    expect(result.effectiveParameters).toEqual({
+      semitones: 12,
+      pitch_ratio: 2,
+      asetrate_hz: 88200,
+      tempo_ratio: 0.5,
+      atempo_factors: [0.5],
+    });
+  });
+
   it("rejects unsupported trim target scopes", () => {
     expect(() =>
       buildOperation(
@@ -274,6 +294,19 @@ describe("buildOperation", () => {
         { scope: "full_file" },
       ),
     ).toThrow(/between -80 and -20/);
+  });
+
+  it("rejects pitch shifts outside the supported semitone range", () => {
+    expect(() =>
+      buildOperation(
+        createAudioVersion("storage/audio/source.wav").audio,
+        "pitch_shift",
+        {
+          semitones: 36,
+        },
+        { scope: "full_file" },
+      ),
+    ).toThrow(/between -24 and 24/);
   });
 });
 
@@ -548,6 +581,75 @@ describe("applyOperation", () => {
         parameters: {
           reduction_db: 18,
           noise_floor_dbfs: -45,
+        },
+        status: "applied",
+      },
+    ]);
+  });
+
+  it("applies a real pitch shift deterministically and raises the dominant frequency", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createRealAudioVersionFixture(workspaceRoot, {
+      durationSeconds: 1,
+      sampleRateHz: 44100,
+      channels: 1,
+      peakAmplitude: 14000,
+    });
+
+    const firstResult = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "pitch_shift",
+      parameters: {
+        semitones: 12,
+      },
+      outputVersionId: "ver_01HZY00000000000000000011",
+      recordId: "transform_01HZY0000000000000000011",
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+    });
+    const secondResult = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "pitch_shift",
+      parameters: {
+        semitones: 12,
+      },
+      outputVersionId: "ver_01HZY00000000000000000012",
+      recordId: "transform_01HZY0000000000000000012",
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+    });
+
+    const sourceFrequencyHz = await measureDominantFrequencyHz(
+      path.join(workspaceRoot, version.audio.storage_ref),
+    );
+    const shiftedFrequencyHz = await measureDominantFrequencyHz(
+      path.join(workspaceRoot, firstResult.outputVersion.audio.storage_ref),
+    );
+    const shiftedMetadata = await probeAudioMetadata(
+      path.join(workspaceRoot, firstResult.outputVersion.audio.storage_ref),
+    );
+    const firstBytes = await readFile(
+      path.join(workspaceRoot, firstResult.outputVersion.audio.storage_ref),
+    );
+    const secondBytes = await readFile(
+      path.join(workspaceRoot, secondResult.outputVersion.audio.storage_ref),
+    );
+
+    expect(shiftedFrequencyHz).toBeGreaterThan(sourceFrequencyHz * 1.9);
+    expect(shiftedFrequencyHz).toBeLessThan(sourceFrequencyHz * 2.1);
+    expect(shiftedMetadata.durationSeconds).toBeCloseTo(version.audio.duration_seconds, 1);
+    expect(shiftedMetadata.sampleRateHz).toBe(version.audio.sample_rate_hz);
+    expect(shiftedMetadata.channels).toBe(version.audio.channels);
+    expect(firstBytes.equals(secondBytes)).toBe(true);
+    expect(firstResult.transformRecord.operations).toEqual([
+      {
+        operation: "pitch_shift",
+        parameters: {
+          semitones: 12,
+          pitch_ratio: 2,
+          asetrate_hz: 88200,
+          tempo_ratio: 0.5,
+          atempo_factors: [0.5],
         },
         status: "applied",
       },
@@ -1117,6 +1219,39 @@ async function measureFilteredRmsLevelDb(
   ]);
 
   return parseLastMetricValue(stderr, /RMS level dB:\s*(-?\d+(?:\.\d+)?|-inf)/gu, "RMS level dB");
+}
+
+async function measureDominantFrequencyHz(absolutePath: string): Promise<number> {
+  const metadata = await probeAudioMetadata(absolutePath);
+  const { stdout } = await execFile(
+    "ffmpeg",
+    ["-hide_banner", "-i", absolutePath, "-vn", "-sn", "-dn", "-ac", "1", "-f", "s16le", "-"],
+    { encoding: "buffer", maxBuffer: 10 * 1024 * 1024 },
+  );
+  const pcmBuffer = stdout as Buffer;
+  const totalSamples = Math.floor(pcmBuffer.length / 2);
+  const startIndex = Math.floor(metadata.sampleRateHz * 0.1);
+  const endIndex = Math.max(startIndex + 1, totalSamples - Math.floor(metadata.sampleRateHz * 0.1));
+  let crossings = 0;
+  let previousSign = 0;
+
+  for (let index = startIndex; index < endIndex; index += 1) {
+    const sample = pcmBuffer.readInt16LE(index * 2);
+    const sign = Math.sign(sample);
+
+    if (sign === 0) {
+      continue;
+    }
+
+    if (previousSign !== 0 && sign !== previousSign) {
+      crossings += 1;
+    }
+
+    previousSign = sign;
+  }
+
+  const analyzedSeconds = (endIndex - startIndex) / metadata.sampleRateHz;
+  return crossings / (2 * analyzedSeconds);
 }
 
 function parseLastMetricValue(stderr: string, pattern: RegExp, label: string): number {
