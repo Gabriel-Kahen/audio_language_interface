@@ -63,6 +63,8 @@ importers:
         specifier: ^11.0.0
         version: 11.0.0
 
+  modules/benchmarks: {}
+
   modules/compare: {}
 
   modules/core:
@@ -193,9 +195,15 @@ importers:
       '@audio-language-interface/io':
         specifier: workspace:*
         version: link:../io
+      '@audio-language-interface/planning':
+        specifier: workspace:*
+        version: link:../planning
       '@audio-language-interface/render':
         specifier: workspace:*
         version: link:../render
+      '@audio-language-interface/semantics':
+        specifier: workspace:*
+        version: link:../semantics
       '@audio-language-interface/transforms':
         specifier: workspace:*
         version: link:../transforms
