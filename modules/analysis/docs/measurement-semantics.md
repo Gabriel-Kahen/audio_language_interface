@@ -23,6 +23,13 @@ This document records the actual semantics of the current `modules/analysis` imp
 `detectTransients` uses the same decode and normalization path but skips report construction
 and returns a standalone transient map.
 
+`estimateTempo` also uses the same decode and normalization path, then:
+
+1. runs the standalone transient detector
+2. derives BPM candidates from short transient-spacing spans
+3. scores each candidate against pairwise onset alignment
+4. returns one best BPM plus confidence and close alternates when ambiguity remains
+
 ## Shared constants
 
 - segment window: `0.05` seconds
@@ -96,6 +103,24 @@ Interpretation note: `transient_density_per_second` alone is not sufficient punc
 - Each transient reports a single `time_seconds` anchor, a bounded `strength`, and optional `confidence`.
 - `transient_map_id` is deterministic for the version, storage reference, analyzer name/version, and the detector window settings.
 - The detector is intentionally conservative and is meant for slice-map guidance, not sample-accurate edit placement.
+
+## Tempo estimator
+
+- Tempo estimation reuses the transient detector output instead of re-decoding or introducing a second onset path.
+- At least `3` transient events are required before the estimator will return any BPM.
+- Candidate BPMs come from transient-pair spacings across spans up to `4` pulses, plus half-time and double-time variants for each base spacing.
+- The default search window is `60 BPM` through `200 BPM`.
+- Candidate alignment is evaluated against pairwise transient intervals:
+  - intervals may align to integer beat multiples from `1` through `8`
+  - alignment tolerance is `12%` of the tested beat period
+  - longer beat multiples are penalized so direct one-beat spacing wins over equally valid half-time or double-time explanations
+- Confidence combines:
+  - the best candidate's alignment score: 65%
+  - separation from the next-best candidate: 20%
+  - transient-count support: 15%
+- When confidence falls below `0.35`, the estimator returns `bpm: null` and only surfaces the top candidate list as ambiguity evidence.
+
+Important limitation: this is still a coarse onset-spacing heuristic. It is designed for clear rhythmic material such as click tracks, drum loops, or pulse-driven fixtures. It does not infer musical meter, does not disambiguate subdivision-heavy material reliably, and can expose half-time or double-time alternates even when one BPM is chosen as the best fit.
 
 ## Spectrum analyzer
 
@@ -181,6 +206,8 @@ Threshold summary for downstream modules:
 - harshness annotation threshold: severity `> 0.2` with local centroid `>= 1800 Hz`
 - noise annotation threshold: severity `>= 0.25`, crest `<= 6 dB`, zero-crossing ratio `>= 0.12`, and RMS near the estimated floor
 - pitched-signal threshold: normalized autocorrelation-style score `> 0.65`
+- tempo search window: `60 BPM` to `200 BPM` by default
+- tempo confidence floor for emitting a BPM: `0.35`
 
 ## Pitched-signal detection
 

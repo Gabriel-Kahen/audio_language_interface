@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/tempo-estimate.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["bpm", "confidence"],
+  "properties": {
+    "bpm": {
+      "type": ["number", "null"],
+      "exclusiveMinimum": 0
+    },
+    "confidence": {
+      "$ref": "./common.schema.json#/$defs/confidence"
+    },
+    "beat_interval_seconds": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "ambiguity_candidates_bpm": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "bpm": { "type": "null" }
+        }
+      },
+      "then": {
+        "not": {
+          "required": ["beat_interval_seconds"]
+        }
+      }
+    }
+  ]
+}

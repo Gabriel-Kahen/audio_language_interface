@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
-import type { AnalysisReport, TransientMap } from "../types.js";
+import type { AnalysisReport, TempoEstimate, TransientMap } from "../types.js";
 
 const require = createRequire(import.meta.url);
 const { default: Ajv2020 } = require("ajv/dist/2020.js") as {
@@ -20,6 +20,9 @@ const commonSchema = loadJson("../../../../contracts/schemas/json/common.schema.
 const analysisReportSchema = loadJson(
   "../../../../contracts/schemas/json/analysis-report.schema.json",
 );
+const tempoEstimateSchema = loadJson(
+  "../../../../contracts/schemas/json/tempo-estimate.schema.json",
+);
 const transientMapSchema = loadJson("../../../../contracts/schemas/json/transient-map.schema.json");
 
 function buildAjv() {
@@ -30,6 +33,7 @@ function buildAjv() {
 }
 
 const analysisReportValidator = buildAjv().compile<AnalysisReport>(analysisReportSchema);
+const tempoEstimateValidator = buildAjv().compile<TempoEstimate>(tempoEstimateSchema);
 const transientMapValidator = buildAjv().compile<TransientMap>(transientMapSchema);
 
 export function assertValidAnalysisReport(report: AnalysisReport): void {
@@ -44,6 +48,20 @@ export function assertValidAnalysisReport(report: AnalysisReport): void {
 
 export function isValidAnalysisReport(report: AnalysisReport): boolean {
   return analysisReportValidator(report) === true;
+}
+
+export function assertValidTempoEstimate(tempoEstimate: TempoEstimate): void {
+  if (tempoEstimateValidator(tempoEstimate)) {
+    return;
+  }
+
+  throw new Error(
+    `TempoEstimate schema validation failed: ${JSON.stringify(tempoEstimateValidator.errors)}`,
+  );
+}
+
+export function isValidTempoEstimate(tempoEstimate: TempoEstimate): boolean {
+  return tempoEstimateValidator(tempoEstimate) === true;
 }
 
 export function assertValidTransientMap(transientMap: TransientMap): void {
