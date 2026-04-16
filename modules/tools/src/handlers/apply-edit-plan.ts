@@ -31,6 +31,10 @@ const SUPPORTED_EDIT_PLAN_OPERATIONS = new Set<OperationName>([
   "compressor",
   "limiter",
   "time_stretch",
+  "reverse",
+  "mono_sum",
+  "channel_swap",
+  "stereo_balance_correction",
   "stereo_width",
   "denoise",
 ]);
@@ -108,9 +112,18 @@ function validateArguments(value: unknown, request: ToolRequest): ApplyEditPlanA
 
   for (const [index, step] of editPlan.steps.entries()) {
     if (
-      ["pitch_shift", "compressor", "limiter", "time_stretch", "stereo_width", "denoise"].includes(
-        step.operation,
-      ) &&
+      [
+        "pitch_shift",
+        "compressor",
+        "limiter",
+        "time_stretch",
+        "reverse",
+        "mono_sum",
+        "channel_swap",
+        "stereo_balance_correction",
+        "stereo_width",
+        "denoise",
+      ].includes(step.operation) &&
       step.target.scope !== "full_file"
     ) {
       throw new ToolInputError(
@@ -125,10 +138,13 @@ function validateArguments(value: unknown, request: ToolRequest): ApplyEditPlanA
       );
     }
 
-    if (step.operation === "stereo_width" && audioVersion.audio.channels !== 2) {
+    if (
+      ["channel_swap", "stereo_balance_correction", "stereo_width"].includes(step.operation) &&
+      audioVersion.audio.channels !== 2
+    ) {
       throw new ToolInputError(
         "invalid_arguments",
-        `arguments.edit_plan.steps[${index}].operation 'stereo_width' requires stereo 2-channel audio.`,
+        `arguments.edit_plan.steps[${index}].operation '${step.operation}' requires stereo 2-channel audio.`,
         {
           field: `arguments.edit_plan.steps[${index}].operation`,
           operation: step.operation,

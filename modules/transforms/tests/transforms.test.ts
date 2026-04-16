@@ -105,6 +105,53 @@ describe("buildOperation", () => {
     expect(result.nextAudio.frame_count).toBe(44100);
   });
 
+  it("normalizes reverse and mono_sum into explicit FFmpeg filters", () => {
+    const reverseResult = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "reverse",
+      {},
+      { scope: "full_file" },
+    );
+    const monoResult = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "mono_sum",
+      {},
+      { scope: "full_file" },
+    );
+
+    expect(reverseResult.filterChain).toBe("areverse");
+    expect(reverseResult.effectiveParameters).toEqual({});
+    expect(monoResult.filterChain).toBe("pan=mono|c0=0.5*c0+0.5*c1");
+    expect(monoResult.nextAudio.channels).toBe(1);
+    expect(monoResult.nextAudio.channel_layout).toBe("mono");
+  });
+
+  it("normalizes channel_swap and stereo_balance_correction into explicit FFmpeg filters", () => {
+    const swapped = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "channel_swap",
+      {},
+      { scope: "full_file" },
+    );
+    const balanced = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "stereo_balance_correction",
+      {
+        target_channel: "left",
+        correction_db: 3,
+      },
+      { scope: "full_file" },
+    );
+
+    expect(swapped.filterChain).toBe("pan=stereo|c0=c1|c1=c0");
+    expect(swapped.effectiveParameters).toEqual({});
+    expect(balanced.filterChain).toBe("pan=stereo|c0=0.707946*c0|c1=1*c1");
+    expect(balanced.effectiveParameters).toEqual({
+      target_channel: "left",
+      correction_db: 3,
+    });
+  });
+
   it("normalizes compressor parameters into an explicit FFmpeg filter", () => {
     const result = buildOperation(
       createAudioVersion("storage/audio/source.wav").audio,
@@ -347,6 +394,21 @@ describe("buildOperation", () => {
         {
           width_multiplier: 1.2,
         },
+        { scope: "full_file" },
+      ),
+    ).toThrow(/requires stereo 2-channel audio/);
+  });
+
+  it("rejects channel_swap for mono input", () => {
+    expect(() =>
+      buildOperation(
+        {
+          ...createAudioVersion("storage/audio/source.wav").audio,
+          channels: 1,
+          channel_layout: "mono",
+        },
+        "channel_swap",
+        {},
         { scope: "full_file" },
       ),
     ).toThrow(/requires stereo 2-channel audio/);
@@ -771,6 +833,85 @@ describe("applyOperation", () => {
       },
     ]);
   });
+
+  it("applies reverse, mono_sum, channel_swap, and stereo_balance_correction deterministically", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createAsymmetricStereoFixture(workspaceRoot);
+    const sourcePath = path.join(workspaceRoot, version.audio.storage_ref);
+    const sourceSamples = await readWaveSamples(sourcePath);
+
+    const reverseResult = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "reverse",
+      parameters: {},
+      outputVersionId: "ver_01HZY00000000000000000013",
+      recordId: "transform_01HZY0000000000000000013",
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+    });
+    const monoResult = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "mono_sum",
+      parameters: {},
+      outputVersionId: "ver_01HZY00000000000000000014",
+      recordId: "transform_01HZY0000000000000000014",
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+    });
+    const swapResult = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "channel_swap",
+      parameters: {},
+      outputVersionId: "ver_01HZY00000000000000000015",
+      recordId: "transform_01HZY0000000000000000015",
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+    });
+    const balanceResult = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "stereo_balance_correction",
+      parameters: {
+        target_channel: "left",
+        correction_db: 6,
+      },
+      outputVersionId: "ver_01HZY00000000000000000016",
+      recordId: "transform_01HZY0000000000000000016",
+      createdAt: new Date("2026-04-14T20:20:18Z"),
+    });
+
+    const reverseSamples = await readWaveSamples(
+      path.join(workspaceRoot, reverseResult.outputVersion.audio.storage_ref),
+    );
+    const monoSamples = await readWaveSamples(
+      path.join(workspaceRoot, monoResult.outputVersion.audio.storage_ref),
+    );
+    const swappedSamples = await readWaveSamples(
+      path.join(workspaceRoot, swapResult.outputVersion.audio.storage_ref),
+    );
+    const balancedSamples = await readWaveSamples(
+      path.join(workspaceRoot, balanceResult.outputVersion.audio.storage_ref),
+    );
+
+    expect(reverseSamples[0]?.[0]).toBe(sourceSamples[0]?.at(-1));
+    expect(reverseSamples[1]?.[0]).toBe(sourceSamples[1]?.at(-1));
+    expect(monoResult.outputVersion.audio.channels).toBe(1);
+    expect(monoResult.outputVersion.audio.channel_layout).toBe("mono");
+    expect(monoSamples[0]?.[100]).toBeCloseTo(
+      ((sourceSamples[0]?.[100] ?? 0) + (sourceSamples[1]?.[100] ?? 0)) / 2,
+      0,
+    );
+    expect(swappedSamples[0]?.[200]).toBe(sourceSamples[1]?.[200]);
+    expect(swappedSamples[1]?.[200]).toBe(sourceSamples[0]?.[200]);
+    expect(computeChannelRms(balancedSamples[0] ?? [])).toBeLessThan(
+      computeChannelRms(sourceSamples[0] ?? []) * 0.65,
+    );
+    expect(computeChannelRms(balancedSamples[1] ?? [])).toBeCloseTo(
+      computeChannelRms(sourceSamples[1] ?? []),
+      0,
+    );
+  });
+  });
 });
 
 describe("applyEditPlan", () => {
@@ -1131,6 +1272,25 @@ async function createStereoWidthFixture(workspaceRoot: string): Promise<AudioVer
   });
 }
 
+async function createAsymmetricStereoFixture(workspaceRoot: string): Promise<AudioVersion> {
+  const sampleRateHz = 44100;
+  const durationSeconds = 1;
+  const totalFrames = Math.round(durationSeconds * sampleRateHz);
+  const left = Array.from({ length: totalFrames }, (_, index) =>
+    Math.round(Math.sin((2 * Math.PI * 220 * index) / sampleRateHz) * 14000),
+  );
+  const right = Array.from({ length: totalFrames }, (_, index) =>
+    Math.round(Math.sin((2 * Math.PI * 440 * index) / sampleRateHz) * 7000),
+  );
+
+  return createCustomAudioVersionFixture(workspaceRoot, {
+    sampleRateHz,
+    channels: 2,
+    channelLayout: "stereo",
+    samples: [left, right],
+  });
+}
+
 async function createNoisyAudioVersionFixture(workspaceRoot: string): Promise<AudioVersion> {
   const sampleRateHz = 44100;
   const durationSeconds = 1;
@@ -1273,6 +1433,18 @@ async function probeAudioMetadata(absolutePath: string): Promise<{
   };
 }
 
+async function readWaveSamples(absolutePath: string): Promise<Int16Array[]> {
+  const wav = new WaveFile(await readFile(absolutePath));
+  const samples = wav.getSamples(false, Int16Array);
+
+  if (!Array.isArray(samples)) {
+    return [Int16Array.from(samples as unknown as ArrayLike<number>)];
+  }
+
+  const channels = samples as unknown as ArrayLike<number>[];
+  return channels.map((channel) => Int16Array.from(channel));
+}
+
 async function measurePeakLevelDbfs(absolutePath: string): Promise<number> {
   const { stderr } = await execFile("ffmpeg", [
     "-hide_banner",
@@ -1394,6 +1566,20 @@ function parseLastMetricValue(stderr: string, pattern: RegExp, label: string): n
   }
 
   return value === "-inf" ? Number.NEGATIVE_INFINITY : Number(value);
+}
+
+function computeChannelRms(samples: ArrayLike<number>): number {
+  if (samples.length === 0) {
+    return 0;
+  }
+
+  let sumSquares = 0;
+  for (let index = 0; index < samples.length; index += 1) {
+    const sample = samples[index] ?? 0;
+    sumSquares += sample * sample;
+  }
+
+  return Math.sqrt(sumSquares / samples.length);
 }
 
 function validateAgainstSchema(schema: unknown, payload: unknown): boolean {

@@ -45,6 +45,10 @@ The implemented operation set is currently:
 - `compressor`
 - `limiter`
 - `time_stretch`
+- `reverse`
+- `mono_sum`
+- `channel_swap`
+- `stereo_balance_correction`
 - `stereo_width`
 - `denoise`
 
@@ -60,7 +64,10 @@ Target support is intentionally narrow in the initial implementation:
 - `compressor` and `limiter` only accept `full_file`
 - `pitch_shift` only accepts `full_file`
 - `time_stretch` only accepts `full_file`, using either `stretch_ratio` or `source_tempo_bpm` plus `target_tempo_bpm`
-- `pitch_shift` only accepts `full_file`
+- `reverse` only accepts `full_file`
+- `mono_sum` only accepts `full_file`
+- `channel_swap` only accepts `full_file` and requires stereo 2-channel input
+- `stereo_balance_correction` only accepts `full_file` and requires stereo 2-channel input
 - `stereo_width` only accepts `full_file` and requires stereo 2-channel input
 - `denoise` only accepts `full_file`
 - `fade` only accepts `full_file`
@@ -138,6 +145,10 @@ This module consumes and emits repository contracts directly:
 - `compressor` exposes only downward RMS compression with explicit threshold, ratio, attack, release, and optional makeup gain. It does not expose upward compression, dry/wet mixing, sidechain input, or alternate detection/link modes.
 - `limiter` exposes only ceiling, attack, and release. Automatic gain staging is disabled deliberately so the emitted `TransformRecord` stays explicit and inspectable.
 - `time_stretch` uses FFmpeg `atempo` with explicit caller-supplied timing parameters. Tempo matching is supported only when the caller already knows `source_tempo_bpm` and `target_tempo_bpm`; this module does not estimate tempo itself.
+- `reverse` uses FFmpeg `areverse` over the full rendered stream. It does not expose partial reverse regions or block-wise tape-style reversal.
+- `mono_sum` renders a mono file by averaging all input channels equally. It does not preserve the original channel count or expose alternate downmix matrices.
+- `channel_swap` is locked to stereo 2-channel material and only swaps left and right. It does not expose arbitrary multichannel remapping.
+- `stereo_balance_correction` attenuates one named stereo channel by an explicit amount. It does not auto-measure the source imbalance or boost the quieter channel.
 - `stereo_width` uses FFmpeg `extrastereo` with clipping disabled and only supports stereo 2-channel material. It is intended for subtle widening or narrowing, not aggressive spatial effects or multichannel imaging.
 - `denoise` uses FFmpeg `afftdn` with a fixed broadband profile, explicit reduction, explicit or defaulted noise floor, and adaptive tracking disabled. It is intentionally conservative and is best suited to steady broadband noise rather than clicks, hum removal, or profile-learned restoration.
 - `pitch_shift` uses FFmpeg `asetrate`, `aresample`, and an explicit `atempo` compensation chain to keep duration close to the original. It is deterministic and inspectable, but it is not formant-preserving and is best suited to moderate shifts rather than transparent vocal correction.
@@ -159,6 +170,6 @@ Module-local tests cover:
 - single-operation application output shape
 - ordered edit plan execution
 - workspace-relative output path behavior
-- real compressor, limiter, time stretch, stereo width, and denoise output verification
 - real compressor, limiter, time stretch, stereo width, denoise, and pitch-shift output verification
+- real reverse, mono-sum, channel-swap, and stereo-balance-correction output verification
 - JSON Schema alignment for emitted `AudioVersion` and `TransformRecord`
