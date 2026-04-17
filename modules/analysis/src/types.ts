@@ -81,6 +81,7 @@ export interface TempoEstimate {
   confidence: number;
   beat_interval_seconds?: number;
   ambiguity_candidates_bpm?: number[];
+}
 
 /** One candidate loop span emitted by the standalone loop-boundary suggester. */
 export interface LoopBoundarySuggestion {

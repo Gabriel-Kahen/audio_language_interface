@@ -16,7 +16,7 @@ Define the standalone machine-readable output emitted by
   "generated_at": "2026-04-16T12:00:10Z",
   "detector": {
     "name": "default-analysis",
-    "version": "0.1.2"
+    "version": "0.1.3"
   },
   "suggestions": [
     {
