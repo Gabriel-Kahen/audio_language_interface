@@ -135,10 +135,6 @@ describe("capabilities module", () => {
     const invalidManifest = cloneManifest();
     const firstOperation = invalidManifest.operations[0];
     expect(firstOperation).toBeDefined();
-    if (!firstOperation) {
-      throw new Error("Expected at least one operation.");
-    }
-
     (firstOperation as unknown as Record<string, unknown>).name = "unsupported_operation";
 
     expect(isValidRuntimeCapabilityManifest(invalidManifest)).toBe(false);
@@ -154,10 +150,6 @@ describe("capabilities module", () => {
     );
 
     expect(normalizeOperationIndex).toBeGreaterThanOrEqual(0);
-    if (normalizeOperationIndex < 0) {
-      throw new Error("Expected normalize operation to exist.");
-    }
-
     const invalidOperation = invalidManifest.operations[
       normalizeOperationIndex
     ] as unknown as Record<string, unknown>;
