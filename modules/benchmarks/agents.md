@@ -4,16 +4,16 @@
 
 Own evaluation assets, benchmark harnesses, and quality measurement for the platform.
 
-## Pipeline role
+## Architectural role
 
-`benchmarks` measures whether individual modules and full workflows are reliable enough for LLM-driven audio manipulation.
+`benchmarks` is the evaluation layer. It measures whether individual modules and full workflows are reliable enough for LLM-driven audio manipulation.
 
 ## Owns
 
 - benchmark datasets and prompt suites
 - scoring harnesses and metric aggregation
 - repeatable evaluation workflows
-- regression tracking for module and pipeline quality
+- regression tracking for module and end-to-end quality
 
 ## Inputs
 

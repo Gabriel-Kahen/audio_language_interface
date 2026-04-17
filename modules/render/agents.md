@@ -4,14 +4,14 @@
 
 Own preview generation, export rendering, and render metadata.
 
-## Pipeline role
+## Architectural role
 
-`render` turns audio versions into artifacts suitable for audition, sharing, or downstream comparison.
+`render` is part of the audio runtime. It turns audio versions into artifacts suitable for audition, sharing, or downstream comparison.
 
 ## Owns
 
-- fast preview renders
-- final-quality export renders
+- fast preview renders, currently centered on MP3 previews
+- final-quality export renders, currently centered on WAV and FLAC
 - render format selection and render-time metadata
 - waveform or summary artifacts that assist inspection
 

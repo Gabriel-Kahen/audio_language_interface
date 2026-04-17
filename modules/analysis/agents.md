@@ -4,9 +4,9 @@
 
 Own measurable audio inspection and structured reporting of what is present in a signal.
 
-## Pipeline role
+## Architectural role
 
-`analysis` is the perception layer. It should describe the audio without deciding what edits to apply.
+`analysis` is part of the audio runtime. It should describe the audio without deciding what edits to apply.
 
 ## Owns
 
@@ -20,7 +20,7 @@ Own measurable audio inspection and structured reporting of what is present in a
 
 ## Inputs
 
-- `AudioVersion` or equivalent canonical audio representation
+- canonical `AudioVersion` inputs, currently centered on workspace-local WAV-backed analysis
 
 ## Outputs
 

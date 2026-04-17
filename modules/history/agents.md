@@ -4,9 +4,9 @@
 
 Own version tracking, branching, provenance, and reversible session state.
 
-## Pipeline role
+## Architectural role
 
-`history` preserves the lineage of all imported, planned, transformed, rendered, and compared artifacts.
+`history` is part of the shared/foundation layer. It preserves the lineage of all imported, planned, transformed, rendered, and compared artifacts.
 
 ## Owns
 

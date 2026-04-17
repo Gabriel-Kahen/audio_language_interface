@@ -6,7 +6,7 @@ Every agent must optimize for modularity, explicit contracts, and future maintai
 
 ## Project intent
 
-This project is an audio manipulation platform for LLMs.
+This project is a natural-language audio editing platform for LLMs.
 
 It is not a music creation product and not a DAW clone. The core objective is to let language models inspect sound, reason about requested changes, apply deterministic audio edits, and verify whether the output moved toward the request.
 

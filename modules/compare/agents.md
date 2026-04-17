@@ -4,9 +4,9 @@
 
 Own before-and-after comparison and evaluation of audio changes.
 
-## Pipeline role
+## Architectural role
 
-`compare` measures what changed, whether the change matches stated goals, and whether regressions were introduced.
+`compare` is part of the audio runtime. It measures what changed, whether the change matches stated goals, and whether regressions were introduced.
 
 ## Owns
 

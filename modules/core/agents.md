@@ -4,15 +4,15 @@
 
 Own the platform's canonical shared domain models and common primitives.
 
-## Pipeline role
+## Architectural role
 
-`core` sits beneath the rest of the pipeline and provides the shared language other modules use.
+`core` is part of the shared/foundation layer. It provides the shared language other modules use.
 
 ## Owns
 
 - canonical types for assets, versions, identifiers, timestamps, and result envelopes
 - shared validation primitives
-- stable naming for core pipeline artifacts
+- stable naming for canonical project artifacts
 - cross-module utility code that is truly domain-level, not convenience glue
 
 ## Inputs

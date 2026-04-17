@@ -47,4 +47,4 @@ Own end-to-end workflow coordination across modules.
 
 ## Success criteria
 
-The full pipeline can run coherently without blurring the ownership of the underlying modules.
+The end-to-end editing loop can run coherently, including iterative refinement flows, without blurring the ownership of the underlying modules.

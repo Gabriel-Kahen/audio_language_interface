@@ -4,9 +4,9 @@
 
 Own audio ingestion, decoding, validation, normalization, and file-oriented import or export preparation.
 
-## Pipeline role
+## Architectural role
 
-`io` is the entry point from external audio into the internal platform representation.
+`io` is part of the audio runtime. It is the entry point from external audio into the internal platform representation.
 
 ## Owns
 
@@ -18,7 +18,7 @@ Own audio ingestion, decoding, validation, normalization, and file-oriented impo
 
 ## Inputs
 
-- file paths, bytes, streams, or asset references
+- local file paths first, with normalization and metadata extraction for the current repository slice
 
 ## Outputs
 
@@ -48,4 +48,4 @@ Own audio ingestion, decoding, validation, normalization, and file-oriented impo
 
 ## Success criteria
 
-Downstream modules receive predictable audio representations regardless of source format.
+Downstream modules receive predictable imported assets and versions without having to reason about file-format quirks or normalization policy.

@@ -4,9 +4,9 @@
 
 Own translation from measurable analysis outputs into interpretable descriptors and explanatory language.
 
-## Pipeline role
+## Architectural role
 
-`semantics` turns analysis into labels the planner, tools, and users can reason about more naturally.
+`semantics` is part of the intent layer. It turns analysis into labels the planner, tools, and users can reason about more naturally.
 
 ## Owns
 

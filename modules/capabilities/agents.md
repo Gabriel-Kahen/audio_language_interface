@@ -20,6 +20,17 @@ It keeps the repository's two core layers decoupled:
 - validation helpers for capability metadata
 - planner-facing capability discovery helpers
 
+## Inputs
+
+- published runtime operation contracts
+- runtime constraints that need to be exposed explicitly to planners and adapters
+
+## Outputs
+
+- `RuntimeCapabilityManifest`
+- stable runtime operation names and target-scope metadata
+- validation helpers for capability payloads
+
 ## Must not own
 
 - DSP execution

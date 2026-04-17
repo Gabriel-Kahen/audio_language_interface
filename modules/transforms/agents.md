@@ -4,25 +4,26 @@
 
 Own deterministic audio editing and signal transformation.
 
-## Pipeline role
+## Architectural role
 
-`transforms` is the execution engine that turns planned operations into new audio versions.
+`transforms` is part of the audio runtime. It is the execution engine that turns explicit operations into new audio versions.
 
 ## Owns
 
-- trim and fade operations
+- deterministic execution of the currently supported runtime operation set
+- trim, silence trim, and fade operations
 - gain and normalization operations
 - EQ and filtering
 - compression, limiting, and dynamics shaping
-- saturation and distortion
-- denoise, declick, and cleanup operations
-- pitch, time, stereo, and spatial transforms
+- denoise and cleanup operations
+- pitch, time, stereo, and channel-utility transforms
 - operation logging tied to exact parameters used
 
 ## Inputs
 
 - `AudioVersion`
 - explicit parameters or an `EditPlan`
+- published operation contracts that must stay aligned with emitted `TransformRecord` data
 
 ## Outputs
 
@@ -36,6 +37,7 @@ Own deterministic audio editing and signal transformation.
 - semantic labeling logic
 - file ingestion policy
 - workflow orchestration
+- hidden capability discovery for planning
 
 ## Coordination rules
 
@@ -51,4 +53,4 @@ Own deterministic audio editing and signal transformation.
 
 ## Success criteria
 
-The module can apply edits reliably and produce traceable records of exactly what changed.
+The module can apply explicit edits reliably and produce traceable records of exactly what changed without requiring intent-layer inference at execution time.
