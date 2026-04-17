@@ -72,10 +72,13 @@ describe("capabilities module", () => {
 
   it("exposes stable capability lookup by operation name", () => {
     const gain = getRuntimeOperationCapability("gain");
-
-    expect(gain).toBe(
-      defaultRuntimeCapabilityManifest.operations.find((operation) => operation.name === "gain"),
+    const expectedGain = defaultRuntimeCapabilityManifest.operations.find(
+      (operation) => operation.name === "gain",
     );
+
+    expect(expectedGain).toBeDefined();
+    expect(gain).toBe(expectedGain);
+    expect(gain).toBeDefined();
     expect(gain.parameters).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
