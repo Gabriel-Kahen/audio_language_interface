@@ -57,5 +57,10 @@
     "primary_class": "drum_loop",
     "pitched": false,
     "confidence": 0.94
+  },
+  "material_character": {
+    "classification": "loop",
+    "confidence": 0.9,
+    "evidence": "active material covers 100% of the file with repeated transient activity"
   }
 }

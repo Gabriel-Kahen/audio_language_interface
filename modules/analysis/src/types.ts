@@ -43,6 +43,16 @@ export interface PitchCenterEstimate {
   voiced_window_ratio: number;
 }
 
+/** Conservative material classification for loop-versus-shot consumers. */
+export type MaterialCharacterClassification = "one_shot" | "loop" | "unknown";
+
+/** Conservative material classification with explicit uncertainty. */
+export interface MaterialCharacter {
+  classification: MaterialCharacterClassification;
+  confidence: number;
+  evidence?: string;
+}
+
 /** Single machine-readable transient event emitted by the transient detector. */
 export interface TransientEvent {
   time_seconds: number;
@@ -130,6 +140,7 @@ export interface AnalysisReport {
   annotations?: AnalysisAnnotation[];
   segments?: AnalysisSegment[];
   source_character?: SourceCharacter;
+  material_character?: MaterialCharacter;
 }
 
 /** Decoded floating-point audio representation used internally by analyzers. */

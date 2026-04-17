@@ -355,7 +355,76 @@ describe("analyzeAudioVersion", () => {
       expect(report.measurements.artifacts.clipping_detected).toBe(false);
       expect(report.segments?.some((segment) => segment.kind === "silence")).toBe(true);
       expect(report.source_character?.pitched).toBe(true);
+      expect(report.material_character?.classification).toBe("one_shot");
+      expect(report.material_character?.confidence).toBeGreaterThan(0.8);
+      expect(report.material_character?.evidence).toContain(
+        "bounded by leading and trailing silence",
+      );
       expect(report.summary.plain_text.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("classifies dense full-file transient material as a loop", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 48000;
+      const durationSeconds = 2;
+      const storageRef = "storage/audio/test-loop-material.wav";
+      const channels = createTransientClipSignal(sampleRateHz, durationSeconds);
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const report = await analyzeAudioVersion(
+        createAudioVersion(storageRef, sampleRateHz, channels.length, getFrameCount(channels)),
+        {
+          workspaceRoot,
+          generatedAt: "2026-04-14T20:20:10Z",
+        },
+      );
+
+      expect(report.segments).toEqual([
+        {
+          kind: "loop",
+          start_seconds: 0,
+          end_seconds: durationSeconds,
+        },
+      ]);
+      expect(report.measurements.dynamics.transient_density_per_second).toBeGreaterThan(1.5);
+      expect(report.material_character?.classification).toBe("loop");
+      expect(report.material_character?.confidence).toBeGreaterThan(0.84);
+      expect(report.material_character?.evidence).toContain("repeated transient activity");
+    });
+  });
+
+  it("keeps sustained low-transient material as unknown when loop evidence is weak", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 44100;
+      const durationSeconds = 2;
+      const storageRef = "storage/audio/test-unknown-material.wav";
+      const channels = createStableWideStereoSignal(sampleRateHz, durationSeconds);
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const report = await analyzeAudioVersion(
+        createAudioVersion(storageRef, sampleRateHz, channels.length, getFrameCount(channels)),
+        {
+          workspaceRoot,
+          generatedAt: "2026-04-14T20:20:10Z",
+        },
+      );
+
+      expect(report.segments).toEqual([
+        {
+          kind: "loop",
+          start_seconds: 0,
+          end_seconds: durationSeconds,
+        },
+      ]);
+      expect(report.measurements.dynamics.transient_density_per_second).toBeLessThan(1.5);
+      expect(report.material_character).toEqual({
+        classification: "unknown",
+        confidence: 0.25,
+        evidence: "no clear repeated loop pattern or isolated one-shot envelope",
+      });
     });
   });
 

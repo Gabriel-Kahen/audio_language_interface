@@ -207,6 +207,23 @@
           "$ref": "./common.schema.json#/$defs/confidence"
         }
       }
+    },
+    "material_character": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification", "confidence"],
+      "properties": {
+        "classification": {
+          "type": "string",
+          "enum": ["one_shot", "loop", "unknown"]
+        },
+        "confidence": {
+          "$ref": "./common.schema.json#/$defs/confidence"
+        },
+        "evidence": {
+          "type": "string"
+        }
+      }
     }
   }
 }

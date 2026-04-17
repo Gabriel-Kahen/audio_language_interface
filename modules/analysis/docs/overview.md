@@ -36,7 +36,7 @@ import {
 3. loads PCM data from a `.wav` file
 4. verifies the decoded WAV metadata against `AudioVersion.audio` before analysis continues
 5. measures integrated loudness and true peak with FFmpeg `loudnorm`
-6. runs levels, segments, dynamics, spectrum, stereo, artifact, and source-character analyzers
+6. runs levels, segments, dynamics, spectrum, stereo, artifact, source-character, and material-character analyzers
 7. builds a contract-aligned `AnalysisReport`
 8. validates the final report against the `AnalysisReport` schema before returning it
 
@@ -79,10 +79,10 @@ The emitted `AnalysisReport` always includes these measurement families:
 
 It may also include:
 
-- `annotations` for clipping, localized brightness, localized harshness, and transient-impact hotspots
 - `annotations` for clipping, localized brightness, localized harshness, transient-impact hotspots, sustained noise-like regions, and localized stereo-width or width-ambiguity evidence
 - `segments` describing `silence`, `active`, or a synthetic full-file `loop` segment
 - `source_character` for a coarse baseline class such as `drum_loop`, `tonal_phrase`, `ambience`, or `mixed_program`
+- `material_character` for conservative `one_shot`, `loop`, or `unknown` classification with explicit confidence and evidence
 - `summary.confidence` as a bounded heuristic confidence score from `0` to `1`
 
 The standalone transient detector does not extend `AnalysisReport`; it returns a separate
@@ -139,6 +139,7 @@ See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, an
 - `src/analyzers/segments.ts`: silence, onsets, sections, events
 - `src/analyzers/transients.ts`: transient-map detection and event picking
 - `src/analyzers/source-character.ts`: coarse source classification
+- `src/analyzers/material-character.ts`: conservative one-shot vs loop classification
 - `src/detect-transients.ts`: public transient-map entrypoint
 - `src/estimate-tempo.ts`: public tempo-estimation entrypoint
 - `src/estimate-pitch-center.ts`: public pitch-center estimation entrypoint
@@ -180,6 +181,9 @@ See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, an
 - Segment detection is energy-threshold based and only emits `active`, `silence`, or a synthetic full-length `loop` segment.
 - Source classification is a coarse heuristic and not a trained classifier.
 - Pitch-center estimation uses a conservative multi-window normalized autocorrelation pass and can still miss very weak, heavily inharmonic, or rapidly gliding material.
+- Material classification is intentionally conservative and leaves weakly evidenced cases as `unknown`.
+- Pitch detection uses a short autocorrelation-like pass over the beginning of the file only.
+- Pitch-center estimation uses a conservative multi-window normalized autocorrelation pass and can still miss very weak, heavily inharmonic, or rapidly gliding material.
 - Summary text is generated from heuristics and should not be treated as a complete verbal description of the signal.
 
 ## Test expectations
@@ -200,6 +204,7 @@ Current coverage in `modules/analysis/tests/analyze-audio.test.ts` validates:
 - transient-impact annotations and punch-window metrics
 - sustained noise annotations tied to elevated broadband floor evidence
 - localized stereo-width and stereo-ambiguity annotations
+- conservative material classification for `one_shot`, `loop`, and `unknown`
 - transient-map event detection with stable onset timestamps
 - standalone tempo estimation on synthetic metronomic pulse fixtures
 Additional coverage in `modules/analysis/tests/estimate-pitch-center.test.ts` validates:

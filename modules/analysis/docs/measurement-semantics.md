@@ -18,7 +18,8 @@ This document records the actual semantics of the current `modules/analysis` imp
 8. artifacts
 9. pitch-center estimation
 10. source-character classification
-11. report construction and schema validation
+11. material-character classification
+12. report construction and schema validation
 
 `detectTransients` uses the same decode and normalization path but skips report construction
 and returns a standalone transient map.
@@ -254,6 +255,21 @@ Confidence values are fixed by class in the current implementation:
 - `ambience`: `0.7`
 - `mixed_program`: `0.55`
 
+## Material-character classification
+
+Classification is intentionally conservative and only resolves when the segment structure and
+transient behavior agree:
+
+- `loop` when the segment analyzer emitted a synthetic full-file `loop` segment and transient density is at least `1.5` events per second
+- `one_shot` when there is exactly one active region, both file boundaries are silence, active coverage is at most `80%`, and transient density is below `1.5`
+- otherwise `unknown`
+
+Confidence is heuristic:
+
+- `loop`: `0.84` plus up to `0.08` from transient density, capped at `0.95`
+- `one_shot`: `0.82` plus up to `0.08` from inactive coverage, capped at `0.92`
+- `unknown`: `0.25`
+
 ## Summary generation
 
 The summary is generated from measurement heuristics only.
@@ -265,7 +281,9 @@ The summary is generated from measurement heuristics only.
 - stereo descriptor:
   - `mono` when width `< 0.05`
   - `narrow stereo` when width `< 0.2`
-  - otherwise `wide stereo`
+  - `stereo spread with ambiguous width cues` when ambiguity evidence exists or correlation `< 0.1`
+  - `wide stereo` when sustained `stereo_width` evidence exists and correlation `>= 0.15`
+  - otherwise `stereo spread`
 - transient phrase:
   - `with strong transient impact` when transient density is at least `1.5` or `transient_crest_db >= 10`
   - otherwise `with restrained transient activity`
