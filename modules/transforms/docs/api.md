@@ -436,6 +436,28 @@ Fixed execution behavior:
 - FFmpeg filter: `pan`
 - each input channel gets an equal coefficient of `1 / input_channel_count`
 
+### `pan`
+
+Parameters:
+
+- `position: number`
+
+Rules:
+
+- `position` must stay between `-1` and `1`
+- mono input is expanded to stereo with deterministic constant-power gains
+- stereo input is treated as a balance adjustment, not a speaker-field panner
+
+Target support:
+
+- `full_file` only
+
+Fixed execution behavior:
+
+- FFmpeg filter: `pan`
+- mono input emits a stereo output with explicit left and right gains
+- stereo input attenuates one side or the other without changing channel count
+
 ### `channel_swap`
 
 Parameters:
@@ -454,6 +476,28 @@ Target support:
 Fixed execution behavior:
 
 - FFmpeg filter: `pan=stereo|c0=c1|c1=c0`
+
+### `channel_remap`
+
+Parameters:
+
+- `output_channels: integer`
+- `routes: array`
+
+Rules:
+
+- `output_channels` must stay between `1` and `8`
+- `routes` must be a non-empty array of `{ output_channel, input_channel, gain? }`
+- route gains must stay within the published runtime range
+
+Target support:
+
+- `full_file` only
+
+Fixed execution behavior:
+
+- FFmpeg filter: `pan`
+- each output channel expression is built explicitly from the requested route matrix
 
 ### `stereo_balance_correction`
 
@@ -478,6 +522,28 @@ Fixed execution behavior:
 - FFmpeg filter: `pan`
 - `target_channel: "left"` attenuates `c0`
 - `target_channel: "right"` attenuates `c1`
+
+### `mid_side_eq`
+
+Parameters:
+
+- optional `mid_bands`
+- optional `side_bands`
+
+Rules:
+
+- at least one of `mid_bands` or `side_bands` is required
+- each band must be a bell-band object with `type`, `frequency_hz`, `gain_db`, and `q`
+- input audio must be stereo with exactly `2` channels
+
+Target support:
+
+- `full_file` only
+
+Fixed execution behavior:
+
+- FFmpeg filter family: `stereotools`, `equalizer`, `stereotools`
+- the module converts left/right to mid/side, applies any requested bell bands, then converts back to left/right
 
 ### `stereo_width`
 

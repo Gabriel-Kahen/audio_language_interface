@@ -184,10 +184,26 @@
             }
           },
           {
+            "if": { "properties": { "operation": { "const": "pan" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/panParameters" }
+              }
+            }
+          },
+          {
             "if": { "properties": { "operation": { "const": "channel_swap" } } },
             "then": {
               "properties": {
                 "parameters": { "$ref": "./common.schema.json#/$defs/channelSwapParameters" }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "operation": { "const": "channel_remap" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/channelRemapParameters" }
               }
             }
           },
@@ -198,6 +214,14 @@
                 "parameters": {
                   "$ref": "./common.schema.json#/$defs/stereoBalanceCorrectionParameters"
                 }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "operation": { "const": "mid_side_eq" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/midSideEqParameters" }
               }
             }
           },

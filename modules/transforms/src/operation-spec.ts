@@ -1,6 +1,9 @@
 import {
+  buildChannelRemapOperation,
   buildChannelSwapOperation,
+  buildMidSideEqOperation,
   buildMonoSumOperation,
+  buildPanOperation,
   buildReverseOperation,
   buildStereoBalanceCorrectionOperation,
 } from "./operations/channel-utilities.js";
@@ -86,10 +89,16 @@ export function buildOperation(
       return buildReverseOperation(audio, parameters, target);
     case "mono_sum":
       return buildMonoSumOperation(audio, parameters, target);
+    case "pan":
+      return buildPanOperation(audio, parameters, target);
     case "channel_swap":
       return buildChannelSwapOperation(audio, parameters, target);
+    case "channel_remap":
+      return buildChannelRemapOperation(audio, parameters, target);
     case "stereo_balance_correction":
       return buildStereoBalanceCorrectionOperation(audio, parameters, target);
+    case "mid_side_eq":
+      return buildMidSideEqOperation(audio, parameters, target);
     case "stereo_width":
       return buildStereoWidthOperation(audio, parameters, target);
     case "denoise":

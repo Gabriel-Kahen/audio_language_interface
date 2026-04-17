@@ -177,6 +177,61 @@ describe("buildOperation", () => {
     });
   });
 
+  it("normalizes pan, channel_remap, and mid_side_eq into explicit FFmpeg filters", () => {
+    const pannedMono = buildOperation(
+      createRealAudioVersionFixtureAudio(1, 44100, 1),
+      "pan",
+      {
+        position: 1,
+      },
+      { scope: "full_file" },
+    );
+    const remapped = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "channel_remap",
+      {
+        output_channels: 1,
+        routes: [{ output_channel: 0, input_channel: 1, gain: 0.5 }],
+      },
+      { scope: "full_file" },
+    );
+    const midSideEq = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "mid_side_eq",
+      {
+        mid_bands: [{ type: "bell", frequency_hz: 220, gain_db: -1.5, q: 1.2 }],
+        side_bands: [{ type: "bell", frequency_hz: 660, gain_db: 3, q: 1.1 }],
+      },
+      { scope: "full_file" },
+    );
+
+    expect(pannedMono.filterChain).toBe("pan=stereo|c0=0*c0|c1=1*c0");
+    expect(pannedMono.effectiveParameters).toEqual({
+      position: 1,
+      resolved_mode: "mono_to_stereo",
+      left_gain: 0,
+      right_gain: 1,
+    });
+    expect(pannedMono.nextAudio.channels).toBe(2);
+    expect(pannedMono.nextAudio.channel_layout).toBe("stereo");
+
+    expect(remapped.filterChain).toBe("pan=mono|c0=0.5*c1");
+    expect(remapped.effectiveParameters).toEqual({
+      output_channels: 1,
+      routes: [{ output_channel: 0, input_channel: 1, gain: 0.5 }],
+    });
+    expect(remapped.nextAudio.channels).toBe(1);
+    expect(remapped.nextAudio.channel_layout).toBe("mono");
+
+    expect(midSideEq.filterChain).toBe(
+      "stereotools=mode=lr>ms,equalizer=f=220:t=q:w=1.2:g=-1.5:c=FL,equalizer=f=660:t=q:w=1.1:g=3:c=FR,stereotools=mode=ms>lr",
+    );
+    expect(midSideEq.effectiveParameters).toEqual({
+      mid_bands: [{ type: "bell", frequency_hz: 220, gain_db: -1.5, q: 1.2 }],
+      side_bands: [{ type: "bell", frequency_hz: 660, gain_db: 3, q: 1.1 }],
+    });
+  });
+
   it("normalizes compressor parameters into an explicit FFmpeg filter", () => {
     const result = buildOperation(
       createAudioVersion("storage/audio/source.wav").audio,
@@ -599,6 +654,50 @@ describe("buildOperation", () => {
     ).toThrow(/requires stereo 2-channel audio/);
   });
 
+  it("rejects invalid stereo-routing parameters", () => {
+    expect(() =>
+      buildOperation(
+        {
+          ...createAudioVersion("storage/audio/source.wav").audio,
+          channels: 3,
+          channel_layout: "3.0",
+        },
+        "pan",
+        {
+          position: 0.2,
+        },
+        { scope: "full_file" },
+      ),
+    ).toThrow(/mono or stereo input/);
+
+    expect(() =>
+      buildOperation(
+        createAudioVersion("storage/audio/source.wav").audio,
+        "channel_remap",
+        {
+          output_channels: 2,
+          routes: [],
+        },
+        { scope: "full_file" },
+      ),
+    ).toThrow(/non-empty array/);
+
+    expect(() =>
+      buildOperation(
+        {
+          ...createAudioVersion("storage/audio/source.wav").audio,
+          channels: 1,
+          channel_layout: "mono",
+        },
+        "mid_side_eq",
+        {
+          side_bands: [{ type: "bell", frequency_hz: 660, gain_db: 3, q: 1.1 }],
+        },
+        { scope: "full_file" },
+      ),
+    ).toThrow(/requires stereo 2-channel audio/);
+  });
+
   it("rejects denoise noise floors above the supported range", () => {
     expect(() =>
       buildOperation(
@@ -838,6 +937,135 @@ describe("applyOperation", () => {
         operation: "stereo_width",
         parameters: {
           width_multiplier: 1.5,
+        },
+        status: "applied",
+      },
+    ]);
+  });
+
+  it("applies stereo-routing primitives deterministically and preserves the requested channel behavior", async () => {
+    const panWorkspaceRoot = await createWorkspace();
+    const panVersion = await createRealAudioVersionFixture(panWorkspaceRoot, {
+      durationSeconds: 1,
+      sampleRateHz: 44100,
+      channels: 1,
+    });
+    const panResult = await applyOperation({
+      workspaceRoot: panWorkspaceRoot,
+      version: panVersion,
+      operation: "pan",
+      parameters: {
+        position: 1,
+      },
+      outputVersionId: "ver_01HZY000000000000000000P1",
+      recordId: "transform_01HZY00000000000000000P1",
+      createdAt: new Date("2026-04-17T18:30:18Z"),
+    });
+
+    const pannedMetadata = await probeAudioMetadata(
+      path.join(panWorkspaceRoot, panResult.outputVersion.audio.storage_ref),
+    );
+    const [panLeft, panRight] = await readWaveSamples(
+      path.join(panWorkspaceRoot, panResult.outputVersion.audio.storage_ref),
+    );
+
+    if (panLeft === undefined || panRight === undefined) {
+      throw new Error("Expected stereo pan output to contain two channels.");
+    }
+
+    expect(pannedMetadata.channels).toBe(2);
+    expect(computeChannelRms(panLeft)).toBe(0);
+    expect(computeChannelRms(panRight)).toBeGreaterThan(1000);
+    expect(panResult.transformRecord.operations).toEqual([
+      {
+        operation: "pan",
+        parameters: {
+          position: 1,
+          resolved_mode: "mono_to_stereo",
+          left_gain: 0,
+          right_gain: 1,
+        },
+        status: "applied",
+      },
+    ]);
+
+    const remapWorkspaceRoot = await createWorkspace();
+    const remapVersion = await createAsymmetricStereoFixture(remapWorkspaceRoot);
+    const remapResult = await applyOperation({
+      workspaceRoot: remapWorkspaceRoot,
+      version: remapVersion,
+      operation: "channel_remap",
+      parameters: {
+        output_channels: 1,
+        routes: [{ output_channel: 0, input_channel: 1 }],
+      },
+      outputVersionId: "ver_01HZY000000000000000000P2",
+      recordId: "transform_01HZY00000000000000000P2",
+      createdAt: new Date("2026-04-17T18:30:18Z"),
+    });
+
+    const remappedDominantFrequency = await measureDominantFrequencyHz(
+      path.join(remapWorkspaceRoot, remapResult.outputVersion.audio.storage_ref),
+    );
+
+    expect(remappedDominantFrequency).toBeGreaterThan(430);
+    expect(remappedDominantFrequency).toBeLessThan(450);
+    expect(remapResult.transformRecord.operations).toEqual([
+      {
+        operation: "channel_remap",
+        parameters: {
+          output_channels: 1,
+          routes: [{ output_channel: 0, input_channel: 1, gain: 1 }],
+        },
+        status: "applied",
+      },
+    ]);
+
+    const midSideWorkspaceRoot = await createWorkspace();
+    const midSideVersion = await createStereoWidthFixture(midSideWorkspaceRoot);
+    const firstMidSideResult = await applyOperation({
+      workspaceRoot: midSideWorkspaceRoot,
+      version: midSideVersion,
+      operation: "mid_side_eq",
+      parameters: {
+        side_bands: [{ type: "bell", frequency_hz: 660, gain_db: 6, q: 1.2 }],
+      },
+      outputVersionId: "ver_01HZY000000000000000000P3",
+      recordId: "transform_01HZY00000000000000000P3",
+      createdAt: new Date("2026-04-17T18:30:18Z"),
+    });
+    const secondMidSideResult = await applyOperation({
+      workspaceRoot: midSideWorkspaceRoot,
+      version: midSideVersion,
+      operation: "mid_side_eq",
+      parameters: {
+        side_bands: [{ type: "bell", frequency_hz: 660, gain_db: 6, q: 1.2 }],
+      },
+      outputVersionId: "ver_01HZY000000000000000000P4",
+      recordId: "transform_01HZY00000000000000000P4",
+      createdAt: new Date("2026-04-17T18:30:18Z"),
+    });
+
+    const sourceWidth = await measureMidSideBalanceDb(
+      path.join(midSideWorkspaceRoot, midSideVersion.audio.storage_ref),
+    );
+    const eqWidth = await measureMidSideBalanceDb(
+      path.join(midSideWorkspaceRoot, firstMidSideResult.outputVersion.audio.storage_ref),
+    );
+    const firstMidSideBytes = await readFile(
+      path.join(midSideWorkspaceRoot, firstMidSideResult.outputVersion.audio.storage_ref),
+    );
+    const secondMidSideBytes = await readFile(
+      path.join(midSideWorkspaceRoot, secondMidSideResult.outputVersion.audio.storage_ref),
+    );
+
+    expect(eqWidth.sideMinusMidDb).toBeGreaterThan(sourceWidth.sideMinusMidDb + 1.5);
+    expect(firstMidSideBytes.equals(secondMidSideBytes)).toBe(true);
+    expect(firstMidSideResult.transformRecord.operations).toEqual([
+      {
+        operation: "mid_side_eq",
+        parameters: {
+          side_bands: [{ type: "bell", frequency_hz: 660, gain_db: 6, q: 1.2 }],
         },
         status: "applied",
       },

@@ -84,8 +84,11 @@ Supported but conservative areas:
 - `time_stretch`
 - `reverse`
 - `mono_sum`
+- `pan`
 - `channel_swap`
+- `channel_remap`
 - `stereo_balance_correction`
+- `mid_side_eq`
 - `stereo_width`
 - `denoise`
 - `reverb`
@@ -112,7 +115,7 @@ The baseline planner currently plans only against operations marked `planner_sup
 - `stereo_width`
 - `denoise`
 
-`time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility operations, and the new Layer 1 effect operations are runtime-available but not yet selected by the baseline planner.
+`time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility and stereo-routing operations, and the new Layer 1 effect operations are runtime-available but not yet selected by the baseline planner.
 
 ### Implemented Tool Surface
 

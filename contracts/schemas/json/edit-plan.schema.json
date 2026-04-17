@@ -211,11 +211,29 @@
             }
           },
           {
+            "if": { "properties": { "operation": { "const": "pan" } } },
+            "then": {
+              "properties": {
+                "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
+                "parameters": { "$ref": "./common.schema.json#/$defs/panParameters" }
+              }
+            }
+          },
+          {
             "if": { "properties": { "operation": { "const": "channel_swap" } } },
             "then": {
               "properties": {
                 "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
                 "parameters": { "$ref": "./common.schema.json#/$defs/channelSwapParameters" }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "operation": { "const": "channel_remap" } } },
+            "then": {
+              "properties": {
+                "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
+                "parameters": { "$ref": "./common.schema.json#/$defs/channelRemapParameters" }
               }
             }
           },
@@ -227,6 +245,15 @@
                 "parameters": {
                   "$ref": "./common.schema.json#/$defs/stereoBalanceCorrectionParameters"
                 }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "operation": { "const": "mid_side_eq" } } },
+            "then": {
+              "properties": {
+                "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
+                "parameters": { "$ref": "./common.schema.json#/$defs/midSideEqParameters" }
               }
             }
           },

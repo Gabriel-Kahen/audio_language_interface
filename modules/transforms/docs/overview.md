@@ -49,8 +49,11 @@ The implemented operation set is currently:
 - `time_stretch`
 - `reverse`
 - `mono_sum`
+- `pan`
 - `channel_swap`
+- `channel_remap`
 - `stereo_balance_correction`
+- `mid_side_eq`
 - `stereo_width`
 - `denoise`
 - `reverb`
@@ -78,8 +81,11 @@ Target support is intentionally narrow in the initial implementation:
 - `time_stretch` only accepts `full_file`, using either `stretch_ratio` or `source_tempo_bpm` plus `target_tempo_bpm`
 - `reverse` only accepts `full_file`
 - `mono_sum` only accepts `full_file`
+- `pan` only accepts `full_file` and currently supports mono or stereo input only
 - `channel_swap` only accepts `full_file` and requires stereo 2-channel input
+- `channel_remap` only accepts `full_file`
 - `stereo_balance_correction` only accepts `full_file` and requires stereo 2-channel input
+- `mid_side_eq` only accepts `full_file` and requires stereo 2-channel input
 - `stereo_width` only accepts `full_file` and requires stereo 2-channel input
 - `denoise` only accepts `full_file`
 - `reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, and `phaser` only accept `full_file`
@@ -164,8 +170,11 @@ This module consumes and emits repository contracts directly:
 - `time_stretch` uses FFmpeg `atempo` with explicit caller-supplied timing parameters. Tempo matching is supported only when the caller already knows `source_tempo_bpm` and `target_tempo_bpm`; this module does not estimate tempo itself.
 - `reverse` uses FFmpeg `areverse` over the full rendered stream. It does not expose partial reverse regions or block-wise tape-style reversal.
 - `mono_sum` renders a mono file by averaging all input channels equally. It does not preserve the original channel count or expose alternate downmix matrices.
+- `pan` currently supports two modes only: mono-to-stereo placement and stereo balance adjustment. It does not expose automation, multichannel panning, or surround speaker positioning.
 - `channel_swap` is locked to stereo 2-channel material and only swaps left and right. It does not expose arbitrary multichannel remapping.
+- `channel_remap` exposes an explicit route matrix with optional per-route gain for up to 8 output channels. It does not yet expose named speaker-layout presets, implicit mix rules, or region targeting.
 - `stereo_balance_correction` attenuates one named stereo channel by an explicit amount. It does not auto-measure the source imbalance or boost the quieter channel.
+- `mid_side_eq` requires stereo input and currently supports only bell bands on the mid and/or side components. It does not yet expose shelves, filters, dynamics, or region targeting in M/S space.
 - `stereo_width` uses FFmpeg `extrastereo` with clipping disabled and only supports stereo 2-channel material. It is intended for subtle widening or narrowing, not aggressive spatial effects or multichannel imaging.
 - `denoise` uses FFmpeg `afftdn` with a fixed broadband profile, explicit reduction, explicit or defaulted noise floor, and adaptive tracking disabled. It is intentionally conservative and is best suited to steady broadband noise rather than clicks, hum removal, or profile-learned restoration.
 - `trim_silence` uses a fixed RMS detector with `start_mode=all`; callers control only threshold, optional analysis window, and whether to crop the head, tail, or both.
@@ -190,5 +199,5 @@ Module-local tests cover:
 - ordered edit plan execution
 - workspace-relative output path behavior
 - real compressor, limiter, time stretch, stereo width, denoise, and pitch-shift output verification
-- real reverse, mono-sum, channel-swap, and stereo-balance-correction output verification
+- real reverse, mono-sum, pan, channel-swap, channel-remap, stereo-balance-correction, and mid-side-EQ output verification
 - JSON Schema alignment for emitted `AudioVersion` and `TransformRecord`
