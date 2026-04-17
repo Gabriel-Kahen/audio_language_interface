@@ -35,6 +35,7 @@ const SUPPORTED_EDIT_PLAN_OPERATIONS = new Set<OperationName>([
   "low_pass_filter",
   "compressor",
   "limiter",
+  "time_stretch",
   "reverse",
   "mono_sum",
   "channel_swap",
