@@ -130,7 +130,7 @@ Validates one operation and converts it into an inspectable intermediate form:
 
 This function does not touch the filesystem and does not run FFmpeg.
 
-For the Layer 1 effect family (`reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, and `phaser`), the published contract surface is the caller-facing parameter object plus the recorded `TransformRecord` parameters. Some operations also record derived values such as generated reverb tap timings or normalized defaults when those values describe the exact applied result.
+For the Layer 1 effect family (`reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, and `phaser`) and the transient/control family (`transient_shaper`, `clipper`, and `gate`), the published contract surface is the caller-facing parameter object plus the recorded `TransformRecord` parameters. Some operations also record derived values such as generated reverb tap timings or normalized defaults when those values describe the exact applied result.
 
 ## Operation reference
 
@@ -689,6 +689,83 @@ Rules:
 Target support:
 
 - `full_file` only
+
+### `transient_shaper`
+
+Parameters:
+
+- `attack_amount_db: number`
+- `threshold_db: number`
+- optional `attack_ms`, default `5`
+- optional `release_ms`, default `80`
+
+Rules:
+
+- positive `attack_amount_db` emphasizes attack transients; negative values soften them
+- `threshold_db` must stay between `-60` and `0`
+- `attack_ms` and `release_ms` must stay inside the published runtime ranges when provided
+
+Target support:
+
+- `full_file` only
+
+FFmpeg filter family:
+
+```text
+compand=...
+```
+
+### `clipper`
+
+Parameters:
+
+- `ceiling_dbfs: number`
+- optional `input_gain_db`, default `0`
+- optional `output_gain_db`, default `0`
+- optional `oversample_factor`, default `2`
+
+Rules:
+
+- `ceiling_dbfs` must stay between `-24` and `0`
+- optional gain controls must stay inside the published runtime range
+- `oversample_factor` must be an integer between `1` and `8`
+
+Target support:
+
+- `full_file` only
+
+FFmpeg filter family:
+
+```text
+volume=...,asoftclip=...
+```
+
+### `gate`
+
+Parameters:
+
+- `threshold_db: number`
+- optional `range_db`, default `60`
+- optional `ratio`, default `8`
+- optional `attack_ms`, default `5`
+- optional `release_ms`, default `80`
+
+Rules:
+
+- `threshold_db` must stay between `-80` and `0`
+- `range_db` must stay between `0` and `96`
+- `ratio` must be greater than `1`
+- timing parameters must stay inside the published runtime ranges when provided
+
+Target support:
+
+- `full_file` only
+
+FFmpeg filter family:
+
+```text
+agate=...
+```
 
 ### `time_stretch`
 

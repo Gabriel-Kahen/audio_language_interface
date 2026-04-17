@@ -46,6 +46,9 @@ The implemented operation set is currently:
 - `low_pass_filter`
 - `compressor`
 - `limiter`
+- `transient_shaper`
+- `clipper`
+- `gate`
 - `time_stretch`
 - `reverse`
 - `mono_sum`
@@ -73,7 +76,7 @@ Slice extraction is implemented separately from the published edit-plan operatio
 Target support is intentionally narrow in the initial implementation:
 
 - `gain`, `normalize`, `parametric_eq`, `high_pass_filter`, and `low_pass_filter` only accept `full_file`
-- `compressor` and `limiter` only accept `full_file`
+- `compressor`, `limiter`, `transient_shaper`, `clipper`, and `gate` only accept `full_file`
 - `pitch_shift` only accepts `full_file`
 - `time_stretch` only accepts `full_file`, using either `stretch_ratio` or `source_tempo_bpm` plus `target_tempo_bpm`
 - `reverse` only accepts `full_file`
@@ -161,6 +164,9 @@ This module consumes and emits repository contracts directly:
 - The new Layer 1 effects intentionally publish coarse, explicit caller-facing controls first. They do not yet expose region targeting, tempo sync, automation lanes, or multi-tap graph construction through the contract surface.
 - `compressor` exposes only downward RMS compression with explicit threshold, ratio, attack, release, and optional makeup gain. It does not expose upward compression, dry/wet mixing, sidechain input, or alternate detection/link modes.
 - `limiter` exposes only ceiling, attack, and release. Automatic gain staging is disabled deliberately so the emitted `TransformRecord` stays explicit and inspectable.
+- `transient_shaper` exposes a single signed attack emphasis amount plus threshold and timing controls. It does not yet expose separate sustain control, overshoot shaping, multiband operation, or region targeting.
+- `clipper` exposes deterministic hard clipping with explicit ceiling, optional input/output gain, and oversampling. It does not yet expose soft-curve families, multiband clipping, or region targeting.
+- `gate` exposes downward RMS gating with explicit threshold, range, ratio, and timing. It does not yet expose hysteresis, hold time, key filters, sidechain input, or region targeting.
 - `time_stretch` uses FFmpeg `atempo` with explicit caller-supplied timing parameters. Tempo matching is supported only when the caller already knows `source_tempo_bpm` and `target_tempo_bpm`; this module does not estimate tempo itself.
 - `reverse` uses FFmpeg `areverse` over the full rendered stream. It does not expose partial reverse regions or block-wise tape-style reversal.
 - `mono_sum` renders a mono file by averaging all input channels equally. It does not preserve the original channel count or expose alternate downmix matrices.

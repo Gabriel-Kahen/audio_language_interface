@@ -229,6 +229,74 @@ describe("buildOperation", () => {
     });
   });
 
+  it("normalizes transient_shaper, clipper, and gate into explicit FFmpeg filters", () => {
+    const transientShaper = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "transient_shaper",
+      {
+        attack_amount_db: 5,
+        threshold_db: -24,
+        attack_ms: 3,
+        release_ms: 90,
+      },
+      { scope: "full_file" },
+    );
+    const clipper = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "clipper",
+      {
+        ceiling_dbfs: -9,
+        input_gain_db: 6,
+        output_gain_db: 0,
+        oversample_factor: 4,
+      },
+      { scope: "full_file" },
+    );
+    const gate = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "gate",
+      {
+        threshold_db: -36,
+        range_db: 72,
+        ratio: 10,
+        attack_ms: 2,
+        release_ms: 120,
+      },
+      { scope: "full_file" },
+    );
+
+    expect(transientShaper.filterChain).toBe(
+      "compand=attacks=0.003:decays=0.09:points=-90/-90|-24/-24|0/5:soft-knee=1:gain=0:volume=0:delay=0.003",
+    );
+    expect(transientShaper.effectiveParameters).toEqual({
+      attack_amount_db: 5,
+      threshold_db: -24,
+      attack_ms: 3,
+      release_ms: 90,
+    });
+
+    expect(clipper.filterChain).toBe(
+      "volume=6dB,asoftclip=type=hard:threshold=1:output=1:param=1:oversample=4,volume=-9dB",
+    );
+    expect(clipper.effectiveParameters).toEqual({
+      ceiling_dbfs: -9,
+      input_gain_db: 6,
+      output_gain_db: 0,
+      oversample_factor: 4,
+    });
+
+    expect(gate.filterChain).toBe(
+      "agate=level_in=1:mode=downward:range=0.000251:threshold=0.015849:ratio=10:attack=2:release=120:makeup=1:knee=1:detection=rms:link=maximum",
+    );
+    expect(gate.effectiveParameters).toEqual({
+      threshold_db: -36,
+      range_db: 72,
+      ratio: 10,
+      attack_ms: 2,
+      release_ms: 120,
+    });
+  });
+
   it("keeps explicit time-stretch ratio behavior working", () => {
     const result = buildOperation(
       createAudioVersion("storage/audio/source.wav").audio,
@@ -538,6 +606,44 @@ describe("buildOperation", () => {
     ).toThrow(/between -24 and 0/);
   });
 
+  it("rejects invalid transient/control parameters", () => {
+    expect(() =>
+      buildOperation(
+        createAudioVersion("storage/audio/source.wav").audio,
+        "transient_shaper",
+        {
+          attack_amount_db: 20,
+          threshold_db: -24,
+        },
+        { scope: "full_file" },
+      ),
+    ).toThrow(/attack_amount_db/);
+
+    expect(() =>
+      buildOperation(
+        createAudioVersion("storage/audio/source.wav").audio,
+        "clipper",
+        {
+          ceiling_dbfs: -9,
+          oversample_factor: 2.5,
+        },
+        { scope: "full_file" },
+      ),
+    ).toThrow(/oversample_factor/);
+
+    expect(() =>
+      buildOperation(
+        createAudioVersion("storage/audio/source.wav").audio,
+        "gate",
+        {
+          threshold_db: -36,
+          ratio: 1,
+        },
+        { scope: "full_file" },
+      ),
+    ).toThrow(/ratio/);
+  });
+
   it("rejects time stretch parameters when ratio and tempo-match inputs are mixed", () => {
     expect(() =>
       buildOperation(
@@ -789,6 +895,151 @@ describe("applyOperation", () => {
       },
     ]);
     expect(result.transformRecord.warnings).toBeUndefined();
+  });
+
+  it("applies transient/control transforms deterministically with expected dynamics changes", async () => {
+    const transientWorkspaceRoot = await createWorkspace();
+    const transientVersion = await createTransientFixture(transientWorkspaceRoot);
+
+    const transientFirstResult = await applyOperation({
+      workspaceRoot: transientWorkspaceRoot,
+      version: transientVersion,
+      operation: "transient_shaper",
+      parameters: {
+        attack_amount_db: 5,
+        threshold_db: -24,
+        attack_ms: 3,
+        release_ms: 90,
+      },
+      outputVersionId: "ver_01HZY000000000000000000T1",
+      recordId: "transform_01HZY00000000000000000T1",
+      createdAt: new Date("2026-04-17T18:20:18Z"),
+    });
+    const transientSecondResult = await applyOperation({
+      workspaceRoot: transientWorkspaceRoot,
+      version: transientVersion,
+      operation: "transient_shaper",
+      parameters: {
+        attack_amount_db: 5,
+        threshold_db: -24,
+        attack_ms: 3,
+        release_ms: 90,
+      },
+      outputVersionId: "ver_01HZY000000000000000000T2",
+      recordId: "transform_01HZY00000000000000000T2",
+      createdAt: new Date("2026-04-17T18:20:18Z"),
+    });
+
+    const transientSourcePath = path.join(
+      transientWorkspaceRoot,
+      transientVersion.audio.storage_ref,
+    );
+    const transientOutputPath = path.join(
+      transientWorkspaceRoot,
+      transientFirstResult.outputVersion.audio.storage_ref,
+    );
+    const transientSourceCrest = await measurePeakToRmsDeltaDb(transientSourcePath);
+    const transientOutputCrest = await measurePeakToRmsDeltaDb(transientOutputPath);
+    const transientFirstBytes = await readFile(transientOutputPath);
+    const transientSecondBytes = await readFile(
+      path.join(transientWorkspaceRoot, transientSecondResult.outputVersion.audio.storage_ref),
+    );
+
+    expect(transientOutputCrest).toBeGreaterThan(transientSourceCrest + 0.7);
+    expect(transientFirstBytes.equals(transientSecondBytes)).toBe(true);
+    expect(transientFirstResult.transformRecord.operations).toEqual([
+      {
+        operation: "transient_shaper",
+        parameters: {
+          attack_amount_db: 5,
+          threshold_db: -24,
+          attack_ms: 3,
+          release_ms: 90,
+        },
+        status: "applied",
+      },
+    ]);
+
+    const clipperWorkspaceRoot = await createWorkspace();
+    const clipperVersion = await createRealAudioVersionFixture(clipperWorkspaceRoot, {
+      durationSeconds: 1,
+      sampleRateHz: 44100,
+      channels: 1,
+      peakAmplitude: 26000,
+    });
+    const clipperResult = await applyOperation({
+      workspaceRoot: clipperWorkspaceRoot,
+      version: clipperVersion,
+      operation: "clipper",
+      parameters: {
+        ceiling_dbfs: -9,
+        input_gain_db: 8,
+        output_gain_db: 0,
+        oversample_factor: 4,
+      },
+      outputVersionId: "ver_01HZY000000000000000000T3",
+      recordId: "transform_01HZY00000000000000000T3",
+      createdAt: new Date("2026-04-17T18:20:18Z"),
+    });
+
+    const clippedPeakDbfs = await measurePeakLevelDbfs(
+      path.join(clipperWorkspaceRoot, clipperResult.outputVersion.audio.storage_ref),
+    );
+
+    expect(clippedPeakDbfs).toBeLessThanOrEqual(-8.6);
+    expect(clipperResult.transformRecord.operations).toEqual([
+      {
+        operation: "clipper",
+        parameters: {
+          ceiling_dbfs: -9,
+          input_gain_db: 8,
+          output_gain_db: 0,
+          oversample_factor: 4,
+        },
+        status: "applied",
+      },
+    ]);
+
+    const gateWorkspaceRoot = await createWorkspace();
+    const gateVersion = await createNoisyAudioVersionFixture(gateWorkspaceRoot);
+    const gateResult = await applyOperation({
+      workspaceRoot: gateWorkspaceRoot,
+      version: gateVersion,
+      operation: "gate",
+      parameters: {
+        threshold_db: -36,
+        range_db: 72,
+        ratio: 10,
+        attack_ms: 2,
+        release_ms: 120,
+      },
+      outputVersionId: "ver_01HZY000000000000000000T4",
+      recordId: "transform_01HZY00000000000000000T4",
+      createdAt: new Date("2026-04-17T18:20:18Z"),
+    });
+
+    const gateSourcePath = path.join(gateWorkspaceRoot, gateVersion.audio.storage_ref);
+    const gateOutputPath = path.join(gateWorkspaceRoot, gateResult.outputVersion.audio.storage_ref);
+    const sourceNoiseRmsDb = await measureSegmentRmsLevelDb(gateSourcePath, 0, 0.2);
+    const gatedNoiseRmsDb = await measureSegmentRmsLevelDb(gateOutputPath, 0, 0.2);
+    const sourceToneRmsDb = await measureSegmentRmsLevelDb(gateSourcePath, 0.4, 0.8);
+    const gatedToneRmsDb = await measureSegmentRmsLevelDb(gateOutputPath, 0.4, 0.8);
+
+    expect(gatedNoiseRmsDb).toBeLessThan(sourceNoiseRmsDb - 10);
+    expect(gatedToneRmsDb).toBeGreaterThan(sourceToneRmsDb - 3);
+    expect(gateResult.transformRecord.operations).toEqual([
+      {
+        operation: "gate",
+        parameters: {
+          threshold_db: -36,
+          range_db: 72,
+          ratio: 10,
+          attack_ms: 2,
+          release_ms: 120,
+        },
+        status: "applied",
+      },
+    ]);
   });
 
   it("applies a real stereo width transform deterministically and increases side energy", async () => {
@@ -1750,6 +2001,28 @@ async function createNoisyAudioVersionFixture(workspaceRoot: string): Promise<Au
   });
 }
 
+async function createTransientFixture(workspaceRoot: string): Promise<AudioVersion> {
+  const sampleRateHz = 44100;
+  const durationSeconds = 1;
+  const totalFrames = Math.round(durationSeconds * sampleRateHz);
+  const mono = Array.from({ length: totalFrames }, (_, index) => {
+    const timeSeconds = index / sampleRateHz;
+    const cyclePosition = timeSeconds % 0.25;
+    const sustain = Math.sin((2 * Math.PI * 220 * index) / sampleRateHz) * 2200;
+    const transientEnvelope =
+      cyclePosition < 0.008 ? Math.sin((Math.PI * cyclePosition) / 0.008) : 0;
+    const transient = transientEnvelope * 15000;
+    return Math.round(sustain + transient);
+  });
+
+  return createCustomAudioVersionFixture(workspaceRoot, {
+    sampleRateHz,
+    channels: 1,
+    channelLayout: "mono",
+    samples: [mono],
+  });
+}
+
 async function createSilencePaddedAudioVersionFixture(
   workspaceRoot: string,
 ): Promise<AudioVersion> {
@@ -1955,6 +2228,19 @@ async function measureSegmentRmsLevelDb(
   ]);
 
   return parseLastMetricValue(stderr, /RMS level dB:\s*(-?\d+(?:\.\d+)?|-inf)/gu, "RMS level dB");
+}
+
+async function measureOverallRmsLevelDb(absolutePath: string): Promise<number> {
+  return measureFilteredRmsLevelDb(absolutePath, "astats=metadata=1:reset=0");
+}
+
+async function measurePeakToRmsDeltaDb(absolutePath: string): Promise<number> {
+  const [peakDbfs, rmsDb] = await Promise.all([
+    measurePeakLevelDbfs(absolutePath),
+    measureOverallRmsLevelDb(absolutePath),
+  ]);
+
+  return peakDbfs - rmsDb;
 }
 
 async function measureMidSideBalanceDb(absolutePath: string): Promise<{

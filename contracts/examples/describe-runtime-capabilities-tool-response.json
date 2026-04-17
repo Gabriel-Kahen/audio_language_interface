@@ -14,6 +14,7 @@
       "limitations": [
         "Most operations currently support full_file targets only.",
         "time_stretch is runtime-available but not yet selected by the baseline planner.",
+        "Transient shaping, clipping, and gating are runtime-available but not yet selected by the baseline planner.",
         "Layer 1 ambience, texture, and modulation effects are runtime-available but not yet selected by the baseline planner."
       ],
       "operations": [
@@ -31,6 +32,36 @@
               "description": "Gain adjustment in decibels.",
               "unit": "dB",
               "example_value": -1.5
+            }
+          ]
+        },
+        {
+          "name": "transient_shaper",
+          "category": "dynamics",
+          "summary": "Emphasize or soften attack transients with explicit threshold and timing controls.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file"],
+          "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+          "parameters": [
+            {
+              "name": "attack_amount_db",
+              "value_type": "number",
+              "required": true,
+              "description": "Signed transient attack emphasis amount.",
+              "minimum": -12,
+              "maximum": 12,
+              "unit": "dB",
+              "example_value": 5
+            },
+            {
+              "name": "threshold_db",
+              "value_type": "number",
+              "required": true,
+              "description": "Threshold above which the transient emphasis engages.",
+              "minimum": -60,
+              "maximum": 0,
+              "unit": "dB",
+              "example_value": -24
             }
           ]
         },
