@@ -304,6 +304,135 @@ describe("buildOperation", () => {
     });
   });
 
+  it("normalizes creative effect parameters into explicit FFmpeg filters", () => {
+    const audio = createAudioVersion("storage/audio/source.wav").audio;
+
+    const reverb = buildOperation(
+      audio,
+      "reverb",
+      {
+        pre_delay_ms: 12,
+        reflection_spacing_ms: 18,
+        tail_taps: 4,
+        decay: 0.6,
+        dry_mix: 0.82,
+        wet_mix: 0.35,
+      },
+      { scope: "full_file" },
+    );
+    const delay = buildOperation(
+      audio,
+      "delay",
+      {
+        delay_ms: 120,
+        dry_mix: 0.85,
+        wet_mix: 0.35,
+      },
+      { scope: "full_file" },
+    );
+    const echo = buildOperation(
+      audio,
+      "echo",
+      {
+        delay_ms: 180,
+        decay: 0.45,
+        dry_mix: 0.8,
+        wet_mix: 0.4,
+      },
+      { scope: "full_file" },
+    );
+    const bitcrush = buildOperation(
+      audio,
+      "bitcrush",
+      {
+        bit_depth: 6,
+        sample_hold_samples: 12,
+        mix: 0.75,
+        mode: "log",
+      },
+      { scope: "full_file" },
+    );
+    const distortion = buildOperation(
+      audio,
+      "distortion",
+      {
+        drive_db: 18,
+        threshold: 0.4,
+        output_gain_db: -3,
+        oversample_factor: 4,
+      },
+      { scope: "full_file" },
+    );
+    const saturation = buildOperation(
+      audio,
+      "saturation",
+      {
+        drive_db: 12,
+        curve: "atan",
+        output_gain_db: -2,
+        oversample_factor: 4,
+      },
+      { scope: "full_file" },
+    );
+    const flanger = buildOperation(
+      audio,
+      "flanger",
+      {
+        delay_ms: 2.5,
+        depth_ms: 4,
+        feedback_percent: 30,
+        mix_percent: 65,
+        rate_hz: 0.8,
+        waveform: "triangular",
+      },
+      { scope: "full_file" },
+    );
+    const phaser = buildOperation(
+      audio,
+      "phaser",
+      {
+        input_gain_db: -10,
+        output_gain_db: -4,
+        delay_ms: 2.5,
+        decay: 0.5,
+        rate_hz: 0.7,
+        waveform: "sinusoidal",
+      },
+      { scope: "full_file" },
+    );
+
+    expect(reverb.filterChain).toBe(
+      "aecho=0.82:0.35:12|30|48|66:0.6|0.432|0.31104|0.223949,atrim=end=2,asetpts=N/SR/TB",
+    );
+    expect(reverb.effectiveParameters).toEqual({
+      pre_delay_ms: 12,
+      reflection_spacing_ms: 18,
+      tail_taps: 4,
+      decay: 0.6,
+      dry_mix: 0.82,
+      wet_mix: 0.35,
+      tap_delays_ms: [12, 30, 48, 66],
+      tap_decays: [0.6, 0.432, 0.31104, 0.223949],
+    });
+    expect(delay.filterChain).toBe(
+      "asplit=2[dry][wet];[wet]adelay=delays=120:all=1,volume=0.35[wetmix];[dry]volume=0.85[drymix];[drymix][wetmix]amix=inputs=2:normalize=0,atrim=end=2,asetpts=N/SR/TB",
+    );
+    expect(echo.filterChain).toBe("aecho=0.8:0.4:180:0.45,atrim=end=2,asetpts=N/SR/TB");
+    expect(bitcrush.filterChain).toBe("acrusher=bits=6:samples=12:mix=0.75:mode=log:aa=1");
+    expect(distortion.filterChain).toBe(
+      "volume=18dB,asoftclip=type=hard:threshold=0.4:output=0.707946:param=1:oversample=4",
+    );
+    expect(saturation.filterChain).toBe(
+      "volume=12dB,asoftclip=type=atan:threshold=1:output=0.794328:param=1:oversample=4",
+    );
+    expect(flanger.filterChain).toBe(
+      "flanger=delay=2.5:depth=4:regen=30:width=65:speed=0.8:shape=triangular:phase=25:interp=linear",
+    );
+    expect(phaser.filterChain).toBe(
+      "aphaser=in_gain=0.316228:out_gain=0.630957:delay=2.5:decay=0.5:speed=0.7:type=sinusoidal",
+    );
+  });
+
   it("normalizes pitch shift parameters into an explicit FFmpeg filter", () => {
     const result = buildOperation(
       createAudioVersion("storage/audio/source.wav").audio,
@@ -1042,6 +1171,126 @@ describe("applyOperation", () => {
         status: "applied",
       },
     ]);
+  });
+
+  it("applies creative effects deterministically without changing clip duration", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createRealAudioVersionFixture(workspaceRoot, {
+      durationSeconds: 1,
+      sampleRateHz: 44100,
+      channels: 1,
+      peakAmplitude: 12000,
+    });
+    const sourcePath = path.join(workspaceRoot, version.audio.storage_ref);
+    const sourceSamples = await readWaveSamples(sourcePath);
+
+    const operations = [
+      {
+        operation: "reverb" as const,
+        parameters: {
+          pre_delay_ms: 8,
+          reflection_spacing_ms: 16,
+          tail_taps: 4,
+          decay: 0.55,
+          dry_mix: 0.82,
+          wet_mix: 0.32,
+        },
+      },
+      {
+        operation: "delay" as const,
+        parameters: {
+          delay_ms: 140,
+          dry_mix: 0.84,
+          wet_mix: 0.35,
+        },
+      },
+      {
+        operation: "echo" as const,
+        parameters: {
+          delay_ms: 180,
+          decay: 0.42,
+          dry_mix: 0.78,
+          wet_mix: 0.38,
+        },
+      },
+      {
+        operation: "bitcrush" as const,
+        parameters: {
+          bit_depth: 6,
+          sample_hold_samples: 10,
+          mix: 0.8,
+          mode: "log",
+        },
+      },
+      {
+        operation: "distortion" as const,
+        parameters: {
+          drive_db: 18,
+          threshold: 0.42,
+          output_gain_db: -6,
+          oversample_factor: 2,
+        },
+      },
+      {
+        operation: "saturation" as const,
+        parameters: {
+          drive_db: 10,
+          curve: "atan",
+          output_gain_db: -3,
+          oversample_factor: 2,
+        },
+      },
+      {
+        operation: "flanger" as const,
+        parameters: {
+          delay_ms: 2.2,
+          depth_ms: 2.8,
+          feedback_percent: 25,
+          mix_percent: 60,
+          rate_hz: 0.7,
+          waveform: "sinusoidal",
+        },
+      },
+      {
+        operation: "phaser" as const,
+        parameters: {
+          input_gain_db: -10,
+          output_gain_db: -4,
+          delay_ms: 2.2,
+          decay: 0.45,
+          rate_hz: 0.6,
+          waveform: "triangular",
+        },
+      },
+    ];
+
+    for (const [index, item] of operations.entries()) {
+      const result = await applyOperation({
+        workspaceRoot,
+        version,
+        operation: item.operation,
+        parameters: item.parameters,
+        outputVersionId: `ver_01HZYCREATIVE00000000000${index + 1}`,
+        recordId: `transform_01HZYCREATIVE0000000000${index + 1}`,
+        createdAt: new Date("2026-04-17T12:00:00Z"),
+      });
+      const outputPath = path.join(workspaceRoot, result.outputVersion.audio.storage_ref);
+      const probed = await probeAudioMetadata(outputPath);
+      const outputSamples = await readWaveSamples(outputPath);
+
+      expect(result.outputVersion.audio.duration_seconds).toBe(version.audio.duration_seconds);
+      expect(probed.durationSeconds).toBeCloseTo(version.audio.duration_seconds, 3);
+      expect(result.transformRecord.operations).toEqual([
+        {
+          operation: item.operation,
+          parameters: expect.any(Object),
+          status: "applied",
+        },
+      ]);
+      expect(
+        computeAverageAbsoluteDifference(sourceSamples[0] ?? [], outputSamples[0] ?? []),
+      ).toBeGreaterThan(minimumAverageDifferenceForOperation(item.operation));
+    }
   });
 });
 
@@ -1803,6 +2052,48 @@ function computeChannelRms(samples: ArrayLike<number>): number {
   }
 
   return Math.sqrt(sumSquares / samples.length);
+}
+
+function computeAverageAbsoluteDifference(
+  source: ArrayLike<number>,
+  candidate: ArrayLike<number>,
+): number {
+  const comparedLength = Math.min(source.length, candidate.length);
+
+  if (comparedLength === 0) {
+    return 0;
+  }
+
+  let totalDifference = 0;
+  for (let index = 0; index < comparedLength; index += 1) {
+    totalDifference += Math.abs((source[index] ?? 0) - (candidate[index] ?? 0));
+  }
+
+  return totalDifference / comparedLength;
+}
+
+function minimumAverageDifferenceForOperation(
+  operation:
+    | "reverb"
+    | "delay"
+    | "echo"
+    | "bitcrush"
+    | "distortion"
+    | "saturation"
+    | "flanger"
+    | "phaser",
+): number {
+  switch (operation) {
+    case "flanger":
+    case "phaser":
+      return 20;
+    case "delay":
+    case "echo":
+    case "reverb":
+      return 80;
+    default:
+      return 120;
+  }
 }
 
 function validateAgainstSchema(schema: unknown, payload: unknown): boolean {

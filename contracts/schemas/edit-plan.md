@@ -65,6 +65,14 @@ The current published contract allows these operation names in `steps[].operatio
 - `stereo_balance_correction`
 - `denoise`
 - `stereo_width`
+- `reverb`
+- `delay`
+- `echo`
+- `bitcrush`
+- `distortion`
+- `saturation`
+- `flanger`
+- `phaser`
 
 `steps[].target.scope` should initially be one of:
 
@@ -84,6 +92,14 @@ In the current baseline, the capability manifest restricts these operations to `
 - `time_stretch`
 - `stereo_width`
 - `denoise`
+- `reverb`
+- `delay`
+- `echo`
+- `bitcrush`
+- `distortion`
+- `saturation`
+- `flanger`
+- `phaser`
 
 ## Parameter surfaces
 
@@ -100,6 +116,14 @@ Current expanded parameter surfaces:
 - `stereo_balance_correction`: `target_channel` and `correction_db`
 - `stereo_width`: `width_multiplier`
 - `denoise`: `reduction_db`, with optional `noise_floor_dbfs`
+- `reverb`: `pre_delay_ms`, `reflection_spacing_ms`, `tail_taps`, and `decay`, with optional `dry_mix` and `wet_mix`
+- `delay`: `delay_ms`, with optional `dry_mix` and `wet_mix`
+- `echo`: `delay_ms` and `decay`, with optional `dry_mix` and `wet_mix`
+- `bitcrush`: `bit_depth` and `sample_hold_samples`, with optional `mix` and `mode`
+- `distortion`: `drive_db` and `threshold`, with optional `output_gain_db` and `oversample_factor`
+- `saturation`: `drive_db`, with optional `curve`, `output_gain_db`, and `oversample_factor`
+- `flanger`: `delay_ms`, `depth_ms`, `feedback_percent`, `mix_percent`, and `rate_hz`, with optional `waveform`
+- `phaser`: `delay_ms`, `decay`, and `rate_hz`, with optional `input_gain_db`, `output_gain_db`, and `waveform`
 
 The machine-readable schema also keeps the existing baseline operation shapes explicit for `gain`, `normalize`, `trim`, `fade`, `parametric_eq`, `high_pass_filter`, and `low_pass_filter`.
 
@@ -121,6 +145,8 @@ Published pitch-shift surface:
 - `pitch_shift`: `semitones`
 
 `pitch_shift` is currently documented as a whole-file transform that keeps duration close to the original. The runtime may record optional derived fields such as FFmpeg rate and tempo-compensation factors in the emitted `TransformRecord`.
+
+The new Layer 1 runtime effects are intentionally published as `runtime_only` capability-manifest operations in the current baseline. They are valid in the contract surface for explicit technical callers and future planner work, but they are not yet selected automatically by the baseline planner.
 
 ## Optional fields
 

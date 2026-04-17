@@ -73,15 +73,29 @@ Supported but conservative areas:
 - `gain`
 - `normalize`
 - `trim`
+- `trim_silence`
 - `fade`
+- `pitch_shift`
 - `parametric_eq`
 - `high_pass_filter`
 - `low_pass_filter`
 - `compressor`
 - `limiter`
 - `time_stretch`
+- `reverse`
+- `mono_sum`
+- `channel_swap`
+- `stereo_balance_correction`
 - `stereo_width`
 - `denoise`
+- `reverb`
+- `delay`
+- `echo`
+- `bitcrush`
+- `distortion`
+- `saturation`
+- `flanger`
+- `phaser`
 
 ### Planner-Supported Operations
 
@@ -98,7 +112,7 @@ The baseline planner currently plans only against operations marked `planner_sup
 - `stereo_width`
 - `denoise`
 
-`time_stretch` is runtime-available but not yet selected by the baseline planner.
+`time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility operations, and the new Layer 1 effect operations are runtime-available but not yet selected by the baseline planner.
 
 ### Implemented Tool Surface
 
@@ -114,6 +128,7 @@ Current tool-surface caveats:
 
 - `apply_edit_plan` supports the published runtime capability surface, but still validates explicit runtime prerequisites such as stereo-only width processing and full-file-only target scopes for some operations
 - `plan_edits` only chooses operations marked as `planner_supported` in the runtime capability manifest
+- explicit technical callers can still submit runtime-only Layer 1 effect steps when they stay inside the published contract surface
 
 ## Important Current Limitations
 
@@ -123,7 +138,7 @@ Current tool-surface caveats:
 - semantic descriptor coverage is intentionally small and conservative
 - planning fails on unsupported requests instead of trying to generalize broadly
 - iterative orchestration supports early `more`, `less`, and `undo` follow-up behavior, but still relies on explicit version materialization through orchestration dependencies for safe revert execution
-- transforms still do not cover pitch shifting
+- the baseline planner still does not choose pitch shifting, trim silence, channel utilities, or Layer 1 runtime effects automatically
 - render preview is MP3-only
 - final render export is limited to WAV and FLAC
 - compare goal alignment is heuristic and string-driven

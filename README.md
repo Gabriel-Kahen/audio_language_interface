@@ -123,15 +123,29 @@ The current runtime can execute:
 - `gain`
 - `normalize`
 - `trim`
+- `trim_silence`
 - `fade`
+- `pitch_shift`
 - `parametric_eq`
 - `high_pass_filter`
 - `low_pass_filter`
 - `compressor`
 - `limiter`
 - `time_stretch`
+- `reverse`
+- `mono_sum`
+- `channel_swap`
+- `stereo_balance_correction`
 - `stereo_width`
 - `denoise`
+- `reverb`
+- `delay`
+- `echo`
+- `bitcrush`
+- `distortion`
+- `saturation`
+- `flanger`
+- `phaser`
 
 ### Planner-Supported Operations
 
@@ -150,7 +164,7 @@ At the moment, that includes:
 - `stereo_width`
 - `denoise`
 
-`time_stretch` is runtime-available but not yet part of the default planner surface.
+`time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility operations, and the new Layer 1 effect operations are runtime-available but not yet part of the default planner surface.
 
 ### Tool Surface
 
@@ -187,7 +201,7 @@ This repo is usable today for technical experimentation and module-level integra
 - semantic coverage is intentionally conservative
 - compare goal alignment is still heuristic
 - there is no dedicated demo CLI or app entrypoint yet
-- pitch shifting is not implemented
+- the baseline planner does not yet auto-select pitch shifting, trim silence, channel utilities, or Layer 1 runtime effects
 - benchmark coverage is still light compared with the long-term goal
 
 ## Repository Layout

@@ -115,6 +115,7 @@ That workflow is important, but it is not the same thing as the architecture. Th
 - which target scopes are valid
 - what parameter surfaces exist
 - which operations are planner-supported today
+- which runtime-only Layer 1 effects are available for explicit callers even before baseline planner support lands
 
 This avoids burying capability discovery inside runtime code or adapter-specific TypeScript types.
 

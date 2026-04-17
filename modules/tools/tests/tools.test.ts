@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { defaultRuntimeCapabilityManifest } from "@audio-language-interface/capabilities";
 import { DEFAULT_NORMALIZATION_TARGET } from "@audio-language-interface/io";
 
 import { describe, expect, it, vi } from "vitest";
@@ -284,27 +285,10 @@ describe("tools module", () => {
       expect.objectContaining({
         name: "apply_edit_plan",
         capabilities: {
-          supported_operations: [
-            "gain",
-            "normalize",
-            "trim",
-            "trim_silence",
-            "fade",
-            "pitch_shift",
-            "parametric_eq",
-            "high_pass_filter",
-            "low_pass_filter",
-            "compressor",
-            "limiter",
-            "time_stretch",
-            "reverse",
-            "mono_sum",
-            "channel_swap",
-            "stereo_balance_correction",
-            "stereo_width",
-            "denoise",
-          ],
-          capability_manifest_id: "capmanifest_20260417A",
+          supported_operations: defaultRuntimeCapabilityManifest.operations.map(
+            (operation) => operation.name,
+          ),
+          capability_manifest_id: defaultRuntimeCapabilityManifest.manifest_id,
         },
       }),
       expect.objectContaining({ name: "render_preview" }),
@@ -358,7 +342,7 @@ describe("tools module", () => {
     expect(response.status).toBe("ok");
     expect(response.result?.runtime_capability_manifest).toEqual(
       expect.objectContaining({
-        manifest_id: "capmanifest_20260417A",
+        manifest_id: defaultRuntimeCapabilityManifest.manifest_id,
         runtime_layer: "audio_runtime",
       }),
     );

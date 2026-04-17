@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "plan_id": "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0",
-  "capability_manifest_id": "capmanifest_20260417A",
+  "capability_manifest_id": "capmanifest_20260417B",
   "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
   "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
   "user_request": "Shift this loop up a whole tone, clean it up a bit, widen it slightly, and control the peaks without crushing it.",

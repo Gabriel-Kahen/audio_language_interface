@@ -47,7 +47,7 @@ Ordered list of supported runtime operations.
 Each operation entry includes:
 
 - `name`: canonical operation name shared with `EditPlan` and `TransformRecord`
-- `category`: broad runtime grouping such as `tonal`, `dynamics`, or `restoration`
+- `category`: broad runtime grouping such as `tonal`, `dynamics`, `restoration`, or `effects`
 - `summary`: short description of the operation's runtime behavior
 - `intent_support`: whether the baseline planner may choose this operation directly today
 - `supported_target_scopes`: currently allowed target scopes

@@ -53,6 +53,14 @@ The implemented operation set is currently:
 - `stereo_balance_correction`
 - `stereo_width`
 - `denoise`
+- `reverb`
+- `delay`
+- `echo`
+- `bitcrush`
+- `distortion`
+- `saturation`
+- `flanger`
+- `phaser`
 
 Anything else listed in the module agent guide is still a future capability and is not implemented in `src/` yet.
 
@@ -74,6 +82,7 @@ Target support is intentionally narrow in the initial implementation:
 - `stereo_balance_correction` only accepts `full_file` and requires stereo 2-channel input
 - `stereo_width` only accepts `full_file` and requires stereo 2-channel input
 - `denoise` only accepts `full_file`
+- `reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, and `phaser` only accept `full_file`
 - `trim_silence` only accepts `full_file`
 - `fade` only accepts `full_file`
 - `trim` supports `time_range` via `target.start_seconds` and `target.end_seconds`, or explicit `parameters.start_seconds` and `parameters.end_seconds`
@@ -149,8 +158,7 @@ This module consumes and emits repository contracts directly:
 
 ## Current limitations
 
-- Saturation is still not implemented.
- - Saturation is still not implemented.
+- The new Layer 1 effects intentionally publish coarse, explicit caller-facing controls first. They do not yet expose region targeting, tempo sync, automation lanes, or multi-tap graph construction through the contract surface.
 - `compressor` exposes only downward RMS compression with explicit threshold, ratio, attack, release, and optional makeup gain. It does not expose upward compression, dry/wet mixing, sidechain input, or alternate detection/link modes.
 - `limiter` exposes only ceiling, attack, and release. Automatic gain staging is disabled deliberately so the emitted `TransformRecord` stays explicit and inspectable.
 - `time_stretch` uses FFmpeg `atempo` with explicit caller-supplied timing parameters. Tempo matching is supported only when the caller already knows `source_tempo_bpm` and `target_tempo_bpm`; this module does not estimate tempo itself.
@@ -165,8 +173,7 @@ This module consumes and emits repository contracts directly:
 - No automatic loudness or peak measurement. `normalize` requires caller-supplied `measured_peak_dbfs`.
 - `normalize` supports only `mode: "peak"`.
 - `parametric_eq` supports only bell bands.
-- `time_stretch` uses FFmpeg `atempo` with an explicit `stretch_ratio` surface and
-  preserves pitch while changing duration deterministically.
+- `time_stretch` uses FFmpeg `atempo` with an explicit `stretch_ratio` surface and preserves pitch while changing duration deterministically.
 - Filter output format is fixed to 16-bit PCM WAV; the module does not preserve original codec or container.
 - The module validates that ffmpeg materially created a non-empty output file before returning success.
 - `applyEditPlan` leaves intermediate step files on disk; it does not currently clean them up.
@@ -184,6 +191,4 @@ Module-local tests cover:
 - workspace-relative output path behavior
 - real compressor, limiter, time stretch, stereo width, denoise, and pitch-shift output verification
 - real reverse, mono-sum, channel-swap, and stereo-balance-correction output verification
- - real compressor, limiter, time stretch, stereo width, denoise, and pitch-shift output verification
- - real reverse, mono-sum, channel-swap, and stereo-balance-correction output verification
 - JSON Schema alignment for emitted `AudioVersion` and `TransformRecord`
