@@ -44,6 +44,10 @@ The implemented operation set is currently:
 - `parametric_eq`
 - `high_pass_filter`
 - `low_pass_filter`
+- `high_shelf`
+- `low_shelf`
+- `notch_filter`
+- `tilt_eq`
 - `compressor`
 - `limiter`
 - `time_stretch`
@@ -72,7 +76,7 @@ Slice extraction is implemented separately from the published edit-plan operatio
 
 Target support is intentionally narrow in the initial implementation:
 
-- `gain`, `normalize`, `parametric_eq`, `high_pass_filter`, and `low_pass_filter` only accept `full_file`
+- `gain`, `normalize`, `parametric_eq`, `high_pass_filter`, `low_pass_filter`, `high_shelf`, `low_shelf`, `notch_filter`, and `tilt_eq` only accept `full_file`
 - `compressor` and `limiter` only accept `full_file`
 - `pitch_shift` only accepts `full_file`
 - `time_stretch` only accepts `full_file`, using either `stretch_ratio` or `source_tempo_bpm` plus `target_tempo_bpm`
@@ -173,6 +177,8 @@ This module consumes and emits repository contracts directly:
 - No automatic loudness or peak measurement. `normalize` requires caller-supplied `measured_peak_dbfs`.
 - `normalize` supports only `mode: "peak"`.
 - `parametric_eq` supports only bell bands.
+- `high_shelf`, `low_shelf`, and `notch_filter` expose one band per operation and do not yet support band stacks or region targeting.
+- `tilt_eq` exposes one tilt pivot plus a single signed gain control. It does not yet expose alternate slope models, multi-band tilt shapes, or region targeting.
 - `time_stretch` uses FFmpeg `atempo` with an explicit `stretch_ratio` surface and preserves pitch while changing duration deterministically.
 - Filter output format is fixed to 16-bit PCM WAV; the module does not preserve original codec or container.
 - The module validates that ffmpeg materially created a non-empty output file before returning success.

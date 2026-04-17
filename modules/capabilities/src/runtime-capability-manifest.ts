@@ -6,7 +6,7 @@ import type {
 } from "./types.js";
 import { CONTRACT_SCHEMA_VERSION } from "./types.js";
 
-const MANIFEST_GENERATED_AT = "2026-04-17T18:00:00Z";
+const MANIFEST_GENERATED_AT = "2026-04-17T20:30:00Z";
 
 function defineOperation(capability: RuntimeOperationCapability): RuntimeOperationCapability {
   return capability;
@@ -14,7 +14,7 @@ function defineOperation(capability: RuntimeOperationCapability): RuntimeOperati
 
 export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
   schema_version: CONTRACT_SCHEMA_VERSION,
-  manifest_id: "capmanifest_20260417B",
+  manifest_id: "capmanifest_20260417C",
   generated_at: MANIFEST_GENERATED_AT,
   runtime_layer: "audio_runtime",
   summary:
@@ -22,7 +22,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
   limitations: [
     "Most runtime operations currently support full_file targets only.",
     "time_stretch is runtime-available but not yet selected by the baseline planner.",
-    "Layer 1 ambience, texture, and modulation effects are runtime-available but not yet selected by the baseline planner.",
+    "Layer 1 ambience, texture, modulation, and surgical tone-shaping effects are runtime-available but not yet selected by the baseline planner.",
   ],
   operations: [
     defineOperation({
@@ -248,6 +248,157 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
           minimum: 0.01,
           unit: "Hz",
           example_value: 9000,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "high_shelf",
+      category: "tonal",
+      summary: "Boost or cut the upper spectrum above an explicit shelf frequency.",
+      intent_support: "runtime_only",
+      supported_target_scopes: ["full_file"],
+      planner_notes: [
+        "Runtime-available Layer 1 surgical tone-shaping operation. Not yet chosen by the baseline planner.",
+      ],
+      parameters: [
+        {
+          name: "frequency_hz",
+          value_type: "number",
+          required: true,
+          description: "Shelf transition frequency.",
+          minimum: 0.01,
+          unit: "Hz",
+          example_value: 6500,
+        },
+        {
+          name: "gain_db",
+          value_type: "number",
+          required: true,
+          description: "Upper-band shelf gain.",
+          minimum: -24,
+          maximum: 24,
+          unit: "dB",
+          example_value: 2.5,
+        },
+        {
+          name: "q",
+          value_type: "number",
+          required: true,
+          description: "Shelf transition sharpness expressed as a Q factor.",
+          minimum: 0.01,
+          unit: "Q",
+          example_value: 0.8,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "low_shelf",
+      category: "tonal",
+      summary: "Boost or cut the lower spectrum below an explicit shelf frequency.",
+      intent_support: "runtime_only",
+      supported_target_scopes: ["full_file"],
+      planner_notes: [
+        "Runtime-available Layer 1 surgical tone-shaping operation. Not yet chosen by the baseline planner.",
+      ],
+      parameters: [
+        {
+          name: "frequency_hz",
+          value_type: "number",
+          required: true,
+          description: "Shelf transition frequency.",
+          minimum: 0.01,
+          unit: "Hz",
+          example_value: 180,
+        },
+        {
+          name: "gain_db",
+          value_type: "number",
+          required: true,
+          description: "Low-band shelf gain.",
+          minimum: -24,
+          maximum: 24,
+          unit: "dB",
+          example_value: -2.5,
+        },
+        {
+          name: "q",
+          value_type: "number",
+          required: true,
+          description: "Shelf transition sharpness expressed as a Q factor.",
+          minimum: 0.01,
+          unit: "Q",
+          example_value: 0.7,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "notch_filter",
+      category: "tonal",
+      summary: "Reject a narrow band around an explicit center frequency.",
+      intent_support: "runtime_only",
+      supported_target_scopes: ["full_file"],
+      planner_notes: [
+        "Runtime-available Layer 1 surgical tone-shaping operation. Not yet chosen by the baseline planner.",
+      ],
+      parameters: [
+        {
+          name: "frequency_hz",
+          value_type: "number",
+          required: true,
+          description: "Center frequency of the rejected band.",
+          minimum: 0.01,
+          unit: "Hz",
+          example_value: 3200,
+        },
+        {
+          name: "q",
+          value_type: "number",
+          required: true,
+          description: "Notch narrowness expressed as a Q factor.",
+          minimum: 0.01,
+          unit: "Q",
+          example_value: 8,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "tilt_eq",
+      category: "tonal",
+      summary:
+        "Tilt the spectrum around a pivot frequency with equal and opposite high/low emphasis.",
+      intent_support: "runtime_only",
+      supported_target_scopes: ["full_file"],
+      planner_notes: [
+        "Runtime-available Layer 1 surgical tone-shaping operation. Not yet chosen by the baseline planner.",
+      ],
+      parameters: [
+        {
+          name: "pivot_frequency_hz",
+          value_type: "number",
+          required: true,
+          description: "Pivot frequency around which the spectrum tilts.",
+          minimum: 0.01,
+          unit: "Hz",
+          example_value: 1200,
+        },
+        {
+          name: "gain_db",
+          value_type: "number",
+          required: true,
+          description: "Tilt amount; positive values brighten and negative values darken.",
+          minimum: -24,
+          maximum: 24,
+          unit: "dB",
+          example_value: 3,
+        },
+        {
+          name: "q",
+          value_type: "number",
+          required: true,
+          description: "Tilt transition sharpness expressed as a Q factor.",
+          minimum: 0.01,
+          unit: "Q",
+          example_value: 0.6,
         },
       ],
     }),

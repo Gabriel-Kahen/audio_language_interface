@@ -7,30 +7,53 @@
   "result": {
     "runtime_capability_manifest": {
       "schema_version": "1.0.0",
-      "manifest_id": "capmanifest_20260417B",
-      "generated_at": "2026-04-17T18:00:00Z",
+      "manifest_id": "capmanifest_20260417C",
+      "generated_at": "2026-04-17T20:30:00Z",
       "runtime_layer": "audio_runtime",
       "summary": "Published runtime capability surface for deterministic audio editing and Layer 1 effect processing in the current repository.",
       "limitations": [
         "Most operations currently support full_file targets only.",
         "time_stretch is runtime-available but not yet selected by the baseline planner.",
-        "Layer 1 ambience, texture, and modulation effects are runtime-available but not yet selected by the baseline planner."
+        "Layer 1 ambience, texture, modulation, and surgical tone-shaping effects are runtime-available but not yet selected by the baseline planner."
       ],
       "operations": [
         {
-          "name": "gain",
-          "category": "level",
-          "summary": "Apply explicit gain change in decibels.",
-          "intent_support": "planner_supported",
+          "name": "high_shelf",
+          "category": "tonal",
+          "summary": "Boost or cut the upper spectrum above an explicit shelf frequency.",
+          "intent_support": "runtime_only",
           "supported_target_scopes": ["full_file"],
+          "planner_notes": [
+            "Runtime-available Layer 1 surgical tone-shaping operation. Not yet chosen by the baseline planner."
+          ],
           "parameters": [
+            {
+              "name": "frequency_hz",
+              "value_type": "number",
+              "required": true,
+              "description": "Shelf transition frequency.",
+              "minimum": 0.01,
+              "unit": "Hz",
+              "example_value": 6500
+            },
             {
               "name": "gain_db",
               "value_type": "number",
               "required": true,
-              "description": "Gain adjustment in decibels.",
+              "description": "Upper-band shelf gain.",
+              "minimum": -24,
+              "maximum": 24,
               "unit": "dB",
-              "example_value": -1.5
+              "example_value": 2.5
+            },
+            {
+              "name": "q",
+              "value_type": "number",
+              "required": true,
+              "description": "Shelf transition sharpness expressed as a Q factor.",
+              "minimum": 0.01,
+              "unit": "Q",
+              "example_value": 0.8
             }
           ]
         },

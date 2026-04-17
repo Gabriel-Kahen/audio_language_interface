@@ -1,107 +1,91 @@
 {
   "schema_version": "1.0.0",
   "plan_id": "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0",
-  "capability_manifest_id": "capmanifest_20260417B",
+  "capability_manifest_id": "capmanifest_20260417C",
   "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
   "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
-  "user_request": "Shift this loop up a whole tone, clean it up a bit, widen it slightly, and control the peaks without crushing it.",
-  "created_at": "2026-04-14T20:20:15Z",
+  "user_request": "Tighten the lows, remove the harsh ring, brighten the top a little, and gently tilt the whole balance upward.",
+  "created_at": "2026-04-17T20:30:15Z",
   "goals": [
-    "raise the perceived pitch by two semitones while keeping the duration close to the original",
-    "reduce steady background noise conservatively",
-    "slightly increase stereo width",
-    "control peak excursions conservatively",
-    "preserve transient impact"
+    "reduce excess low-frequency weight",
+    "remove a narrow harsh resonance",
+    "add a little upper-band air",
+    "shift the overall tonal balance slightly brighter"
   ],
   "constraints": [
-    "preserve the original loop timing",
-    "avoid obvious denoise artifacts",
-    "avoid audible pumping",
-    "keep width changes subtle"
+    "keep all tonal moves subtle",
+    "avoid hollowing out the body",
+    "avoid making the top end brittle",
+    "preserve the original timing and dynamics"
   ],
   "steps": [
     {
-      "step_id": "step_pitch_shift_1",
-      "operation": "pitch_shift",
+      "step_id": "step_low_shelf_1",
+      "operation": "low_shelf",
       "target": {
         "scope": "full_file"
       },
       "parameters": {
-        "semitones": 2
+        "frequency_hz": 180,
+        "gain_db": -3,
+        "q": 0.7
+      },
+      "expected_effects": ["reduce excess low-end weight", "leave the mids mostly intact"],
+      "safety_limits": ["avoid making the source thin", "keep the bass cut gentle"]
+    },
+    {
+      "step_id": "step_notch_filter_1",
+      "operation": "notch_filter",
+      "target": {
+        "scope": "full_file"
+      },
+      "parameters": {
+        "frequency_hz": 3200,
+        "q": 8
+      },
+      "expected_effects": ["reduce a narrow harsh resonance", "keep surrounding presence intact"],
+      "safety_limits": ["avoid over-cutting the upper mids", "keep the move surgical"]
+    },
+    {
+      "step_id": "step_tilt_eq_1",
+      "operation": "tilt_eq",
+      "target": {
+        "scope": "full_file"
+      },
+      "parameters": {
+        "pivot_frequency_hz": 1200,
+        "gain_db": 2,
+        "q": 0.6
       },
       "expected_effects": [
-        "raise the loop by one whole tone",
-        "keep the original duration approximately intact"
+        "tilt the overall tone slightly brighter",
+        "keep the pivot region stable"
       ],
-      "safety_limits": [
-        "stay within the published semitone range",
-        "avoid obvious resampling artifacts"
-      ]
+      "safety_limits": ["avoid a dramatic rebalance", "do not exaggerate harshness"]
     },
     {
-      "step_id": "step_denoise_1",
-      "operation": "denoise",
+      "step_id": "step_high_shelf_1",
+      "operation": "high_shelf",
       "target": {
         "scope": "full_file"
       },
       "parameters": {
-        "reduction_db": 6,
-        "noise_floor_dbfs": -58
+        "frequency_hz": 6500,
+        "gain_db": 2.5,
+        "q": 0.8
       },
-      "expected_effects": ["lower steady broadband noise", "keep the main signal intact"],
-      "safety_limits": ["avoid watery artifacts", "avoid removing transient detail"]
-    },
-    {
-      "step_id": "step_compressor_1",
-      "operation": "compressor",
-      "target": {
-        "scope": "full_file"
-      },
-      "parameters": {
-        "threshold_db": -18,
-        "ratio": 2,
-        "attack_ms": 15,
-        "release_ms": 120,
-        "knee_db": 3,
-        "makeup_gain_db": 1.5
-      },
-      "expected_effects": ["tighten dynamic swings slightly", "retain punch"],
-      "safety_limits": ["avoid over-compression", "avoid flattening the attack"]
-    },
-    {
-      "step_id": "step_limiter_1",
-      "operation": "limiter",
-      "target": {
-        "scope": "full_file"
-      },
-      "parameters": {
-        "ceiling_dbtp": -1,
-        "release_ms": 80,
-        "lookahead_ms": 5,
-        "input_gain_db": 0
-      },
-      "expected_effects": ["catch short peaks", "leave more consistent peak headroom"],
-      "safety_limits": ["avoid pumping", "do not drive the limiter aggressively"]
-    },
-    {
-      "step_id": "step_stereo_width_1",
-      "operation": "stereo_width",
-      "target": {
-        "scope": "full_file"
-      },
-      "parameters": {
-        "width_multiplier": 1.18
-      },
-      "expected_effects": ["slightly widen the image"],
-      "safety_limits": ["preserve mono compatibility", "avoid phasey side emphasis"]
+      "expected_effects": [
+        "add a little upper-band air",
+        "keep the added brightness broad and smooth"
+      ],
+      "safety_limits": ["avoid brittle highs", "keep the shelf subtle"]
     }
   ],
   "verification_targets": [
-    "dominant pitched material should move up by roughly two semitones while the duration stays close to the original",
-    "lower measured noise floor",
-    "lower peak excursions while keeping the output ceiling near -1 dB true peak",
-    "small increase in stereo width",
-    "no material loss of crest factor"
+    "less low-end buildup below roughly 200 Hz",
+    "reduced energy around the harsh resonance near 3.2 kHz",
+    "slightly higher high-band energy without brittle peaks",
+    "a modestly brighter high-vs-low spectral balance"
   ],
-  "rationale": "A conservative pitch shift, cleanup, dynamics pass, and subtle width increase should improve control while keeping the loop timing close to the original and preserving the core character."
+  "rationale": "A light shelf-plus-notch chain keeps the tonal moves explicit and deterministic while making the source leaner, less harsh, and slightly brighter overall."
 }

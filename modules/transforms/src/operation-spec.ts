@@ -17,8 +17,12 @@ import {
 } from "./operations/effects.js";
 import {
   buildHighPassFilterOperation,
+  buildHighShelfOperation,
   buildLowPassFilterOperation,
+  buildLowShelfOperation,
+  buildNotchFilterOperation,
   buildParametricEqOperation,
+  buildTiltEqOperation,
 } from "./operations/eq.js";
 import { buildGainOperation, buildNormalizeOperation } from "./operations/gain.js";
 import { buildPitchShiftOperation } from "./operations/pitch.js";
@@ -60,6 +64,14 @@ export function buildOperation(
       return buildHighPassFilterOperation(audio, parameters, target);
     case "low_pass_filter":
       return buildLowPassFilterOperation(audio, parameters, target);
+    case "high_shelf":
+      return buildHighShelfOperation(audio, parameters, target);
+    case "low_shelf":
+      return buildLowShelfOperation(audio, parameters, target);
+    case "notch_filter":
+      return buildNotchFilterOperation(audio, parameters, target);
+    case "tilt_eq":
+      return buildTiltEqOperation(audio, parameters, target);
     case "compressor":
       return buildCompressorOperation(audio, parameters, target);
     case "limiter":

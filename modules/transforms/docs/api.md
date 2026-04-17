@@ -130,7 +130,7 @@ Validates one operation and converts it into an inspectable intermediate form:
 
 This function does not touch the filesystem and does not run FFmpeg.
 
-For the Layer 1 effect family (`reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, and `phaser`), the published contract surface is the caller-facing parameter object plus the recorded `TransformRecord` parameters. Some operations also record derived values such as generated reverb tap timings or normalized defaults when those values describe the exact applied result.
+For the Layer 1 effect family (`reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, and `phaser`) and the surgical tone-shaping family (`high_shelf`, `low_shelf`, `notch_filter`, and `tilt_eq`), the published contract surface is the caller-facing parameter object plus the recorded `TransformRecord` parameters. Some operations also record derived values such as normalized defaults when those values describe the exact applied result.
 
 ## Operation reference
 
@@ -313,6 +313,104 @@ Rules:
 Target support:
 
 - `full_file` only
+
+### `high_shelf`
+
+Parameters:
+
+- `frequency_hz: number`
+- `gain_db: number`
+- optional `q: number`, default `0.707`
+
+Rules:
+
+- `frequency_hz` must be greater than `0` and less than the current sample-rate Nyquist frequency
+- `gain_db` must stay within the published runtime contract range
+- `q` must be positive when provided
+
+Target support:
+
+- `full_file` only
+
+FFmpeg filter:
+
+```text
+highshelf=f=<frequency_hz>:t=q:w=<q>:g=<gain_db>
+```
+
+### `low_shelf`
+
+Parameters:
+
+- `frequency_hz: number`
+- `gain_db: number`
+- optional `q: number`, default `0.707`
+
+Rules:
+
+- `frequency_hz` must be greater than `0` and less than the current sample-rate Nyquist frequency
+- `gain_db` must stay within the published runtime contract range
+- `q` must be positive when provided
+
+Target support:
+
+- `full_file` only
+
+FFmpeg filter:
+
+```text
+lowshelf=f=<frequency_hz>:t=q:w=<q>:g=<gain_db>
+```
+
+### `notch_filter`
+
+Parameters:
+
+- `frequency_hz: number`
+- optional `q: number`, default `4`
+
+Rules:
+
+- `frequency_hz` must be greater than `0` and less than the current sample-rate Nyquist frequency
+- `q` must be positive when provided
+
+Target support:
+
+- `full_file` only
+
+FFmpeg filter:
+
+```text
+bandreject=f=<frequency_hz>:t=q:w=<q>
+```
+
+### `tilt_eq`
+
+Parameters:
+
+- `pivot_frequency_hz: number`
+- `gain_db: number`
+- optional `slope_q: number`, default `0.3`
+
+Rules:
+
+- `pivot_frequency_hz` must be greater than `0` and less than the current sample-rate Nyquist frequency
+- positive `gain_db` is defined as a brighter, more top-heavy tilt in the public contract
+- `slope_q` must be positive when provided
+
+Target support:
+
+- `full_file` only
+
+FFmpeg filter:
+
+```text
+tiltshelf=f=<pivot_frequency_hz>:t=q:w=<slope_q>:g=<backend_gain_db>
+```
+
+Implementation note:
+
+- FFmpeg `tiltshelf` gain direction is inverted relative to the public contract, so the backend gain is emitted as the negated caller-facing `gain_db`
 
 ### `compressor`
 
