@@ -13,6 +13,7 @@ This module is currently a deterministic baseline analyzer for materialized WAV 
 - `detectTransients(audioVersion, options?) => TransientMap`
 - `estimateTempo(audioVersion, options?) => TempoEstimate`
 - `estimatePitchCenter(audioVersion, options?) => PitchCenterEstimate`
+- `suggestLoopBoundaries(audioVersion, options?) => LoopBoundarySuggestionSet`
 - `assertValidAnalysisReport(report)` and `isValidAnalysisReport(report)` for contract checks
 - exported contract-aligned types from `src/types.ts`
 
@@ -26,6 +27,7 @@ import {
   detectTransients,
   estimateTempo,
   estimatePitchCenter,
+  suggestLoopBoundaries,
 } from "@audio-language-interface/analysis";
 ```
 
@@ -57,6 +59,12 @@ returns a narrow machine-readable pitch-center estimate. It exposes:
 - `frequency_hz`, `midi_note`, and `note_name` only when a conservative pitch center is available
 - `uncertainty_cents`, `analyzed_window_count`, `voiced_window_count`, and `voiced_window_ratio`
   so downstream consumers can inspect stability instead of trusting a bare boolean
+
+`suggestLoopBoundaries` reuses the same validated WAV loading path and transient detector,
+then scores repeated time ranges directly in seconds. It returns a standalone suggestion set
+with explicit `start_seconds`, `end_seconds`, `duration_seconds`, `confidence`, and
+human-readable `rationale` fields. It does not emit beat-grid bars, BPM guesses, or DAW clip
+metadata.
 
 ## Input assumptions
 
@@ -93,6 +101,10 @@ The standalone tempo estimator also does not extend `AnalysisReport`; it returns
 `TempoEstimate` so downstream modules can opt into BPM reasoning without depending on a
 broader report payload.
 
+The standalone loop-boundary suggester also does not extend `AnalysisReport`; it returns a
+separate `LoopBoundarySuggestionSet` so downstream modules can consume candidate loop spans
+without inferring them from report summaries or segment labels.
+
 ## Measurement semantics
 
 This baseline is intentionally simple and should be treated as a reproducible heuristic layer rather than a full mastering analyzer.
@@ -127,6 +139,8 @@ See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, an
 - Given the same decoded WAV samples, analyzer version, and `generatedAt` option, the module produces the same measurements, annotations, segments, and summary text.
 - `report_id` is deterministic for a given `version_id`, `audio.storage_ref`, analyzer name, and analyzer version.
 - `generated_at` defaults to `audioVersion.lineage.created_at`, so callers get a stable report timestamp unless they intentionally override it with `options.generatedAt`.
+- `loop_boundary_suggestion_id` is deterministic for a given `version_id`, `audio.storage_ref`,
+  analyzer name/version, and loop-suggestion options.
 
 ## Suggested initial source files
 
@@ -143,6 +157,7 @@ See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, an
 - `src/detect-transients.ts`: public transient-map entrypoint
 - `src/estimate-tempo.ts`: public tempo-estimation entrypoint
 - `src/estimate-pitch-center.ts`: public pitch-center estimation entrypoint
+- `src/suggest-loop-boundaries.ts`: public loop-boundary suggestion entrypoint
 - `src/report-builder.ts`: `AnalysisReport` construction
 - `src/index.ts`: public exports only
 
@@ -176,6 +191,9 @@ See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, an
 - Brightness, harshness, and transient-impact annotations are threshold-based heuristics, not perceptual models.
 - Transient-map events are short-window local-contrast heuristics, not a source-separation model or a replacement for slice-accurate manual edits.
 - Tempo estimation is transient-spacing based. It works best on material with clear repeated onsets and can surface half-time or double-time ambiguity on sparse pulse trains.
+- Loop-boundary suggestions only score adjacent repeated regions. They are intentionally conservative and may return no suggestions when repetition support is weak, drifted, or only approximate.
+- Boundary candidates are transient-anchored plus file edges. Material whose loop starts or ends far away from onsets may be missed.
+- Suggestions can remain ambiguous when both a shorter cycle and a longer composite phrase repeat cleanly. In that case the module returns multiple candidates and marks the preferred one cautiously in its rationale instead of claiming a single ground truth.
 - Noise annotations are broadband-floor heuristics and can miss tonal hum, sparse clicks, or noise that only appears under louder foreground material.
 - Stereo-width annotations are local side-versus-mid heuristics gated to active windows, so brief or very low-level spread may remain intentionally unannotated. They do not model perceptual spaciousness or all phase artifacts.
 - Segment detection is energy-threshold based and only emits `active`, `silence`, or a synthetic full-length `loop` segment.
@@ -183,7 +201,6 @@ See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, an
 - Pitch-center estimation uses a conservative multi-window normalized autocorrelation pass and can still miss very weak, heavily inharmonic, or rapidly gliding material.
 - Material classification is intentionally conservative and leaves weakly evidenced cases as `unknown`.
 - Pitch detection uses a short autocorrelation-like pass over the beginning of the file only.
-- Pitch-center estimation uses a conservative multi-window normalized autocorrelation pass and can still miss very weak, heavily inharmonic, or rapidly gliding material.
 - Summary text is generated from heuristics and should not be treated as a complete verbal description of the signal.
 
 ## Test expectations
@@ -192,6 +209,7 @@ See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, an
 - verify reproducibility of measurement outputs
 - verify annotation structure and confidence handling
 - verify contract alignment for `AnalysisReport`
+- verify loop-boundary suggestions on clearly repeating synthetic fixtures and confirm ambiguous candidates stay explicit
 
 Current coverage in `modules/analysis/tests/analyze-audio.test.ts` validates:
 
@@ -207,8 +225,15 @@ Current coverage in `modules/analysis/tests/analyze-audio.test.ts` validates:
 - conservative material classification for `one_shot`, `loop`, and `unknown`
 - transient-map event detection with stable onset timestamps
 - standalone tempo estimation on synthetic metronomic pulse fixtures
+
 Additional coverage in `modules/analysis/tests/estimate-pitch-center.test.ts` validates:
 
 - stable voiced estimates on tonal synthetic fixtures
 - conservative `unvoiced` output on broadband noise
 - later-onset tone detection so the estimator is not limited to the first analysis window
+
+Current coverage in `modules/analysis/tests/suggest-loop-boundaries.test.ts` validates:
+
+- repeated single-cycle fixtures surface a high-confidence loop span
+- offset repeated regions can start after a non-repeating lead-in
+- non-repeating fixtures return no suggestions instead of forced boundaries

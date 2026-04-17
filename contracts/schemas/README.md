@@ -29,6 +29,7 @@ Expected schema families include:
 - `audio-version`
 - `analysis-report`
 - `pitch-center-estimate`
+- `loop-boundary-suggestion-set`
 - `transient-map`
 - `tempo-estimate`
 - `slice-map`
@@ -50,6 +51,7 @@ Each schema should be stable, documented, and accompanied by at least one exampl
 - `analysis-report.md`
 - `pitch-center-estimate.md`
 - `tempo-estimate.md`
+- `loop-boundary-suggestion-set.md`
 - `semantic-profile.md`
 - `edit-plan.md`
 - `transform-record.md`

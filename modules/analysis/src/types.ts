@@ -83,6 +83,37 @@ export interface TempoEstimate {
   ambiguity_candidates_bpm?: number[];
 }
 
+/** One candidate loop span emitted by the standalone loop-boundary suggester. */
+export interface LoopBoundarySuggestion {
+  start_seconds: number;
+  end_seconds: number;
+  duration_seconds: number;
+  confidence: number;
+  rationale: string;
+}
+
+/** Structured output emitted by the standalone loop-boundary suggester. */
+export interface LoopBoundarySuggestionSet {
+  schema_version: "1.0.0";
+  loop_boundary_suggestion_id: string;
+  asset_id: string;
+  version_id: string;
+  generated_at: string;
+  detector: {
+    name: string;
+    version: string;
+  };
+  suggestions: LoopBoundarySuggestion[];
+}
+
+export interface LoopBoundarySuggestionOptions {
+  workspaceRoot?: string;
+  generatedAt?: string;
+  maxSuggestions?: number;
+  minDurationSeconds?: number;
+  maxDurationSeconds?: number;
+}
+
 /** Structured measurement groups emitted by the baseline analyzer. */
 export interface AnalysisMeasurements {
   levels: {
