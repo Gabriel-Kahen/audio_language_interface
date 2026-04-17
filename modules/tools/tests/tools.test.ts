@@ -288,6 +288,10 @@ describe("tools module", () => {
             "compressor",
             "limiter",
             "time_stretch",
+            "reverse",
+            "mono_sum",
+            "channel_swap",
+            "stereo_balance_correction",
             "stereo_width",
             "denoise",
           ],
@@ -695,6 +699,45 @@ describe("tools module", () => {
     });
   });
 
+  it("allows reverse plans through to transforms", async () => {
+    const applyEditPlan = vi.fn(async (_options: unknown) => ({
+      outputVersion: buildAudioVersion("ver_output"),
+      transformRecord: {
+        ...buildTransformRecord("ver_input", "ver_output"),
+        operations: [
+          {
+            operation: "reverse",
+            parameters: {},
+            status: "applied",
+          },
+        ],
+      },
+      commands: [],
+      warnings: [],
+    }));
+
+    const response = await executeToolRequest(
+      buildRequest({
+        tool_name: "apply_edit_plan",
+        asset_id: "asset_example",
+        version_id: "ver_input",
+        arguments: {
+          audio_version: buildAudioVersion("ver_input"),
+          edit_plan: buildSingleStepEditPlan("ver_input", "reverse", {}),
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/workspace",
+        runtime: createRuntimeOverrides({
+          applyEditPlan: applyEditPlan as unknown as ToolsRuntime["applyEditPlan"],
+        }),
+      },
+    );
+
+    expect(applyEditPlan).toHaveBeenCalledOnce();
+    expect(response.status).toBe("ok");
+  });
+
   it("routes compare_versions and wraps the report", async () => {
     const compareVersions = vi.fn((_options: unknown) => ({
       schema_version: "1.0.0" as const,
@@ -1044,6 +1087,102 @@ describe("tools module", () => {
     expect(response.error?.code).toBe("invalid_arguments");
     expect(response.error?.details).toMatchObject({
       field: "arguments.edit_plan.steps[0].operation",
+      operation: "stereo_width",
+      required_channels: 2,
+      received_channels: 1,
+    });
+  });
+
+  it("rejects channel_swap plans on non-stereo audio before execution", async () => {
+    const applyEditPlan = vi.fn();
+
+    const response = await executeToolRequest(
+      buildRequest({
+        tool_name: "apply_edit_plan",
+        asset_id: "asset_example",
+        version_id: "ver_input",
+        arguments: {
+          audio_version: {
+            ...buildAudioVersion("ver_input"),
+            audio: {
+              ...((buildAudioVersion("ver_input").audio as Record<string, unknown>) ?? {}),
+              channels: 1,
+            },
+          },
+          edit_plan: buildSingleStepEditPlan("ver_input", "channel_swap", {}),
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/workspace",
+        runtime: createRuntimeOverrides({
+          applyEditPlan: applyEditPlan as unknown as ToolsRuntime["applyEditPlan"],
+        }),
+      },
+    );
+
+    expect(applyEditPlan).not.toHaveBeenCalled();
+    expect(response.status).toBe("error");
+    expect(response.error?.code).toBe("invalid_arguments");
+    expect(response.error?.details).toMatchObject({
+      field: "arguments.edit_plan.steps[0].operation",
+      operation: "channel_swap",
+      required_channels: 2,
+      received_channels: 1,
+    });
+  });
+
+  it("rejects stereo-only steps after mono_sum using the simulated post-step channel state", async () => {
+    const applyEditPlan = vi.fn();
+
+    const response = await executeToolRequest(
+      buildRequest({
+        tool_name: "apply_edit_plan",
+        asset_id: "asset_example",
+        version_id: "ver_input",
+        arguments: {
+          audio_version: buildAudioVersion("ver_input"),
+          edit_plan: {
+            schema_version: "1.0.0",
+            plan_id: "plan_123",
+            asset_id: "asset_example",
+            version_id: "ver_input",
+            user_request: "Collapse to mono and then widen it.",
+            goals: ["collapse to mono", "widen image"],
+            created_at: "2026-04-14T20:20:07Z",
+            steps: [
+              {
+                step_id: "step_1",
+                operation: "mono_sum",
+                target: { scope: "full_file" },
+                parameters: {},
+                expected_effects: ["collapse image"],
+                safety_limits: ["stay explicit"],
+              },
+              {
+                step_id: "step_2",
+                operation: "stereo_width",
+                target: { scope: "full_file" },
+                parameters: { width_multiplier: 1.1 },
+                expected_effects: ["widen image"],
+                safety_limits: ["stay explicit"],
+              },
+            ],
+          },
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/workspace",
+        runtime: createRuntimeOverrides({
+          applyEditPlan: applyEditPlan as unknown as ToolsRuntime["applyEditPlan"],
+        }),
+      },
+    );
+
+    expect(applyEditPlan).not.toHaveBeenCalled();
+    expect(response.status).toBe("error");
+    expect(response.error?.code).toBe("invalid_arguments");
+    expect(response.error?.details).toMatchObject({
+      field: "arguments.edit_plan.steps[1].operation",
       operation: "stereo_width",
       required_channels: 2,
       received_channels: 1,

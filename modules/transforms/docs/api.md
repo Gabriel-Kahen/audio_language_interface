@@ -371,16 +371,86 @@ Rules:
 - callers must provide either the ratio or the tempo pair, not both
 - the module records the derived `stretch_ratio` and `applied_tempo_ratio` in the `TransformRecord`
 
+### `reverse`
+
+Parameters:
+
+- none
+
+Rules:
+
+- input and output metadata stay the same apart from file identity and lineage
+
 Target support:
 
 - `full_file` only
 
 Fixed execution behavior:
 
-- FFmpeg `atempo` is used to preserve pitch while changing duration
-- the reciprocal tempo factor is decomposed into a deterministic comma-separated filter chain when needed
-- the module does not estimate tempo; it only applies an explicit requested match
-- `outputVersion.audio.duration_seconds` and `frame_count` are updated from the applied ratio
+- FFmpeg filter: `areverse`
+
+### `mono_sum`
+
+Parameters:
+
+- none
+
+Rules:
+
+- output audio is always rendered as mono with `channels = 1` and `channel_layout = "mono"`
+- all input channels are averaged equally into the mono output
+
+Target support:
+
+- `full_file` only
+
+Fixed execution behavior:
+
+- FFmpeg filter: `pan`
+- each input channel gets an equal coefficient of `1 / input_channel_count`
+
+### `channel_swap`
+
+Parameters:
+
+- none
+
+Rules:
+
+- input audio must be stereo with exactly `2` channels
+- the output keeps stereo metadata and swaps left and right content explicitly
+
+Target support:
+
+- `full_file` only
+
+Fixed execution behavior:
+
+- FFmpeg filter: `pan=stereo|c0=c1|c1=c0`
+
+### `stereo_balance_correction`
+
+Parameters:
+
+- `target_channel: "left" | "right"`
+- `correction_db: number`
+
+Rules:
+
+- `correction_db` must be between `0.01` and `24`
+- input audio must be stereo with exactly `2` channels
+- the named `target_channel` is attenuated by the requested amount
+- the quieter side is never auto-boosted
+
+Target support:
+
+- `full_file` only
+
+Fixed execution behavior:
+
+- FFmpeg filter: `pan`
+- `target_channel: "left"` attenuates `c0`
+- `target_channel: "right"` attenuates `c1`
 
 ### `stereo_width`
 

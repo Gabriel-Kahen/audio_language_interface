@@ -23,6 +23,10 @@ export type OperationName =
   | "compressor"
   | "limiter"
   | "time_stretch"
+  | "reverse"
+  | "mono_sum"
+  | "channel_swap"
+  | "stereo_balance_correction"
   | "denoise"
   | "stereo_width";
 

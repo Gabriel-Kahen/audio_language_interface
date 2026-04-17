@@ -157,8 +157,12 @@
         "compressor",
         "limiter",
         "time_stretch",
-        "stereo_width",
-        "denoise"
+        "reverse",
+        "mono_sum",
+        "channel_swap",
+        "stereo_balance_correction",
+        "denoise",
+        "stereo_width"
       ]
     },
     "targetScope": {
@@ -581,6 +585,34 @@
           }
         }
       ]
+    },
+    "reverseParameters": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "monoSumParameters": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "channelSwapParameters": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "stereoBalanceCorrectionParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_channel", "correction_db"],
+      "properties": {
+        "target_channel": {
+          "type": "string",
+          "enum": ["left", "right"]
+        },
+        "correction_db": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 24
+        }
+      }
     },
     "stereoWidthParameters": {
       "type": "object",

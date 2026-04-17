@@ -1,3 +1,9 @@
+import {
+  buildChannelSwapOperation,
+  buildMonoSumOperation,
+  buildReverseOperation,
+  buildStereoBalanceCorrectionOperation,
+} from "./operations/channel-utilities.js";
 import { buildCompressorOperation, buildLimiterOperation } from "./operations/dynamics.js";
 import {
   buildHighPassFilterOperation,
@@ -44,6 +50,14 @@ export function buildOperation(
       return buildLimiterOperation(audio, parameters, target);
     case "time_stretch":
       return buildTimeStretchOperation(audio, parameters, target);
+    case "reverse":
+      return buildReverseOperation(audio, parameters, target);
+    case "mono_sum":
+      return buildMonoSumOperation(audio, parameters, target);
+    case "channel_swap":
+      return buildChannelSwapOperation(audio, parameters, target);
+    case "stereo_balance_correction":
+      return buildStereoBalanceCorrectionOperation(audio, parameters, target);
     case "stereo_width":
       return buildStereoWidthOperation(audio, parameters, target);
     case "denoise":

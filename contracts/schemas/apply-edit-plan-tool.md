@@ -15,7 +15,7 @@ Defines the tool envelope for executing an explicit `EditPlan` against one `Audi
   - `output_version_id`
   - `record_id`
 
-The request schema and current tool runtime support the published `apply_edit_plan` operation set currently implemented by `modules/transforms`, including `pitch_shift`, `compressor`, `limiter`, `time_stretch`, `stereo_width`, and `denoise`.
+The request schema and current tool runtime support the published `apply_edit_plan` operation set currently implemented by `modules/transforms`, including `pitch_shift`, `compressor`, `limiter`, `time_stretch`, `reverse`, `mono_sum`, `channel_swap`, `stereo_balance_correction`, `stereo_width`, and `denoise`.
 
 ## Success response
 

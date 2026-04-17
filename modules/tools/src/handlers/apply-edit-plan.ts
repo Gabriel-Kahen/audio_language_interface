@@ -1,4 +1,9 @@
-import type { AudioVersion, EditPlan, OperationName } from "@audio-language-interface/transforms";
+import {
+  type AudioVersion,
+  buildOperation,
+  type EditPlan,
+  type OperationName,
+} from "@audio-language-interface/transforms";
 
 import { createProvenanceMismatchError, ToolInputError } from "../errors.js";
 import type { ToolDefinition, ToolRequest } from "../types.js";
@@ -31,6 +36,10 @@ const SUPPORTED_EDIT_PLAN_OPERATIONS = new Set<OperationName>([
   "compressor",
   "limiter",
   "time_stretch",
+  "reverse",
+  "mono_sum",
+  "channel_swap",
+  "stereo_balance_correction",
   "stereo_width",
   "denoise",
 ]);
@@ -106,36 +115,45 @@ function validateArguments(value: unknown, request: ToolRequest): ApplyEditPlanA
     );
   }
 
+  let currentAudio = audioVersion.audio;
   for (const [index, step] of editPlan.steps.entries()) {
-    if (
-      ["pitch_shift", "compressor", "limiter", "time_stretch", "stereo_width", "denoise"].includes(
-        step.operation,
-      ) &&
-      step.target.scope !== "full_file"
-    ) {
-      throw new ToolInputError(
-        "invalid_arguments",
-        `arguments.edit_plan.steps[${index}].target.scope must be 'full_file' for ${step.operation}.`,
-        {
-          field: `arguments.edit_plan.steps[${index}].target.scope`,
-          operation: step.operation,
-          required_scope: "full_file",
-          received_scope: step.target.scope,
-        },
-      );
-    }
+    try {
+      const built = buildOperation(currentAudio, step.operation, step.parameters, step.target);
+      currentAudio = built.nextAudio;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
 
-    if (step.operation === "stereo_width" && audioVersion.audio.channels !== 2) {
-      throw new ToolInputError(
-        "invalid_arguments",
-        `arguments.edit_plan.steps[${index}].operation 'stereo_width' requires stereo 2-channel audio.`,
-        {
-          field: `arguments.edit_plan.steps[${index}].operation`,
-          operation: step.operation,
-          required_channels: 2,
-          received_channels: audioVersion.audio.channels,
-        },
-      );
+      if (message.includes("only supports full_file")) {
+        throw new ToolInputError(
+          "invalid_arguments",
+          `arguments.edit_plan.steps[${index}].target.scope must be 'full_file' for ${step.operation}.`,
+          {
+            field: `arguments.edit_plan.steps[${index}].target.scope`,
+            operation: step.operation,
+            required_scope: "full_file",
+            received_scope: step.target.scope,
+          },
+        );
+      }
+
+      if (message.includes("requires stereo 2-channel audio")) {
+        throw new ToolInputError(
+          "invalid_arguments",
+          `arguments.edit_plan.steps[${index}].operation '${step.operation}' requires stereo 2-channel audio.`,
+          {
+            field: `arguments.edit_plan.steps[${index}].operation`,
+            operation: step.operation,
+            required_channels: 2,
+            received_channels: currentAudio.channels,
+          },
+        );
+      }
+
+      throw new ToolInputError("invalid_arguments", message, {
+        field: "arguments.edit_plan",
+        step_index: index,
+        operation: step.operation,
+      });
     }
   }
 
