@@ -79,6 +79,7 @@ describe("capabilities module", () => {
     expect(expectedGain).toBeDefined();
     expect(gain).toBe(expectedGain);
     expect(gain).toBeDefined();
+    expect(gain.parameters).toBeDefined();
     expect(gain.parameters).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -140,7 +141,7 @@ describe("capabilities module", () => {
     const invalidManifest = cloneManifest();
     const firstOperation = invalidManifest.operations[0];
     expect(firstOperation).toBeDefined();
-    (firstOperation as unknown as Record<string, unknown>).name = "unsupported_operation";
+    (firstOperation as { name: string }).name = "unsupported_operation";
 
     expect(isValidRuntimeCapabilityManifest(invalidManifest)).toBe(false);
     expect(() => assertValidRuntimeCapabilityManifest(invalidManifest)).toThrow(
