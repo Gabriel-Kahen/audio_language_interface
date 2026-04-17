@@ -106,6 +106,15 @@
             }
           },
           {
+            "if": { "properties": { "operation": { "const": "trim_silence" } } },
+            "then": {
+              "properties": {
+                "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
+                "parameters": { "$ref": "./common.schema.json#/$defs/trimSilenceParameters" }
+              }
+            }
+          },
+          {
             "if": { "properties": { "operation": { "const": "fade" } } },
             "then": {
               "properties": {

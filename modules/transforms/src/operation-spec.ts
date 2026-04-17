@@ -14,7 +14,11 @@ import { buildGainOperation, buildNormalizeOperation } from "./operations/gain.j
 import { buildPitchShiftOperation } from "./operations/pitch.js";
 import { buildDenoiseOperation, buildStereoWidthOperation } from "./operations/spatial-cleanup.js";
 import { buildTimeStretchOperation } from "./operations/time-stretch.js";
-import { buildFadeOperation, buildTrimOperation } from "./operations/trim-fade.js";
+import {
+  buildFadeOperation,
+  buildTrimOperation,
+  buildTrimSilenceOperation,
+} from "./operations/trim-fade.js";
 import type { AudioVersion, EditTarget, OperationBuildResult, OperationName } from "./types.js";
 
 /**
@@ -34,6 +38,8 @@ export function buildOperation(
       return buildNormalizeOperation(audio, parameters, target);
     case "trim":
       return buildTrimOperation(audio, parameters, target);
+    case "trim_silence":
+      return buildTrimSilenceOperation(audio, parameters, target);
     case "fade":
       return buildFadeOperation(audio, parameters, target);
     case "pitch_shift":

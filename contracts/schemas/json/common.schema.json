@@ -149,6 +149,7 @@
         "gain",
         "normalize",
         "trim",
+        "trim_silence",
         "fade",
         "pitch_shift",
         "parametric_eq",
@@ -309,6 +310,55 @@
           "exclusiveMinimum": 0
         }
       }
+    },
+    "trimSilenceParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["threshold_dbfs", "trim_leading", "trim_trailing"],
+      "properties": {
+        "threshold_dbfs": {
+          "type": "number",
+          "minimum": -80,
+          "maximum": 0
+        },
+        "trim_leading": {
+          "type": "boolean"
+        },
+        "trim_trailing": {
+          "type": "boolean"
+        },
+        "window_seconds": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 10
+        },
+        "result_duration_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "trimmed_duration_seconds": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "trim_leading": {
+              "const": true
+            }
+          },
+          "required": ["trim_leading"]
+        },
+        {
+          "properties": {
+            "trim_trailing": {
+              "const": true
+            }
+          },
+          "required": ["trim_trailing"]
+        }
+      ]
     },
     "fadeParameters": {
       "type": "object",

@@ -6,6 +6,7 @@ import {
   extractTransformWarnings,
 } from "./ffmpeg-adapter.js";
 import { buildOperation } from "./operation-spec.js";
+import { probeOutputAudioMetadata } from "./output-metadata.js";
 import { createOutputVersionId, resolveTransformOutputPath } from "./path-policy.js";
 import { createAppliedOperation, createTransformRecord } from "./record-builder.js";
 import type { ApplyOperationOptions, ApplyTransformsResult, AudioVersion } from "./types.js";
@@ -42,6 +43,18 @@ export async function applyOperation(
   });
   const execution = await executeFfmpegCommand(command, options.executor);
   const warnings = extractTransformWarnings(execution.stderr);
+  const outputAudio = built.requiresOutputProbe
+    ? await probeOutputAudioMetadata({
+        outputPath: outputPath.absolutePath,
+        fallbackAudio: built.nextAudio,
+      })
+    : built.nextAudio;
+  const effectiveParameters = finalizeOperationParameters(
+    options.operation,
+    built.effectiveParameters,
+    options.version.audio,
+    outputAudio,
+  );
   const finishedAtDate = new Date();
   const transformRecord = createTransformRecord({
     ...(options.recordId !== undefined ? { recordId: options.recordId } : {}),
@@ -51,14 +64,14 @@ export async function applyOperation(
     startedAt: startedAtDate.toISOString(),
     finishedAt: finishedAtDate.toISOString(),
     runtimeMs: finishedAtDate.getTime() - startedAtDate.getTime(),
-    operations: [createAppliedOperation(options.operation, built.effectiveParameters)],
+    operations: [createAppliedOperation(options.operation, effectiveParameters)],
     warnings,
   });
   const outputVersion = createOutputVersion({
     inputVersion: options.version,
     outputVersionId,
     outputStorageRef: outputPath.relativePath,
-    audio: built.nextAudio,
+    audio: outputAudio,
     createdAt: finishedAtDate.toISOString(),
     transformRecordId: transformRecord.record_id,
   });
@@ -68,6 +81,25 @@ export async function applyOperation(
     transformRecord,
     commands: [command],
     warnings,
+  };
+}
+
+function finalizeOperationParameters(
+  operation: ApplyOperationOptions["operation"],
+  parameters: Record<string, unknown>,
+  inputAudio: AudioVersion["audio"],
+  outputAudio: AudioVersion["audio"],
+): Record<string, unknown> {
+  if (operation !== "trim_silence") {
+    return parameters;
+  }
+
+  return {
+    ...parameters,
+    result_duration_seconds: outputAudio.duration_seconds,
+    trimmed_duration_seconds: Number(
+      Math.max(0, inputAudio.duration_seconds - outputAudio.duration_seconds).toFixed(6),
+    ),
   };
 }
 

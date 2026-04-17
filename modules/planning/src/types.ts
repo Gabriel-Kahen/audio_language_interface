@@ -15,6 +15,7 @@ export type OperationName =
   | "gain"
   | "normalize"
   | "trim"
+  | "trim_silence"
   | "fade"
   | "pitch_shift"
   | "parametric_eq"

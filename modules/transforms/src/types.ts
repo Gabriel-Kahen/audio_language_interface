@@ -6,6 +6,7 @@ export type OperationName =
   | "gain"
   | "normalize"
   | "trim"
+  | "trim_silence"
   | "fade"
   | "pitch_shift"
   | "parametric_eq"
@@ -181,6 +182,7 @@ export interface OperationBuildResult {
   filterChain: string;
   effectiveParameters: Record<string, unknown>;
   nextAudio: AudioVersion["audio"];
+  requiresOutputProbe?: boolean;
 }
 
 export interface ExtractSliceOptions {
