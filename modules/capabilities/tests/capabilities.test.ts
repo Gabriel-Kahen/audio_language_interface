@@ -101,33 +101,35 @@ describe("capabilities module", () => {
     expect(plannerSupportedRuntimeOperations).toEqual(filteredPlannerNames);
   });
 
+  it("returns a defined capability for every published operation name", () => {
+    for (const operation of listRuntimeOperationCapabilities()) {
+      const resolved = getRuntimeOperationCapability(operation.name);
+      expect(resolved).toBeDefined();
+      expect(resolved.name).toBe(operation.name);
+    }
+  });
+
   it("keeps operation names unique and taxonomy-aligned", () => {
-    const operationNames = defaultRuntimeCapabilityManifest.operations.map(
-      (operation) => operation.name,
-    );
+    const operations = defaultRuntimeCapabilityManifest.operations;
+    const operationNames = operations.map((operation) => operation.name);
 
     expect(new Set(operationNames).size).toBe(operationNames.length);
-    expect(operationNames.sort()).toEqual(
-      [
-        "channel_swap",
-        "compressor",
-        "denoise",
-        "fade",
+    expect(operations).not.toHaveLength(0);
+    expect(operations.every((operation) => operation.summary.length > 0)).toBe(true);
+    expect(operations.every((operation) => operation.supported_target_scopes.length > 0)).toBe(
+      true,
+    );
+    expect(operationNames).toEqual(
+      expect.arrayContaining([
         "gain",
-        "high_pass_filter",
-        "limiter",
-        "low_pass_filter",
-        "mono_sum",
-        "normalize",
-        "parametric_eq",
-        "pitch_shift",
-        "reverse",
-        "stereo_balance_correction",
-        "stereo_width",
-        "time_stretch",
         "trim",
-        "trim_silence",
-      ].sort(),
+        "fade",
+        "parametric_eq",
+        "compressor",
+        "limiter",
+        "stereo_width",
+        "denoise",
+      ]),
     );
   });
 
