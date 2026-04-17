@@ -37,6 +37,7 @@ This module is the formal bridge between the `Audio Runtime` and the `Intent Lay
 - publishes the current runtime operation inventory as a static validated manifest
 - marks which operations are baseline-planner-supported versus runtime-only
 - describes target-scope support, channel constraints, and parameter surfaces in a machine-readable shape
+- publishes Layer 1 ambience, delay, texture, drive, and modulation effects as runtime-available capabilities without forcing immediate planner support
 
 ## Test expectations
 

@@ -130,6 +130,8 @@ Validates one operation and converts it into an inspectable intermediate form:
 
 This function does not touch the filesystem and does not run FFmpeg.
 
+For the Layer 1 effect family (`reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, and `phaser`), the published contract surface is the caller-facing parameter object plus the recorded `TransformRecord` parameters. Some operations also record derived values such as generated reverb tap timings or normalized defaults when those values describe the exact applied result.
+
 ## Operation reference
 
 ### `gain`
@@ -523,6 +525,170 @@ Fixed execution behavior:
 - adaptive tracking is disabled with `tn=0` and `tr=0`
 - the implementation uses a fixed broadband denoise profile rather than learned noise capture
 - this is intentionally conservative and best suited to steady broadband noise
+
+### `reverb`
+
+Parameters:
+
+- `pre_delay_ms: number`
+- `reflection_spacing_ms: number`
+- `tail_taps: integer`
+- `decay: number`
+- optional `dry_mix: number`, default `0.82`
+- optional `wet_mix: number`, default `0.35`
+
+Rules:
+
+- `pre_delay_ms` and `reflection_spacing_ms` must stay between `1` and `250`
+- `tail_taps` must stay between `2` and `8`
+- `decay` must stay between `0.01` and `0.95`
+- `dry_mix` and `wet_mix` must stay between `0` and `1` when provided
+- the emitted `TransformRecord` also records the derived `tap_delays_ms` and `tap_decays`
+
+Target support:
+
+- `full_file` only
+
+### `delay`
+
+Parameters:
+
+- `delay_ms: number`
+- optional `dry_mix: number`, default `0.85`
+- optional `wet_mix: number`, default `0.35`
+
+Rules:
+
+- `delay_ms` must stay between `1` and `5000`
+- `dry_mix` and `wet_mix` must stay between `0` and `1` when provided
+
+Target support:
+
+- `full_file` only
+
+### `echo`
+
+Parameters:
+
+- `delay_ms: number`
+- `decay: number`
+- optional `dry_mix: number`, default `0.8`
+- optional `wet_mix: number`, default `0.4`
+
+Rules:
+
+- `delay_ms` must stay between `1` and `5000`
+- `decay` must stay between `0.01` and `0.95`
+- `dry_mix` and `wet_mix` must stay between `0` and `1` when provided
+
+Target support:
+
+- `full_file` only
+
+### `bitcrush`
+
+Parameters:
+
+- `bit_depth: integer`
+- `sample_hold_samples: integer`
+- optional `mix: number`, default `1`
+- optional `mode: "lin" | "log"`, default `"lin"`
+
+Rules:
+
+- `bit_depth` must stay between `1` and `24`
+- `sample_hold_samples` must stay between `1` and `250`
+- `mix` must stay between `0` and `1` when provided
+
+Target support:
+
+- `full_file` only
+
+### `distortion`
+
+Parameters:
+
+- `drive_db: number`
+- `threshold: number`
+- optional `output_gain_db: number`
+- optional `oversample_factor: integer`, default `2`
+
+Rules:
+
+- `drive_db` must stay between `0` and `36`
+- `threshold` must stay between `0.01` and `1`
+- `output_gain_db` must stay between `-24` and `24` when provided
+- `oversample_factor` must stay between `1` and `8` when provided
+- the emitted `TransformRecord` also records `clip_mode: "hard"`
+
+Target support:
+
+- `full_file` only
+
+### `saturation`
+
+Parameters:
+
+- `drive_db: number`
+- optional `curve: "tanh" | "atan" | "cubic"`, default `"tanh"`
+- optional `output_gain_db: number`
+- optional `oversample_factor: integer`, default `2`
+
+Rules:
+
+- `drive_db` must stay between `0` and `24`
+- `output_gain_db` must stay between `-24` and `24` when provided
+- `oversample_factor` must stay between `1` and `8` when provided
+
+Target support:
+
+- `full_file` only
+
+### `flanger`
+
+Parameters:
+
+- `delay_ms: number`
+- `depth_ms: number`
+- `rate_hz: number`
+- `feedback_percent: number`
+- `mix_percent: number`
+- optional `waveform: "sinusoidal" | "triangular"`, default `"sinusoidal"`
+
+Rules:
+
+- `delay_ms` must stay between `0` and `30`
+- `depth_ms` must stay between `0` and `10`
+- `rate_hz` must stay between `0.1` and `10`
+- `feedback_percent` must stay between `-95` and `95`
+- `mix_percent` must stay between `0` and `100`
+
+Target support:
+
+- `full_file` only
+
+### `phaser`
+
+Parameters:
+
+- `delay_ms: number`
+- `decay: number`
+- `rate_hz: number`
+- optional `input_gain_db: number`, default `-8`
+- optional `output_gain_db: number`, default `-2`
+- optional `waveform: "sinusoidal" | "triangular"`, default `"sinusoidal"`
+
+Rules:
+
+- `delay_ms` must stay between `0` and `5`
+- `decay` must stay between `0` and `0.99`
+- `rate_hz` must stay between `0.1` and `2`
+- `input_gain_db` must stay between `-60` and `0` when provided
+- `output_gain_db` must stay between `-60` and `24` when provided
+
+Target support:
+
+- `full_file` only
 
 ### `time_stretch`
 

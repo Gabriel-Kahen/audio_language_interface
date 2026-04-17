@@ -6,6 +6,16 @@ import {
 } from "./operations/channel-utilities.js";
 import { buildCompressorOperation, buildLimiterOperation } from "./operations/dynamics.js";
 import {
+  buildBitcrushOperation,
+  buildDelayOperation,
+  buildDistortionOperation,
+  buildEchoOperation,
+  buildFlangerOperation,
+  buildPhaserOperation,
+  buildReverbOperation,
+  buildSaturationOperation,
+} from "./operations/effects.js";
+import {
   buildHighPassFilterOperation,
   buildLowPassFilterOperation,
   buildParametricEqOperation,
@@ -56,6 +66,22 @@ export function buildOperation(
       return buildLimiterOperation(audio, parameters, target);
     case "time_stretch":
       return buildTimeStretchOperation(audio, parameters, target);
+    case "reverb":
+      return buildReverbOperation(audio, parameters, target);
+    case "delay":
+      return buildDelayOperation(audio, parameters, target);
+    case "echo":
+      return buildEchoOperation(audio, parameters, target);
+    case "bitcrush":
+      return buildBitcrushOperation(audio, parameters, target);
+    case "distortion":
+      return buildDistortionOperation(audio, parameters, target);
+    case "saturation":
+      return buildSaturationOperation(audio, parameters, target);
+    case "flanger":
+      return buildFlangerOperation(audio, parameters, target);
+    case "phaser":
+      return buildPhaserOperation(audio, parameters, target);
     case "reverse":
       return buildReverseOperation(audio, parameters, target);
     case "mono_sum":

@@ -18,7 +18,15 @@ export type RuntimeOperationName =
   | "channel_swap"
   | "stereo_balance_correction"
   | "stereo_width"
-  | "denoise";
+  | "denoise"
+  | "reverb"
+  | "delay"
+  | "echo"
+  | "bitcrush"
+  | "distortion"
+  | "saturation"
+  | "flanger"
+  | "phaser";
 
 export type RuntimeTargetScope =
   | "full_file"
@@ -34,7 +42,8 @@ export type RuntimeOperationCategory =
   | "tonal"
   | "dynamics"
   | "stereo"
-  | "restoration";
+  | "restoration"
+  | "effects";
 export type RuntimeParameterValueType = "number" | "integer" | "string" | "boolean" | "enum";
 
 export interface RuntimeParameterSpec {

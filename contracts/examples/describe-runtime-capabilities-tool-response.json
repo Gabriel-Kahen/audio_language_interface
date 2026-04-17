@@ -3,17 +3,18 @@
   "request_id": "toolreq_DescribeRuntime001",
   "tool_name": "describe_runtime_capabilities",
   "status": "ok",
-  "completed_at": "2026-04-17T00:00:01Z",
+  "completed_at": "2026-04-17T18:00:01Z",
   "result": {
     "runtime_capability_manifest": {
       "schema_version": "1.0.0",
-      "manifest_id": "capmanifest_20260417A",
-      "generated_at": "2026-04-17T00:00:00Z",
+      "manifest_id": "capmanifest_20260417B",
+      "generated_at": "2026-04-17T18:00:00Z",
       "runtime_layer": "audio_runtime",
-      "summary": "Published runtime capability surface for deterministic audio editing and rendering support in the current repository.",
+      "summary": "Published runtime capability surface for deterministic audio editing and Layer 1 effect processing in the current repository.",
       "limitations": [
         "Most operations currently support full_file targets only.",
-        "time_stretch is runtime-available but not yet selected by the baseline planner."
+        "time_stretch is runtime-available but not yet selected by the baseline planner.",
+        "Layer 1 ambience, texture, and modulation effects are runtime-available but not yet selected by the baseline planner."
       ],
       "operations": [
         {
@@ -30,6 +31,38 @@
               "description": "Gain adjustment in decibels.",
               "unit": "dB",
               "example_value": -1.5
+            }
+          ]
+        },
+        {
+          "name": "reverb",
+          "category": "effects",
+          "summary": "Apply a layered echo-based reverb with explicit pre-delay, spacing, tap count, and decay.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file"],
+          "planner_notes": [
+            "Runtime-available Layer 1 effect. Not yet chosen by the baseline planner."
+          ],
+          "parameters": [
+            {
+              "name": "pre_delay_ms",
+              "value_type": "number",
+              "required": true,
+              "description": "Delay before the first reverb reflection.",
+              "minimum": 1,
+              "maximum": 250,
+              "unit": "ms",
+              "example_value": 12
+            },
+            {
+              "name": "reflection_spacing_ms",
+              "value_type": "number",
+              "required": true,
+              "description": "Spacing between successive synthetic reflection taps.",
+              "minimum": 1,
+              "maximum": 250,
+              "unit": "ms",
+              "example_value": 18
             }
           ]
         }

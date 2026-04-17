@@ -118,7 +118,7 @@
     },
     "operationCategory": {
       "type": "string",
-      "enum": ["level", "timing", "tonal", "dynamics", "stereo", "restoration"]
+      "enum": ["level", "timing", "tonal", "dynamics", "stereo", "restoration", "effects"]
     },
     "parameterValueType": {
       "type": "string",
@@ -179,7 +179,15 @@
         "channel_swap",
         "stereo_balance_correction",
         "denoise",
-        "stereo_width"
+        "stereo_width",
+        "reverb",
+        "delay",
+        "echo",
+        "bitcrush",
+        "distortion",
+        "saturation",
+        "flanger",
+        "phaser"
       ]
     },
     "targetScope": {
@@ -705,6 +713,263 @@
         "noise_floor_dbfs": {
           "type": "number",
           "maximum": 0
+        }
+      }
+    },
+    "reverbParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pre_delay_ms", "reflection_spacing_ms", "tail_taps", "decay"],
+      "properties": {
+        "pre_delay_ms": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 250
+        },
+        "reflection_spacing_ms": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 250
+        },
+        "tail_taps": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 8
+        },
+        "decay": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 0.95
+        },
+        "dry_mix": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "wet_mix": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "tap_delays_ms": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "tap_decays": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        }
+      }
+    },
+    "delayParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["delay_ms"],
+      "properties": {
+        "delay_ms": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5000
+        },
+        "dry_mix": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "wet_mix": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "echoParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["delay_ms", "decay"],
+      "properties": {
+        "delay_ms": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5000
+        },
+        "decay": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 0.95
+        },
+        "dry_mix": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "wet_mix": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "bitcrushParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bit_depth", "sample_hold_samples"],
+      "properties": {
+        "bit_depth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 24
+        },
+        "sample_hold_samples": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 250
+        },
+        "mix": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["lin", "log"]
+        }
+      }
+    },
+    "distortionParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["drive_db", "threshold"],
+      "properties": {
+        "drive_db": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 36
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 1
+        },
+        "output_gain_db": {
+          "type": "number",
+          "minimum": -24,
+          "maximum": 24
+        },
+        "oversample_factor": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "clip_mode": {
+          "type": "string",
+          "enum": ["hard"]
+        }
+      }
+    },
+    "saturationParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["drive_db"],
+      "properties": {
+        "drive_db": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 24
+        },
+        "output_gain_db": {
+          "type": "number",
+          "minimum": -24,
+          "maximum": 24
+        },
+        "oversample_factor": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "curve": {
+          "type": "string",
+          "enum": ["tanh", "atan", "cubic"]
+        }
+      }
+    },
+    "flangerParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["delay_ms", "depth_ms", "feedback_percent", "mix_percent", "rate_hz"],
+      "properties": {
+        "delay_ms": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "depth_ms": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "rate_hz": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 10
+        },
+        "feedback_percent": {
+          "type": "number",
+          "minimum": -95,
+          "maximum": 95
+        },
+        "mix_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "waveform": {
+          "type": "string",
+          "enum": ["sinusoidal", "triangular"]
+        }
+      }
+    },
+    "phaserParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["delay_ms", "decay", "rate_hz"],
+      "properties": {
+        "input_gain_db": {
+          "type": "number",
+          "minimum": -60,
+          "maximum": 0
+        },
+        "output_gain_db": {
+          "type": "number",
+          "minimum": -60,
+          "maximum": 24
+        },
+        "delay_ms": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "decay": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.99
+        },
+        "rate_hz": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 2
+        },
+        "waveform": {
+          "type": "string",
+          "enum": ["sinusoidal", "triangular"]
         }
       }
     },

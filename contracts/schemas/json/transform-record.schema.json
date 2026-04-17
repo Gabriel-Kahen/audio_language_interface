@@ -216,6 +216,70 @@
                 "parameters": { "$ref": "./common.schema.json#/$defs/denoiseParameters" }
               }
             }
+          },
+          {
+            "if": { "properties": { "operation": { "const": "reverb" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/reverbParameters" }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "operation": { "const": "delay" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/delayParameters" }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "operation": { "const": "echo" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/echoParameters" }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "operation": { "const": "bitcrush" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/bitcrushParameters" }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "operation": { "const": "distortion" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/distortionParameters" }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "operation": { "const": "saturation" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/saturationParameters" }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "operation": { "const": "flanger" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/flangerParameters" }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "operation": { "const": "phaser" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/phaserParameters" }
+              }
+            }
           }
         ]
       }
