@@ -10,6 +10,7 @@ export type RenderId = `render_${string}`;
 export type ComparisonId = `compare_${string}`;
 export type SessionId = `session_${string}`;
 export type ToolRequestId = `toolreq_${string}`;
+export type CapabilityManifestId = `capmanifest_${string}`;
 
 const ID_BODY_PATTERN = /^[A-Za-z0-9]+$/;
 
@@ -81,6 +82,10 @@ export function createToolRequestId(): ToolRequestId {
   return createPrefixedId("toolreq") as ToolRequestId;
 }
 
+export function createCapabilityManifestId(): CapabilityManifestId {
+  return createPrefixedId("capmanifest") as CapabilityManifestId;
+}
+
 /** Checks whether a value matches the shared `AudioAsset` id contract. */
 export function isAssetId(value: unknown): value is AssetId {
   return isPrefixedId("asset", value);
@@ -129,4 +134,8 @@ export function isSessionId(value: unknown): value is SessionId {
 /** Checks whether a value matches the shared tool request id contract. */
 export function isToolRequestId(value: unknown): value is ToolRequestId {
   return isPrefixedId("toolreq", value);
+}
+
+export function isCapabilityManifestId(value: unknown): value is CapabilityManifestId {
+  return isPrefixedId("capmanifest", value);
 }

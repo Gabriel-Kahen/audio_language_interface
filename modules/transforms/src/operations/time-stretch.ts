@@ -116,7 +116,6 @@ function normalizeTimeStretchParameters(parameters: Record<string, unknown>): {
     },
   };
 }
-
 function buildAtempoFilterChain(tempoRatio: number): string {
   const factors: number[] = [];
   let remaining = tempoRatio;
@@ -142,7 +141,7 @@ function buildAtempoFilterChain(tempoRatio: number): string {
 
 function assertFullFileTarget(operation: string, target?: EditTarget): void {
   if (target?.scope !== undefined && target.scope !== "full_file") {
-    throw new Error(`${operation} only supports full_file targets in the initial implementation.`);
+    throw new Error(`${operation} only supports full_file targets in the current runtime.`);
   }
 }
 
@@ -165,7 +164,6 @@ function readPositiveNumber(value: unknown, label: string): number {
 
   return roundToSixDecimals(value);
 }
-
 function roundToSixDecimals(value: number): number {
   return Number(value.toFixed(ROUNDING_PLACES));
 }

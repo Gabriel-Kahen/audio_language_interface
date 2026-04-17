@@ -4,6 +4,8 @@
 
 Render previews and final outputs from an `AudioVersion` into contract-aligned `RenderArtifact` records.
 
+This module is part of the audio runtime layer.
+
 ## Public API surface
 
 - `renderPreview(options)`: render a lossy preview artifact

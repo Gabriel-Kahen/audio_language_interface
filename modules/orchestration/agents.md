@@ -4,7 +4,7 @@
 
 Own end-to-end workflow coordination across modules.
 
-## Pipeline role
+## Architectural role
 
 `orchestration` composes the independent modules into useful execution flows while keeping their responsibilities separate.
 

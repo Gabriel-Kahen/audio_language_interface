@@ -111,6 +111,7 @@ export async function applyEditPlan(options: ApplyEditPlanOptions): Promise<Appl
   const transformRecord = createTransformRecord({
     ...(options.recordId !== undefined ? { recordId: options.recordId } : {}),
     planId: options.plan.plan_id,
+    capabilityManifestId: options.plan.capability_manifest_id,
     assetId: options.version.asset_id,
     inputVersionId: options.version.version_id,
     outputVersionId,

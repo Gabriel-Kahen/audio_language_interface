@@ -82,6 +82,7 @@ export interface AnalysisReport {
 export interface EditPlan {
   schema_version: typeof CONTRACT_SCHEMA_VERSION;
   plan_id: string;
+  capability_manifest_id: string;
   asset_id: string;
   version_id: string;
   user_request: string;

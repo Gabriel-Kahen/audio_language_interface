@@ -1,8 +1,11 @@
 import {
+  defaultRuntimeCapabilityManifest,
+  type RuntimeOperationName,
+} from "@audio-language-interface/capabilities";
+import {
   type AudioVersion,
   buildOperation,
   type EditPlan,
-  type OperationName,
 } from "@audio-language-interface/transforms";
 
 import { createProvenanceMismatchError, ToolInputError } from "../errors.js";
@@ -24,26 +27,9 @@ interface ApplyEditPlanArguments {
   recordId?: string;
 }
 
-const SUPPORTED_EDIT_PLAN_OPERATIONS = new Set<OperationName>([
-  "gain",
-  "normalize",
-  "trim",
-  "trim_silence",
-  "fade",
-  "pitch_shift",
-  "parametric_eq",
-  "high_pass_filter",
-  "low_pass_filter",
-  "compressor",
-  "limiter",
-  "time_stretch",
-  "reverse",
-  "mono_sum",
-  "channel_swap",
-  "stereo_balance_correction",
-  "stereo_width",
-  "denoise",
-]);
+const SUPPORTED_EDIT_PLAN_OPERATIONS = new Set<RuntimeOperationName>(
+  defaultRuntimeCapabilityManifest.operations.map((operation) => operation.name),
+);
 
 function toCommandShape(command: {
   executable: string;
@@ -118,6 +104,33 @@ function validateArguments(value: unknown, request: ToolRequest): ApplyEditPlanA
 
   let currentAudio = audioVersion.audio;
   for (const [index, step] of editPlan.steps.entries()) {
+    if (!SUPPORTED_EDIT_PLAN_OPERATIONS.has(step.operation)) {
+      throw new ToolInputError(
+        "invalid_arguments",
+        `arguments.edit_plan.steps[${index}].operation '${step.operation}' is not published in the runtime capability manifest.`,
+        {
+          field: `arguments.edit_plan.steps[${index}].operation`,
+          operation: step.operation,
+        },
+      );
+    }
+
+    if (
+      ["compressor", "limiter", "stereo_width", "denoise"].includes(step.operation) &&
+      step.target.scope !== "full_file"
+    ) {
+      throw new ToolInputError(
+        "invalid_arguments",
+        `arguments.edit_plan.steps[${index}].target.scope must be 'full_file' for ${step.operation}.`,
+        {
+          field: `arguments.edit_plan.steps[${index}].target.scope`,
+          operation: step.operation,
+          required_scope: "full_file",
+          received_scope: step.target.scope,
+        },
+      );
+    }
+
     try {
       const built = buildOperation(currentAudio, step.operation, step.parameters, step.target);
       currentAudio = built.nextAudio;
@@ -182,6 +195,7 @@ export const applyEditPlanTool: ToolDefinition<ApplyEditPlanArguments, Record<st
     ],
     capabilities: {
       supported_operations: [...SUPPORTED_EDIT_PLAN_OPERATIONS],
+      capability_manifest_id: defaultRuntimeCapabilityManifest.manifest_id,
     },
   },
   validateArguments,

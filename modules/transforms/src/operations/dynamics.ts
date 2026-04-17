@@ -133,7 +133,7 @@ export function buildLimiterOperation(
 
 function assertFullFileTarget(operation: string, target?: EditTarget): void {
   if (target?.scope !== undefined && target.scope !== "full_file") {
-    throw new Error(`${operation} only supports full_file targets in the Phase 2 implementation.`);
+    throw new Error(`${operation} only supports full_file targets in the current runtime.`);
   }
 }
 

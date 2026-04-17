@@ -3,6 +3,10 @@ import type {
   AnalysisReport as UpstreamAnalysisReport,
   AnalysisSegment as UpstreamAnalysisSegment,
 } from "@audio-language-interface/analysis";
+import type {
+  RuntimeOperationName,
+  RuntimeTargetScope,
+} from "@audio-language-interface/capabilities";
 import type { AudioVersion as CoreAudioVersion } from "@audio-language-interface/core";
 import type {
   SemanticDescriptor as UpstreamSemanticDescriptor,
@@ -11,27 +15,8 @@ import type {
 
 export const CONTRACT_SCHEMA_VERSION = "1.0.0" as const;
 
-export type OperationName =
-  | "gain"
-  | "normalize"
-  | "trim"
-  | "trim_silence"
-  | "fade"
-  | "pitch_shift"
-  | "parametric_eq"
-  | "high_pass_filter"
-  | "low_pass_filter"
-  | "compressor"
-  | "limiter"
-  | "time_stretch"
-  | "reverse"
-  | "mono_sum"
-  | "channel_swap"
-  | "stereo_balance_correction"
-  | "denoise"
-  | "stereo_width";
-
-export type TargetScope = "full_file" | "time_range" | "segment" | "channel" | "frequency_region";
+export type OperationName = RuntimeOperationName;
+export type TargetScope = RuntimeTargetScope;
 
 export type AudioVersion = CoreAudioVersion;
 export type AnalysisAnnotation = UpstreamAnalysisAnnotation;
@@ -61,6 +46,7 @@ export interface EditPlanStep {
 export interface EditPlan {
   schema_version: typeof CONTRACT_SCHEMA_VERSION;
   plan_id: string;
+  capability_manifest_id: string;
   asset_id: string;
   version_id: string;
   user_request: string;

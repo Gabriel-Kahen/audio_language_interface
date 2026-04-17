@@ -18,19 +18,27 @@ const schemaFiles = (await readdir(schemaDir))
   .sort();
 
 const commonSchema = await readJson(path.join(schemaDir, "common.schema.json"));
+const schemaEntries = await Promise.all(
+  schemaFiles.map(async (schemaFile) => [
+    schemaFile,
+    await readJson(path.join(schemaDir, schemaFile)),
+  ]),
+);
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 addFormats(ajv);
 ajv.addSchema(commonSchema);
+for (const [schemaFile, schema] of schemaEntries) {
+  ajv.addSchema(schema, schemaFile);
+}
 
 const failures = [];
 
 for (const schemaFile of schemaFiles) {
-  const schemaPath = path.join(schemaDir, schemaFile);
   const exampleFile = schemaFile.replace(/\.schema\.json$/, ".json");
   const examplePath = path.join(examplesDir, exampleFile);
 
-  const schema = await readJson(schemaPath);
+  const schema = schemaEntries.find(([candidate]) => candidate === schemaFile)?.[1];
   const example = await readJson(examplePath);
   const validate = ajv.compile(schema);
 

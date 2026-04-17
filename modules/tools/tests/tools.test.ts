@@ -157,6 +157,7 @@ function buildEditPlan(versionId: string): Record<string, unknown> {
   return {
     schema_version: "1.0.0",
     plan_id: "plan_123",
+    capability_manifest_id: "capmanifest_20260417A",
     asset_id: "asset_example",
     version_id: versionId,
     user_request: "Trim the intro.",
@@ -186,6 +187,7 @@ function buildSingleStepEditPlan(
   return {
     schema_version: "1.0.0",
     plan_id: "plan_123",
+    capability_manifest_id: "capmanifest_20260417A",
     asset_id: "asset_example",
     version_id: versionId,
     user_request: `Run ${operation}.`,
@@ -212,6 +214,7 @@ function buildTransformRecord(
     schema_version: "1.0.0",
     record_id: "transform_123",
     plan_id: "plan_123",
+    capability_manifest_id: "capmanifest_20260417A",
     asset_id: "asset_example",
     input_version_id: inputVersionId,
     output_version_id: outputVersionId,
@@ -250,6 +253,11 @@ describe("tools module", () => {
 
   it("describes the supported tool surface", () => {
     expect(describeTools()).toEqual([
+      expect.objectContaining({
+        name: "describe_runtime_capabilities",
+        backing_module: "capabilities",
+        required_arguments: [],
+      }),
       expect.objectContaining({
         name: "load_audio",
         error_codes: ["invalid_arguments", "invalid_result_contract", "handler_failed"],
@@ -296,6 +304,7 @@ describe("tools module", () => {
             "stereo_width",
             "denoise",
           ],
+          capability_manifest_id: "capmanifest_20260417A",
         },
       }),
       expect.objectContaining({ name: "render_preview" }),
@@ -320,6 +329,7 @@ describe("tools module", () => {
         message: "Unknown tool 'summarize_audio'.",
         details: {
           available_tools: [
+            "describe_runtime_capabilities",
             "load_audio",
             "analyze_audio",
             "plan_edits",
@@ -331,6 +341,27 @@ describe("tools module", () => {
       },
     } satisfies ToolResponse);
     expect(isValidToolResponse(response)).toBe(true);
+  });
+
+  it("returns the runtime capability manifest through the discovery tool", async () => {
+    const response = await executeToolRequest(
+      buildRequest({
+        tool_name: "describe_runtime_capabilities",
+        arguments: {},
+      }),
+      {
+        workspaceRoot: "/tmp/workspace",
+        now: () => new Date("2026-04-17T00:00:01Z"),
+      },
+    );
+
+    expect(response.status).toBe("ok");
+    expect(response.result?.runtime_capability_manifest).toEqual(
+      expect.objectContaining({
+        manifest_id: "capmanifest_20260417A",
+        runtime_layer: "audio_runtime",
+      }),
+    );
   });
 
   it("routes load_audio requests through the injected runtime", async () => {
@@ -618,7 +649,7 @@ describe("tools module", () => {
     ]);
   });
 
-  it("allows supported Phase 2 dynamics operations through to transforms", async () => {
+  it("allows supported runtime dynamics operations through to transforms", async () => {
     const applyEditPlan = vi.fn(async (_options: unknown) => ({
       outputVersion: buildAudioVersion("ver_output"),
       transformRecord: {
@@ -1062,6 +1093,7 @@ describe("tools module", () => {
           edit_plan: {
             schema_version: "1.0.0",
             plan_id: "plan_123",
+            capability_manifest_id: "capmanifest_20260417A",
             asset_id: "asset_example",
             version_id: "ver_input",
             user_request: "Denoise and widen this.",
@@ -1196,6 +1228,7 @@ describe("tools module", () => {
           edit_plan: {
             schema_version: "1.0.0",
             plan_id: "plan_123",
+            capability_manifest_id: "capmanifest_20260417A",
             asset_id: "asset_example",
             version_id: "ver_input",
             user_request: "Collapse to mono and then widen it.",
@@ -1241,7 +1274,7 @@ describe("tools module", () => {
     });
   });
 
-  it("rejects Phase 2 transforms with non-full-file targets before execution", async () => {
+  it("rejects runtime operations with non-full-file targets before execution", async () => {
     const applyEditPlan = vi.fn();
 
     const response = await executeToolRequest(
@@ -1254,6 +1287,7 @@ describe("tools module", () => {
           edit_plan: {
             schema_version: "1.0.0",
             plan_id: "plan_123",
+            capability_manifest_id: "capmanifest_20260417A",
             asset_id: "asset_example",
             version_id: "ver_input",
             user_request: "Widen the left side only.",

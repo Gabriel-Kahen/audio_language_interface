@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@audio-language-interface/analysis": "workspace:*",
+    "@audio-language-interface/capabilities": "workspace:*",
     "@audio-language-interface/core": "workspace:*",
     "@audio-language-interface/semantics": "workspace:*",
-    "@audio-language-interface/transforms": "workspace:*",
     "ajv": "^8.18.0",
     "ajv-formats": "^3.0.1"
   }

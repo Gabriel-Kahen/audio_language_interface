@@ -1,82 +1,196 @@
 # Audio Language Interface
 
-Audio Language Interface is an audio manipulation platform for LLMs.
+Audio Language Interface is a contract-first natural-language audio editing platform for LLMs.
 
-The project is not a music creation tool. It is a modular system that lets language models inspect audio, plan changes, apply deterministic edits, compare results, and iterate toward a user's requested sound.
+The project is built around one core idea: a language model should be able to inspect audio, reason about requested changes, build an explicit edit plan, execute deterministic transforms, and verify whether the result moved toward the request.
 
-License: `MIT`. See `LICENSE`.
+This repo is not:
 
-## Current status
+- a DAW clone
+- a beatmaker
+- a music-generation system
+- a pile of hidden heuristics behind one opaque prompt
 
-The repository now has a real Phase 2-in-progress runtime across the full core pipeline.
+It is an audio-editing runtime and planning stack for model-driven workflows.
 
-Today it is best understood as a narrow, programmatic audio-editing platform for:
+License: `MIT`. See [LICENSE](/Users/gabrielkahen/code/audio_language_interface/LICENSE).
 
-- importing one local audio file
-- analyzing a WAV-backed version
-- planning and applying conservative edits for tone, dynamics, width, and steady-noise cleanup
-- rendering preview or export artifacts
-- comparing before and after
-- recording provenance in session history
-- running repeated request cycles with early follow-up support such as `more`
+## Why This Exists
 
-See `docs/current-capabilities.md` for the implemented scope and `docs/contributor-guide.md` for the contributor entry path.
+Most LLM audio workflows collapse too many responsibilities into one step:
 
-## Project goals
+- vague language interpretation
+- capability guessing
+- audio execution
+- result evaluation
 
-- Give LLMs a reliable tool surface for modifying sound.
-- Keep every module independently usable outside the full pipeline.
-- Make contracts explicit so separate agents can build modules in parallel.
-- Keep the repository easy to modify, document, and extend as an open source project.
+That makes them brittle and hard to debug.
 
-## Pipeline
+This repository splits those concerns cleanly so a model can work against explicit artifacts instead of hidden behavior.
 
-The current pipeline is:
+The key architectural rule is:
 
-1. `io` loads and validates audio.
-2. `core` provides the canonical in-memory and serialized data models.
-3. `analysis` extracts measurable facts from the audio.
-4. `semantics` converts measurements into interpretable descriptors.
-5. `planning` turns user intent plus analysis into an edit plan.
-6. `transforms` executes deterministic audio edits.
-7. `render` produces previews and exportable outputs.
-8. `compare` measures deltas between versions.
-9. `history` tracks versions, branches, and provenance.
-10. `tools` exposes the platform to LLM tool callers.
-11. `orchestration` coordinates end-to-end workflows.
-12. `benchmarks` evaluates module quality and pipeline reliability.
+- the audio runtime owns deterministic execution
+- the intent layer owns semantics and planning
+- the capability manifest is the contract between them
+- tools and orchestration are adapters, not the core system
 
-Every step must also work independently.
+## What The System Does
 
-## Current capabilities
+Today, the repository supports a real single-file editing loop:
 
-The strongest supported slice today is:
+1. import audio into workspace storage
+2. analyze the current file
+3. derive conservative semantic descriptors
+4. translate a user request into an explicit `EditPlan`
+5. apply deterministic FFmpeg-backed transforms
+6. render previews or exports
+7. compare before and after
+8. record provenance in a `SessionGraph`
 
-- single-file editing
-- local file-path imports
-- WAV-backed analysis
-- conservative prompts like `darker`, `less harsh`, `slightly cleaner`, `preserve punch`, `more controlled`, and `control peaks`
-- deterministic transform execution through a constrained FFmpeg-backed operation set that now includes dynamics, width, and denoise support at the runtime layer
-- preview rendering, comparison, and session-history tracking
+That loop is exposed both through modules and through a thin tool surface.
 
-Current tool entrypoints are:
+## Architecture
 
+The repo is organized into five groups.
+
+### Shared/Foundation
+
+- `contracts`
+- `modules/core`
+- `modules/history`
+- `modules/capabilities`
+
+This layer owns canonical artifacts, schema contracts, IDs, provenance, and published runtime capability metadata.
+
+### Audio Runtime
+
+- `modules/io`
+- `modules/analysis`
+- `modules/transforms`
+- `modules/render`
+- `modules/compare`
+
+This layer owns deterministic import, inspection, execution, rendering, and before/after evaluation.
+
+### Intent Layer
+
+- `modules/semantics`
+- `modules/planning`
+
+This layer owns interpretation of measurable audio evidence and conversion of user requests into explicit edit plans.
+
+### Adapters
+
+- `modules/tools`
+- `modules/orchestration`
+
+This layer exposes stable integration surfaces over the runtime and intent modules without redefining their responsibilities.
+
+### Evaluation
+
+- `modules/benchmarks`
+
+This layer owns prompt suites, scoring harnesses, and repeatable evaluation workflows.
+
+For the full dependency and boundary rules, see [docs/architecture.md](/Users/gabrielkahen/code/audio_language_interface/docs/architecture.md).
+
+## Core Contracts
+
+The repository converges on a small set of canonical artifacts:
+
+- `AudioAsset`
+- `AudioVersion`
+- `AnalysisReport`
+- `SemanticProfile`
+- `EditPlan`
+- `TransformRecord`
+- `RenderArtifact`
+- `ComparisonReport`
+- `SessionGraph`
+- `ToolRequest`
+- `ToolResponse`
+- `RuntimeCapabilityManifest`
+
+These are published under [contracts/schemas](/Users/gabrielkahen/code/audio_language_interface/contracts/schemas) with matching examples under [contracts/examples](/Users/gabrielkahen/code/audio_language_interface/contracts/examples).
+
+## Current Capability Surface
+
+### Runtime-Supported Operations
+
+The current runtime can execute:
+
+- `gain`
+- `normalize`
+- `trim`
+- `fade`
+- `parametric_eq`
+- `high_pass_filter`
+- `low_pass_filter`
+- `compressor`
+- `limiter`
+- `time_stretch`
+- `stereo_width`
+- `denoise`
+
+### Planner-Supported Operations
+
+The baseline planner is intentionally narrower. It currently plans only against operations marked `planner_supported` in the published capability manifest.
+
+At the moment, that includes:
+
+- `gain`
+- `trim`
+- `fade`
+- `parametric_eq`
+- `high_pass_filter`
+- `low_pass_filter`
+- `compressor`
+- `limiter`
+- `stereo_width`
+- `denoise`
+
+`time_stretch` is runtime-available but not yet part of the default planner surface.
+
+### Tool Surface
+
+Published tool entrypoints:
+
+- `describe_runtime_capabilities`
 - `load_audio`
 - `analyze_audio`
+- `plan_edits`
 - `apply_edit_plan`
 - `render_preview`
 - `compare_versions`
 
-Important current limitations include:
+The tool layer is intentionally small. It exists to expose stable contracts and capability discovery to external callers, not to replace the underlying module boundaries.
 
-- no streaming or byte-buffer import path
-- no broad multi-file workflow
-- the tool surface still does not expose `plan_edits`
-- width and denoise behavior are implemented conservatively and may still reject unsafe input conditions explicitly
-- no dedicated demo CLI or app entrypoint yet
-- benchmark coverage is still synthetic-first and not yet driven by committed real audio fixtures
+## Best-Supported Requests Right Now
 
-## Repository layout
+The current system is strongest on conservative editing requests such as:
+
+- darker
+- less harsh
+- slightly cleaner
+- more controlled
+- control peaks
+- widen or narrow slightly when stereo evidence supports it
+- reduce steady broadband noise conservatively
+
+This repo is usable today for technical experimentation and module-level integration work. It is not yet a polished end-user application.
+
+## What Is Still Limited
+
+- import is local-file based
+- analysis currently requires WAV files on disk
+- semantic coverage is intentionally conservative
+- compare goal alignment is still heuristic
+- there is no dedicated demo CLI or app entrypoint yet
+- pitch shifting is not implemented
+- benchmark coverage is still light compared with the long-term goal
+
+## Repository Layout
 
 ```text
 .
@@ -86,12 +200,12 @@ Important current limitations include:
 |   |-- examples/
 |   `-- schemas/
 |-- docs/
-|   `-- architecture.md
 |-- fixtures/
 |   `-- audio/
 |-- modules/
 |   |-- analysis/
 |   |-- benchmarks/
+|   |-- capabilities/
 |   |-- compare/
 |   |-- core/
 |   |-- history/
@@ -106,32 +220,11 @@ Important current limitations include:
     `-- integration/
 ```
 
-Each module contains:
+## Getting Started
 
-- `agents.md`: module-specific agent instructions and ownership rules.
-- `src/`: implementation code.
-- `tests/`: module tests.
-- `docs/`: module-local design notes and developer documentation.
-
-## Start here
-
-- Read `AGENTS.md` for repository-wide agent rules.
-- Read `docs/architecture.md` for the module map and pipeline contract.
-- Read `docs/repository-map.md` for the purpose of the current scaffolding files.
-- Read `docs/implementation-plan.md` for agent rollout and dependencies.
-- Read `docs/roadmap.md` for the multi-phase project roadmap.
-- Read `docs/phase-1-roadmap.md` for the current delivery roadmap.
-- Read `docs/phase-2-plan.md` for the next implementation wave and its locked scope.
-- Read `docs/agent-assignments.md` for the current module-task ownership plan.
-- Read `docs/current-capabilities.md` for the actual implemented feature boundary.
-- Read `docs/contributor-guide.md` for setup, happy-path workflow, extension points, and validation.
-- Read `docs/dependency-policy.md` for approved dependencies and license rules.
-- Read `docs/system-dependencies.md` for Node and FFmpeg expectations.
-- Read the target module's `agents.md` before editing that module.
-
-## Validation
-
-The main repository validation loop is:
+1. Install the prerequisites in [docs/system-dependencies.md](/Users/gabrielkahen/code/audio_language_interface/docs/system-dependencies.md).
+2. Run `pnpm install`.
+3. Run the validation loop:
 
 ```bash
 pnpm validate:schemas
@@ -140,83 +233,44 @@ pnpm typecheck
 pnpm test
 ```
 
-To run the full local CI-equivalent command:
+Or run the full CI-equivalent command:
 
 ```bash
 pnpm run ci
 ```
 
-See `docs/testing.md` for the testing layout, module-local commands, and CI behavior.
+## Where To Start Reading
 
-## Happy-path usage
+For contributors and agents, use this order:
 
-The most direct programmatic happy path currently lives in:
+1. [AGENTS.md](/Users/gabrielkahen/code/audio_language_interface/AGENTS.md)
+2. [docs/architecture.md](/Users/gabrielkahen/code/audio_language_interface/docs/architecture.md)
+3. [docs/implementation-plan.md](/Users/gabrielkahen/code/audio_language_interface/docs/implementation-plan.md)
+4. [docs/current-capabilities.md](/Users/gabrielkahen/code/audio_language_interface/docs/current-capabilities.md)
+5. [docs/contributor-guide.md](/Users/gabrielkahen/code/audio_language_interface/docs/contributor-guide.md)
+6. [docs/repository-map.md](/Users/gabrielkahen/code/audio_language_interface/docs/repository-map.md)
+7. the target module's `agents.md`
+8. the target module's `docs/overview.md`
+9. the relevant contracts under `contracts/schemas/`
 
-- `modules/orchestration/src/index.ts` for composed end-to-end flows
-- `modules/tools/src/index.ts` for the LLM-facing tool execution surface
+## Practical Entry Points
 
-If you are extending the current slice, prefer building on those published entrypoints instead of reassembling private module internals.
+- [modules/capabilities/src/index.ts](/Users/gabrielkahen/code/audio_language_interface/modules/capabilities/src/index.ts) for runtime capability metadata
+- [modules/tools/src/index.ts](/Users/gabrielkahen/code/audio_language_interface/modules/tools/src/index.ts) for stable tool execution
+- [modules/orchestration/src/index.ts](/Users/gabrielkahen/code/audio_language_interface/modules/orchestration/src/index.ts) for thin composed workflows
 
-## Local setup
+## Status
 
-1. Install the required system tools described in `docs/system-dependencies.md`.
-2. Install workspace dependencies with `pnpm install`.
-3. Validate the current repository state before making changes:
+The architecture split is complete enough to build forward on:
 
-```bash
-pnpm validate:schemas
-pnpm lint
-pnpm typecheck
-pnpm test
-```
+- runtime and intent are separated
+- planning is grounded by published capability metadata instead of transform internals
+- contracts and docs reflect the split
+- the repository validation loop is green
 
-These commands check the contract layer, formatting and lint rules, TypeScript configuration, and the current test suite.
+The next work is not more restructuring. It is deeper behavior:
 
-## Contributor workflow
-
-1. Read the root docs listed above.
-2. Read the target module's `agents.md` and `docs/overview.md`.
-3. If your change affects cross-module data, update the contract spec in `contracts/schemas/` and the matching example payload in `contracts/examples/` in the same change.
-4. Run the relevant validation commands before finishing.
-
-Repository-level contract changes should keep the human-readable schema spec, machine-readable JSON Schema, and example payload aligned.
-
-## Extension points
-
-Use the narrowest stable boundary that matches the change:
-
-- `contracts/` for cross-module payload changes
-- `modules/<name>/src` for module-owned runtime behavior
-- `modules/<name>/docs` for module-specific public behavior and limitations
-- `tests/integration` for cross-module workflow coverage
-- `fixtures/audio` for shared audio fixtures and fixture documentation
-
-## Contract-first development
-
-Cross-module communication should happen through explicit artifacts stored under `contracts/`.
-
-Expected artifact families:
-
-- `AudioAsset`
-- `AudioVersion`
-- `AnalysisReport`
-- `SemanticProfile`
-- `EditPlan`
-- `TransformRecord`
-- `RenderArtifact`
-- `ComparisonReport`
-- `SessionGraph`
-- `ToolRequest`
-- `ToolResponse`
-
-The repository already includes initial contract specs, JSON Schemas, and example payloads, and is structured so those contracts can expand without reorganizing the project.
-
-Initial contract specs and example payloads now live under `contracts/schemas/` and `contracts/examples/`.
-
-For each contract family:
-
-- `contracts/schemas/*.md` explains intent and field semantics.
-- `contracts/schemas/json/*.schema.json` provides the machine-readable JSON Schema.
-- `contracts/examples/*.json` provides a minimal valid example payload.
-
-Run `pnpm validate:schemas` after changing any of those files. The validator checks every `*.schema.json` file except `common.schema.json` against the same-named example payload in `contracts/examples/`.
+- better capability metadata
+- stronger planning
+- better compare and verification
+- a thin CLI or app adapter on top of the current modules

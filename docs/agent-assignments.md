@@ -28,8 +28,9 @@ Owns:
 Tasks:
 
 1. Add tool-specific request and response schemas for the current tool set.
-2. Add first-slice example payloads for end-to-end happy-path flows.
-3. Add or document first-slice audio fixtures with licensing and intent notes.
+2. Keep capability-manifest contracts aligned with runtime behavior.
+3. Add first-slice example payloads for end-to-end happy-path flows.
+4. Add or document first-slice audio fixtures with licensing and intent notes.
 
 ### Agent B: Analysis Quality
 
@@ -64,7 +65,7 @@ Owns:
 Tasks:
 
 1. Improve prompt parsing for darker, less-harsh, and cleaner requests.
-2. Keep planning conservative and limited to implemented transforms.
+2. Keep planning conservative and limited to planner-supported capability-manifest operations.
 3. Improve failure messages for unsupported or underspecified requests.
 
 ### Agent E: Transform And Render Reliability
@@ -101,9 +102,9 @@ Owns:
 
 Tasks:
 
-1. Stabilize the current tool set for external LLM use.
+1. Stabilize the current adapter tool set for external LLM use.
 2. Publish tool-specific schemas and examples.
-3. Improve explicit error responses for unsupported operations and provenance mismatches.
+3. Improve explicit error responses for unsupported operations, capability mismatches, and provenance mismatches.
 
 ### Agent H: Orchestration And History
 

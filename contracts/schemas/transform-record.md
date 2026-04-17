@@ -49,6 +49,7 @@ Each operation should include:
 | Field | Type | Description |
 | --- | --- | --- |
 | `plan_id` | string | Related `EditPlan` identifier. |
+| `capability_manifest_id` | string | Runtime capability manifest linked to the originating plan when available. |
 | `warnings` | array of string | Non-fatal issues during execution. |
 | `runtime_ms` | number | Total execution time in milliseconds. |
 
@@ -59,6 +60,7 @@ Each operation should include:
 - Operation order must match actual execution order.
 - `operations[].parameters` should use the same operation-specific surface as `EditPlan.steps[].parameters`.
 - Execution-time normalization may add derived fields such as `applied_gain_db`, `applied_tempo_ratio`, `duration_seconds`, `fade_out_start_seconds`, `result_duration_seconds`, or `trimmed_duration_seconds` when those values reflect the exact applied behavior. Channel-utility operations intentionally keep parameter surfaces minimal and do not add hidden remix parameters beyond the published contract.
+ - Execution-time normalization may add derived fields such as `applied_gain_db`, `applied_tempo_ratio`, `duration_seconds`, `fade_out_start_seconds`, `result_duration_seconds`, or `trimmed_duration_seconds` when those values reflect the exact applied behavior. Channel-utility operations intentionally keep parameter surfaces minimal and do not add hidden remix parameters beyond the published contract.
 
 ## Example
 

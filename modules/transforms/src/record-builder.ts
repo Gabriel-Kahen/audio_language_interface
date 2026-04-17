@@ -18,6 +18,7 @@ export function createAppliedOperation(
 export function createTransformRecord(input: {
   recordId?: string;
   planId?: string;
+  capabilityManifestId?: string;
   assetId: string;
   inputVersionId: string;
   outputVersionId: string;
@@ -31,6 +32,7 @@ export function createTransformRecord(input: {
     schema_version: CONTRACT_SCHEMA_VERSION,
     record_id: input.recordId ?? createTransformRecordId(),
     ...(input.planId ? { plan_id: input.planId } : {}),
+    ...(input.capabilityManifestId ? { capability_manifest_id: input.capabilityManifestId } : {}),
     asset_id: input.assetId,
     input_version_id: input.inputVersionId,
     output_version_id: input.outputVersionId,

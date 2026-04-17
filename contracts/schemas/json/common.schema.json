@@ -88,6 +88,10 @@
       "type": "string",
       "pattern": "^toolreq_[A-Za-z0-9]+$"
     },
+    "capabilityManifestId": {
+      "type": "string",
+      "pattern": "^capmanifest_[A-Za-z0-9]+$"
+    },
     "sourceKind": {
       "type": "string",
       "enum": ["file", "bytes", "stream", "generated"]
@@ -107,6 +111,18 @@
     "toolStatus": {
       "type": "string",
       "enum": ["ok", "error"]
+    },
+    "capabilityIntentSupport": {
+      "type": "string",
+      "enum": ["planner_supported", "runtime_only"]
+    },
+    "operationCategory": {
+      "type": "string",
+      "enum": ["level", "timing", "tonal", "dynamics", "stereo", "restoration"]
+    },
+    "parameterValueType": {
+      "type": "string",
+      "enum": ["number", "integer", "string", "boolean", "enum"]
     },
     "operationStatus": {
       "type": "string",
@@ -689,6 +705,22 @@
         "noise_floor_dbfs": {
           "type": "number",
           "maximum": 0
+        }
+      }
+    },
+    "timeStretchParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stretch_ratio"],
+      "properties": {
+        "stretch_ratio": {
+          "type": "number",
+          "exclusiveMinimum": 0.25,
+          "exclusiveMaximum": 4
+        },
+        "applied_tempo_ratio": {
+          "type": "number",
+          "exclusiveMinimum": 0
         }
       }
     },

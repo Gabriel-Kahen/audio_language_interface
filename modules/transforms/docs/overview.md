@@ -8,7 +8,8 @@
 - a contract-aligned `TransformRecord` for standard edit operations, or a local slice-extraction record for batch slicing
 - the explicit FFmpeg command or command sequence used to materialize the output
 
-This module is the pipeline execution layer. It does not decide whether an edit is desirable, infer semantic intent, or inspect audio to derive transform parameters.
+This module is part of the audio runtime. It executes explicit edits deterministically and does not decide whether an edit is desirable, infer semantic intent, or inspect audio to derive transform parameters.
+It should stay independent of planning or adapter policy.
 
 ## Current public API
 
@@ -54,6 +55,8 @@ The implemented operation set is currently:
 - `denoise`
 
 Anything else listed in the module agent guide is still a future capability and is not implemented in `src/` yet.
+
+The published source of truth for runtime discovery is `modules/capabilities`, not this overview alone.
 
 Slice extraction is implemented separately from the published edit-plan operation list. It reuses the deterministic `trim` filter path internally, emits a local `slice_extract` transform record operation, and exposes a helper to derive a contract-aligned `SliceMap` from a `TransientMap`.
 
@@ -147,6 +150,7 @@ This module consumes and emits repository contracts directly:
 ## Current limitations
 
 - Saturation is still not implemented.
+ - Saturation is still not implemented.
 - `compressor` exposes only downward RMS compression with explicit threshold, ratio, attack, release, and optional makeup gain. It does not expose upward compression, dry/wet mixing, sidechain input, or alternate detection/link modes.
 - `limiter` exposes only ceiling, attack, and release. Automatic gain staging is disabled deliberately so the emitted `TransformRecord` stays explicit and inspectable.
 - `time_stretch` uses FFmpeg `atempo` with explicit caller-supplied timing parameters. Tempo matching is supported only when the caller already knows `source_tempo_bpm` and `target_tempo_bpm`; this module does not estimate tempo itself.
@@ -161,6 +165,8 @@ This module consumes and emits repository contracts directly:
 - No automatic loudness or peak measurement. `normalize` requires caller-supplied `measured_peak_dbfs`.
 - `normalize` supports only `mode: "peak"`.
 - `parametric_eq` supports only bell bands.
+- `time_stretch` uses FFmpeg `atempo` with an explicit `stretch_ratio` surface and
+  preserves pitch while changing duration deterministically.
 - Filter output format is fixed to 16-bit PCM WAV; the module does not preserve original codec or container.
 - The module validates that ffmpeg materially created a non-empty output file before returning success.
 - `applyEditPlan` leaves intermediate step files on disk; it does not currently clean them up.
@@ -178,4 +184,6 @@ Module-local tests cover:
 - workspace-relative output path behavior
 - real compressor, limiter, time stretch, stereo width, denoise, and pitch-shift output verification
 - real reverse, mono-sum, channel-swap, and stereo-balance-correction output verification
+ - real compressor, limiter, time stretch, stereo width, denoise, and pitch-shift output verification
+ - real reverse, mono-sum, channel-swap, and stereo-balance-correction output verification
 - JSON Schema alignment for emitted `AudioVersion` and `TransformRecord`

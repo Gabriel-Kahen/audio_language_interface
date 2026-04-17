@@ -173,7 +173,7 @@ Success criteria:
 
 ### `tools`
 
-- stabilize the first implemented tool set
+- stabilize the first implemented adapter tool set
 - publish tool-specific payload schemas
 - improve user-facing and model-facing errors for unsupported requests or mismatched provenance
 

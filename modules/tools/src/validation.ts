@@ -1,5 +1,9 @@
 import { type AnalysisReport, assertValidAnalysisReport } from "@audio-language-interface/analysis";
 import {
+  assertValidRuntimeCapabilityManifest,
+  type RuntimeCapabilityManifest,
+} from "@audio-language-interface/capabilities";
+import {
   assertValidComparisonReport,
   type ComparisonReport,
 } from "@audio-language-interface/compare";
@@ -28,6 +32,9 @@ import editPlanSchema from "../../../contracts/schemas/json/edit-plan.schema.jso
   type: "json",
 };
 import renderArtifactSchema from "../../../contracts/schemas/json/render-artifact.schema.json" with {
+  type: "json",
+};
+import runtimeCapabilityManifestSchema from "../../../contracts/schemas/json/runtime-capability-manifest.schema.json" with {
   type: "json",
 };
 import toolRequestSchema from "../../../contracts/schemas/json/tool-request.schema.json" with {
@@ -69,6 +76,9 @@ const toolResponseValidator = ajv.compile<ToolResponse>(toolResponseSchema);
 const editPlanValidator = ajv.compile<EditPlan>(editPlanSchema);
 const audioAssetValidator = ajv.compile<AudioAsset>(audioAssetSchema);
 const renderArtifactValidator = ajv.compile<RenderArtifact>(renderArtifactSchema);
+const runtimeCapabilityManifestValidator = ajv.compile<RuntimeCapabilityManifest>(
+  runtimeCapabilityManifestSchema,
+);
 const transformRecordValidator = ajv.compile<TransformRecord>(transformRecordSchema);
 
 function formatAjvErrors(errors: ErrorObject[] | null | undefined): Record<string, unknown>[] {
@@ -313,6 +323,25 @@ export function assertToolResultEditPlan(value: unknown, fieldName: string): Edi
     return assertSchemaValidatedOutput(value, fieldName, "EditPlan", editPlanValidator);
   } catch (error) {
     invalidToolResultValue(fieldName, "EditPlan", {
+      reason: toErrorMessage(error),
+    });
+  }
+}
+
+export function assertToolResultRuntimeCapabilityManifest(
+  value: unknown,
+  fieldName: string,
+): RuntimeCapabilityManifest {
+  try {
+    assertValidRuntimeCapabilityManifest(value as RuntimeCapabilityManifest);
+    return assertSchemaValidatedOutput(
+      value,
+      fieldName,
+      "RuntimeCapabilityManifest",
+      runtimeCapabilityManifestValidator,
+    );
+  } catch (error) {
+    invalidToolResultValue(fieldName, "RuntimeCapabilityManifest", {
       reason: toErrorMessage(error),
     });
   }

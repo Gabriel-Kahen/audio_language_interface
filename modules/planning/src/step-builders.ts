@@ -1,4 +1,10 @@
 import {
+  getRuntimeOperationCapability,
+  type RuntimeOperationName,
+  type RuntimeTargetScope,
+} from "@audio-language-interface/capabilities";
+
+import {
   assertValidFadeSpans,
   buildCompressorSafetyLimits,
   buildDenoiseSafetyLimits,
@@ -91,6 +97,7 @@ function buildTrimStep(
   }
 
   return {
+    ...assertPlannerStepSupport("trim", "time_range"),
     step_id: "step_trim_1",
     operation: "trim",
     target: {
@@ -149,6 +156,7 @@ function buildFadeStep(
   );
 
   return {
+    ...assertPlannerStepSupport("fade", "full_file"),
     step_id: "step_fade_1",
     operation: "fade",
     target: { scope: "full_file" },
@@ -164,6 +172,7 @@ function buildRumbleStep(objectives: ParsedEditObjectives): EditPlanStep | undef
   }
 
   return {
+    ...assertPlannerStepSupport("high_pass_filter", "full_file"),
     step_id: "step_high_pass_1",
     operation: "high_pass_filter",
     target: { scope: "full_file" },
@@ -182,6 +191,7 @@ function buildDenoiseStep(
   }
 
   return {
+    ...assertPlannerStepSupport("denoise", "full_file"),
     step_id: "step_denoise_1",
     operation: "denoise",
     target: { scope: "full_file" },
@@ -272,6 +282,7 @@ function buildEqStep({
   }
 
   return {
+    ...assertPlannerStepSupport("parametric_eq", "full_file"),
     step_id: "step_eq_1",
     operation: "parametric_eq",
     target: { scope: "full_file" },
@@ -303,6 +314,7 @@ function buildGainStep(
     const gainDb = Math.abs(resolveEqGainDb(objectives, "cut"));
 
     return {
+      ...assertPlannerStepSupport("gain", "full_file"),
       step_id: "step_gain_1",
       operation: "gain",
       target: { scope: "full_file" },
@@ -319,6 +331,7 @@ function buildGainStep(
   }
 
   return {
+    ...assertPlannerStepSupport("gain", "full_file"),
     step_id: "step_gain_1",
     operation: "gain",
     target: { scope: "full_file" },
@@ -343,6 +356,7 @@ function buildCompressorStep(objectives: ParsedEditObjectives): EditPlanStep | u
           : 2;
 
   return {
+    ...assertPlannerStepSupport("compressor", "full_file"),
     step_id: "step_compressor_1",
     operation: "compressor",
     target: { scope: "full_file" },
@@ -369,6 +383,7 @@ function buildLimiterStep(
   }
 
   return {
+    ...assertPlannerStepSupport("limiter", "full_file"),
     step_id: "step_limiter_1",
     operation: "limiter",
     target: { scope: "full_file" },
@@ -401,6 +416,7 @@ function buildStereoWidthStep(objectives: ParsedEditObjectives): EditPlanStep | 
         : 0.82;
 
   return {
+    ...assertPlannerStepSupport("stereo_width", "full_file"),
     step_id: "step_stereo_width_1",
     operation: "stereo_width",
     target: { scope: "full_file" },
@@ -430,4 +446,25 @@ function roundBandValues(band: Record<string, unknown>): Record<string, unknown>
     gain_db: typeof band.gain_db === "number" ? Number(band.gain_db.toFixed(2)) : band.gain_db,
     q: typeof band.q === "number" ? Number(band.q.toFixed(2)) : band.q,
   };
+}
+
+function assertPlannerStepSupport(
+  operation: RuntimeOperationName,
+  scope: RuntimeTargetScope,
+): Record<string, never> {
+  const capability = getRuntimeOperationCapability(operation);
+
+  if (capability.intent_support !== "planner_supported") {
+    throw new Error(
+      `Planner step '${operation}' is not marked as planner_supported in the runtime capability manifest.`,
+    );
+  }
+
+  if (!capability.supported_target_scopes.includes(scope)) {
+    throw new Error(
+      `Planner step '${operation}' does not support target scope '${scope}' in the runtime capability manifest.`,
+    );
+  }
+
+  return {};
 }

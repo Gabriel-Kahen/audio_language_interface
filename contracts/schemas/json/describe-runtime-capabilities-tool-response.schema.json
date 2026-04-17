@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/describe-runtime-capabilities-tool-response.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "tool_name", "status", "completed_at"],
+  "properties": {
+    "schema_version": {
+      "$ref": "./common.schema.json#/$defs/schemaVersion"
+    },
+    "request_id": {
+      "$ref": "./common.schema.json#/$defs/requestId"
+    },
+    "tool_name": {
+      "const": "describe_runtime_capabilities"
+    },
+    "status": {
+      "$ref": "./common.schema.json#/$defs/toolStatus"
+    },
+    "completed_at": {
+      "$ref": "./common.schema.json#/$defs/isoTimestamp"
+    },
+    "warnings": {
+      "$ref": "./common.schema.json#/$defs/stringArray"
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": ["invalid_arguments", "invalid_result_contract", "handler_failed"]
+        },
+        "message": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "details": {
+          "type": "object"
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtime_capability_manifest"],
+      "properties": {
+        "runtime_capability_manifest": {
+          "$ref": "./runtime-capability-manifest.schema.json"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "required": ["result"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "error"
+          }
+        }
+      },
+      "then": {
+        "required": ["error"]
+      }
+    }
+  ]
+}

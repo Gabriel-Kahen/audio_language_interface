@@ -4,6 +4,8 @@
 
 Track session lineage for audio assets and derived artifacts using an explicit `SessionGraph`.
 
+This module belongs to the shared/foundation layer rather than the runtime or intent layer.
+
 This module owns:
 
 - artifact node registration

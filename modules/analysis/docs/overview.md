@@ -5,6 +5,8 @@
 Measure what is present in an audio signal and publish the result as an `AnalysisReport`,
 plus standalone transient-event and tempo data for downstream consumers.
 
+This module is part of the audio runtime layer.
+
 This module is currently a deterministic baseline analyzer for materialized WAV audio referenced by an `AudioVersion`. It produces contract-aligned measurements, annotations, segments, and a coarse source classification without making edit recommendations.
 
 ## Public API surface

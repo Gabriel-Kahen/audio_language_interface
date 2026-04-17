@@ -14,6 +14,14 @@
 
 ## Supported callable tools
 
+### `describe_runtime_capabilities`
+
+- backing module: `capabilities`
+- required arguments: none
+- optional arguments: none
+
+Returns a `runtime_capability_manifest` object containing the published runtime capability surface.
+
 ### `load_audio`
 
 - backing module: `io`
@@ -67,13 +75,12 @@ Returns an `edit_plan` object containing the canonical `EditPlan`.
 
 Returns `output_version`, `transform_record`, and normalized FFmpeg `commands`. Runtime warnings are surfaced in top-level `ToolResponse.warnings`.
 
-`describeTools()` also exposes `apply_edit_plan.capabilities.supported_operations` so callers can reject unsupported plan steps before execution.
+`describeTools()` also exposes `apply_edit_plan.capabilities.supported_operations` and `apply_edit_plan.capabilities.capability_manifest_id` so callers can reject unsupported plan steps before execution.
 
-Current Phase 2 tool-surface behavior:
+Current runtime-aware tool behavior:
 
-- supported additions: `compressor`, `limiter`, `stereo_width`, `denoise`
-- tool-layer validation accepts the full currently implemented locked Phase 2 `EditPlan` operation set and forwards execution to `modules/transforms`
-- tool-layer validation also preflights a small set of runtime constraints that are stable enough to expose explicitly today, such as `stereo_width` requiring stereo 2-channel input and Phase 2 transforms requiring `full_file` scope
+- tool-layer validation accepts the published runtime capability operation set, including runtime-only operations such as `time_stretch` when the caller provides an explicit valid plan
+- tool-layer validation also preflights a small set of runtime constraints that are stable enough to expose explicitly today, such as `stereo_width` requiring stereo 2-channel input and some runtime operations requiring `full_file` scope
 
 ### `render_preview`
 

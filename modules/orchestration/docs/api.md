@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`modules/orchestration` composes the implemented runtime modules into explicit workflows.
+`modules/orchestration` is the thin workflow-composition adapter over the implemented runtime and intent modules.
 
 The current v1 surface stays thin by:
 

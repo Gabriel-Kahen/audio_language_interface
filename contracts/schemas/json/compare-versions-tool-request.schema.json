@@ -105,6 +105,7 @@
           "required": [
             "schema_version",
             "plan_id",
+            "capability_manifest_id",
             "asset_id",
             "version_id",
             "user_request",
@@ -115,6 +116,9 @@
           "properties": {
             "schema_version": { "$ref": "./common.schema.json#/$defs/schemaVersion" },
             "plan_id": { "$ref": "./common.schema.json#/$defs/planId" },
+            "capability_manifest_id": {
+              "$ref": "./common.schema.json#/$defs/capabilityManifestId"
+            },
             "asset_id": { "$ref": "./common.schema.json#/$defs/assetId" },
             "version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
             "user_request": { "type": "string" },

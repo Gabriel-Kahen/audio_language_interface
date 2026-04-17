@@ -1,0 +1,530 @@
+import type {
+  RuntimeCapabilityManifest,
+  RuntimeIntentSupport,
+  RuntimeOperationCapability,
+  RuntimeOperationName,
+} from "./types.js";
+import { CONTRACT_SCHEMA_VERSION } from "./types.js";
+
+const MANIFEST_GENERATED_AT = "2026-04-17T00:00:00Z";
+
+function defineOperation(capability: RuntimeOperationCapability): RuntimeOperationCapability {
+  return capability;
+}
+
+export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
+  schema_version: CONTRACT_SCHEMA_VERSION,
+  manifest_id: "capmanifest_20260417A",
+  generated_at: MANIFEST_GENERATED_AT,
+  runtime_layer: "audio_runtime",
+  summary:
+    "Published runtime capability surface for deterministic audio editing in the current repository.",
+  limitations: [
+    "Most runtime operations currently support full_file targets only.",
+    "time_stretch is runtime-available but not yet selected by the baseline planner.",
+  ],
+  operations: [
+    defineOperation({
+      name: "gain",
+      category: "level",
+      summary: "Apply explicit gain change in decibels.",
+      intent_support: "planner_supported",
+      supported_target_scopes: ["full_file"],
+      parameters: [
+        {
+          name: "gain_db",
+          value_type: "number",
+          required: true,
+          description: "Gain adjustment in decibels.",
+          unit: "dB",
+          example_value: -1.5,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "normalize",
+      category: "level",
+      summary: "Apply peak normalization using caller-supplied peak measurements.",
+      intent_support: "runtime_only",
+      supported_target_scopes: ["full_file"],
+      planner_notes: ["Not chosen by the baseline planner without explicit technical intent."],
+      parameters: [
+        {
+          name: "mode",
+          value_type: "enum",
+          required: true,
+          description: "Normalization mode.",
+          enum_values: ["peak"],
+          default_value: "peak",
+          example_value: "peak",
+        },
+        {
+          name: "target_peak_dbfs",
+          value_type: "number",
+          required: true,
+          description: "Requested post-normalization peak level.",
+          maximum: 0,
+          unit: "dBFS",
+          example_value: -1,
+        },
+        {
+          name: "measured_peak_dbfs",
+          value_type: "number",
+          required: true,
+          description: "Measured current peak level used to compute gain.",
+          maximum: 0,
+          unit: "dBFS",
+          example_value: -4.2,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "trim",
+      category: "timing",
+      summary: "Trim the clip by explicit start and end times.",
+      intent_support: "planner_supported",
+      supported_target_scopes: ["full_file", "time_range"],
+      parameters: [
+        {
+          name: "start_seconds",
+          value_type: "number",
+          required: false,
+          description: "Trim start time in seconds.",
+          minimum: 0,
+          unit: "seconds",
+          example_value: 0.1,
+        },
+        {
+          name: "end_seconds",
+          value_type: "number",
+          required: false,
+          description: "Trim end time in seconds.",
+          minimum: 0,
+          unit: "seconds",
+          example_value: 2.9,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "trim_silence",
+      category: "timing",
+      summary: "Crop leading and/or trailing silence using deterministic edge detection.",
+      intent_support: "runtime_only",
+      supported_target_scopes: ["full_file"],
+      planner_notes: ["Runtime-available but not yet chosen by the baseline planner."],
+      parameters: [
+        {
+          name: "threshold_dbfs",
+          value_type: "number",
+          required: true,
+          description: "Silence threshold used for edge cropping.",
+          minimum: -80,
+          maximum: 0,
+          unit: "dBFS",
+          example_value: -48,
+        },
+        {
+          name: "trim_leading",
+          value_type: "boolean",
+          required: true,
+          description: "Whether to remove leading silence.",
+          example_value: true,
+        },
+        {
+          name: "trim_trailing",
+          value_type: "boolean",
+          required: true,
+          description: "Whether to remove trailing silence.",
+          example_value: true,
+        },
+        {
+          name: "window_seconds",
+          value_type: "number",
+          required: false,
+          description: "Optional silence-analysis window.",
+          minimum: 0.001,
+          maximum: 10,
+          unit: "seconds",
+          example_value: 0.02,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "fade",
+      category: "timing",
+      summary: "Apply fade-in and/or fade-out at clip boundaries.",
+      intent_support: "planner_supported",
+      supported_target_scopes: ["full_file"],
+      parameters: [
+        {
+          name: "fade_in_seconds",
+          value_type: "number",
+          required: false,
+          description: "Fade-in duration.",
+          minimum: 0,
+          unit: "seconds",
+          example_value: 0.05,
+        },
+        {
+          name: "fade_out_seconds",
+          value_type: "number",
+          required: false,
+          description: "Fade-out duration.",
+          minimum: 0,
+          unit: "seconds",
+          example_value: 0.08,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "pitch_shift",
+      category: "tonal",
+      summary:
+        "Shift pitch while keeping duration close to the original through deterministic FFmpeg chaining.",
+      intent_support: "runtime_only",
+      supported_target_scopes: ["full_file"],
+      planner_notes: ["Runtime-available but not yet chosen by the baseline planner."],
+      parameters: [
+        {
+          name: "semitones",
+          value_type: "number",
+          required: true,
+          description: "Pitch shift in semitones.",
+          minimum: -24,
+          maximum: 24,
+          unit: "semitones",
+          example_value: 2,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "parametric_eq",
+      category: "tonal",
+      summary: "Apply one or more bell EQ bands.",
+      intent_support: "planner_supported",
+      supported_target_scopes: ["full_file"],
+      parameters: [
+        {
+          name: "bands",
+          value_type: "string",
+          required: true,
+          description:
+            "Non-empty array of bell-band objects with type, frequency_hz, gain_db, and q.",
+          example_value: "array",
+        },
+      ],
+    }),
+    defineOperation({
+      name: "high_pass_filter",
+      category: "tonal",
+      summary: "Remove low-frequency content below a cutoff frequency.",
+      intent_support: "planner_supported",
+      supported_target_scopes: ["full_file"],
+      parameters: [
+        {
+          name: "frequency_hz",
+          value_type: "number",
+          required: true,
+          description: "High-pass cutoff frequency.",
+          minimum: 0.01,
+          unit: "Hz",
+          example_value: 40,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "low_pass_filter",
+      category: "tonal",
+      summary: "Remove high-frequency content above a cutoff frequency.",
+      intent_support: "planner_supported",
+      supported_target_scopes: ["full_file"],
+      parameters: [
+        {
+          name: "frequency_hz",
+          value_type: "number",
+          required: true,
+          description: "Low-pass cutoff frequency.",
+          minimum: 0.01,
+          unit: "Hz",
+          example_value: 9000,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "compressor",
+      category: "dynamics",
+      summary: "Apply downward RMS-style compression with explicit timing and ratio.",
+      intent_support: "planner_supported",
+      supported_target_scopes: ["full_file"],
+      parameters: [
+        {
+          name: "threshold_db",
+          value_type: "number",
+          required: true,
+          description: "Compression threshold.",
+          maximum: 0,
+          unit: "dB",
+          example_value: -18,
+        },
+        {
+          name: "ratio",
+          value_type: "number",
+          required: true,
+          description: "Compression ratio.",
+          minimum: 1.01,
+          unit: "ratio",
+          example_value: 2,
+        },
+        {
+          name: "attack_ms",
+          value_type: "number",
+          required: true,
+          description: "Compressor attack time.",
+          minimum: 0.01,
+          unit: "ms",
+          example_value: 15,
+        },
+        {
+          name: "release_ms",
+          value_type: "number",
+          required: true,
+          description: "Compressor release time.",
+          minimum: 0.01,
+          unit: "ms",
+          example_value: 120,
+        },
+        {
+          name: "makeup_gain_db",
+          value_type: "number",
+          required: false,
+          description: "Optional post-compression makeup gain.",
+          unit: "dB",
+          default_value: 0,
+          example_value: 0,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "limiter",
+      category: "dynamics",
+      summary: "Apply a peak limiter with explicit ceiling and timing controls.",
+      intent_support: "planner_supported",
+      supported_target_scopes: ["full_file"],
+      parameters: [
+        {
+          name: "ceiling_dbtp",
+          value_type: "number",
+          required: true,
+          description: "True-peak ceiling.",
+          maximum: 0,
+          unit: "dBTP",
+          example_value: -1,
+        },
+        {
+          name: "release_ms",
+          value_type: "number",
+          required: false,
+          description: "Limiter release time.",
+          minimum: 0.01,
+          unit: "ms",
+          default_value: 80,
+          example_value: 80,
+        },
+        {
+          name: "lookahead_ms",
+          value_type: "number",
+          required: false,
+          description: "Limiter lookahead time.",
+          minimum: 0.01,
+          unit: "ms",
+          default_value: 5,
+          example_value: 5,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "time_stretch",
+      category: "timing",
+      summary: "Change duration while preserving pitch through deterministic tempo chaining.",
+      intent_support: "runtime_only",
+      supported_target_scopes: ["full_file"],
+      planner_notes: ["Runtime-available but not yet chosen by the baseline planner."],
+      parameters: [
+        {
+          name: "stretch_ratio",
+          value_type: "number",
+          required: false,
+          description: "Output duration divided by input duration.",
+          minimum: 0.25,
+          maximum: 4,
+          unit: "ratio",
+          example_value: 1.1,
+        },
+        {
+          name: "source_tempo_bpm",
+          value_type: "number",
+          required: false,
+          description: "Known source tempo used to derive stretch ratio.",
+          minimum: 0.01,
+          unit: "BPM",
+          example_value: 120,
+        },
+        {
+          name: "target_tempo_bpm",
+          value_type: "number",
+          required: false,
+          description: "Known target tempo used to derive stretch ratio.",
+          minimum: 0.01,
+          unit: "BPM",
+          example_value: 90,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "reverse",
+      category: "timing",
+      summary: "Reverse the full clip deterministically.",
+      intent_support: "runtime_only",
+      supported_target_scopes: ["full_file"],
+      planner_notes: ["Runtime-available but not yet chosen by the baseline planner."],
+      parameters: [],
+    }),
+    defineOperation({
+      name: "mono_sum",
+      category: "stereo",
+      summary: "Collapse the clip to mono by averaging the available channels.",
+      intent_support: "runtime_only",
+      supported_target_scopes: ["full_file"],
+      planner_notes: ["Runtime-available but not yet chosen by the baseline planner."],
+      parameters: [],
+    }),
+    defineOperation({
+      name: "channel_swap",
+      category: "stereo",
+      summary: "Swap left and right stereo channels deterministically.",
+      intent_support: "runtime_only",
+      supported_target_scopes: ["full_file"],
+      channel_requirements: {
+        exact_channels: 2,
+      },
+      constraints: ["Requires stereo 2-channel input."],
+      planner_notes: ["Runtime-available but not yet chosen by the baseline planner."],
+      parameters: [],
+    }),
+    defineOperation({
+      name: "stereo_balance_correction",
+      category: "stereo",
+      summary: "Attenuate one stereo channel by an explicit correction amount.",
+      intent_support: "runtime_only",
+      supported_target_scopes: ["full_file"],
+      channel_requirements: {
+        exact_channels: 2,
+      },
+      constraints: ["Requires stereo 2-channel input."],
+      planner_notes: ["Runtime-available but not yet chosen by the baseline planner."],
+      parameters: [
+        {
+          name: "target_channel",
+          value_type: "enum",
+          required: true,
+          description: "Stereo channel to attenuate.",
+          enum_values: ["left", "right"],
+          example_value: "left",
+        },
+        {
+          name: "correction_db",
+          value_type: "number",
+          required: true,
+          description: "Attenuation amount applied to the named channel.",
+          minimum: 0.01,
+          maximum: 24,
+          unit: "dB",
+          example_value: 3,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "stereo_width",
+      category: "stereo",
+      summary: "Widen or narrow an existing stereo image conservatively.",
+      intent_support: "planner_supported",
+      supported_target_scopes: ["full_file"],
+      channel_requirements: {
+        exact_channels: 2,
+      },
+      constraints: ["Requires stereo 2-channel input."],
+      parameters: [
+        {
+          name: "width_multiplier",
+          value_type: "number",
+          required: true,
+          description: "Stereo width multiplier.",
+          minimum: 0,
+          maximum: 2,
+          unit: "ratio",
+          example_value: 1.15,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "denoise",
+      category: "restoration",
+      summary: "Apply conservative broadband denoise aimed at steady background noise.",
+      intent_support: "planner_supported",
+      supported_target_scopes: ["full_file"],
+      parameters: [
+        {
+          name: "reduction_db",
+          value_type: "number",
+          required: true,
+          description: "Broadband noise reduction amount.",
+          minimum: 0.01,
+          maximum: 24,
+          unit: "dB",
+          example_value: 6,
+        },
+        {
+          name: "noise_floor_dbfs",
+          value_type: "number",
+          required: false,
+          description: "Optional steady-noise floor estimate used by the runtime.",
+          maximum: 0,
+          unit: "dBFS",
+          example_value: -58,
+        },
+      ],
+    }),
+  ],
+};
+
+const capabilityByName = new Map<RuntimeOperationName, RuntimeOperationCapability>(
+  defaultRuntimeCapabilityManifest.operations.map((operation) => [operation.name, operation]),
+);
+
+export function getRuntimeOperationCapability(
+  name: RuntimeOperationName,
+): RuntimeOperationCapability {
+  const capability = capabilityByName.get(name);
+
+  if (!capability) {
+    throw new Error(`No runtime capability metadata is published for '${name}'.`);
+  }
+
+  return capability;
+}
+
+export function listRuntimeOperationCapabilities(options?: {
+  intentSupport?: RuntimeIntentSupport;
+}): RuntimeOperationCapability[] {
+  const operations = defaultRuntimeCapabilityManifest.operations;
+
+  if (options?.intentSupport === undefined) {
+    return [...operations];
+  }
+
+  return operations.filter((operation) => operation.intent_support === options.intentSupport);
+}
+
+export const plannerSupportedRuntimeOperations = listRuntimeOperationCapabilities({
+  intentSupport: "planner_supported",
+}).map((operation) => operation.name);

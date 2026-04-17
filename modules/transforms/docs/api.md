@@ -524,6 +524,29 @@ Fixed execution behavior:
 - the implementation uses a fixed broadband denoise profile rather than learned noise capture
 - this is intentionally conservative and best suited to steady broadband noise
 
+### `time_stretch`
+
+Parameters:
+
+- `stretch_ratio: number`
+
+Rules:
+
+- `stretch_ratio` must be between `0.25` and `4`
+- values greater than `1` lengthen the output
+- values less than `1` shorten the output
+- the module records `applied_tempo_ratio` as the exact FFmpeg `atempo` factor
+
+Target support:
+
+- `full_file` only
+
+Fixed execution behavior:
+
+- FFmpeg `atempo` is used to preserve pitch while changing duration
+- the reciprocal tempo factor is decomposed into a deterministic comma-separated filter chain when needed
+- `outputVersion.audio.duration_seconds` and `frame_count` are updated from the requested ratio
+
 ## Path and file conventions
 
 `resolveTransformOutputPath(...)` normalizes output paths to workspace-relative POSIX-style `storage_ref` values.

@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/runtime-capability-manifest.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "manifest_id",
+    "generated_at",
+    "runtime_layer",
+    "summary",
+    "operations"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "./common.schema.json#/$defs/schemaVersion"
+    },
+    "manifest_id": {
+      "$ref": "./common.schema.json#/$defs/capabilityManifestId"
+    },
+    "generated_at": {
+      "$ref": "./common.schema.json#/$defs/isoTimestamp"
+    },
+    "runtime_layer": {
+      "const": "audio_runtime"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "limitations": {
+      "$ref": "./common.schema.json#/$defs/stringArray"
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "category",
+          "summary",
+          "intent_support",
+          "supported_target_scopes",
+          "parameters"
+        ],
+        "properties": {
+          "name": {
+            "$ref": "./common.schema.json#/$defs/operationName"
+          },
+          "category": {
+            "$ref": "./common.schema.json#/$defs/operationCategory"
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "intent_support": {
+            "$ref": "./common.schema.json#/$defs/capabilityIntentSupport"
+          },
+          "supported_target_scopes": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "./common.schema.json#/$defs/targetScope"
+            }
+          },
+          "channel_requirements": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "min_channels": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "max_channels": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "exact_channels": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "constraints": {
+            "$ref": "./common.schema.json#/$defs/stringArray"
+          },
+          "planner_notes": {
+            "$ref": "./common.schema.json#/$defs/stringArray"
+          },
+          "parameters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "value_type", "required", "description"],
+              "properties": {
+                "name": {
+                  "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                },
+                "value_type": {
+                  "$ref": "./common.schema.json#/$defs/parameterValueType"
+                },
+                "required": {
+                  "type": "boolean"
+                },
+                "description": {
+                  "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                },
+                "minimum": {
+                  "type": "number"
+                },
+                "maximum": {
+                  "type": "number"
+                },
+                "unit": {
+                  "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                },
+                "enum_values": {
+                  "$ref": "./common.schema.json#/$defs/stringArray"
+                },
+                "default_value": {
+                  "type": ["string", "number", "boolean"]
+                },
+                "example_value": {
+                  "type": ["string", "number", "boolean"]
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "value_type": {
+                        "const": "enum"
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": ["enum_values"]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

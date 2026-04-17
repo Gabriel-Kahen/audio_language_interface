@@ -4,6 +4,8 @@
 
 Represents an explicit, ordered set of intended audio operations derived from user intent and current audio state.
 
+Every published plan should also record which `RuntimeCapabilityManifest` it was grounded against.
+
 ## Producers
 
 - `modules/planning`
@@ -22,6 +24,7 @@ Represents an explicit, ordered set of intended audio operations derived from us
 | --- | --- | --- |
 | `schema_version` | string | Contract version identifier. |
 | `plan_id` | string | Stable edit plan identifier. |
+| `capability_manifest_id` | string | Published runtime capability manifest used during planning. |
 | `asset_id` | string | Target asset identifier. |
 | `version_id` | string | Input version identifier. |
 | `user_request` | string | Natural-language request being addressed. |
@@ -63,8 +66,6 @@ The current published contract allows these operation names in `steps[].operatio
 - `denoise`
 - `stereo_width`
 
-Deferred Phase 2 and future transforms are intentionally omitted from the published v1 taxonomy until they are locked and documented.
-
 `steps[].target.scope` should initially be one of:
 
 - `full_file`
@@ -73,10 +74,14 @@ Deferred Phase 2 and future transforms are intentionally omitted from the publis
 - `channel`
 - `frequency_region`
 
-For the locked Phase 2 batch, the intended initial target scope is `full_file` for:
+Current runtime support is intentionally narrower than the full target taxonomy.
+The runtime capability manifest is the source of truth for which target scopes are valid for each operation.
+
+In the current baseline, the capability manifest restricts these operations to `full_file`:
 
 - `compressor`
 - `limiter`
+- `time_stretch`
 - `stereo_width`
 - `denoise`
 
@@ -84,7 +89,7 @@ For the locked Phase 2 batch, the intended initial target scope is `full_file` f
 
 `steps[].parameters` must match the named operation.
 
-Locked Phase 2 parameter surfaces:
+Current expanded parameter surfaces:
 
 - `compressor`: `threshold_db`, `ratio`, `attack_ms`, `release_ms`, with optional `knee_db` and `makeup_gain_db`
 - `limiter`: `ceiling_dbtp`, with optional `release_ms`, `lookahead_ms`, and `input_gain_db`
@@ -127,6 +132,7 @@ Published pitch-shift surface:
 
 ## Invariants
 
+- The plan must only use operations and target scopes allowed by `capability_manifest_id`.
 - Steps must be executable in listed order.
 - No step may rely on hidden defaults that meaningfully change behavior.
 - Safety bounds should be explicit when a transform can be destructive or aggressive.

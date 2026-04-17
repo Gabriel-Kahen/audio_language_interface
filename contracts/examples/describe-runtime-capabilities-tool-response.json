@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0.0",
+  "request_id": "toolreq_DescribeRuntime001",
+  "tool_name": "describe_runtime_capabilities",
+  "status": "ok",
+  "completed_at": "2026-04-17T00:00:01Z",
+  "result": {
+    "runtime_capability_manifest": {
+      "schema_version": "1.0.0",
+      "manifest_id": "capmanifest_20260417A",
+      "generated_at": "2026-04-17T00:00:00Z",
+      "runtime_layer": "audio_runtime",
+      "summary": "Published runtime capability surface for deterministic audio editing and rendering support in the current repository.",
+      "limitations": [
+        "Most operations currently support full_file targets only.",
+        "time_stretch is runtime-available but not yet selected by the baseline planner."
+      ],
+      "operations": [
+        {
+          "name": "gain",
+          "category": "level",
+          "summary": "Apply explicit gain change in decibels.",
+          "intent_support": "planner_supported",
+          "supported_target_scopes": ["full_file"],
+          "parameters": [
+            {
+              "name": "gain_db",
+              "value_type": "number",
+              "required": true,
+              "description": "Gain adjustment in decibels.",
+              "unit": "dB",
+              "example_value": -1.5
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

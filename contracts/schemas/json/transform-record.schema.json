@@ -23,6 +23,9 @@
     "plan_id": {
       "$ref": "./common.schema.json#/$defs/planId"
     },
+    "capability_manifest_id": {
+      "$ref": "./common.schema.json#/$defs/capabilityManifestId"
+    },
     "asset_id": {
       "$ref": "./common.schema.json#/$defs/assetId"
     },

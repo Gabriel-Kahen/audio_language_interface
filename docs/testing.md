@@ -71,7 +71,7 @@ pnpm exec biome check modules/transforms
 - `tests/integration`: cross-module workflows
 - `contracts/examples`: contract examples validated by schema checks
 
-The current repository state includes expanded Phase 2 coverage around:
+The current repository state includes expanded coverage around:
 
 - dynamics transforms (`compressor`, `limiter`)
 - width and denoise behavior
@@ -90,11 +90,11 @@ For meaningful behavior changes, the expected stack is:
 4. fixture-backed tests when real audio behavior matters
 5. benchmark updates when the change affects product-quality directional outcomes
 
-No single layer should be treated as sufficient by itself for Phase 2 work.
+No single layer should be treated as sufficient by itself for current capability-expansion work.
 
-## Phase 2 testing expectations
+## Current Capability-Expansion Testing Expectations
 
-Phase 2 work should be held to a stricter test standard than the initial Phase 1 slice.
+Current capability-expansion work should be held to a stricter test standard than the initial Phase 1 slice.
 
 ### Transform additions
 
@@ -133,9 +133,9 @@ Semantic changes should add:
 - unresolved-term tests
 - summary-language tests where wording depends on confidence
 
-## Test matrix for Phase 2 readiness
+## Test Matrix For Capability Readiness
 
-Before considering a Phase 2 track complete, contributors should be able to point to:
+Before considering a capability track complete, contributors should be able to point to:
 
 - contract coverage for any changed payloads
 - unit coverage in the owner modules

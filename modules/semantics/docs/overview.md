@@ -4,6 +4,8 @@
 
 Translate measurable findings into interpretable descriptors with evidence and confidence.
 
+This module is part of the intent layer.
+
 The current implementation is a conservative, rule-based mapper from `AnalysisReport` measurements and annotations into a small descriptor vocabulary. It prefers unresolved output over over-claiming.
 
 ## Public API surface

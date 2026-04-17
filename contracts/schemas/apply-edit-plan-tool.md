@@ -9,13 +9,13 @@ Defines the tool envelope for executing an explicit `EditPlan` against one `Audi
 - `tool_name` must be `apply_edit_plan`
 - `arguments.audio_version` and `arguments.edit_plan` are required
 - `arguments.audio_version` must match the canonical `AudioVersion` contract
-- `arguments.edit_plan` must match the canonical `EditPlan` contract, including operation-specific parameter shapes for the locked Phase 2 transform batch
+- `arguments.edit_plan` must match the canonical `EditPlan` contract, including `capability_manifest_id`
 - optional arguments:
   - `output_dir`
   - `output_version_id`
   - `record_id`
 
-The request schema and current tool runtime support the published `apply_edit_plan` operation set currently implemented by `modules/transforms`, including `trim_silence`, `pitch_shift`, `compressor`, `limiter`, `time_stretch`, `reverse`, `mono_sum`, `channel_swap`, `stereo_balance_correction`, `stereo_width`, and `denoise`.
+The request schema and current tool runtime support the currently implemented runtime operation set exposed by `modules/transforms` and `RuntimeCapabilityManifest`, including `trim_silence`, `pitch_shift`, `compressor`, `limiter`, `time_stretch`, `reverse`, `mono_sum`, `channel_swap`, `stereo_balance_correction`, `stereo_width`, and `denoise`.
 
 ## Success response
 

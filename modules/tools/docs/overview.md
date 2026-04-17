@@ -4,7 +4,9 @@
 
 Expose a stable LLM-facing tool surface over the internal runtime modules.
 
-The current implementation provides a registry-backed execution layer with schema-aware request validation, module-backed handlers, and contract-valid `ToolResponse` results.
+`tools` is an adapter layer. It sits on top of the runtime and intent modules without redefining their responsibilities.
+
+The current implementation provides a registry-backed execution layer with schema-aware request validation, module-backed handlers, capability discovery, and contract-valid `ToolResponse` results.
 
 ## Public API surface
 
@@ -15,8 +17,9 @@ The current implementation provides a registry-backed execution layer with schem
 - `executeToolRequest(request, options)`
 - `assertValidToolResponse(response)` and `isValidToolResponse(response)`
 
-## Implemented initial tool set
+## Implemented tool set
 
+- `describe_runtime_capabilities` -> `modules/capabilities`
 - `load_audio` -> `modules/io`
 - `analyze_audio` -> `modules/analysis`
 - `plan_edits` -> `modules/planning`
@@ -24,7 +27,7 @@ The current implementation provides a registry-backed execution layer with schem
 - `render_preview` -> `modules/render`
 - `compare_versions` -> `modules/compare`
 
-`apply_edit_plan` now exposes the full currently implemented locked Phase 2 runtime subset: the stable baseline operations plus `compressor`, `limiter`, `stereo_width`, and `denoise`.
+`apply_edit_plan` exposes the currently implemented runtime operation set declared by the published capability manifest.
 
 `load_audio` now defaults to `io`'s shared WAV normalization target when callers omit `normalization_target`, so versions materialized through the tool surface remain compatible with the current analysis baseline.
 
@@ -47,6 +50,7 @@ The current implementation provides a registry-backed execution layer with schem
 ## Dependencies
 
 - `modules/core`
+- `modules/capabilities`
 - stable contracts across runtime modules
 - `ToolRequest` and `ToolResponse` contracts
 
@@ -74,7 +78,8 @@ See `docs/api.md` for the concrete callable tool surface and payload conventions
 
 - The tool surface is intentionally smaller than the set of implemented runtime modules and contract-declared operations.
 - `plan_edits` is exposed as a callable tool and returns a contract-valid `EditPlan`.
-- `apply_edit_plan` stays schema-aligned with the published `EditPlan` contract and forwards supported locked Phase 2 operations directly to `modules/transforms`.
-- `apply_edit_plan` also preflights a small set of stable runtime prerequisites such as stereo-only width processing and full-file-only Phase 2 transform targets.
+- `describe_runtime_capabilities` is exposed as a callable tool and returns a contract-valid `RuntimeCapabilityManifest`.
+- `apply_edit_plan` stays schema-aligned with the published `EditPlan` contract and forwards supported runtime operations directly to `modules/transforms`.
+- `apply_edit_plan` also preflights a small set of stable runtime prerequisites such as stereo-only width processing and full-file-only target scopes for some operations.
 - The tool layer does not maintain session state or resolve artifacts by id.
 - Tool-specific argument validation happens inside handlers rather than through one centralized schema per tool.

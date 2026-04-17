@@ -6,6 +6,7 @@
     "moduleResolution": "NodeNext",
     "paths": {
       "@audio-language-interface/analysis": ["./modules/analysis/src/index.ts"],
+      "@audio-language-interface/capabilities": ["./modules/capabilities/src/index.ts"],
       "@audio-language-interface/compare": ["./modules/compare/src/index.ts"],
       "@audio-language-interface/core": ["./modules/core/src/index.ts"],
       "@audio-language-interface/history": ["./modules/history/src/index.ts"],

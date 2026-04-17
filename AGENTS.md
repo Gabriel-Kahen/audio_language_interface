@@ -28,6 +28,7 @@ Do not start implementation before reading the local module guidance.
 - Design every module to work independently and in the full pipeline.
 - Prefer contract-first interfaces over implicit coupling.
 - Keep module boundaries strict.
+- Keep the repo grouped as shared/foundation, audio runtime, intent, adapters, and evaluation.
 - Make state explicit.
 - Keep transforms deterministic whenever possible.
 - Keep data lineage inspectable and reversible.
@@ -38,7 +39,9 @@ Do not start implementation before reading the local module guidance.
 - A module may consume another module's published contract.
 - A module must not reach into another module's private implementation details.
 - Shared domain models belong in `modules/core`.
+- Runtime capability discovery belongs in `modules/capabilities`.
 - Cross-module payload definitions belong under `contracts/`.
+- `planning` must depend on published capability metadata instead of `modules/transforms` internals.
 - End-to-end workflow logic belongs in `modules/orchestration`, not scattered across lower-level modules.
 
 ## Documentation rules

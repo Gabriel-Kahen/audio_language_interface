@@ -4,7 +4,9 @@
 
 Compose independent modules into useful end-to-end workflows without absorbing their responsibilities.
 
-The current implementation is a thin integration layer over the existing runtime modules. It exposes both a full request cycle and smaller reusable flow helpers.
+`orchestration` is an adapter layer. It composes the runtime and intent modules into explicit workflows without becoming hidden product logic.
+
+The current implementation is a thin integration layer over the existing runtime and intent modules. It exposes both a full request cycle and smaller reusable flow helpers.
 
 ## Public API surface
 

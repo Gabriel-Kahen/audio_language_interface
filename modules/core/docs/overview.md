@@ -4,6 +4,8 @@
 
 `modules/core` defines the canonical shared primitives that the rest of the repository uses to talk about audio assets and versions.
 
+This module belongs to the shared/foundation layer.
+
 This module is intentionally small. It owns stable shared types, identifier and timestamp helpers, schema-backed validation helpers, and the repository's baseline result envelope. It does not own any I/O, DSP, orchestration, or workflow policy.
 
 ## Public API

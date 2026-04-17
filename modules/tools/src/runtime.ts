@@ -1,4 +1,5 @@
 import { analyzeAudioVersion } from "@audio-language-interface/analysis";
+import { defaultRuntimeCapabilityManifest } from "@audio-language-interface/capabilities";
 import { compareVersions } from "@audio-language-interface/compare";
 import { importAudioFromFile } from "@audio-language-interface/io";
 import { planEdits } from "@audio-language-interface/planning";
@@ -6,6 +7,7 @@ import { renderPreview } from "@audio-language-interface/render";
 import { applyEditPlan } from "@audio-language-interface/transforms";
 
 export interface ToolsRuntime {
+  getRuntimeCapabilityManifest: typeof getRuntimeCapabilityManifest;
   importAudioFromFile: typeof importAudioFromFile;
   analyzeAudioVersion: typeof analyzeAudioVersion;
   planEdits: typeof planEdits;
@@ -14,7 +16,12 @@ export interface ToolsRuntime {
   compareVersions: typeof compareVersions;
 }
 
+function getRuntimeCapabilityManifest() {
+  return defaultRuntimeCapabilityManifest;
+}
+
 export const defaultToolsRuntime: ToolsRuntime = {
+  getRuntimeCapabilityManifest,
   importAudioFromFile,
   analyzeAudioVersion,
   planEdits,

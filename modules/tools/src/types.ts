@@ -45,7 +45,14 @@ export interface ToolHandlerResult<TResult extends Record<string, unknown>> {
 export interface ToolDescriptor {
   name: string;
   description: string;
-  backing_module: "io" | "analysis" | "planning" | "transforms" | "render" | "compare";
+  backing_module:
+    | "capabilities"
+    | "io"
+    | "analysis"
+    | "planning"
+    | "transforms"
+    | "render"
+    | "compare";
   required_arguments: readonly string[];
   optional_arguments: readonly string[];
   error_codes: readonly ToolErrorCode[];

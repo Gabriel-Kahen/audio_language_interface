@@ -4,6 +4,8 @@
 
 `modules/compare` measures how a candidate audio state differs from a baseline and packages those changes into a contract-aligned `ComparisonReport`.
 
+This module is part of the audio runtime layer.
+
 The module currently focuses on:
 
 - deterministic metric deltas

@@ -17,9 +17,7 @@ export function buildStereoWidthOperation(
   assertFullFileTarget("stereo_width", target);
 
   if (audio.channels !== 2) {
-    throw new Error(
-      "stereo_width requires stereo 2-channel audio in the locked Phase 2 implementation.",
-    );
+    throw new Error("stereo_width requires stereo 2-channel audio.");
   }
 
   const widthMultiplier = readBoundedNumber(
@@ -73,9 +71,7 @@ export function buildDenoiseOperation(
 
 function assertFullFileTarget(operation: string, target?: EditTarget): void {
   if (target?.scope !== undefined && target.scope !== "full_file") {
-    throw new Error(
-      `${operation} only supports full_file targets in the locked Phase 2 implementation.`,
-    );
+    throw new Error(`${operation} only supports full_file targets in the current runtime.`);
   }
 }
 

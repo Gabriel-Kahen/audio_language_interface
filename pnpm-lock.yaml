@@ -69,6 +69,15 @@ importers:
         specifier: workspace:*
         version: link:../compare
 
+  modules/capabilities:
+    dependencies:
+      ajv:
+        specifier: ^8.18.0
+        version: 8.18.0
+      ajv-formats:
+        specifier: ^3.0.1
+        version: 3.0.1(ajv@8.18.0)
+
   modules/compare: {}
 
   modules/core:
@@ -132,15 +141,15 @@ importers:
       '@audio-language-interface/analysis':
         specifier: workspace:*
         version: link:../analysis
+      '@audio-language-interface/capabilities':
+        specifier: workspace:*
+        version: link:../capabilities
       '@audio-language-interface/core':
         specifier: workspace:*
         version: link:../core
       '@audio-language-interface/semantics':
         specifier: workspace:*
         version: link:../semantics
-      '@audio-language-interface/transforms':
-        specifier: workspace:*
-        version: link:../transforms
       ajv:
         specifier: ^8.18.0
         version: 8.18.0
@@ -193,6 +202,9 @@ importers:
       '@audio-language-interface/analysis':
         specifier: workspace:*
         version: link:../analysis
+      '@audio-language-interface/capabilities':
+        specifier: workspace:*
+        version: link:../capabilities
       '@audio-language-interface/compare':
         specifier: workspace:*
         version: link:../compare
@@ -218,7 +230,11 @@ importers:
         specifier: ^3.0.1
         version: 3.0.1(ajv@8.18.0)
 
-  modules/transforms: {}
+  modules/transforms:
+    dependencies:
+      '@audio-language-interface/capabilities':
+        specifier: workspace:*
+        version: link:../capabilities
 
 packages:
 

@@ -4,6 +4,8 @@
 
 `modules/io` is the file-ingestion boundary for the platform.
 
+It is part of the audio runtime layer.
+
 The current implementation takes a readable audio file path, inspects container-level metadata, optionally materializes a normalized copy, and emits contract-validated `AudioAsset` and `AudioVersion` artifacts.
 
 ## Current public API

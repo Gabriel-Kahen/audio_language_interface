@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0.0",
+  "request_id": "toolreq_DescribeRuntime001",
+  "tool_name": "describe_runtime_capabilities",
+  "arguments": {},
+  "requested_at": "2026-04-17T00:00:00Z",
+  "caller": "integration-test"
+}

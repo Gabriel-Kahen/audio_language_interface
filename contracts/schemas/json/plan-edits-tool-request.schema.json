@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/plan-edits-tool-request.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "tool_name", "arguments", "requested_at"],
+  "properties": {
+    "schema_version": { "$ref": "./common.schema.json#/$defs/schemaVersion" },
+    "request_id": { "$ref": "./common.schema.json#/$defs/requestId" },
+    "tool_name": { "const": "plan_edits" },
+    "requested_at": { "$ref": "./common.schema.json#/$defs/isoTimestamp" },
+    "session_id": { "$ref": "./common.schema.json#/$defs/sessionId" },
+    "asset_id": { "$ref": "./common.schema.json#/$defs/assetId" },
+    "version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+    "caller": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+    "arguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["audio_version", "analysis_report", "semantic_profile", "user_request"],
+      "properties": {
+        "audio_version": {
+          "type": "object",
+          "required": ["schema_version", "version_id", "asset_id", "lineage", "audio"],
+          "properties": {
+            "schema_version": { "$ref": "./common.schema.json#/$defs/schemaVersion" },
+            "version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+            "asset_id": { "$ref": "./common.schema.json#/$defs/assetId" },
+            "lineage": { "type": "object" },
+            "audio": { "type": "object" },
+            "state": { "type": "object" }
+          },
+          "additionalProperties": false
+        },
+        "analysis_report": {
+          "type": "object",
+          "required": [
+            "schema_version",
+            "report_id",
+            "asset_id",
+            "version_id",
+            "generated_at",
+            "analyzer",
+            "summary",
+            "measurements"
+          ],
+          "properties": {
+            "schema_version": { "$ref": "./common.schema.json#/$defs/schemaVersion" },
+            "report_id": { "$ref": "./common.schema.json#/$defs/analysisId" },
+            "asset_id": { "$ref": "./common.schema.json#/$defs/assetId" },
+            "version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+            "generated_at": { "$ref": "./common.schema.json#/$defs/isoTimestamp" },
+            "analyzer": { "type": "object" },
+            "summary": { "type": "object" },
+            "measurements": { "type": "object" },
+            "annotations": { "type": "array" }
+          },
+          "additionalProperties": false
+        },
+        "semantic_profile": {
+          "type": "object",
+          "required": [
+            "schema_version",
+            "profile_id",
+            "analysis_report_id",
+            "asset_id",
+            "version_id",
+            "generated_at",
+            "descriptors",
+            "summary",
+            "unresolved_terms"
+          ],
+          "properties": {
+            "schema_version": { "$ref": "./common.schema.json#/$defs/schemaVersion" },
+            "profile_id": { "$ref": "./common.schema.json#/$defs/semanticId" },
+            "analysis_report_id": { "$ref": "./common.schema.json#/$defs/analysisId" },
+            "asset_id": { "$ref": "./common.schema.json#/$defs/assetId" },
+            "version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+            "generated_at": { "$ref": "./common.schema.json#/$defs/isoTimestamp" },
+            "descriptors": { "type": "array" },
+            "summary": { "type": "object" },
+            "unresolved_terms": { "type": "array" }
+          },
+          "additionalProperties": false
+        },
+        "user_request": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generated_at": {
+          "$ref": "./common.schema.json#/$defs/isoTimestamp"
+        },
+        "constraints": {
+          "$ref": "./common.schema.json#/$defs/stringArray"
+        }
+      }
+    }
+  }
+}

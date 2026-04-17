@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 
 import { assertValidAnalysisReport } from "@audio-language-interface/analysis";
+import {
+  defaultRuntimeCapabilityManifest,
+  plannerSupportedRuntimeOperations,
+} from "@audio-language-interface/capabilities";
 import { assertValidAudioVersion } from "@audio-language-interface/core";
 import { assertValidSemanticProfile } from "@audio-language-interface/semantics";
 
@@ -73,6 +77,7 @@ export function planEdits(options: PlanEditsOptions): EditPlan {
   const plan: EditPlan = {
     schema_version: CONTRACT_SCHEMA_VERSION,
     plan_id: createPlanId(options, objectives.normalized_request),
+    capability_manifest_id: defaultRuntimeCapabilityManifest.manifest_id,
     asset_id: options.audioVersion.asset_id,
     version_id: options.audioVersion.version_id,
     user_request: options.userRequest,
@@ -108,7 +113,7 @@ function resolvePlannerObjectives(
 
   if (objectives.unsupported_requests.length > 0) {
     throw new Error(
-      `The baseline planner does not support ${formatQuotedList(objectives.unsupported_requests)}. Supported planning is limited to tonal EQ, filtering, trim, fade, gain, conservative compression, peak limiting, conservative denoise, and conservative stereo width changes.`,
+      `The baseline planner does not support ${formatQuotedList(objectives.unsupported_requests)}. Planner-supported runtime operations in manifest ${defaultRuntimeCapabilityManifest.manifest_id} are ${formatQuotedList(plannerSupportedRuntimeOperations)}.`,
     );
   }
 

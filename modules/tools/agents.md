@@ -4,7 +4,7 @@
 
 Own the LLM-facing tool interface for the platform.
 
-## Pipeline role
+## Architectural role
 
 `tools` is the stable adapter between external model callers and the internal module graph.
 

@@ -1,29 +1,15 @@
 import type { TransientMap as AnalysisTransientMap } from "@audio-language-interface/analysis";
+import type {
+  RuntimeOperationName,
+  RuntimeTargetScope,
+} from "@audio-language-interface/capabilities";
 
 export const CONTRACT_SCHEMA_VERSION = "1.0.0" as const;
 
-export type OperationName =
-  | "gain"
-  | "normalize"
-  | "trim"
-  | "trim_silence"
-  | "fade"
-  | "pitch_shift"
-  | "parametric_eq"
-  | "high_pass_filter"
-  | "low_pass_filter"
-  | "compressor"
-  | "limiter"
-  | "time_stretch"
-  | "reverse"
-  | "mono_sum"
-  | "channel_swap"
-  | "stereo_balance_correction"
-  | "stereo_width"
-  | "denoise";
+export type OperationName = RuntimeOperationName;
 
 export type OperationStatus = "applied" | "skipped" | "failed";
-export type TargetScope = "full_file" | "time_range" | "segment" | "channel" | "frequency_region";
+export type TargetScope = RuntimeTargetScope;
 
 export interface AudioVersion {
   schema_version: typeof CONTRACT_SCHEMA_VERSION;
@@ -100,6 +86,7 @@ export interface EditPlanStep {
 export interface EditPlan {
   schema_version: typeof CONTRACT_SCHEMA_VERSION;
   plan_id: string;
+  capability_manifest_id: string;
   asset_id: string;
   version_id: string;
   user_request: string;
@@ -121,6 +108,7 @@ export interface TransformRecord {
   schema_version: typeof CONTRACT_SCHEMA_VERSION;
   record_id: string;
   plan_id?: string;
+  capability_manifest_id?: string;
   asset_id: string;
   input_version_id: string;
   output_version_id: string;

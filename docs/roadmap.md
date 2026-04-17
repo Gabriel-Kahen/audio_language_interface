@@ -23,7 +23,7 @@ Detailed plan:
 
 Goal:
 
-- make the system meaningfully more capable for real LLM-driven editing without widening the product too early.
+- make the system meaningfully better at real LLM-driven editing without widening the product too early.
 
 Phase 2 should still protect the core product framing:
 
@@ -33,19 +33,16 @@ Phase 2 should still protect the core product framing:
 
 The main outcome of Phase 2 should be a much stronger editing loop for supported requests, not a much larger but less reliable feature matrix.
 
-Locked first Phase 2 transform batch:
+The repository now already includes:
 
-1. `compressor`
-2. `limiter`
-3. `stereo_width`
-4. `denoise`
+1. published runtime capability discovery
+2. planning grounded against capability metadata rather than transform internals
+3. deterministic support for `compressor`, `limiter`, `stereo_width`, `denoise`, and `time_stretch`
 
-Deferred until a later Phase 2 or Phase 3 pass:
+That means the next Phase 2 work is no longer "add the first serious transforms."
+It is to deepen reliability, comparison quality, and planner coverage around the capabilities that already exist.
 
-- `pitch_shift`
-- `time_stretch`
-
-See `docs/phase-2-plan.md` for the execution order, module tasks, and testing expectations for this batch.
+See `docs/phase-2-plan.md` for the current execution order, module tasks, and testing expectations.
 
 ### Better transform coverage
 
@@ -58,29 +55,27 @@ Why this matters:
 - many natural editing requests need more than EQ and fades
 - the planner becomes much more useful when it can choose from a slightly richer but still constrained operation set
 
-Priority transform additions:
+Priority runtime follow-ups:
 
-1. `compressor`
-2. `limiter`
-3. `stereo_width`
-4. `denoise`
-5. `pitch_shift`
-6. `time_stretch`
+1. improve verification and compare behavior for existing runtime transforms
+2. expand planner support where the capability manifest says the runtime is ready
+3. add carefully chosen new runtime transforms only after they have contract, compare, and planner justification
+4. keep `pitch_shift` deferred until the repo has a deterministic, contractable implementation path
 
 Recommended order:
 
-1. dynamics transforms that help preserve or restore punch
-2. stereo and cleanup transforms that support common descriptive requests
-3. pitch and time transforms, which are useful but likely introduce more risk and edge cases
+1. make current dynamics, stereo, and cleanup transforms easier to plan and verify correctly
+2. extend planner coverage only when semantics and compare can support the feature honestly
+3. add new transform classes only after the current runtime/intent boundary stays clean
 
 Key workstreams:
 
-- define exact parameter surfaces for each new transform
-- keep operation names aligned with published contract taxonomy
-- ensure every new transform produces deterministic output for the same input and parameters
+- keep the capability manifest synchronized with the real runtime surface
+- improve compare and semantics coverage for the existing runtime transforms
+- extend planner support only for operations marked `planner_supported`
 - emit exact execution metadata in `TransformRecord`
-- document tradeoffs, side effects, and safe ranges for each transform
-- extend render and compare where new transforms introduce new failure modes
+- document tradeoffs, side effects, and safe ranges for each runtime operation
+- extend render and compare where richer transforms introduce new failure modes
 
 Module impact:
 
@@ -92,17 +87,17 @@ Module impact:
 
 Risks:
 
-- transform sprawl without enough planner discipline
+- runtime capability sprawl without enough planner discipline
 - effects with hidden defaults that make runs hard to reason about
 - transforms that technically work but are not measurable enough for compare/evaluation
 - adding transforms whose semantics are too fuzzy for the current analysis layer
 
 Success criteria:
 
-- new transforms are deterministic, documented, and covered by tests
-- planning and compare can reason about them explicitly
-- transforms remain constrained and inspectable rather than becoming a vague effects bucket
-- transform additions improve supported requests instead of expanding unsupported ones silently
+- existing and new runtime operations are deterministic, documented, and covered by tests
+- planning and compare can reason about the runtime surface explicitly
+- the capability manifest remains the source of truth for runtime availability and planner support
+- runtime additions improve supported requests instead of expanding unsupported ones silently
 
 ### Stronger prompt handling
 

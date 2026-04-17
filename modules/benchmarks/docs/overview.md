@@ -4,6 +4,8 @@
 
 Evaluate module quality and end-to-end reliability for LLM-driven audio manipulation.
 
+This module is the evaluation layer over the rest of the architecture.
+
 The current implementation provides a first benchmark harness for compare-driven evaluation of the initial prompt family. It is not yet backed by committed real audio fixtures.
 
 The benchmark runtime is implemented under `modules/benchmarks/src` and is currently focused on a compare-driven, synthetic-first prompt suite.

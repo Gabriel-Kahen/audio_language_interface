@@ -2,28 +2,26 @@
 
 This directory is reserved for versioned cross-module schemas.
 
-Every schema should define a stable, serialized contract that can be used across modules and tool boundaries.
+Every schema should define a stable serialized contract that can be used across modules and adapter boundaries.
 
 Each contract family is represented in three places:
 
-- `contracts/schemas/<artifact>.md`: human-readable intent, field semantics, and contract notes.
+- `contracts/schemas/<artifact>.md`: human-readable intent, field semantics, and notes.
 - `contracts/schemas/json/<artifact>.schema.json`: machine-readable JSON Schema used by tooling.
 - `contracts/examples/<artifact>.json`: a minimal valid example payload.
 
 All three should change together when the contract changes.
 
-Common conventions:
+## Common Conventions
 
-- Every artifact includes `schema_version`.
-- IDs are explicit and stable within a session.
-- Initial artifact IDs should use stable prefixed forms such as `asset_`, `ver_`, `analysis_`, `semantic_`, `plan_`, `transform_`, `render_`, `compare_`, `session_`, `toolreq_`, `transientmap_`, and `slicemap_`.
-- Timestamps use ISO 8601 UTC strings.
-- Paths or storage references are explicit and never implied.
-- Optional fields should be omitted when unknown. Do not use `null` unless the contract explicitly allows it.
-- Local file paths in v1 contracts should be stored as workspace-relative POSIX-style paths.
-- Contract versions are versioned per artifact family. The initial published version is `1.0.0` for all current schemas.
+- every artifact includes `schema_version`
+- IDs are explicit and stable within a session
+- timestamps use ISO 8601 UTC strings
+- paths and storage refs are explicit and never implied
+- optional fields should be omitted when unknown
+- local file paths in v1 contracts should be stored as workspace-relative POSIX-style paths
 
-Expected schema families include:
+## Current Artifact Families
 
 - `audio-asset`
 - `audio-version`
@@ -35,6 +33,7 @@ Expected schema families include:
 - `slice-map`
 - `semantic-profile`
 - `edit-plan`
+- `runtime-capability-manifest`
 - `transform-record`
 - `render-artifact`
 - `comparison-report`
@@ -42,46 +41,31 @@ Expected schema families include:
 - `tool-request`
 - `tool-response`
 
-Each schema should be stable, documented, and accompanied by at least one example payload under `contracts/examples/`.
+## Current Tool Contract Specs
 
-## Current specs
+- `load-audio-tool`
+- `analyze-audio-tool`
+- `plan-edits-tool`
+- `apply-edit-plan-tool`
+- `describe-runtime-capabilities-tool`
+- `render-preview-tool`
+- `compare-versions-tool`
 
-- `audio-asset.md`
-- `audio-version.md`
-- `analysis-report.md`
-- `pitch-center-estimate.md`
-- `tempo-estimate.md`
-- `loop-boundary-suggestion-set.md`
-- `semantic-profile.md`
-- `edit-plan.md`
-- `transform-record.md`
-- `render-artifact.md`
-- `comparison-report.md`
-- `session-graph.md`
-- `tool-request.md`
-- `tool-response.md`
-- `load-audio-tool.md`
-- `analyze-audio-tool.md`
-- `apply-edit-plan-tool.md`
-- `render-preview-tool.md`
-- `compare-versions-tool.md`
-
-## Machine-readable schemas
+## Machine-Readable Schemas
 
 Machine-readable JSON Schema definitions live under `contracts/schemas/json/`.
 
 - `common.schema.json`
-- `<artifact>.schema.json` for each canonical contract
+- `<artifact>.schema.json` for each published artifact or tool payload
 
-## Validation workflow
+## Validation Workflow
 
 Run `pnpm validate:schemas` after editing a schema spec, JSON Schema, or example payload.
 
-The validator currently:
+The validator:
 
-- loads every `*.schema.json` file in `contracts/schemas/json/` except `common.schema.json`,
-- looks for a same-named example payload in `contracts/examples/`,
-- validates the example against the schema with `Ajv` and `ajv-formats`,
-- and exits non-zero if any pair fails validation.
-
-This means each artifact schema should always have a matching example file with the same base name.
+- loads every `*.schema.json` file in `contracts/schemas/json/` except `common.schema.json`
+- preloads published schemas so cross-schema refs resolve cleanly
+- looks for a same-named example payload in `contracts/examples/`
+- validates the example against the schema with `Ajv` and `ajv-formats`
+- exits non-zero if any pair fails validation

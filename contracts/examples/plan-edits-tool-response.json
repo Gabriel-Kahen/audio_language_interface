@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0.0",
+  "request_id": "toolreq_01HZZ0PLANEDITSREQ0000001",
+  "tool_name": "plan_edits",
+  "status": "ok",
+  "completed_at": "2026-04-17T00:00:01Z",
+  "result": {
+    "edit_plan": {
+      "schema_version": "1.0.0",
+      "plan_id": "plan_01HZZ0FIRSTSLICEPLAN00000001",
+      "capability_manifest_id": "capmanifest_20260417A",
+      "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
+      "version_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
+      "user_request": "Clean this loop up a bit, widen it slightly, and control the peaks without crushing it.",
+      "created_at": "2026-04-14T20:20:05Z",
+      "goals": [
+        "reduce steady background noise conservatively",
+        "slightly increase stereo width",
+        "control peak excursions conservatively",
+        "preserve transient impact"
+      ],
+      "constraints": ["avoid obvious denoise artifacts", "avoid audible pumping"],
+      "verification_targets": [
+        "lower measured noise floor",
+        "lower peak excursions while keeping the output ceiling near -1 dB true peak",
+        "small increase in stereo width",
+        "no material loss of crest factor"
+      ],
+      "rationale": "A conservative cleanup, dynamics pass, and subtle width increase should improve control without changing the loop's core character.",
+      "steps": [
+        {
+          "step_id": "step_denoise_1",
+          "operation": "denoise",
+          "target": {
+            "scope": "full_file"
+          },
+          "parameters": {
+            "reduction_db": 6,
+            "noise_floor_dbfs": -58
+          },
+          "expected_effects": ["lower steady broadband noise", "keep the main signal intact"],
+          "safety_limits": ["avoid watery artifacts", "avoid removing transient detail"]
+        }
+      ]
+    }
+  }
+}

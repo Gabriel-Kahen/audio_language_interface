@@ -6,9 +6,9 @@ This document records what the repository implements today.
 
 Use it to avoid planning against aspirational architecture docs alone.
 
-## Current supported slice
+## Current Supported Slice
 
-The current repository supports a first end-to-end slice for single-file audio editing:
+The current repository supports a real single-file natural-language editing slice:
 
 - import one local audio file into workspace storage
 - analyze a WAV-backed `AudioVersion`
@@ -18,33 +18,43 @@ The current repository supports a first end-to-end slice for single-file audio e
 - render preview and limited export artifacts
 - compare baseline and candidate versions or renders
 - record provenance in a `SessionGraph`
-- access the flow through `tools` or `orchestration`
+- access the flow through adapter surfaces in `tools` or `orchestration`
 
-The repository is now in an advanced Phase 2 state: the core runtime and the currently exposed tool surface support the locked Phase 2 transform batch, while some higher-level product surfaces remain intentionally narrow.
+The runtime capability surface is now also published explicitly through `RuntimeCapabilityManifest`.
 
-## What works today
+## What Works Today
 
-### Runtime modules with implemented `src/`
+### Shared/Foundation
 
 - `core`: canonical `AudioAsset` and `AudioVersion` helpers plus schema-backed validation
+- `history`: explicit session graph, provenance, branch, snapshot, revert, undo, and redo helpers
+- `capabilities`: published `RuntimeCapabilityManifest` and shared runtime operation metadata
+
+### Audio Runtime
+
 - `io`: local file import, metadata inspection, optional WAV normalization, source-ref validation
 - `analysis`: deterministic baseline analysis for workspace-local WAV files
-- `semantics`: conservative descriptor mapping from `AnalysisReport`
-- `planning`: deterministic request parsing and explicit plan generation for supported operations
-- `transforms`: deterministic FFmpeg-backed execution for the current small operation set
+- `transforms`: deterministic FFmpeg-backed execution for the current runtime operation set
 - `render`: preview MP3 rendering plus WAV and FLAC export rendering
 - `compare`: metric deltas, small semantic delta vocabulary, regression warnings, and goal checks
-- `history`: explicit session graph, provenance, branch, snapshot, revert, undo, and redo helpers
-- `tools`: callable tool registry and request execution for the currently exposed tool set
+
+### Intent Layer
+
+- `semantics`: conservative descriptor mapping from `AnalysisReport`
+- `planning`: deterministic request parsing and explicit plan generation for supported operations
+
+### Adapters
+
+- `tools`: callable tool registry and request execution for the published tool set
 - `orchestration`: composed happy-path workflows and iterative refinement helpers
 
-### Implemented support modules
+### Evaluation
 
-- `benchmarks`: first-slice prompt suite, scoring helpers, a benchmark harness, and markdown report formatting
+- `benchmarks`: first benchmark harness for compare-driven evaluation of the initial prompt family
 
-## Current prompt and operation scope
+## Current Prompt And Operation Scope
 
-### Best-supported prompt family
+### Best-Supported Prompt Family
 
 - darker
 - less harsh
@@ -53,12 +63,12 @@ The repository is now in an advanced Phase 2 state: the core runtime and the cur
 - more controlled
 - control peaks
 
-Supported but conservative Phase 2 areas:
+Supported but conservative areas:
 
 - wider or narrower, when stereo evidence is safe enough
 - denoise or reduce hiss, when steady-noise evidence is strong enough
 
-### Implemented transform operations
+### Runtime-Supported Operations
 
 - `gain`
 - `normalize`
@@ -69,45 +79,64 @@ Supported but conservative Phase 2 areas:
 - `low_pass_filter`
 - `compressor`
 - `limiter`
+- `time_stretch`
 - `stereo_width`
 - `denoise`
 
-### Implemented tool surface
+### Planner-Supported Operations
 
+The baseline planner currently plans only against operations marked `planner_supported` in the runtime capability manifest:
+
+- `gain`
+- `trim`
+- `fade`
+- `parametric_eq`
+- `high_pass_filter`
+- `low_pass_filter`
+- `compressor`
+- `limiter`
+- `stereo_width`
+- `denoise`
+
+`time_stretch` is runtime-available but not yet selected by the baseline planner.
+
+### Implemented Tool Surface
+
+- `describe_runtime_capabilities`
 - `load_audio`
 - `analyze_audio`
+- `plan_edits`
 - `apply_edit_plan`
 - `render_preview`
 - `compare_versions`
 
 Current tool-surface caveats:
 
-- `apply_edit_plan` supports the locked Phase 2 runtime operation set, but still validates explicit runtime prerequisites such as stereo-only width processing and full-file-only Phase 2 targets
-- the tool surface still does not expose a direct `plan_edits` operation
+- `apply_edit_plan` supports the published runtime capability surface, but still validates explicit runtime prerequisites such as stereo-only width processing and full-file-only target scopes for some operations
+- `plan_edits` only chooses operations marked as `planner_supported` in the runtime capability manifest
 
-## Important current limitations
+## Important Current Limitations
 
 - `io` imports local file paths only
 - analysis currently requires `.wav` input files on disk
 - analysis reads the whole file into memory
 - semantic descriptor coverage is intentionally small and conservative
 - planning fails on unsupported requests instead of trying to generalize broadly
-- iterative orchestration now supports early `more`, `less`, and `undo` follow-up behavior, but still relies on explicit version materialization through orchestration dependencies for safe revert execution
-- transforms still do not cover pitch shifting or time stretching
+- iterative orchestration supports early `more`, `less`, and `undo` follow-up behavior, but still relies on explicit version materialization through orchestration dependencies for safe revert execution
+- transforms still do not cover pitch shifting
 - render preview is MP3-only
 - final render export is limited to WAV and FLAC
 - compare goal alignment is heuristic and string-driven
-- the tool surface does not expose `plan_edits`, even though `modules/planning` has a runtime API
 - the repository does not yet provide a dedicated demo CLI or application entrypoint
 - benchmark coverage is still synthetic-first and not yet tied to committed real audio fixtures or full end-to-end fixture-backed runs
 
-## Practical interpretation
+## Practical Interpretation
 
-The repository is past pure scaffolding. It already contains a usable first technical slice for programmatic experimentation and module-level integration.
+The repository is well past pure scaffolding. It already contains a usable technical slice for programmatic experimentation and module-level integration.
 
-It is not yet a broad audio-editing platform, a polished external product, or a feature-complete orchestration stack.
+It is not yet a broad audio-editing platform, a polished end-user product, or a beatmaking system.
 
-## Source of truth
+## Source Of Truth
 
 When this file disagrees with older high-level docs, prefer:
 

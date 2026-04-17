@@ -4,9 +4,9 @@
 
 Own conversion from user intent and current audio state into an explicit, ordered edit plan.
 
-## Pipeline role
+## Architectural role
 
-`planning` is the decision layer between interpretation and execution.
+`planning` is the intent-layer planner between interpretation and runtime execution.
 
 ## Owns
 
@@ -23,6 +23,7 @@ Own conversion from user intent and current audio state into an explicit, ordere
 - `SemanticProfile`
 - current `AudioVersion` state
 - optional user or system constraints
+- published runtime capability metadata
 
 ## Outputs
 

@@ -2,58 +2,51 @@
 
 ## Purpose
 
-This document turns the high-level Phase 2 roadmap into a concrete execution plan.
+This document records the current Phase 2 execution plan after the repository was split explicitly into shared/foundation, audio runtime, intent, adapters, and evaluation.
 
-Phase 2 is the next implementation wave after the Phase 1 baseline. It should increase capability without sacrificing the contract-first, inspectable nature of the platform.
+Phase 2 is no longer about proving the basic architecture. That split now exists in code, contracts, and docs. The job now is to make the current runtime and intent surfaces materially stronger for real LLM-driven editing.
 
-## Baseline
+## Current Baseline
 
-The frozen Phase 1 baseline is tagged as:
+The repository already includes:
 
-- `phase-1-complete`
+- a published `RuntimeCapabilityManifest`
+- capability-grounded planning that no longer imports runtime internals
+- deterministic runtime support for `compressor`, `limiter`, `stereo_width`, `denoise`, and `time_stretch`
+- adapter-layer tool discovery through `describe_runtime_capabilities`
+- schema-aligned `EditPlan` and `TransformRecord` artifacts that record `capability_manifest_id`
 
-That tag points at the commit where the first end-to-end slice was established and should be used as the comparison point for Phase 2 regression checks.
+That means Phase 2 should focus on reliability, verification quality, and honest planner coverage rather than on adding features for their own sake.
 
-## Phase 2 Objective
+## Objective
 
 Make the system substantially better at supported LLM-driven editing requests by improving:
 
-1. transform coverage
-2. prompt handling
-3. orchestration behavior
-4. semantic interpretation
+1. runtime verification and comparison quality
+2. prompt handling and planner coverage
+3. semantic interpretation
+4. orchestration behavior under repeated edits
 
-The goal is a stronger editing loop, not a much broader but less reliable feature set.
+The goal is a stronger editing loop, not a broader but less reliable feature matrix.
 
-## Locked Scope
+## Scope
 
-### In scope
+### In Scope
 
-The first Phase 2 transform batch is locked to:
+- keeping runtime behavior aligned with the published capability manifest
+- improving compare coverage for supported runtime transforms
+- expanding planner support only where the capability manifest and semantic evidence justify it
+- making unsupported and ambiguous prompt handling clearer
+- improving repeated-edit workflows such as `more`, `less`, `undo`, and retry variants
 
-1. `compressor`
-2. `limiter`
-3. `stereo_width`
-4. `denoise`
-
-These were chosen because they most directly support the current supported prompt family and nearby real-world requests:
-
-- preserving or restoring punch
-- controlling peaks
-- widening or narrowing a sound in a controllable way
-- cleaning up noisy material without changing the core product framing
-
-### Explicitly deferred
-
-These are intentionally out of scope for the first Phase 2 pass:
+### Explicitly Deferred
 
 - `pitch_shift`
-- `time_stretch`
 - multi-file workflows
 - streaming or byte-buffer import as a new primary input mode
 - broad generative or music-creation behavior
 
-Those items add meaningful surface area and complexity, but they are not necessary to prove the next level of reliability for the current editing loop.
+Those items widen the surface area substantially and should stay deferred until the current architecture is more mature.
 
 ## Product Outcome
 
@@ -63,44 +56,46 @@ At the end of this Phase 2 pass, the system should be materially better at reque
 - `clean this sample up a bit`
 - `make this a little tighter and more controlled`
 - `widen this slightly without making it phasey`
+- `speed this up a little without changing the pitch`
 
 The system should still reject or clarify requests outside the supported scope instead of guessing.
 
 ## Workstreams
 
-### Workstream A: Transform Expansion
+### Workstream A: Runtime And Compare Hardening
 
 Owner modules:
 
+- `modules/capabilities`
 - `modules/transforms`
 - `modules/render`
 - `modules/compare`
 
 Primary outcomes:
 
-- deterministic implementations for the four locked transforms
+- tighter runtime/capability alignment
 - explicit parameter shapes and safety limits
 - better regression detection for transform-specific side effects
 
 Detailed tasks:
 
-1. Add the new operation names to contract and planning surfaces where required.
-2. Define exact parameter shapes for each transform before implementation.
-3. Implement deterministic execution in `transforms`.
-4. Ensure `TransformRecord` output captures the exact executed parameters.
-5. Extend `compare` to detect likely regressions:
+1. Keep runtime capability metadata synchronized with actual runtime behavior.
+2. Tighten parameter surfaces and safety limits where the runtime is already implemented.
+3. Ensure `TransformRecord` captures the exact executed parameters and originating `capability_manifest_id` when available.
+4. Extend `compare` to detect likely regressions such as:
    - over-compression
    - peak issues
    - stereo instability
-   - excessive noise reduction artifacts where measurable
+   - excessive noise-reduction artifacts
+   - unintended duration or loudness drift when applicable
 
 Acceptance criteria:
 
-- each new transform has unit tests and at least one fixture-backed test
-- the planner can target the transform explicitly
-- the compare layer can reason about likely regressions introduced by it
+- each supported runtime transform has unit tests and at least one fixture-backed test where practical
+- the capability manifest describes runtime availability and planner support honestly
+- the compare layer can reason about likely regressions introduced by supported runtime transforms
 
-### Workstream B: Prompt Handling Hardening
+### Workstream B: Planner Coverage And Prompt Handling
 
 Owner modules:
 
@@ -116,17 +111,18 @@ Primary outcomes:
 
 Detailed tasks:
 
-1. Expand prompt parsing for the first supported request family.
+1. Expand prompt parsing for the current supported request family.
 2. Separate supported, ambiguous, and unsupported requests clearly.
 3. Add explicit clarification or failure messages where the planner cannot safely proceed.
-4. Keep prompt interpretation aligned with the current transform set rather than aspirational capabilities.
-5. Make tool-layer errors clearer for unsupported prompt patterns.
+4. Keep prompt interpretation aligned with the published capability manifest rather than aspirational capabilities.
+5. Expand planner support only for operations marked `planner_supported`.
 
 Acceptance criteria:
 
 - supported prompts map reliably to explicit plans
 - ambiguous prompts surface clarification-worthy failure states
 - unsupported prompts fail without hidden fallback behavior
+- planner output records the correct `capability_manifest_id`
 
 ### Workstream C: Semantic Calibration
 
@@ -138,14 +134,14 @@ Owner modules:
 
 Primary outcomes:
 
-- stronger evidence for brightness, harshness, cleanliness, width, and punch-related interpretation
+- stronger evidence for brightness, harshness, cleanliness, width, punch, and control-related interpretation
 - improved confidence handling and summary wording
 - better semantic signals for planning and comparison
 
 Detailed tasks:
 
 1. Improve analysis-side evidence where current measurements are too weak.
-2. Recalibrate descriptor thresholds using the first Phase 2 transform batch in mind.
+2. Recalibrate descriptor thresholds using the current runtime capability surface in mind.
 3. Improve conflicting-evidence handling.
 4. Keep unresolved-term output explicit.
 5. Align compare-layer semantic deltas with the same vocabulary.
@@ -174,7 +170,7 @@ Primary outcomes:
 Detailed tasks:
 
 1. Add repeated-edit flow coverage for `more`, `less`, and `undo`-style operations.
-2. Ensure the orchestration layer preserves session and provenance state across iterations.
+2. Ensure orchestration preserves session and provenance state across iterations.
 3. Keep partial results valid and inspectable when a later stage fails.
 4. Add integration tests that cover multiple cycles, not only a single request pass.
 5. Ensure the tool layer can surface or support these flows cleanly where appropriate.
@@ -187,41 +183,41 @@ Acceptance criteria:
 
 ## Milestones
 
-### Milestone 1: Contract And Test Prep
+### Milestone 1: Capability And Contract Alignment
 
 Goal:
 
-- prepare the repository so Phase 2 implementation can proceed without contract drift or weak testing discipline
+- eliminate drift between contracts, examples, capability metadata, and runtime behavior
 
 Deliverables:
 
-- finalized transform batch contract updates
+- capability-contract updates where needed
+- synchronized examples
 - test matrix and coverage expectations documented
-- any missing fixtures or fixture manifests added for the first Phase 2 pass
 
-### Milestone 2: Transform And Compare Core
+### Milestone 2: Runtime And Compare Hardening
 
 Goal:
 
-- land the deterministic core of the four new transforms and their compare/regression logic
+- tighten the deterministic core that already exists and improve compare/regression logic around it
 
 Deliverables:
 
-- transform implementations
+- hardened transform behavior
 - transform tests
-- compare regressions and deltas for the new capabilities
+- compare regressions and deltas for the supported runtime capabilities
 
 ### Milestone 3: Semantics And Planning Alignment
 
 Goal:
 
-- make semantics and planning understand the new capability set without overreaching
+- make semantics and planning use the runtime capability surface honestly without overreaching
 
 Deliverables:
 
 - improved prompt handling
 - improved descriptor calibration
-- safer plan generation for the expanded operation set
+- safer plan generation for the planner-supported operation set
 
 ### Milestone 4: Iterative Orchestration
 
@@ -239,7 +235,7 @@ Deliverables:
 
 Goal:
 
-- make the Phase 2 additions trustworthy enough to serve as the new baseline
+- make the current Phase 2 additions trustworthy enough to serve as the new baseline
 
 Deliverables:
 
@@ -251,121 +247,88 @@ Deliverables:
 
 ### `contracts`
 
-- publish parameter shapes and examples for the four locked transforms
+- publish parameter shapes and examples for the supported runtime operations
 - update tool contracts only where new tool-surface behavior is truly needed
 - keep examples synchronized with supported behavior
 
 ### `analysis`
 
-- improve evidence that informs compression, limiting, width, and noise-related semantics
-- document any measurement limits clearly
+- improve evidence that informs compression, limiting, width, denoise, and time-domain semantics
+- add or refine annotations that matter to planning and compare
+- stay deterministic and measurable
 
 ### `semantics`
 
-- calibrate descriptors that interact with the new transform set
-- improve confidence and ambiguity handling
+- improve descriptor calibration for the supported request family
+- keep ambiguous and unresolved outcomes explicit
+- avoid overstating confidence
 
 ### `planning`
 
-- support the new operations conservatively
-- improve request classification and failure paths
+- plan against `RuntimeCapabilityManifest`, not runtime internals
+- expand support only when the operation is marked `planner_supported`
+- improve explicit failure messaging for unsupported intent
 
 ### `transforms`
 
-- implement the four locked transforms deterministically
-- emit exact execution records
-
-### `render`
-
-- ensure render validation continues to reflect actual output metadata after new transform types are applied
+- keep deterministic execution strict
+- document side effects and safe ranges
+- ensure emitted records stay fully inspectable
 
 ### `compare`
 
-- add deltas and regressions relevant to the new transforms
-
-### `history`
-
-- ensure repeated edit sessions remain coherent under orchestration changes
+- improve regression detection for supported runtime transforms
+- tighten goal-alignment checks for the supported prompt family
+- keep outputs useful to both planners and adapters
 
 ### `tools`
 
-- expose clearer error behavior around new prompt categories and transform support limits
+- keep the tool surface small, explicit, and schema-aligned
+- expose capability discovery clearly
+- surface capability mismatches and unsupported requests cleanly
 
 ### `orchestration`
 
-- implement repeated-edit flow support without re-owning module logic
+- keep end-to-end flows explicit and thin
+- support repeated-edit workflows without re-owning lower-level logic
+- preserve valid session state even when later steps fail
 
 ### `benchmarks`
 
-- add Phase 2 prompt cases when the capability is real enough to score honestly
+- add prompt cases when the capability is real enough to score honestly
+- keep benchmark expectations aligned with supported planner and runtime behavior
 
 ## Testing Strategy
 
-Phase 2 should be more test-heavy than Phase 1.
+Current Phase 2 work should be more test-heavy than Phase 1.
 
 ### Required test layers
 
-For any meaningful Phase 2 feature, the expected validation stack is:
+For any meaningful Phase 2 change, the expected validation stack is:
 
 1. schema validation if contracts changed
 2. module unit tests in the owning module
 3. fixture-backed tests when audio behavior is material
 4. integration tests when the workflow crosses module boundaries
-5. benchmark updates when the feature affects directional editing quality
+5. benchmark updates when the change affects directional editing quality
 
-### Transform testing requirements
+### Non-Negotiable Rules
 
-Each new transform should include:
-
-- parameter validation tests
-- deterministic execution tests
-- command-shape tests where FFmpeg is involved
-- at least one real-file or generated-fixture output verification test
-- regression tests for likely failure modes
-
-### Prompt-handling testing requirements
-
-Prompt improvements should include:
-
-- supported wording tests
-- unsupported wording tests
-- ambiguity tests
-- conservative planning tests that ensure no out-of-scope transform is silently chosen
-
-### Orchestration testing requirements
-
-Orchestration improvements should include:
-
-- repeated request-cycle tests
-- undo or revert-path tests where applicable
-- partial-failure tests with valid remaining session state
-- provenance assertions through `SessionGraph`
-
-### Semantic testing requirements
-
-Semantic changes should include:
-
-- threshold-boundary tests
-- conflicting-evidence tests
-- unresolved-term tests
-- summary-language tests when wording changes with confidence
-
-## Non-negotiable rules
-
-Phase 2 work should not:
+Current Phase 2 work should not:
 
 - introduce hidden fallback logic across modules
 - widen the product into music generation or DAW-like behavior
-- add new transforms without explicit planner and compare implications
-- claim support for requests that the current analysis and transform stack cannot satisfy safely
+- add new runtime transforms without explicit planner and compare implications
+- claim support for requests that the current analysis and runtime stack cannot satisfy safely
 
-## Completion criteria
+## Completion Criteria
 
 This Phase 2 pass is complete when:
 
-- the four locked transforms are implemented and tested
-- prompt handling is stronger for supported requests and clearer for unsupported ones
-- semantic interpretation is more calibrated and still evidence-grounded
-- orchestration supports more realistic repeated editing flows
-- docs and tests accurately describe the new supported scope
+- the supported runtime capability surface is fully documented and schema-aligned
+- semantic interpretation is calibrated enough to support the planner honestly
+- planning understands planner-supported operations conservatively
+- orchestration remains reliable under repeated-edit flows
+- compare catches the most important failure modes for the supported runtime transforms
+- docs and benchmarks reflect the new baseline
 - the repository still passes root validation cleanly
