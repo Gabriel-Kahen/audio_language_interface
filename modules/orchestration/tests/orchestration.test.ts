@@ -244,6 +244,7 @@ describe("runRequestCycle", () => {
           baselineRender.render_id,
           candidateRender.render_id,
           "render",
+          editPlan,
         );
       },
     });
@@ -284,7 +285,15 @@ describe("runRequestCycle", () => {
     expect(
       result.trace.filter((entry) => entry.stage === "plan").map((entry) => entry.pass),
     ).toEqual([1, 2]);
-    expect(compareRenderEditPlans).toEqual([undefined]);
+    expect(result.semanticProfile).toBeUndefined();
+    expect(result.editPlan).toBeUndefined();
+    expect(result.transformResult).toBeUndefined();
+    expect(result.comparisonReport.goal_alignment).toEqual([
+      { goal: "slightly reduce perceived brightness", status: "met" },
+    ]);
+    expect(compareRenderEditPlans).toEqual([
+      expect.objectContaining({ version_id: inputVersion.version_id }),
+    ]);
     expect(validateSessionGraph(result.sessionGraph).valid).toBe(true);
   });
 
@@ -520,8 +529,13 @@ function createDependencies(
     }),
     compareVersions: ({ baselineVersion, candidateVersion }) =>
       createComparisonReport(baselineVersion.version_id, candidateVersion.version_id, "version"),
-    compareRenders: ({ baselineRender, candidateRender }) =>
-      createComparisonReport(baselineRender.render_id, candidateRender.render_id, "render"),
+    compareRenders: ({ baselineRender, candidateRender, editPlan }) =>
+      createComparisonReport(
+        baselineRender.render_id,
+        candidateRender.render_id,
+        "render",
+        editPlan,
+      ),
     createSessionGraph,
     revertToVersion,
     recordAudioAsset,
@@ -738,6 +752,7 @@ function createComparisonReport(
   baselineRefId: string,
   candidateRefId: string,
   refType: "version" | "render",
+  editPlan?: { goals: string[] },
 ): ComparisonReport {
   return {
     schema_version: "1.0.0",
@@ -758,6 +773,14 @@ function createComparisonReport(
         delta: -1,
       },
     ],
+    ...(editPlan === undefined
+      ? {}
+      : {
+          goal_alignment: editPlan.goals.map((goal) => ({
+            goal,
+            status: "met" as const,
+          })),
+        }),
     summary: {
       plain_text: "candidate is darker",
     },

@@ -231,11 +231,17 @@ export async function runRequestCycle(
     throw new Error("Request cycle did not produce an applied iteration.");
   }
 
-  const semanticProfile = finalIteration.semanticProfile;
-  const editPlan = finalIteration.editPlan;
-  const transformResult = finalIteration.transformResult;
+  const exposeTopLevelIterationArtifacts = iterations.length === 1;
+  const semanticProfile = exposeTopLevelIterationArtifacts
+    ? finalIteration.semanticProfile
+    : undefined;
+  const editPlan = exposeTopLevelIterationArtifacts ? finalIteration.editPlan : undefined;
+  const transformResult = exposeTopLevelIterationArtifacts
+    ? finalIteration.transformResult
+    : undefined;
   const outputVersion = finalIteration.outputVersion;
   const outputAnalysis = finalIteration.outputAnalysis;
+  const cycleEditPlan = iterations[0]?.editPlan;
 
   let baselineRender: RequestCycleResult["baselineRender"] | undefined;
   let candidateRender: RequestCycleResult["candidateRender"] | undefined;
@@ -248,7 +254,9 @@ export async function runRequestCycle(
       candidateVersion: outputVersion,
       baselineAnalysis: inputAnalysis,
       candidateAnalysis: outputAnalysis,
-      ...(editPlan.version_id === inputVersion.version_id ? { editPlan } : {}),
+      ...(cycleEditPlan !== undefined && cycleEditPlan.version_id === inputVersion.version_id
+        ? { editPlan: cycleEditPlan }
+        : {}),
       renderKind: options.renderKind,
       dependencies: options.dependencies,
       failurePolicy: options.failurePolicy,
@@ -280,9 +288,9 @@ export async function runRequestCycle(
       asset,
       inputVersion,
       inputAnalysis,
-      semanticProfile,
-      editPlan,
-      transformResult,
+      ...(semanticProfile === undefined ? {} : { semanticProfile }),
+      ...(editPlan === undefined ? {} : { editPlan }),
+      ...(transformResult === undefined ? {} : { transformResult }),
       outputVersion,
       outputAnalysis,
       iterations,

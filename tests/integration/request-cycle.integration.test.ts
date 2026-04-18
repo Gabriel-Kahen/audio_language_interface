@@ -289,6 +289,16 @@ describe("request cycle integration", () => {
         rationale: "Integration test requests one additional explicit pass.",
         source: "caller",
       });
+      expect(result.semanticProfile).toBeUndefined();
+      expect(result.editPlan).toBeUndefined();
+      expect(result.transformResult).toBeUndefined();
+      expect(result.comparisonReport.goal_alignment).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            goal: "slightly reduce perceived brightness",
+          }),
+        ]),
+      );
       expect(result.outputVersion.parent_version_id).toBe(
         result.iterations?.[0]?.outputVersion.version_id,
       );
