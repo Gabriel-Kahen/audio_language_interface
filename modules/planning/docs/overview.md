@@ -48,16 +48,17 @@ The initial implementation is a deterministic baseline planner. It uses conserva
 
 ## Baseline behavior
 
-- only emits operations currently marked `planner_supported` in the runtime capability manifest: EQ, filtering, trim, fade, gain, conservative compression, peak limiting, conservative denoise, and conservative stereo-width adjustment
-- prefers one small EQ step over multiple overlapping tonal steps when possible
+- only emits operations currently marked `planner_supported` in the runtime capability manifest: trim, fade, gain, normalize, filtering, `parametric_eq`, surgical shelf/notch/tilt EQ, conservative compression, peak limiting, conservative restoration, and conservative stereo-width adjustment
+- prefers small explicit steps with published parameter shapes over hidden macro behavior
 - validates inbound `AudioVersion`, `AnalysisReport`, and `SemanticProfile` contracts before planning
 - records the `RuntimeCapabilityManifest` identifier used to ground the plan
 - uses the current `AudioVersion` duration to reject trim and fade requests that exceed the available file
 - rejects combined fade requests that would overlap or cover more than half of the available file duration
 - uses analysis annotations and semantic descriptors to refine frequencies and verification targets
-- maps generic `cleaner` requests only when current evidence supports a conservative tonal cleanup target
+- maps generic `cleaner` requests only when current evidence supports a conservative tonal cleanup target or the request also contains an explicit supported cleanup direction
 - maps conservative `more controlled` language to `compressor` and explicit peak-control language to `limiter`
-- supports explicit denoise requests only when analysis indicates steady noise and keeps broader restoration requests explicit
+- supports explicit loudness-normalization, upper-air, warmth, low-mid cleanup, harsh-ring, sibilance, click-cleanup, and hum-removal requests with conservative defaults grounded in the published manifest
+- supports explicit denoise requests only when analysis indicates steady noise
 - supports explicit stereo-width requests only for already-stereo material when the current image is safe to adjust conservatively
 - fails instead of guessing when the request cannot be mapped to an explicit supported operation
 

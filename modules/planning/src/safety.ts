@@ -38,6 +38,13 @@ export function buildGainSafetyLimits(): string[] {
   ];
 }
 
+export function buildNormalizeSafetyLimits(): string[] {
+  return [
+    "keep the true-peak ceiling at or below -1 dBTP",
+    "treat normalization as conservative gain staging rather than loudness maximization",
+  ];
+}
+
 export function buildCompressorSafetyLimits(): string[] {
   return [
     "keep compression conservative and reversible",
@@ -56,6 +63,27 @@ export function buildDenoiseSafetyLimits(): string[] {
   return [
     "keep noise reduction conservative and reversible",
     "avoid watery artifacts or obvious transient smearing",
+  ];
+}
+
+export function buildDeEsserSafetyLimits(): string[] {
+  return [
+    "keep de-essing subtle enough to avoid dulling the full top end",
+    "limit the move to sibilant bursts rather than broad high-frequency loss",
+  ];
+}
+
+export function buildDeclickSafetyLimits(): string[] {
+  return [
+    "keep click repair conservative and reversible",
+    "avoid blunting intentional transients while removing short impulsive defects",
+  ];
+}
+
+export function buildDehumSafetyLimits(): string[] {
+  return [
+    "keep harmonic hum removal narrow enough to avoid thinning the wanted low end",
+    "prefer the requested or inferred mains fundamental instead of guessing a broad notch stack",
   ];
 }
 

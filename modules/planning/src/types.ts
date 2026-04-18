@@ -63,6 +63,7 @@ export interface ParsedEditObjectives {
   normalized_request: string;
   wants_darker: boolean;
   wants_brighter: boolean;
+  wants_more_air: boolean;
   wants_cleaner: boolean;
   wants_less_harsh: boolean;
   wants_less_muddy: boolean;
@@ -70,9 +71,13 @@ export interface ParsedEditObjectives {
   wants_remove_rumble: boolean;
   wants_louder: boolean;
   wants_quieter: boolean;
+  wants_more_even_level: boolean;
   wants_more_controlled_dynamics: boolean;
   wants_peak_control: boolean;
   wants_denoise: boolean;
+  wants_tame_sibilance: boolean;
+  wants_remove_clicks: boolean;
+  wants_remove_hum: boolean;
   wants_wider: boolean;
   wants_narrower: boolean;
   preserve_punch: boolean;
@@ -84,6 +89,7 @@ export interface ParsedEditObjectives {
   };
   fade_in_seconds?: number;
   fade_out_seconds?: number;
+  hum_frequency_hz?: number;
   intensity: "subtle" | "default" | "strong";
 }
 

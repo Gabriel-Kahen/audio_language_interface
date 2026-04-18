@@ -52,11 +52,26 @@ describe("parseUserRequest", () => {
     expect(parsed.intensity).toBe("subtle");
   });
 
+  it("parses normalize, surgical EQ, and restoration intent phrases", () => {
+    const parsed = parseUserRequest(
+      "Normalize it a little louder, add some air, tame sibilance, remove 60 Hz hum, and clean up clicks.",
+    );
+
+    expect(parsed.wants_louder).toBe(true);
+    expect(parsed.wants_more_even_level).toBe(true);
+    expect(parsed.wants_more_air).toBe(true);
+    expect(parsed.wants_tame_sibilance).toBe(true);
+    expect(parsed.wants_remove_hum).toBe(true);
+    expect(parsed.wants_remove_clicks).toBe(true);
+    expect(parsed.intensity).toBe("subtle");
+  });
+
   it("classifies ambiguous and unsupported prompt phrases explicitly", () => {
     const parsed = parseUserRequest("Make it hit harder and remove clicks.");
 
     expect(parsed.ambiguous_requests).toContain("hit harder");
-    expect(parsed.unsupported_requests).toContain("click");
+    expect(parsed.unsupported_requests).toEqual([]);
+    expect(parsed.wants_remove_clicks).toBe(true);
   });
 });
 
@@ -69,17 +84,16 @@ describe("planEdits", () => {
       semanticProfile: createSemanticProfileFixture(),
     });
 
-    expect(plan.steps).toHaveLength(1);
-    expect(plan.steps[0]?.operation).toBe("parametric_eq");
-    expect(plan.steps[0]?.parameters).toEqual({
-      bands: [
-        { type: "bell", frequency_hz: 3750, gain_db: -1.5, q: 1.2 },
-        { type: "bell", frequency_hz: 6500, gain_db: -1.01, q: 0.8 },
-      ],
+    expect(plan.steps.map((step) => step.operation)).toEqual(["notch_filter", "tilt_eq"]);
+    expect(plan.steps[0]?.parameters).toEqual({ frequency_hz: 3750, q: 8 });
+    expect(plan.steps[1]?.parameters).toEqual({
+      pivot_frequency_hz: 1200,
+      gain_db: -1.13,
+      q: 0.6,
     });
     expect(plan.goals).toEqual([
       "reduce upper-mid harshness",
-      "slightly reduce perceived brightness",
+      "tilt the overall balance slightly darker",
       "preserve transient impact",
     ]);
     expect(plan.constraints).toContain("avoid reducing transient attack more than necessary");
@@ -95,13 +109,12 @@ describe("planEdits", () => {
       semanticProfile: createSemanticProfileFixture(),
     });
 
-    expect(plan.steps).toHaveLength(1);
-    expect(plan.steps[0]?.operation).toBe("parametric_eq");
-    expect(plan.steps[0]?.parameters).toEqual({
-      bands: [
-        { type: "bell", frequency_hz: 3750, gain_db: -2, q: 1.2 },
-        { type: "bell", frequency_hz: 6500, gain_db: -1.5, q: 0.8 },
-      ],
+    expect(plan.steps.map((step) => step.operation)).toEqual(["notch_filter", "tilt_eq"]);
+    expect(plan.steps[0]?.parameters).toEqual({ frequency_hz: 3750, q: 8 });
+    expect(plan.steps[1]?.parameters).toEqual({
+      pivot_frequency_hz: 1200,
+      gain_db: -1.5,
+      q: 0.6,
     });
   });
 
@@ -114,10 +127,8 @@ describe("planEdits", () => {
     });
 
     expect(plan.steps).toHaveLength(1);
-    expect(plan.steps[0]?.operation).toBe("parametric_eq");
-    expect(plan.steps[0]?.parameters).toEqual({
-      bands: [{ type: "bell", frequency_hz: 3750, gain_db: -1.5, q: 1.2 }],
-    });
+    expect(plan.steps[0]?.operation).toBe("notch_filter");
+    expect(plan.steps[0]?.parameters).toEqual({ frequency_hz: 3750, q: 8 });
     expect(plan.goals).toEqual(["reduce upper-mid harshness"]);
   });
 
@@ -130,9 +141,11 @@ describe("planEdits", () => {
     });
 
     expect(plan.steps).toHaveLength(1);
-    expect(plan.steps[0]?.operation).toBe("parametric_eq");
+    expect(plan.steps[0]?.operation).toBe("tilt_eq");
     expect(plan.steps[0]?.parameters).toEqual({
-      bands: [{ type: "bell", frequency_hz: 6500, gain_db: -1.35, q: 0.8 }],
+      pivot_frequency_hz: 1200,
+      gain_db: -1.5,
+      q: 0.6,
     });
     expect(plan.constraints).toContain("avoid reducing transient attack more than necessary");
   });
@@ -176,6 +189,106 @@ describe("planEdits", () => {
 
     expect(plan.steps.map((step) => step.operation)).toEqual(["gain"]);
     expect(plan.steps[0]?.parameters).toEqual({ gain_db: 2 });
+  });
+
+  it("maps louder-and-more-even prompts to conservative loudness normalization", () => {
+    const plan = planEdits({
+      userRequest: "Normalize it a little louder.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["normalize"]);
+    expect(plan.steps[0]?.parameters).toEqual({
+      mode: "integrated_lufs",
+      target_integrated_lufs: -13.8,
+      measured_integrated_lufs: -14.8,
+      max_true_peak_dbtp: -1,
+      measured_true_peak_dbtp: -1.1,
+    });
+    expect(plan.goals).toContain("normalize overall loudness conservatively");
+    expect(plan.verification_targets).toContain(
+      "integrated loudness moved toward the requested target while keeping true peak at or below -1 dBTP",
+    );
+  });
+
+  it("rejects broad even-level requests that are not explicit normalization asks", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Make it more even.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createAnalysisReportFixture(),
+        semanticProfile: createSemanticProfileFixture(),
+      }),
+    ).toThrow(/could not derive an executable plan/i);
+  });
+
+  it("maps the surgical EQ prompt family to explicit shelf, notch, and tilt steps", () => {
+    const plan = planEdits({
+      userRequest: "Make this warmer and airier, take out the harsh ring, and make it brighter.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual([
+      "notch_filter",
+      "tilt_eq",
+      "low_shelf",
+      "high_shelf",
+    ]);
+    expect(plan.steps[0]?.parameters).toEqual({ frequency_hz: 3750, q: 8 });
+    expect(plan.steps[1]?.parameters).toEqual({
+      pivot_frequency_hz: 1200,
+      gain_db: 1.7,
+      q: 0.6,
+    });
+    expect(plan.steps[2]?.parameters).toEqual({ frequency_hz: 180, gain_db: 1.5, q: 0.7 });
+    expect(plan.steps[3]?.parameters).toEqual({ frequency_hz: 6500, gain_db: 1.5, q: 0.8 });
+    expect(plan.goals).toContain("add a little low-band warmth");
+    expect(plan.goals).toContain("add a little upper-band air");
+  });
+
+  it("maps explicit de-ess, declick, and dehum requests to conservative restoration steps", () => {
+    const plan = planEdits({
+      userRequest: "Tame the sibilance, remove clicks, and remove 60 Hz hum.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["declick", "dehum", "de_esser"]);
+    expect(plan.steps[0]?.parameters).toEqual({
+      window_ms: 55,
+      overlap_percent: 75,
+      ar_order: 2,
+      threshold: 2,
+      burst_fusion: 2,
+      method: "add",
+    });
+    expect(plan.steps[1]?.parameters).toEqual({
+      fundamental_hz: 60,
+      harmonics: 4,
+      q: 18,
+      mix: 1,
+    });
+    expect(plan.steps[2]?.parameters).toEqual({
+      intensity: 0.4,
+      max_reduction: 0.45,
+      frequency_hz: 5500,
+    });
+  });
+
+  it("requires an explicit mains frequency for dehum requests", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Remove hum.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createAnalysisReportFixture(),
+        semanticProfile: createSemanticProfileFixture(),
+      }),
+    ).toThrow(/50 hz or 60 hz/i);
   });
 
   it("maps controlled dynamics prompts to a conservative compressor step", () => {
@@ -309,15 +422,15 @@ describe("planEdits", () => {
     ).toThrow(/ambiguous phrasing/i);
   });
 
-  it("fails clearly for unsupported cleanup operations", () => {
-    expect(() =>
-      planEdits({
-        userRequest: "Clean this sample up by removing clicks.",
-        audioVersion: createAudioVersionFixture(),
-        analysisReport: createAnalysisReportFixture(),
-        semanticProfile: createSemanticProfileFixture(),
-      }),
-    ).toThrow(/does not support `click`/);
+  it("supports explicit click cleanup instead of rejecting it as unsupported", () => {
+    const plan = planEdits({
+      userRequest: "Clean this sample up by removing clicks.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["declick"]);
   });
 
   it("fails clearly for ambiguous dynamics language", () => {

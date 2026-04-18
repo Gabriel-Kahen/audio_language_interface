@@ -67,6 +67,9 @@ Supported but conservative areas:
 
 - wider or narrower, when stereo evidence is safe enough
 - denoise or reduce hiss, when steady-noise evidence is strong enough
+- explicit loudness normalization through `normalize`
+- airier, warmer, less muddy, or less harsh ring through surgical tone-shaping
+- tame sibilance, remove explicitly specified `50 Hz` / `60 Hz` hum, or clean up clicks through narrow restoration primitives
 
 ### Runtime-Supported Operations
 
@@ -117,16 +120,23 @@ The baseline planner currently plans only against operations marked `planner_sup
 - `gain`
 - `trim`
 - `fade`
+- `normalize`
 - `parametric_eq`
 - `high_pass_filter`
 - `low_pass_filter`
+- `high_shelf`
+- `low_shelf`
+- `notch_filter`
+- `tilt_eq`
 - `compressor`
 - `limiter`
 - `stereo_width`
 - `denoise`
+- `de_esser`
+- `declick`
+- `dehum`
 
-`time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility and stereo-routing operations, the new surgical EQ operations, the transient/control operations, and the new Layer 1 effect operations are runtime-available but not yet selected by the baseline planner. The current `transient_shaper` surface is compand-based and best suited to transient-rich material.
-`normalize` now supports peak and integrated-loudness gain staging with built-in execution-time measurement, but it remains a runtime-only technical operation for now.
+`time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility and stereo-routing operations, the transient/control operations, and the new Layer 1 effect operations are runtime-available but not yet selected by the baseline planner. The current `transient_shaper` surface is compand-based and best suited to transient-rich material.
 
 ### Implemented Tool Surface
 

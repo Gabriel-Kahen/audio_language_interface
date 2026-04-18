@@ -152,6 +152,17 @@ describe("capabilities module", () => {
     ]);
   });
 
+  it("marks the Layer 2 planner wave operations as planner-supported", () => {
+    expect(getRuntimeOperationCapability("normalize").intent_support).toBe("planner_supported");
+    expect(getRuntimeOperationCapability("high_shelf").intent_support).toBe("planner_supported");
+    expect(getRuntimeOperationCapability("low_shelf").intent_support).toBe("planner_supported");
+    expect(getRuntimeOperationCapability("notch_filter").intent_support).toBe("planner_supported");
+    expect(getRuntimeOperationCapability("tilt_eq").intent_support).toBe("planner_supported");
+    expect(getRuntimeOperationCapability("de_esser").intent_support).toBe("planner_supported");
+    expect(getRuntimeOperationCapability("declick").intent_support).toBe("planner_supported");
+    expect(getRuntimeOperationCapability("dehum").intent_support).toBe("planner_supported");
+  });
+
   it("keeps operation names unique and taxonomy-aligned", () => {
     const operations = defaultRuntimeCapabilityManifest.operations;
     const operationNames = operations.map((operation) => operation.name);

@@ -11,6 +11,9 @@ export default defineConfig({
       "@audio-language-interface/compare": fileURLToPath(
         new URL("./modules/compare/src/index.ts", import.meta.url),
       ),
+      "@audio-language-interface/capabilities": fileURLToPath(
+        new URL("./modules/capabilities/src/index.ts", import.meta.url),
+      ),
       "@audio-language-interface/core": fileURLToPath(
         new URL("./modules/core/src/index.ts", import.meta.url),
       ),

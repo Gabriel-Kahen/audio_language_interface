@@ -158,7 +158,7 @@ function buildEditPlan(versionId: string): Record<string, unknown> {
   return {
     schema_version: "1.0.0",
     plan_id: "plan_123",
-    capability_manifest_id: "capmanifest_20260418B",
+    capability_manifest_id: "capmanifest_20260418C",
     asset_id: "asset_example",
     version_id: versionId,
     user_request: "Trim the intro.",
@@ -188,7 +188,7 @@ function buildSingleStepEditPlan(
   return {
     schema_version: "1.0.0",
     plan_id: "plan_123",
-    capability_manifest_id: "capmanifest_20260418B",
+    capability_manifest_id: "capmanifest_20260418C",
     asset_id: "asset_example",
     version_id: versionId,
     user_request: `Run ${operation}.`,
@@ -215,7 +215,7 @@ function buildTransformRecord(
     schema_version: "1.0.0",
     record_id: "transform_123",
     plan_id: "plan_123",
-    capability_manifest_id: "capmanifest_20260418B",
+    capability_manifest_id: "capmanifest_20260418C",
     asset_id: "asset_example",
     input_version_id: inputVersionId,
     output_version_id: outputVersionId,
@@ -872,7 +872,7 @@ describe("tools module", () => {
           edit_plan: {
             schema_version: "1.0.0",
             plan_id: "plan_123",
-            capability_manifest_id: "capmanifest_20260418B",
+            capability_manifest_id: "capmanifest_20260418C",
             asset_id: "asset_example",
             version_id: "ver_input",
             user_request: "Tighten the lows, notch the harsh resonance, and add a little air.",
@@ -1201,7 +1201,7 @@ describe("tools module", () => {
           edit_plan: {
             schema_version: "1.0.0",
             plan_id: "plan_123",
-            capability_manifest_id: "capmanifest_20260418B",
+            capability_manifest_id: "capmanifest_20260418C",
             asset_id: "asset_example",
             version_id: "ver_input",
             user_request: "Denoise and widen this.",
@@ -1278,7 +1278,7 @@ describe("tools module", () => {
           edit_plan: {
             schema_version: "1.0.0",
             plan_id: "plan_123",
-            capability_manifest_id: "capmanifest_20260418B",
+            capability_manifest_id: "capmanifest_20260418C",
             asset_id: "asset_example",
             version_id: "ver_input",
             user_request: "Normalize just the middle section.",
@@ -1403,7 +1403,7 @@ describe("tools module", () => {
           edit_plan: {
             schema_version: "1.0.0",
             plan_id: "plan_123",
-            capability_manifest_id: "capmanifest_20260418B",
+            capability_manifest_id: "capmanifest_20260418C",
             asset_id: "asset_example",
             version_id: "ver_input",
             user_request: "Collapse to mono and then widen it.",
@@ -1462,7 +1462,7 @@ describe("tools module", () => {
           edit_plan: {
             schema_version: "1.0.0",
             plan_id: "plan_123",
-            capability_manifest_id: "capmanifest_20260418B",
+            capability_manifest_id: "capmanifest_20260418C",
             asset_id: "asset_example",
             version_id: "ver_input",
             user_request: "Widen the left side only.",
@@ -1574,7 +1574,7 @@ describe("tools module", () => {
           audio_version: buildAudioVersion("ver_input"),
           edit_plan: {
             ...buildSingleStepEditPlan("ver_input", "gain", { gain_db: 4 }),
-            capability_manifest_id: "capmanifest_20260418B",
+            capability_manifest_id: "capmanifest_20260418C",
             steps: [
               {
                 step_id: "step_1",
