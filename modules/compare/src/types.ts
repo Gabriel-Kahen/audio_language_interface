@@ -43,12 +43,17 @@ export interface AnalysisMeasurements {
     transient_density_per_second: number;
     rms_short_term_dbfs?: number;
     dynamic_range_db?: number;
+    transient_crest_db?: number;
+    punch_window_ratio?: number;
   };
   spectral_balance: {
     low_band_db: number;
     mid_band_db: number;
     high_band_db: number;
     spectral_centroid_hz: number;
+    brightness_tilt_db?: number;
+    presence_band_db?: number;
+    harshness_ratio_db?: number;
   };
   stereo: {
     width: number;
@@ -60,6 +65,15 @@ export interface AnalysisMeasurements {
     noise_floor_dbfs: number;
     clipped_sample_count?: number;
   };
+}
+
+export interface AnalysisAnnotation {
+  kind: string;
+  start_seconds: number;
+  end_seconds: number;
+  severity: number;
+  bands_hz?: [number, number];
+  evidence?: string;
 }
 
 export interface AnalysisReport {
@@ -77,6 +91,7 @@ export interface AnalysisReport {
     confidence?: number;
   };
   measurements: AnalysisMeasurements;
+  annotations?: AnalysisAnnotation[];
 }
 
 export interface EditPlan {

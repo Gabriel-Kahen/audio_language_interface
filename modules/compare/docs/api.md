@@ -60,6 +60,15 @@ Use this when the comparison target is a rendered preview/export and only render
 
 Returns ordered metric deltas for the analysis measurements currently supported by the module.
 
+In the current baseline that includes the core level, dynamics, spectral, stereo, and artifact fields plus optional Layer 2 companion metrics such as:
+
+- `dynamics.transient_crest_db`
+- `dynamics.punch_window_ratio`
+- `spectral_balance.brightness_tilt_db`
+- `spectral_balance.presence_band_db`
+- `spectral_balance.harshness_ratio_db`
+- `artifacts.clipped_sample_count`
+
 ### `computeRenderMetricDeltas(baseline, candidate)`
 
 Returns ordered metric deltas for render output metadata and optional loudness summary fields.
@@ -75,10 +84,16 @@ Detects a small set of analysis-side failure modes:
 - clipping introduced by the candidate
 - excessive integrated loudness shift
 - reduced true-peak headroom
+- loudness increases that also reduce headroom
 - stereo collapse
 - measurable punch loss
 - over-compression from combined crest-factor and dynamic-range reduction
 - worsened peak control from higher peaks or lower sample headroom
+- increased sibilance from presence/harshness growth
+- lost air from upper-band loss
+- added muddiness from mid-band buildup
+- proxy-pattern increases in hum-like low-frequency contamination
+- proxy-pattern increases in click-like clipped spikes
 
 ### `detectRenderRegressions(baseline, candidate, metricDeltas)`
 
@@ -94,6 +109,16 @@ Evaluates each goal string independently and returns `met`, `mostly_met`, `not_m
 
 This helper is heuristic. It does not parse planner steps or verification targets.
 When one goal string contains multiple supported intents, it evaluates each matched intent and returns the most conservative status.
+
+Current supported Layer 2 goal families include:
+
+- loudness increase, decrease, and stability
+- sibilance reduction
+- hum reduction via conservative low-band/noise-floor proxies
+- click reduction via conservative clipped-sample proxies
+- warmth increase
+- air increase
+- muddiness reduction
 
 ### `buildComparisonReport(options)`
 
@@ -116,6 +141,7 @@ Returns `true` when the payload passes schema validation.
 `src/index.ts` re-exports the module's local TypeScript types for:
 
 - `AnalysisMeasurements`
+- `AnalysisAnnotation`
 - `AnalysisReport`
 - `AudioVersion`
 - `CompareRendersOptions`

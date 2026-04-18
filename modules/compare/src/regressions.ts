@@ -31,11 +31,32 @@ export function detectAnalysisRegressions(
   }
 
   const truePeakDelta = getDelta(metricDeltas, "levels.true_peak_dbtp");
+  const headroomDelta = getDelta(metricDeltas, "levels.headroom_db");
   if (truePeakDelta !== undefined && truePeakDelta > 0.5 && candidate.levels.true_peak_dbtp > -1) {
     regressions.push({
       kind: "reduced_true_peak_headroom",
       severity: roundSeverity((candidate.levels.true_peak_dbtp + 1.5) / 1.5),
       description: "Candidate true peak moved close to 0 dBTP and reduced headroom.",
+    });
+  }
+
+  if (
+    loudnessShift !== undefined &&
+    loudnessShift >= 1.5 &&
+    ((truePeakDelta !== undefined && truePeakDelta >= 0.5) ||
+      (headroomDelta !== undefined && headroomDelta <= -0.75))
+  ) {
+    regressions.push({
+      kind: "loudness_headroom_loss",
+      severity: roundSeverity(
+        Math.max(
+          loudnessShift / 4,
+          Math.max(truePeakDelta ?? 0, 0) / 1.5,
+          Math.abs(Math.min(headroomDelta ?? 0, 0)) / 2,
+        ),
+      ),
+      description:
+        "Loudness increased while measured peak margin fell, suggesting loudness-normalization side effects.",
     });
   }
 
@@ -72,7 +93,6 @@ export function detectAnalysisRegressions(
   const crestFactorDelta = getDelta(metricDeltas, "dynamics.crest_factor_db");
   const transientDensityDelta = getDelta(metricDeltas, "dynamics.transient_density_per_second");
   const dynamicRangeDelta = getDelta(metricDeltas, "dynamics.dynamic_range_db");
-  const headroomDelta = getDelta(metricDeltas, "levels.headroom_db");
   if (
     crestFactorDelta !== undefined &&
     transientDensityDelta !== undefined &&
@@ -120,7 +140,13 @@ export function detectAnalysisRegressions(
 
   const noiseFloorDelta = getDelta(metricDeltas, "artifacts.noise_floor_dbfs");
   const highBandDelta = getDelta(metricDeltas, "spectral_balance.high_band_db");
+  const lowBandDelta = getDelta(metricDeltas, "spectral_balance.low_band_db");
+  const midBandDelta = getDelta(metricDeltas, "spectral_balance.mid_band_db");
   const centroidDelta = getDelta(metricDeltas, "spectral_balance.spectral_centroid_hz");
+  const brightnessTiltDelta = getDelta(metricDeltas, "spectral_balance.brightness_tilt_db");
+  const presenceBandDelta = getDelta(metricDeltas, "spectral_balance.presence_band_db");
+  const harshnessRatioDelta = getDelta(metricDeltas, "spectral_balance.harshness_ratio_db");
+  const clippedSampleCountDelta = getDelta(metricDeltas, "artifacts.clipped_sample_count");
   if (
     noiseFloorDelta !== undefined &&
     noiseFloorDelta <= -4 &&
@@ -144,6 +170,93 @@ export function detectAnalysisRegressions(
       ),
       description:
         "Noise-floor reduction coincided with measurable top-end or transient loss, suggesting denoise artifacts.",
+    });
+  }
+
+  if (
+    presenceBandDelta !== undefined &&
+    harshnessRatioDelta !== undefined &&
+    presenceBandDelta >= 0.75 &&
+    harshnessRatioDelta >= 0.5
+  ) {
+    regressions.push({
+      kind: "increased_sibilance",
+      severity: roundSeverity(
+        Math.max(
+          Math.abs(presenceBandDelta) / 3,
+          Math.abs(harshnessRatioDelta) / 2,
+          Math.abs(Math.max(highBandDelta ?? 0, 0)) / 4,
+        ),
+      ),
+      description:
+        "Presence-band energy and harshness ratio both increased, suggesting more sibilant high-frequency emphasis.",
+    });
+  }
+
+  if (
+    highBandDelta !== undefined &&
+    brightnessTiltDelta !== undefined &&
+    highBandDelta <= -1.5 &&
+    brightnessTiltDelta <= -1
+  ) {
+    regressions.push({
+      kind: "lost_air",
+      severity: roundSeverity(
+        Math.max(Math.abs(highBandDelta) / 4, Math.abs(brightnessTiltDelta) / 4),
+      ),
+      description:
+        "Upper-band energy and overall brightness tilt both fell enough to suggest a loss of air.",
+    });
+  }
+
+  if (
+    midBandDelta !== undefined &&
+    midBandDelta >= 0.75 &&
+    ((brightnessTiltDelta !== undefined && brightnessTiltDelta <= -0.5) ||
+      (lowBandDelta !== undefined && lowBandDelta >= 0.5))
+  ) {
+    regressions.push({
+      kind: "added_muddiness",
+      severity: roundSeverity(
+        Math.max(
+          Math.abs(midBandDelta) / 3,
+          Math.abs(Math.min(brightnessTiltDelta ?? 0, 0)) / 3,
+          Math.abs(Math.max(lowBandDelta ?? 0, 0)) / 3,
+        ),
+      ),
+      description: "Mid-band buildup increased in a way that suggests added muddiness or masking.",
+    });
+  }
+
+  if (
+    lowBandDelta !== undefined &&
+    noiseFloorDelta !== undefined &&
+    lowBandDelta >= 2 &&
+    noiseFloorDelta >= 1
+  ) {
+    regressions.push({
+      kind: "increased_hum_proxy",
+      severity: roundSeverity(Math.max(lowBandDelta / 5, noiseFloorDelta / 6)),
+      description:
+        "Low-band energy and estimated noise floor both rose in a pattern consistent with more low-frequency contamination; this is a proxy, not a direct hum detector.",
+    });
+  }
+
+  if (
+    clippedSampleCountDelta !== undefined &&
+    clippedSampleCountDelta >= Math.max(8, baseline.artifacts.clipped_sample_count ?? 0)
+  ) {
+    regressions.push({
+      kind: "increased_click_proxy",
+      severity: roundSeverity(
+        Math.max(
+          clippedSampleCountDelta /
+            Math.max((baseline.artifacts.clipped_sample_count ?? 0) + 16, 32),
+          candidate.artifacts.clipping_detected ? 0.9 : 0.5,
+        ),
+      ),
+      description:
+        "Clipped-sample activity increased, which can indicate more impulsive spike artifacts; this is a conservative proxy rather than a direct click count.",
     });
   }
 
