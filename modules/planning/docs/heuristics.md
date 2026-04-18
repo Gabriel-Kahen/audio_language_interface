@@ -16,11 +16,11 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - `rumble`, `subsonic` -> `high_pass_filter` at `40 Hz`
 - `more controlled`, `compression`, `tighter and more controlled` -> conservative `compressor` settings with explicit threshold, ratio, attack, and release
 - `control peaks`, `catch peaks`, `limiter` -> conservative `limiter` settings with explicit `ceiling_dbtp`, `release_ms`, `lookahead_ms`, and no added limiter input gain by default
-- `louder and more even`, `normalize`, `more even level` -> `normalize` with integrated-loudness targeting and a `-1 dBTP` ceiling
+- explicit `normalize` / `normalise` requests -> `normalize` with integrated-loudness targeting and a `-1 dBTP` ceiling
 - `remove noise`, `reduce hiss`, `denoise` -> conservative `denoise` only when analysis indicates sustained noise
 - `tame sibilance`, `de-ess` -> conservative `de_esser`
 - `remove clicks`, `declick`, `remove pops` -> conservative `declick`
-- `remove hum`, `reduce buzz`, `dehum` -> conservative `dehum`, defaulting to `60 Hz` when the request does not specify `50 Hz` or `60 Hz`
+- `remove 50 Hz hum`, `remove 60 Hz hum`, `dehum 50 hz`, `dehum 60 hz` -> conservative `dehum` at the explicitly requested mains frequency
 - `wider`, `widen`, `more width`, `narrower` -> conservative `stereo_width` only for already-stereo material with safe balance and correlation
 - `louder` -> conservative `gain` step limited by measured true-peak headroom to a `-1 dBTP` ceiling
 - `quieter` -> conservative negative `gain` step

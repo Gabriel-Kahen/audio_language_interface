@@ -131,7 +131,13 @@ function resolvePlannerObjectives(
 
   if (objectives.wants_more_even_level && objectives.wants_quieter) {
     throw new Error(
-      "The request asks for both quieter output and loudness normalization. Please choose whether the priority is lower level or a more even overall level.",
+      "The request asks for both quieter output and loudness normalization. Please choose whether the priority is lower level or explicit normalization.",
+    );
+  }
+
+  if (objectives.wants_remove_hum && objectives.hum_frequency_hz === undefined) {
+    throw new Error(
+      "The baseline planner only supports dehum when the request specifies a 50 Hz or 60 Hz mains frequency explicitly.",
     );
   }
 

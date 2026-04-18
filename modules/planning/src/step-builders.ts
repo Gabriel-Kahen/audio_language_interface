@@ -232,19 +232,25 @@ function buildDehumStep(objectives: ParsedEditObjectives): EditPlanStep | undefi
     return undefined;
   }
 
+  if (objectives.hum_frequency_hz === undefined) {
+    throw new Error(
+      "Planner dehum support requires an explicit 50 Hz or 60 Hz hum frequency in the request.",
+    );
+  }
+
   return {
     ...assertPlannerStepSupport("dehum", "full_file"),
     step_id: "step_dehum_1",
     operation: "dehum",
     target: { scope: "full_file" },
     parameters: {
-      fundamental_hz: objectives.hum_frequency_hz ?? 60,
+      fundamental_hz: objectives.hum_frequency_hz,
       harmonics: 4,
       q: objectives.intensity === "strong" ? 20 : 18,
       mix: objectives.intensity === "subtle" ? 0.85 : 1,
     },
     expected_effects: [
-      `reduce narrowband hum centered around ${(objectives.hum_frequency_hz ?? 60).toFixed(0)} Hz and its harmonics`,
+      `reduce narrowband hum centered around ${objectives.hum_frequency_hz.toFixed(0)} Hz and its harmonics`,
     ],
     safety_limits: buildDehumSafetyLimits(),
   };

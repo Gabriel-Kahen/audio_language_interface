@@ -51,15 +51,7 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
     wants_remove_rumble: containsAny(normalizedRequest, ["rumble", "subsonic", "low end noise"]),
     wants_louder: containsAny(normalizedRequest, ["louder", "turn up", "more level"]),
     wants_quieter: containsAny(normalizedRequest, ["quieter", "turn down", "lower level"]),
-    wants_more_even_level: containsAny(normalizedRequest, [
-      "more even",
-      "even out the level",
-      "even out the loudness",
-      "more even level",
-      "more consistent level",
-      "normalize",
-      "normalise",
-    ]),
+    wants_more_even_level: containsAny(normalizedRequest, ["normalize", "normalise"]),
     wants_more_controlled_dynamics: wantsMoreControlledDynamics(normalizedRequest),
     wants_peak_control: containsAny(normalizedRequest, [
       "control peaks",

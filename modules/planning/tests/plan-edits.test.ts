@@ -54,7 +54,7 @@ describe("parseUserRequest", () => {
 
   it("parses normalize, surgical EQ, and restoration intent phrases", () => {
     const parsed = parseUserRequest(
-      "Make it a little louder and more even, add some air, tame sibilance, remove hum, and clean up clicks.",
+      "Normalize it a little louder, add some air, tame sibilance, remove 60 Hz hum, and clean up clicks.",
     );
 
     expect(parsed.wants_louder).toBe(true);
@@ -193,7 +193,7 @@ describe("planEdits", () => {
 
   it("maps louder-and-more-even prompts to conservative loudness normalization", () => {
     const plan = planEdits({
-      userRequest: "Make it a little louder and more even.",
+      userRequest: "Normalize it a little louder.",
       audioVersion: createAudioVersionFixture(),
       analysisReport: createAnalysisReportFixture(),
       semanticProfile: createSemanticProfileFixture(),
@@ -209,8 +209,19 @@ describe("planEdits", () => {
     });
     expect(plan.goals).toContain("normalize overall loudness conservatively");
     expect(plan.verification_targets).toContain(
-      "higher integrated loudness while keeping true peak at or below -1 dBTP",
+      "integrated loudness moved toward the requested target while keeping true peak at or below -1 dBTP",
     );
+  });
+
+  it("rejects broad even-level requests that are not explicit normalization asks", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Make it more even.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createAnalysisReportFixture(),
+        semanticProfile: createSemanticProfileFixture(),
+      }),
+    ).toThrow(/could not derive an executable plan/i);
   });
 
   it("maps the surgical EQ prompt family to explicit shelf, notch, and tilt steps", () => {
@@ -267,6 +278,17 @@ describe("planEdits", () => {
       max_reduction: 0.45,
       frequency_hz: 5500,
     });
+  });
+
+  it("requires an explicit mains frequency for dehum requests", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Remove hum.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createAnalysisReportFixture(),
+        semanticProfile: createSemanticProfileFixture(),
+      }),
+    ).toThrow(/50 hz or 60 hz/i);
   });
 
   it("maps controlled dynamics prompts to a conservative compressor step", () => {

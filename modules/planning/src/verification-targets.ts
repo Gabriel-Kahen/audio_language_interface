@@ -60,9 +60,11 @@ export function buildVerificationTargets(
   }
 
   if (objectives.wants_remove_hum) {
-    targets.push(
-      `lower narrowband energy around ${(objectives.hum_frequency_hz ?? 60).toFixed(0)} Hz and its harmonics`,
-    );
+    if (objectives.hum_frequency_hz !== undefined) {
+      targets.push(
+        `lower narrowband energy around ${objectives.hum_frequency_hz.toFixed(0)} Hz and its harmonics`,
+      );
+    }
   }
 
   if (objectives.wants_peak_control) {
@@ -82,7 +84,9 @@ export function buildVerificationTargets(
   }
 
   if (objectives.wants_more_even_level) {
-    targets.push("higher integrated loudness while keeping true peak at or below -1 dBTP");
+    targets.push(
+      "integrated loudness moved toward the requested target while keeping true peak at or below -1 dBTP",
+    );
   }
 
   if (objectives.wants_quieter) {

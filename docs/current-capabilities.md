@@ -67,9 +67,9 @@ Supported but conservative areas:
 
 - wider or narrower, when stereo evidence is safe enough
 - denoise or reduce hiss, when steady-noise evidence is strong enough
-- louder and more even overall level through normalization
+- explicit loudness normalization through `normalize`
 - airier, warmer, less muddy, or less harsh ring through surgical tone-shaping
-- tame sibilance, remove hum, or clean up clicks through narrow restoration primitives
+- tame sibilance, remove explicitly specified `50 Hz` / `60 Hz` hum, or clean up clicks through narrow restoration primitives
 
 ### Runtime-Supported Operations
 
