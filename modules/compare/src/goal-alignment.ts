@@ -39,11 +39,15 @@ function evaluateGoal(
     checks.push(classifyBrightnessReduction(metricDeltas));
   }
 
-  if (matchesAirGoal(normalizedGoal)) {
+  if (matchesInverseAirGoal(normalizedGoal) || matchesInverseWarmthGoal(normalizedGoal)) {
+    checks.push("unknown");
+  }
+
+  if (matchesAirGoal(normalizedGoal) && !matchesInverseAirGoal(normalizedGoal)) {
     checks.push(classifyAirGoal(metricDeltas));
   }
 
-  if (matchesWarmthGoal(normalizedGoal)) {
+  if (matchesWarmthGoal(normalizedGoal) && !matchesInverseWarmthGoal(normalizedGoal)) {
     checks.push(classifyWarmthGoal(metricDeltas));
   }
 
@@ -73,7 +77,7 @@ function evaluateGoal(
 
   if (
     matchesCleanupPhrase(normalizedGoal) ||
-    matchesAny(normalizedGoal, ["noise", "noisy", "cleaner", "cleanup", "denoise", "hiss", "hum"])
+    matchesAny(normalizedGoal, ["noise", "noisy", "cleaner", "cleanup", "denoise", "hiss"])
   ) {
     checks.push(classifyCleanupGoal(baseline, candidate, metricDeltas));
   }
@@ -460,6 +464,28 @@ function classifyLoudnessGoal(goal: string, metricDeltas: MetricDelta[]): GoalSt
     return "not_met";
   }
 
+  if (matchesAny(goal, ["normalize", "normalise", "target loudness"])) {
+    if (
+      Math.abs(loudnessDelta) >= 0.3 &&
+      Math.abs(loudnessDelta) <= 3 &&
+      meetsOptionalLowerBound(headroomDelta, -0.75) &&
+      meetsOptionalUpperBound(truePeakDelta, 0.75)
+    ) {
+      return "met";
+    }
+
+    if (
+      Math.abs(loudnessDelta) >= 0.15 &&
+      Math.abs(loudnessDelta) <= 4 &&
+      meetsOptionalLowerBound(headroomDelta, -1.25) &&
+      meetsOptionalUpperBound(truePeakDelta, 1.1)
+    ) {
+      return "mostly_met";
+    }
+
+    return "not_met";
+  }
+
   if (
     matchesAny(goal, [
       "quieter",
@@ -482,9 +508,6 @@ function classifyLoudnessGoal(goal: string, metricDeltas: MetricDelta[]): GoalSt
       "raise level",
       "increase level",
       "increase loudness",
-      "normalize",
-      "normalise",
-      "target loudness",
     ])
   ) {
     if (
@@ -736,6 +759,18 @@ function matchesWarmthGoal(value: string): boolean {
 
 function matchesAirGoal(value: string): boolean {
   return matchesAny(value, ["air", "airy", "top-end air", "upper-band air"]);
+}
+
+function matchesInverseWarmthGoal(value: string): boolean {
+  return (
+    /(?:less|reduce|reduced|remov(?:e|ing)|pull back|tone down)\s+(?:some\s+)?warm(?:th)?/.test(
+      value,
+    ) || value.includes("cooler")
+  );
+}
+
+function matchesInverseAirGoal(value: string): boolean {
+  return /(?:less|reduce|reduced|remov(?:e|ing)|pull back|tone down)\s+(?:some\s+)?air/.test(value);
 }
 
 function matchesMuddinessGoal(value: string): boolean {

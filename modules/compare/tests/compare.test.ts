@@ -872,6 +872,183 @@ describe("evaluateGoalAlignment", () => {
       { goal: "keep loudness stable", status: "met" },
     ]);
   });
+
+  it("treats normalization goals as direction-agnostic target moves", () => {
+    const baseline = createAnalysisReport({
+      reportId: "analysis_normalize_base",
+      versionId: "ver_normalize_base",
+      integratedLufs: -11.2,
+      truePeakDbtp: -0.8,
+      samplePeakDbfs: -1.1,
+      headroomDb: 1.1,
+      crestFactorDb: 9.4,
+      transientDensity: 1.7,
+      dynamicRangeDb: 7.4,
+      lowBandDb: -14.6,
+      midBandDb: -11,
+      highBandDb: -10.2,
+      spectralCentroidHz: 2320,
+      brightnessTiltDb: 3.2,
+      presenceBandDb: -9.2,
+      harshnessRatioDb: 0.7,
+      stereoWidth: 0.45,
+      stereoCorrelation: 0.51,
+      stereoBalanceDb: 0.1,
+      noiseFloorDbfs: -68,
+      clippedSampleCount: 0,
+      clippingDetected: false,
+    }).measurements;
+    const candidate = createAnalysisReport({
+      reportId: "analysis_normalize_cand",
+      versionId: "ver_normalize_cand",
+      integratedLufs: -13,
+      truePeakDbtp: -1.1,
+      samplePeakDbfs: -1.5,
+      headroomDb: 1.5,
+      crestFactorDb: 9.5,
+      transientDensity: 1.69,
+      dynamicRangeDb: 7.3,
+      lowBandDb: -14.6,
+      midBandDb: -11.1,
+      highBandDb: -10.3,
+      spectralCentroidHz: 2310,
+      brightnessTiltDb: 3.1,
+      presenceBandDb: -9.3,
+      harshnessRatioDb: 0.7,
+      stereoWidth: 0.45,
+      stereoCorrelation: 0.52,
+      stereoBalanceDb: 0.1,
+      noiseFloorDbfs: -68,
+      clippedSampleCount: 0,
+      clippingDetected: false,
+    }).measurements;
+
+    const goalAlignment = evaluateGoalAlignment(
+      ["normalize to a quieter target loudness"],
+      baseline,
+      candidate,
+      computeAnalysisMetricDeltas(baseline, candidate),
+    );
+
+    expect(goalAlignment).toEqual([
+      { goal: "normalize to a quieter target loudness", status: "met" },
+    ]);
+  });
+
+  it("returns unknown for inverse air and warmth wording", () => {
+    const baseline = createAnalysisReport({
+      reportId: "analysis_inverse_tone_base",
+      versionId: "ver_inverse_tone_base",
+      integratedLufs: -15,
+      truePeakDbtp: -1.4,
+      crestFactorDb: 10,
+      transientDensity: 1.85,
+      dynamicRangeDb: 8,
+      lowBandDb: -15.9,
+      midBandDb: -11.4,
+      highBandDb: -10.2,
+      spectralCentroidHz: 2400,
+      brightnessTiltDb: 4.2,
+      presenceBandDb: -9.4,
+      harshnessRatioDb: 0.8,
+      stereoWidth: 0.48,
+      stereoCorrelation: 0.5,
+      noiseFloorDbfs: -70,
+      clippingDetected: false,
+    }).measurements;
+    const candidate = createAnalysisReport({
+      reportId: "analysis_inverse_tone_cand",
+      versionId: "ver_inverse_tone_cand",
+      integratedLufs: -15,
+      truePeakDbtp: -1.4,
+      crestFactorDb: 10,
+      transientDensity: 1.85,
+      dynamicRangeDb: 8,
+      lowBandDb: -16.6,
+      midBandDb: -11.4,
+      highBandDb: -11.1,
+      spectralCentroidHz: 2260,
+      brightnessTiltDb: 3.2,
+      presenceBandDb: -9.8,
+      harshnessRatioDb: 0.8,
+      stereoWidth: 0.48,
+      stereoCorrelation: 0.5,
+      noiseFloorDbfs: -70,
+      clippingDetected: false,
+    }).measurements;
+
+    const goalAlignment = evaluateGoalAlignment(
+      ["make it less warm", "remove some air"],
+      baseline,
+      candidate,
+      computeAnalysisMetricDeltas(baseline, candidate),
+    );
+
+    expect(goalAlignment).toEqual([
+      { goal: "make it less warm", status: "unknown" },
+      { goal: "remove some air", status: "unknown" },
+    ]);
+  });
+
+  it("does not double-score hum-only requests as generic cleanup", () => {
+    const baseline = createAnalysisReport({
+      reportId: "analysis_hum_only_base",
+      versionId: "ver_hum_only_base",
+      integratedLufs: -15.8,
+      truePeakDbtp: -1.6,
+      samplePeakDbfs: -1.9,
+      headroomDb: 1.9,
+      crestFactorDb: 10.1,
+      transientDensity: 1.85,
+      dynamicRangeDb: 8,
+      lowBandDb: -13.5,
+      midBandDb: -11.2,
+      highBandDb: -10.4,
+      spectralCentroidHz: 2380,
+      brightnessTiltDb: 3.1,
+      presenceBandDb: -9.5,
+      harshnessRatioDb: 0.8,
+      stereoWidth: 0.47,
+      stereoCorrelation: 0.52,
+      stereoBalanceDb: 0.1,
+      noiseFloorDbfs: -61.5,
+      clippedSampleCount: 0,
+      clippingDetected: false,
+    }).measurements;
+    const candidate = createAnalysisReport({
+      reportId: "analysis_hum_only_cand",
+      versionId: "ver_hum_only_cand",
+      integratedLufs: -15.7,
+      truePeakDbtp: -1.5,
+      samplePeakDbfs: -1.8,
+      headroomDb: 1.8,
+      crestFactorDb: 10,
+      transientDensity: 1.84,
+      dynamicRangeDb: 7.9,
+      lowBandDb: -17.9,
+      midBandDb: -11.3,
+      highBandDb: -10.4,
+      spectralCentroidHz: 2375,
+      brightnessTiltDb: 2.8,
+      presenceBandDb: -9.5,
+      harshnessRatioDb: 0.8,
+      stereoWidth: 0.47,
+      stereoCorrelation: 0.53,
+      stereoBalanceDb: 0.1,
+      noiseFloorDbfs: -61.2,
+      clippedSampleCount: 0,
+      clippingDetected: false,
+    }).measurements;
+
+    const goalAlignment = evaluateGoalAlignment(
+      ["reduce hum"],
+      baseline,
+      candidate,
+      computeAnalysisMetricDeltas(baseline, candidate),
+    );
+
+    expect(goalAlignment).toEqual([{ goal: "reduce hum", status: "mostly_met" }]);
+  });
 });
 
 describe("compareRenders", () => {
