@@ -8,8 +8,8 @@
     "Most operations currently support full_file targets only.",
     "time_stretch is runtime-available but not yet selected by the baseline planner.",
     "Transient shaping, clipping, and gating are runtime-available but not yet selected by the baseline planner.",
-    "Layer 1 ambience, texture, modulation, and surgical tone-shaping effects are runtime-available but not yet selected by the baseline planner."
-    "Stereo routing primitives are runtime-available but not yet selected by the baseline planner.",
+    "Layer 1 ambience, texture, modulation, and surgical tone-shaping effects are runtime-available but not yet selected by the baseline planner.",
+    "Stereo routing primitives are runtime-available but not yet selected by the baseline planner."
   ],
   "operations": [
     {
