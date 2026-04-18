@@ -41,6 +41,7 @@ import {
   buildTrimOperation,
   buildTrimSilenceOperation,
 } from "./operations/trim-fade.js";
+import { buildTimeRangeOperation, isTimeRangeTarget } from "./targeting.js";
 import type { AudioVersion, EditTarget, OperationBuildResult, OperationName } from "./types.js";
 
 /**
@@ -48,6 +49,30 @@ import type { AudioVersion, EditTarget, OperationBuildResult, OperationName } fr
  * filter chain plus updated output audio metadata.
  */
 export function buildOperation(
+  audio: AudioVersion["audio"],
+  operation: OperationName,
+  parameters: Record<string, unknown>,
+  target?: EditTarget,
+): OperationBuildResult {
+  const resolvedTarget = target ?? { scope: "full_file" };
+
+  if (isTimeRangeTarget(resolvedTarget) && operation !== "trim") {
+    return buildTimeRangeOperation({
+      audio,
+      operation,
+      parameters,
+      target: resolvedTarget,
+      buildFullFileOperation: (segmentAudio, nestedOperation, nestedParameters) =>
+        buildResolvedOperation(segmentAudio, nestedOperation, nestedParameters, {
+          scope: "full_file",
+        }),
+    });
+  }
+
+  return buildResolvedOperation(audio, operation, parameters, resolvedTarget);
+}
+
+function buildResolvedOperation(
   audio: AudioVersion["audio"],
   operation: OperationName,
   parameters: Record<string, unknown>,

@@ -132,6 +132,8 @@ This function does not touch the filesystem and does not run FFmpeg.
 
 For the Layer 1 effect family (`reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, and `phaser`), the surgical tone-shaping family (`high_shelf`, `low_shelf`, `notch_filter`, and `tilt_eq`), and the transient/control family (`transient_shaper`, `clipper`, and `gate`), the published contract surface is the caller-facing parameter object plus the recorded `TransformRecord` parameters. Some operations also record derived values such as generated reverb tap timings or normalized defaults when those values describe the exact applied result.
 
+For the current first-cohort `time_range` surface, region targeting is implemented by trimming the selected window, applying the existing deterministic full-file transform to that window, trimming the processed window back to the requested duration, and concatenating it with the untouched prefix and suffix. Duration-changing transforms, channel-topology changes, and tail-bearing ambience effects remain `full_file` only.
+
 ## Operation reference
 
 ### `gain`
@@ -142,7 +144,8 @@ Parameters:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 FFmpeg filter:
 
@@ -166,7 +169,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 ### `trim`
 
@@ -233,7 +237,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 ### `pitch_shift`
 
@@ -249,7 +254,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 FFmpeg filter shape:
 
@@ -282,7 +288,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 ### `high_pass_filter`
 
@@ -297,7 +304,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 ### `low_pass_filter`
 
@@ -312,7 +320,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 ### `high_shelf`
 
@@ -330,7 +339,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 FFmpeg filter:
 
@@ -354,7 +364,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 FFmpeg filter:
 
@@ -376,7 +387,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 FFmpeg filter:
 
@@ -400,7 +412,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 FFmpeg filter:
 
@@ -435,7 +448,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 Fixed execution behavior:
 
@@ -466,7 +480,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 Fixed execution behavior:
 
@@ -508,7 +523,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 Fixed execution behavior:
 
@@ -569,7 +585,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 Fixed execution behavior:
 
@@ -613,7 +630,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 Fixed execution behavior:
 
@@ -636,7 +654,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 Fixed execution behavior:
 
@@ -657,7 +676,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 Fixed execution behavior:
 
@@ -681,7 +701,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 Fixed execution behavior:
 
@@ -766,7 +787,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 ### `distortion`
 
@@ -787,7 +809,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 ### `saturation`
 
@@ -806,7 +829,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 ### `flanger`
 
@@ -829,7 +853,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 ### `phaser`
 
@@ -852,7 +877,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 ### `transient_shaper`
 
@@ -872,7 +898,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 FFmpeg filter family:
 
@@ -898,7 +925,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 FFmpeg filter family:
 
@@ -925,7 +953,8 @@ Rules:
 
 Target support:
 
-- `full_file` only
+- `full_file`
+- `time_range`
 
 FFmpeg filter family:
 

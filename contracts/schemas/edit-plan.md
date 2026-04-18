@@ -92,28 +92,28 @@ The current published contract allows these operation names in `steps[].operatio
 Current runtime support is intentionally narrower than the full target taxonomy.
 The runtime capability manifest is the source of truth for which target scopes are valid for each operation.
 
-In the current baseline, the capability manifest restricts these operations to `full_file`:
+In the current baseline, the capability manifest exposes `time_range` for a conservative first cohort of segment-safe operations, including:
 
-- `compressor`
-- `limiter`
-- `high_shelf`
-- `low_shelf`
-- `notch_filter`
-- `tilt_eq`
+- `gain`
+- `normalize`
+- `fade`
+- `pitch_shift`
+- the EQ family (`parametric_eq`, `high_pass_filter`, `low_pass_filter`, `high_shelf`, `low_shelf`, `notch_filter`, `tilt_eq`)
+- the dynamics/control family (`compressor`, `limiter`, `transient_shaper`, `clipper`, `gate`)
+- `reverse`
+- selected stereo cleanup operations (`channel_swap`, `stereo_balance_correction`, `mid_side_eq`, `stereo_width`, `denoise`)
+- selected drive/modulation operations (`bitcrush`, `distortion`, `saturation`, `flanger`, `phaser`)
+
+The capability manifest still restricts these operations to `full_file`:
+
+- `trim_silence`
 - `time_stretch`
+- `mono_sum`
 - `pan`
-- `stereo_width`
-- `denoise`
 - `channel_remap`
-- `mid_side_eq`
 - `reverb`
 - `delay`
 - `echo`
-- `bitcrush`
-- `distortion`
-- `saturation`
-- `flanger`
-- `phaser`
 
 ## Parameter surfaces
 

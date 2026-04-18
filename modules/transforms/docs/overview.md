@@ -80,25 +80,29 @@ Slice extraction is implemented separately from the published edit-plan operatio
 
 ## Operation and target support
 
-Target support is intentionally narrow in the initial implementation:
+Target support is intentionally conservative in the current implementation:
 
-- `gain`, `normalize`, `parametric_eq`, `high_pass_filter`, `low_pass_filter`, `high_shelf`, `low_shelf`, `notch_filter`, and `tilt_eq` only accept `full_file`
-- `compressor`, `limiter`, `transient_shaper`, `clipper`, and `gate` only accept `full_file`
-- `pitch_shift` only accepts `full_file`
+- `gain`, `normalize`, `fade`, `pitch_shift`, `parametric_eq`, `high_pass_filter`, `low_pass_filter`, `high_shelf`, `low_shelf`, `notch_filter`, and `tilt_eq` accept `full_file` and `time_range`
+- `compressor`, `limiter`, `transient_shaper`, `clipper`, and `gate` accept `full_file` and `time_range`
 - `time_stretch` only accepts `full_file`, using either `stretch_ratio` or `source_tempo_bpm` plus `target_tempo_bpm`
-- `reverse` only accepts `full_file`
+- `reverse` accepts `full_file` and `time_range`
 - `mono_sum` only accepts `full_file`
 - `pan` only accepts `full_file` and currently supports mono or stereo input only
-- `channel_swap` only accepts `full_file` and requires stereo 2-channel input
+- `channel_swap` accepts `full_file` and `time_range`, and requires stereo 2-channel input
 - `channel_remap` only accepts `full_file`
-- `stereo_balance_correction` only accepts `full_file` and requires stereo 2-channel input
-- `mid_side_eq` only accepts `full_file` and requires stereo 2-channel input
-- `stereo_width` only accepts `full_file` and requires stereo 2-channel input
-- `denoise` only accepts `full_file`
-- `reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, and `phaser` only accept `full_file`
+- `stereo_balance_correction`, `mid_side_eq`, and `stereo_width` accept `full_file` and `time_range`, and require stereo 2-channel input
+- `denoise` accepts `full_file` and `time_range`
+- `bitcrush`, `distortion`, `saturation`, `flanger`, and `phaser` accept `full_file` and `time_range`
+- `reverb`, `delay`, and `echo` only accept `full_file`
 - `trim_silence` only accepts `full_file`
-- `fade` only accepts `full_file`
 - `trim` supports `time_range` via `target.start_seconds` and `target.end_seconds`, or explicit `parameters.start_seconds` and `parameters.end_seconds`
+
+For the current `time_range` cohort, region targeting is implemented by trimming the selected window, applying the existing deterministic full-file operation to that window, trimming the processed region back to the requested window duration, and concatenating it with the untouched prefix and suffix. That keeps the runtime contract explicit and deterministic, but it also means:
+
+- operations that change duration are still `full_file` only
+- operations that change channel topology are still `full_file` only
+- tail-bearing ambience effects remain `full_file` only until the runtime grows a stronger spill/tail model
+- region boundaries are hard cuts unless the caller adds separate fades explicitly
 
 `trim_silence` removes only leading and/or trailing silence. It preserves interior gaps by composing `silenceremove` with `areverse` rather than using `silenceremove` stop-period modes directly.
 
@@ -155,6 +159,7 @@ The returned `AudioVersion`:
 The returned `TransformRecord`:
 
 - stores one operation entry per applied step
+- records the executed `target` for each applied step
 - records `runtime_ms`
 - includes normalized, non-routine FFmpeg stderr lines in `warnings` when execution emits actionable diagnostics
 - omits `warnings` entirely when FFmpeg emits only routine logging
@@ -171,20 +176,20 @@ This module consumes and emits repository contracts directly:
 
 ## Current limitations
 
-- The new Layer 1 effects intentionally publish coarse, explicit caller-facing controls first. They do not yet expose region targeting, tempo sync, automation lanes, or multi-tap graph construction through the contract surface.
+- The new Layer 1 effects intentionally publish coarse, explicit caller-facing controls first. They do not yet expose tempo sync, automation lanes, or multi-tap graph construction through the contract surface.
 - `compressor` exposes only downward RMS compression with explicit threshold, ratio, attack, release, and optional makeup gain. It does not expose upward compression, dry/wet mixing, sidechain input, or alternate detection/link modes.
 - `limiter` exposes only ceiling, attack, and release. Automatic gain staging is disabled deliberately so the emitted `TransformRecord` stays explicit and inspectable.
-- `transient_shaper` exposes a single signed, compand-based transient-bias amount plus threshold and timing controls. It is best suited to transient-rich material, may still reshape sustained content above threshold, and does not yet expose separate sustain control, overshoot shaping, multiband operation, or region targeting.
-- `clipper` exposes deterministic hard clipping with explicit ceiling, optional input/output gain, and oversampling. It does not yet expose soft-curve families, multiband clipping, or region targeting.
-- `gate` exposes downward RMS gating with explicit threshold, range, ratio, and timing. It does not yet expose hysteresis, hold time, key filters, sidechain input, or region targeting.
+- `transient_shaper` exposes a single signed, compand-based transient-bias amount plus threshold and timing controls. It is best suited to transient-rich material, may still reshape sustained content above threshold, and does not yet expose separate sustain control, overshoot shaping, or multiband operation.
+- `clipper` exposes deterministic hard clipping with explicit ceiling, optional input/output gain, and oversampling. It does not yet expose soft-curve families or multiband clipping.
+- `gate` exposes downward RMS gating with explicit threshold, range, ratio, and timing. It does not yet expose hysteresis, hold time, key filters, or sidechain input.
 - `time_stretch` uses FFmpeg `atempo` with explicit caller-supplied timing parameters. Tempo matching is supported only when the caller already knows `source_tempo_bpm` and `target_tempo_bpm`; this module does not estimate tempo itself.
 - `reverse` uses FFmpeg `areverse` over the full rendered stream. It does not expose partial reverse regions or block-wise tape-style reversal.
 - `mono_sum` renders a mono file by averaging all input channels equally. It does not preserve the original channel count or expose alternate downmix matrices.
 - `pan` currently supports two modes only: mono-to-stereo placement and stereo balance adjustment. It does not expose automation, multichannel panning, or surround speaker positioning.
 - `channel_swap` is locked to stereo 2-channel material and only swaps left and right. It does not expose arbitrary multichannel remapping.
-- `channel_remap` exposes an explicit route matrix with optional per-route gain for up to 8 output channels. It does not yet expose named speaker-layout presets, implicit mix rules, or region targeting.
+- `channel_remap` exposes an explicit route matrix with optional per-route gain for up to 8 output channels. It does not yet expose named speaker-layout presets or implicit mix rules.
 - `stereo_balance_correction` attenuates one named stereo channel by an explicit amount. It does not auto-measure the source imbalance or boost the quieter channel.
-- `mid_side_eq` requires stereo input and currently supports only bell bands on the mid and/or side components. It does not yet expose shelves, filters, dynamics, or region targeting in M/S space.
+- `mid_side_eq` requires stereo input and currently supports only bell bands on the mid and/or side components. It does not yet expose shelves, filters, or dynamics in M/S space.
 - `stereo_width` uses FFmpeg `extrastereo` with clipping disabled and only supports stereo 2-channel material. It is intended for subtle widening or narrowing, not aggressive spatial effects or multichannel imaging.
 - `denoise` uses FFmpeg `afftdn` with a fixed broadband profile, explicit reduction, explicit or defaulted noise floor, and adaptive tracking disabled. It is intentionally conservative and is best suited to steady broadband noise rather than clicks, hum removal, or profile-learned restoration.
 - `trim_silence` uses a fixed RMS detector with `start_mode=all`; callers control only threshold, optional analysis window, and whether to crop the head, tail, or both.
@@ -192,8 +197,8 @@ This module consumes and emits repository contracts directly:
 - No automatic loudness or peak measurement. `normalize` requires caller-supplied `measured_peak_dbfs`.
 - `normalize` supports only `mode: "peak"`.
 - `parametric_eq` supports only bell bands.
-- `high_shelf`, `low_shelf`, and `notch_filter` expose one band per operation and do not yet support band stacks or region targeting.
-- `tilt_eq` exposes one tilt pivot plus a single signed gain control. It does not yet expose alternate slope models, multi-band tilt shapes, or region targeting.
+- `high_shelf`, `low_shelf`, and `notch_filter` expose one band per operation and do not yet support band stacks.
+- `tilt_eq` exposes one tilt pivot plus a single signed gain control. It does not yet expose alternate slope models or multi-band tilt shapes.
 - `time_stretch` uses FFmpeg `atempo` with an explicit `stretch_ratio` surface and preserves pitch while changing duration deterministically.
 - Filter output format is fixed to 16-bit PCM WAV; the module does not preserve original codec or container.
 - The module validates that ffmpeg materially created a non-empty output file before returning success.

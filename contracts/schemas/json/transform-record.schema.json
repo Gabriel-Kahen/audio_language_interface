@@ -54,10 +54,13 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["operation", "parameters", "status"],
+        "required": ["operation", "target", "parameters", "status"],
         "properties": {
           "operation": {
             "$ref": "./common.schema.json#/$defs/operationName"
+          },
+          "target": {
+            "$ref": "./common.schema.json#/$defs/editTarget"
           },
           "parameters": {
             "type": "object"

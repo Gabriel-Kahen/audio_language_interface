@@ -296,6 +296,16 @@
         }
       ]
     },
+    "fullFileOrTimeRangeTarget": {
+      "oneOf": [
+        {
+          "$ref": "./common.schema.json#/$defs/fullFileTarget"
+        },
+        {
+          "$ref": "./common.schema.json#/$defs/timeRangeTarget"
+        }
+      ]
+    },
     "gainParameters": {
       "type": "object",
       "additionalProperties": false,

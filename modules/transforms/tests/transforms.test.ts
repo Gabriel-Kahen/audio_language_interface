@@ -511,6 +511,45 @@ describe("buildOperation", () => {
     });
   });
 
+  it("wraps low_shelf time_range targets into a region-scoped FFmpeg graph", () => {
+    const result = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "low_shelf",
+      {
+        frequency_hz: 180,
+        gain_db: -3,
+        q: 0.7,
+      },
+      { scope: "time_range", start_seconds: 0.25, end_seconds: 1.25 },
+    );
+
+    expect(result.filterChain).toContain("asplit=3[prefix][region][suffix]");
+    expect(result.filterChain).toContain("lowshelf=f=180:t=q:w=0.7:g=-3");
+    expect(result.filterChain).toContain("[prefix_out][region_out][suffix_out]concat=n=3:v=0:a=1");
+    expect(result.nextAudio.duration_seconds).toBe(2);
+    expect(result.nextAudio.channels).toBe(2);
+  });
+
+  it("wraps compressor time_range targets into a region-scoped FFmpeg graph", () => {
+    const result = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "compressor",
+      {
+        threshold_db: -18,
+        ratio: 4,
+        attack_ms: 5,
+        release_ms: 100,
+      },
+      { scope: "time_range", start_seconds: 0.2, end_seconds: 0.8 },
+    );
+
+    expect(result.filterChain).toContain("asplit=3[prefix][region][suffix]");
+    expect(result.filterChain).toContain("acompressor=");
+    expect(result.filterChain).toContain("atrim=start=0:end=0.6,asetpts=N/SR/TB");
+    expect(result.nextAudio.duration_seconds).toBe(2);
+    expect(result.nextAudio.channels).toBe(2);
+  });
+
   it("normalizes creative effect parameters into explicit FFmpeg filters", () => {
     const audio = createAudioVersion("storage/audio/source.wav").audio;
 
@@ -952,6 +991,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "gain",
+      target: { scope: "full_file" },
       parameters: { gain_db: 3 },
       outputVersionId: "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
       recordId: "transform_01HZX8F7J2V3M4N5P6Q7R8S9T0",
@@ -965,6 +1005,7 @@ describe("applyOperation", () => {
     expect(result.transformRecord.operations).toEqual([
       {
         operation: "gain",
+        target: { scope: "full_file" },
         parameters: { gain_db: 3 },
         status: "applied",
       },
@@ -1005,6 +1046,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "compressor",
+      target: { scope: "full_file" },
       parameters: {
         threshold_db: -18,
         ratio: 4,
@@ -1020,6 +1062,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "compressor",
+      target: { scope: "full_file" },
       parameters: {
         threshold_db: -18,
         ratio: 4,
@@ -1050,6 +1093,7 @@ describe("applyOperation", () => {
     expect(firstResult.transformRecord.operations).toEqual([
       {
         operation: "compressor",
+        target: { scope: "full_file" },
         parameters: {
           threshold_db: -18,
           ratio: 4,
@@ -1076,6 +1120,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "limiter",
+      target: { scope: "full_file" },
       parameters: {
         ceiling_dbtp: -6,
         lookahead_ms: 5,
@@ -1095,6 +1140,7 @@ describe("applyOperation", () => {
     expect(result.transformRecord.operations).toEqual([
       {
         operation: "limiter",
+        target: { scope: "full_file" },
         parameters: {
           ceiling_dbtp: -6,
           lookahead_ms: 5,
@@ -1115,6 +1161,7 @@ describe("applyOperation", () => {
       workspaceRoot: transientWorkspaceRoot,
       version: transientVersion,
       operation: "transient_shaper",
+      target: { scope: "full_file" },
       parameters: {
         attack_amount_db: 5,
         threshold_db: -24,
@@ -1129,6 +1176,7 @@ describe("applyOperation", () => {
       workspaceRoot: transientWorkspaceRoot,
       version: transientVersion,
       operation: "transient_shaper",
+      target: { scope: "full_file" },
       parameters: {
         attack_amount_db: 5,
         threshold_db: -24,
@@ -1160,6 +1208,7 @@ describe("applyOperation", () => {
     expect(transientFirstResult.transformRecord.operations).toEqual([
       {
         operation: "transient_shaper",
+        target: { scope: "full_file" },
         parameters: {
           attack_amount_db: 5,
           threshold_db: -24,
@@ -1181,6 +1230,7 @@ describe("applyOperation", () => {
       workspaceRoot: clipperWorkspaceRoot,
       version: clipperVersion,
       operation: "clipper",
+      target: { scope: "full_file" },
       parameters: {
         ceiling_dbfs: -9,
         input_gain_db: 8,
@@ -1200,6 +1250,7 @@ describe("applyOperation", () => {
     expect(clipperResult.transformRecord.operations).toEqual([
       {
         operation: "clipper",
+        target: { scope: "full_file" },
         parameters: {
           ceiling_dbfs: -9,
           input_gain_db: 8,
@@ -1227,6 +1278,7 @@ describe("applyOperation", () => {
       workspaceRoot: clipperPassThroughWorkspaceRoot,
       version: clipperPassThroughVersion,
       operation: "clipper",
+      target: { scope: "full_file" },
       parameters: {
         ceiling_dbfs: -9,
         input_gain_db: 0,
@@ -1254,6 +1306,7 @@ describe("applyOperation", () => {
       workspaceRoot: gateWorkspaceRoot,
       version: gateVersion,
       operation: "gate",
+      target: { scope: "full_file" },
       parameters: {
         threshold_db: -36,
         range_db: 72,
@@ -1278,6 +1331,7 @@ describe("applyOperation", () => {
     expect(gateResult.transformRecord.operations).toEqual([
       {
         operation: "gate",
+        target: { scope: "full_file" },
         parameters: {
           threshold_db: -36,
           range_db: 72,
@@ -1298,6 +1352,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "stereo_width",
+      target: { scope: "full_file" },
       parameters: {
         width_multiplier: 1.5,
       },
@@ -1309,6 +1364,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "stereo_width",
+      target: { scope: "full_file" },
       parameters: {
         width_multiplier: 1.5,
       },
@@ -1335,12 +1391,143 @@ describe("applyOperation", () => {
     expect(firstResult.transformRecord.operations).toEqual([
       {
         operation: "stereo_width",
+        target: { scope: "full_file" },
         parameters: {
           width_multiplier: 1.5,
         },
         status: "applied",
       },
     ]);
+  });
+
+  it("applies a region-scoped gain transform without changing the unselected audio", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createRegionScopedMonoFixture(workspaceRoot);
+    const sourcePath = path.join(workspaceRoot, version.audio.storage_ref);
+    const sourceSamples = await readWaveSamples(sourcePath);
+    const result = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "gain",
+      target: { scope: "time_range", start_seconds: 0.5, end_seconds: 1.0 },
+      parameters: { gain_db: 6 },
+      outputVersionId: "ver_01HZYREGIONGAIN0000000001",
+      recordId: "transform_01HZYREGIONGAIN0000001",
+    });
+    const outputPath = path.join(workspaceRoot, result.outputVersion.audio.storage_ref);
+    const outputSamples = await readWaveSamples(outputPath);
+    const sampleRateHz = version.audio.sample_rate_hz;
+
+    expect(result.outputVersion.audio.duration_seconds).toBe(version.audio.duration_seconds);
+    expect(result.transformRecord.operations).toEqual([
+      {
+        operation: "gain",
+        target: { scope: "time_range", start_seconds: 0.5, end_seconds: 1.0 },
+        parameters: { gain_db: 6 },
+        status: "applied",
+      },
+    ]);
+    expect(
+      computeAverageAbsoluteDifferenceInRange(
+        sourceSamples[0] ?? [],
+        outputSamples[0] ?? [],
+        0,
+        Math.round(sampleRateHz * 0.5),
+      ),
+    ).toBeLessThan(2);
+    expect(
+      computeAverageAbsoluteDifferenceInRange(
+        sourceSamples[0] ?? [],
+        outputSamples[0] ?? [],
+        Math.round(sampleRateHz * 0.5),
+        Math.round(sampleRateHz * 1.0),
+      ),
+    ).toBeGreaterThan(1500);
+    expect(
+      computeAverageAbsoluteDifferenceInRange(
+        sourceSamples[0] ?? [],
+        outputSamples[0] ?? [],
+        Math.round(sampleRateHz * 1.0),
+        Math.round(sampleRateHz * 1.5),
+      ),
+    ).toBeLessThan(2);
+  });
+
+  it("applies a region-scoped stereo_width transform without widening the untouched windows", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createRegionScopedStereoFixture(workspaceRoot);
+    const sourcePath = path.join(workspaceRoot, version.audio.storage_ref);
+    const sourceSamples = await readWaveSamples(sourcePath);
+    const result = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "stereo_width",
+      target: { scope: "time_range", start_seconds: 0.5, end_seconds: 1.0 },
+      parameters: { width_multiplier: 1.8 },
+      outputVersionId: "ver_01HZYREGIONWIDTH00000001",
+      recordId: "transform_01HZYREGIONWIDTH0001",
+    });
+    const outputPath = path.join(workspaceRoot, result.outputVersion.audio.storage_ref);
+    const outputSamples = await readWaveSamples(outputPath);
+    const sampleRateHz = version.audio.sample_rate_hz;
+
+    expect(result.outputVersion.audio.duration_seconds).toBe(version.audio.duration_seconds);
+    expect(result.transformRecord.operations).toEqual([
+      {
+        operation: "stereo_width",
+        target: { scope: "time_range", start_seconds: 0.5, end_seconds: 1.0 },
+        parameters: { width_multiplier: 1.8 },
+        status: "applied",
+      },
+    ]);
+    expect(
+      computeAverageAbsoluteDifferenceInRange(
+        sourceSamples[0] ?? [],
+        outputSamples[0] ?? [],
+        0,
+        Math.round(sampleRateHz * 0.5),
+      ),
+    ).toBeLessThan(2);
+    expect(
+      computeAverageAbsoluteDifferenceInRange(
+        sourceSamples[1] ?? [],
+        outputSamples[1] ?? [],
+        0,
+        Math.round(sampleRateHz * 0.5),
+      ),
+    ).toBeLessThan(2);
+    expect(
+      computeAverageAbsoluteDifferenceInRange(
+        sourceSamples[0] ?? [],
+        outputSamples[0] ?? [],
+        Math.round(sampleRateHz * 0.5),
+        Math.round(sampleRateHz * 1.0),
+      ),
+    ).toBeGreaterThan(500);
+    expect(
+      computeAverageAbsoluteDifferenceInRange(
+        sourceSamples[1] ?? [],
+        outputSamples[1] ?? [],
+        Math.round(sampleRateHz * 0.5),
+        Math.round(sampleRateHz * 1.0),
+      ),
+    ).toBeGreaterThan(500);
+    expect(
+      computeAverageAbsoluteDifferenceInRange(
+        sourceSamples[0] ?? [],
+        outputSamples[0] ?? [],
+        Math.round(sampleRateHz * 1.0),
+        Math.round(sampleRateHz * 1.5),
+      ),
+    ).toBeLessThan(2);
+    expect(
+      computeAverageAbsoluteDifferenceInRange(
+        sourceSamples[1] ?? [],
+        outputSamples[1] ?? [],
+        Math.round(sampleRateHz * 1.0),
+        Math.round(sampleRateHz * 1.5),
+      ),
+    ).toBeLessThan(2);
   });
 
   it("applies stereo-routing primitives deterministically and preserves the requested channel behavior", async () => {
@@ -1354,6 +1541,7 @@ describe("applyOperation", () => {
       workspaceRoot: panWorkspaceRoot,
       version: panVersion,
       operation: "pan",
+      target: { scope: "full_file" },
       parameters: {
         position: 1,
       },
@@ -1379,6 +1567,7 @@ describe("applyOperation", () => {
     expect(panResult.transformRecord.operations).toEqual([
       {
         operation: "pan",
+        target: { scope: "full_file" },
         parameters: {
           position: 1,
           resolved_mode: "mono_to_stereo",
@@ -1395,6 +1584,7 @@ describe("applyOperation", () => {
       workspaceRoot: remapWorkspaceRoot,
       version: remapVersion,
       operation: "channel_remap",
+      target: { scope: "full_file" },
       parameters: {
         output_channels: 1,
         routes: [{ output_channel: 0, input_channel: 1 }],
@@ -1413,6 +1603,7 @@ describe("applyOperation", () => {
     expect(remapResult.transformRecord.operations).toEqual([
       {
         operation: "channel_remap",
+        target: { scope: "full_file" },
         parameters: {
           output_channels: 1,
           routes: [{ output_channel: 0, input_channel: 1, gain: 1 }],
@@ -1427,6 +1618,7 @@ describe("applyOperation", () => {
       workspaceRoot: midSideWorkspaceRoot,
       version: midSideVersion,
       operation: "mid_side_eq",
+      target: { scope: "full_file" },
       parameters: {
         side_bands: [{ type: "bell", frequency_hz: 660, gain_db: 6, q: 1.2 }],
       },
@@ -1438,6 +1630,7 @@ describe("applyOperation", () => {
       workspaceRoot: midSideWorkspaceRoot,
       version: midSideVersion,
       operation: "mid_side_eq",
+      target: { scope: "full_file" },
       parameters: {
         side_bands: [{ type: "bell", frequency_hz: 660, gain_db: 6, q: 1.2 }],
       },
@@ -1464,6 +1657,7 @@ describe("applyOperation", () => {
     expect(firstMidSideResult.transformRecord.operations).toEqual([
       {
         operation: "mid_side_eq",
+        target: { scope: "full_file" },
         parameters: {
           side_bands: [{ type: "bell", frequency_hz: 660, gain_db: 6, q: 1.2 }],
         },
@@ -1484,6 +1678,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "time_stretch",
+      target: { scope: "full_file" },
       parameters: {
         source_tempo_bpm: 120,
         target_tempo_bpm: 90,
@@ -1500,6 +1695,7 @@ describe("applyOperation", () => {
     expect(result.transformRecord.operations).toEqual([
       {
         operation: "time_stretch",
+        target: { scope: "full_file" },
         parameters: {
           source_tempo_bpm: 120,
           target_tempo_bpm: 90,
@@ -1526,6 +1722,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "denoise",
+      target: { scope: "full_file" },
       parameters: {
         reduction_db: 18,
         noise_floor_dbfs: -45,
@@ -1538,6 +1735,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "denoise",
+      target: { scope: "full_file" },
       parameters: {
         reduction_db: 18,
         noise_floor_dbfs: -45,
@@ -1569,6 +1767,7 @@ describe("applyOperation", () => {
     expect(firstResult.transformRecord.operations).toEqual([
       {
         operation: "denoise",
+        target: { scope: "full_file" },
         parameters: {
           reduction_db: 18,
           noise_floor_dbfs: -45,
@@ -1591,6 +1790,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "pitch_shift",
+      target: { scope: "full_file" },
       parameters: {
         semitones: 12,
       },
@@ -1602,6 +1802,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "pitch_shift",
+      target: { scope: "full_file" },
       parameters: {
         semitones: 12,
       },
@@ -1635,6 +1836,7 @@ describe("applyOperation", () => {
     expect(firstResult.transformRecord.operations).toEqual([
       {
         operation: "pitch_shift",
+        target: { scope: "full_file" },
         parameters: {
           semitones: 12,
           pitch_ratio: 2,
@@ -1656,6 +1858,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "high_shelf",
+      target: { scope: "full_file" },
       parameters: {
         frequency_hz: 6500,
         gain_db: 9,
@@ -1669,6 +1872,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "high_shelf",
+      target: { scope: "full_file" },
       parameters: {
         frequency_hz: 6500,
         gain_db: 9,
@@ -1682,6 +1886,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "low_shelf",
+      target: { scope: "full_file" },
       parameters: {
         frequency_hz: 180,
         gain_db: -9,
@@ -1695,6 +1900,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "notch_filter",
+      target: { scope: "full_file" },
       parameters: {
         frequency_hz: 3200,
         q: 8,
@@ -1707,6 +1913,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "tilt_eq",
+      target: { scope: "full_file" },
       parameters: {
         pivot_frequency_hz: 1200,
         gain_db: 9,
@@ -1760,6 +1967,7 @@ describe("applyOperation", () => {
     expect(firstHighShelf.transformRecord.operations).toEqual([
       {
         operation: "high_shelf",
+        target: { scope: "full_file" },
         parameters: {
           frequency_hz: 6500,
           gain_db: 9,
@@ -1778,6 +1986,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "trim_silence",
+      target: { scope: "full_file" },
       parameters: {
         threshold_dbfs: -45,
         trim_leading: true,
@@ -1799,6 +2008,7 @@ describe("applyOperation", () => {
     expect(result.transformRecord.operations).toEqual([
       {
         operation: "trim_silence",
+        target: { scope: "full_file" },
         parameters: expect.objectContaining({
           threshold_dbfs: -45,
           trim_leading: true,
@@ -1823,6 +2033,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "reverse",
+      target: { scope: "full_file" },
       parameters: {},
       outputVersionId: "ver_01HZY00000000000000000014",
       recordId: "transform_01HZY0000000000000000014",
@@ -1832,6 +2043,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "mono_sum",
+      target: { scope: "full_file" },
       parameters: {},
       outputVersionId: "ver_01HZY00000000000000000015",
       recordId: "transform_01HZY0000000000000000015",
@@ -1841,6 +2053,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "channel_swap",
+      target: { scope: "full_file" },
       parameters: {},
       outputVersionId: "ver_01HZY00000000000000000016",
       recordId: "transform_01HZY0000000000000000016",
@@ -1850,6 +2063,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "stereo_balance_correction",
+      target: { scope: "full_file" },
       parameters: {
         target_channel: "left",
         correction_db: 6,
@@ -1899,6 +2113,7 @@ describe("applyOperation", () => {
       workspaceRoot,
       version,
       operation: "trim_silence",
+      target: { scope: "full_file" },
       parameters: {
         threshold_dbfs: -45,
         trim_leading: true,
@@ -1915,6 +2130,7 @@ describe("applyOperation", () => {
     expect(result.transformRecord.operations).toEqual([
       {
         operation: "trim_silence",
+        target: { scope: "full_file" },
         parameters: expect.objectContaining({
           result_duration_seconds: 0,
           trimmed_duration_seconds: version.audio.duration_seconds,
@@ -2034,6 +2250,7 @@ describe("applyOperation", () => {
       expect(result.transformRecord.operations).toEqual([
         {
           operation: item.operation,
+          target: { scope: "full_file" },
           parameters: expect.any(Object),
           status: "applied",
         },
@@ -2052,7 +2269,7 @@ describe("applyEditPlan", () => {
     const plan: EditPlan = {
       schema_version: "1.0.0",
       plan_id: "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0",
-      capability_manifest_id: "capmanifest_20260417A",
+      capability_manifest_id: "capmanifest_20260418A",
       asset_id: version.asset_id,
       version_id: version.version_id,
       user_request: "Trim, soften edges, and reduce level slightly.",
@@ -2104,13 +2321,72 @@ describe("applyEditPlan", () => {
     expect(validateAgainstSchema(transformRecordSchema, result.transformRecord)).toBe(true);
   });
 
+  it("executes a region-scoped runtime step before later full-file steps", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createFixtureVersion(workspaceRoot);
+    const plan: EditPlan = {
+      schema_version: "1.0.0",
+      plan_id: "plan_01HZYREGIONPLAN0000000001",
+      capability_manifest_id: "capmanifest_20260418A",
+      asset_id: version.asset_id,
+      version_id: version.version_id,
+      user_request: "Cut a little low end in the middle, then fade the whole clip.",
+      goals: ["shape the selected middle window", "soften clip edges"],
+      created_at: "2026-04-18T20:20:15Z",
+      steps: [
+        {
+          step_id: "step_low_shelf_region_1",
+          operation: "low_shelf",
+          target: { scope: "time_range", start_seconds: 0.25, end_seconds: 1.25 },
+          parameters: { frequency_hz: 180, gain_db: -3, q: 0.7 },
+          expected_effects: ["reduce low-end weight in the selected window"],
+          safety_limits: ["keep the cut subtle"],
+        },
+        {
+          step_id: "step_fade_full_1",
+          operation: "fade",
+          target: { scope: "full_file" },
+          parameters: { fade_in_seconds: 0.05, fade_out_seconds: 0.1 },
+          expected_effects: ["soften the clip edges"],
+          safety_limits: ["keep fades short"],
+        },
+      ],
+    };
+
+    const result = await applyEditPlan({
+      workspaceRoot,
+      version,
+      plan,
+      outputVersionId: "ver_01HZYREGIONPLANOUT000001",
+      recordId: "transform_01HZYREGIONPLAN00001",
+      createdAt: new Date("2026-04-18T20:20:18Z"),
+      executor: createFakeExecutor("region-plan"),
+    });
+
+    expect(result.commands).toHaveLength(2);
+    expect(result.transformRecord.operations).toEqual([
+      {
+        operation: "low_shelf",
+        target: { scope: "time_range", start_seconds: 0.25, end_seconds: 1.25 },
+        parameters: { frequency_hz: 180, gain_db: -3, q: 0.7 },
+        status: "applied",
+      },
+      {
+        operation: "fade",
+        target: { scope: "full_file" },
+        parameters: { fade_in_seconds: 0.05, fade_out_seconds: 0.1, fade_out_start_seconds: 1.9 },
+        status: "applied",
+      },
+    ]);
+  });
+
   it("preflights later steps before execution so invalid stereo ops do not partially run", async () => {
     const workspaceRoot = await createWorkspace();
     const version = await createFixtureVersion(workspaceRoot);
     const plan: EditPlan = {
       schema_version: "1.0.0",
       plan_id: "plan_01HZY2INVALID000000000001",
-      capability_manifest_id: "capmanifest_20260417A",
+      capability_manifest_id: "capmanifest_20260418A",
       asset_id: version.asset_id,
       version_id: version.version_id,
       user_request: "Collapse to mono, then widen it.",
@@ -2169,6 +2445,7 @@ describe("applyEditPlan", () => {
       workspaceRoot,
       version,
       operation: "trim",
+      target: { scope: "full_file" },
       parameters: { start_seconds: 0.2, end_seconds: 0.7 },
       outputVersionId: "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
       recordId: "transform_01HZX8F7J2V3M4N5P6Q7R8S9T0",
@@ -2432,6 +2709,45 @@ async function createRealAudioVersionFixture(
       ...(options.channels === 1 ? { channel_layout: "mono" } : { channel_layout: "stereo" }),
     },
   };
+}
+
+async function createRegionScopedMonoFixture(workspaceRoot: string): Promise<AudioVersion> {
+  const sampleRateHz = 44100;
+  const durationSeconds = 1.5;
+  const totalFrames = Math.round(durationSeconds * sampleRateHz);
+  const mono = Array.from({ length: totalFrames }, (_, index) =>
+    Math.round(Math.sin((2 * Math.PI * 330 * index) / sampleRateHz) * 7000),
+  );
+
+  return createCustomAudioVersionFixture(workspaceRoot, {
+    sampleRateHz,
+    channels: 1,
+    channelLayout: "mono",
+    samples: [mono],
+  });
+}
+
+async function createRegionScopedStereoFixture(workspaceRoot: string): Promise<AudioVersion> {
+  const sampleRateHz = 44100;
+  const durationSeconds = 1.5;
+  const totalFrames = Math.round(durationSeconds * sampleRateHz);
+  const left = Array.from({ length: totalFrames }, (_, index) => {
+    const mid = Math.sin((2 * Math.PI * 220 * index) / sampleRateHz) * 9500;
+    const side = Math.sin((2 * Math.PI * 660 * index) / sampleRateHz) * 3500;
+    return Math.round(mid + side);
+  });
+  const right = Array.from({ length: totalFrames }, (_, index) => {
+    const mid = Math.sin((2 * Math.PI * 220 * index) / sampleRateHz) * 9500;
+    const side = Math.sin((2 * Math.PI * 660 * index) / sampleRateHz) * 3500;
+    return Math.round(mid - side);
+  });
+
+  return createCustomAudioVersionFixture(workspaceRoot, {
+    sampleRateHz,
+    channels: 2,
+    channelLayout: "stereo",
+    samples: [left, right],
+  });
 }
 
 async function createStereoWidthFixture(workspaceRoot: string): Promise<AudioVersion> {
@@ -2889,6 +3205,27 @@ function computeAverageAbsoluteDifference(
   }
 
   return totalDifference / comparedLength;
+}
+
+function computeAverageAbsoluteDifferenceInRange(
+  source: ArrayLike<number>,
+  candidate: ArrayLike<number>,
+  startIndex: number,
+  endIndex: number,
+): number {
+  const clampedStart = Math.max(0, startIndex);
+  const clampedEnd = Math.min(source.length, candidate.length, endIndex);
+
+  if (clampedEnd <= clampedStart) {
+    return 0;
+  }
+
+  let totalDifference = 0;
+  for (let index = clampedStart; index < clampedEnd; index += 1) {
+    totalDifference += Math.abs((source[index] ?? 0) - (candidate[index] ?? 0));
+  }
+
+  return totalDifference / (clampedEnd - clampedStart);
 }
 
 function minimumAverageDifferenceForOperation(

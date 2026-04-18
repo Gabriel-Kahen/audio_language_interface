@@ -6,7 +6,7 @@ import type {
 } from "./types.js";
 import { CONTRACT_SCHEMA_VERSION } from "./types.js";
 
-const MANIFEST_GENERATED_AT = "2026-04-17T20:30:00Z";
+const MANIFEST_GENERATED_AT = "2026-04-18T20:15:00Z";
 
 function defineOperation(capability: RuntimeOperationCapability): RuntimeOperationCapability {
   return capability;
@@ -14,16 +14,16 @@ function defineOperation(capability: RuntimeOperationCapability): RuntimeOperati
 
 export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
   schema_version: CONTRACT_SCHEMA_VERSION,
-  manifest_id: "capmanifest_20260417C",
+  manifest_id: "capmanifest_20260418A",
   generated_at: MANIFEST_GENERATED_AT,
   runtime_layer: "audio_runtime",
   summary:
-    "Published runtime capability surface for deterministic audio editing and Layer 1 effect processing in the current repository.",
+    "Published runtime capability surface for deterministic audio editing, including first-cohort time_range execution for segment-safe Layer 1 operations.",
   limitations: [
-    "Most runtime operations currently support full_file targets only.",
+    "Region targeting currently exposes explicit time_range support for a conservative first cohort of duration-preserving operations.",
     "time_stretch is runtime-available but not yet selected by the baseline planner.",
     "Transient shaping, clipping, and gating are runtime-available but not yet selected by the baseline planner.",
-    "Layer 1 ambience, texture, modulation, and surgical tone-shaping effects are runtime-available but not yet selected by the baseline planner.",
+    "Duration-changing operations, tail-bearing ambience effects, and channel-topology-changing operations remain full_file only in the current runtime.",
     "Stereo routing primitives are runtime-available but not yet selected by the baseline planner.",
   ],
   operations: [
@@ -32,7 +32,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "level",
       summary: "Apply explicit gain change in decibels.",
       intent_support: "planner_supported",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       parameters: [
         {
           name: "gain_db",
@@ -49,7 +49,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "level",
       summary: "Apply peak normalization using caller-supplied peak measurements.",
       intent_support: "runtime_only",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       planner_notes: ["Not chosen by the baseline planner without explicit technical intent."],
       parameters: [
         {
@@ -157,7 +157,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "timing",
       summary: "Apply fade-in and/or fade-out at clip boundaries.",
       intent_support: "planner_supported",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       parameters: [
         {
           name: "fade_in_seconds",
@@ -185,7 +185,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       summary:
         "Shift pitch while keeping duration close to the original through deterministic FFmpeg chaining.",
       intent_support: "runtime_only",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       planner_notes: ["Runtime-available but not yet chosen by the baseline planner."],
       parameters: [
         {
@@ -205,7 +205,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "tonal",
       summary: "Apply one or more bell EQ bands.",
       intent_support: "planner_supported",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       parameters: [
         {
           name: "bands",
@@ -222,7 +222,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "tonal",
       summary: "Remove low-frequency content below a cutoff frequency.",
       intent_support: "planner_supported",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       parameters: [
         {
           name: "frequency_hz",
@@ -240,7 +240,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "tonal",
       summary: "Remove high-frequency content above a cutoff frequency.",
       intent_support: "planner_supported",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       parameters: [
         {
           name: "frequency_hz",
@@ -258,7 +258,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "tonal",
       summary: "Boost or cut the upper spectrum above an explicit shelf frequency.",
       intent_support: "runtime_only",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       planner_notes: [
         "Runtime-available Layer 1 surgical tone-shaping operation. Not yet chosen by the baseline planner.",
       ],
@@ -298,7 +298,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "tonal",
       summary: "Boost or cut the lower spectrum below an explicit shelf frequency.",
       intent_support: "runtime_only",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       planner_notes: [
         "Runtime-available Layer 1 surgical tone-shaping operation. Not yet chosen by the baseline planner.",
       ],
@@ -338,7 +338,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "tonal",
       summary: "Reject a narrow band around an explicit center frequency.",
       intent_support: "runtime_only",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       planner_notes: [
         "Runtime-available Layer 1 surgical tone-shaping operation. Not yet chosen by the baseline planner.",
       ],
@@ -369,7 +369,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       summary:
         "Tilt the spectrum around a pivot frequency with equal and opposite high/low emphasis.",
       intent_support: "runtime_only",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       planner_notes: [
         "Runtime-available Layer 1 surgical tone-shaping operation. Not yet chosen by the baseline planner.",
       ],
@@ -409,7 +409,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "dynamics",
       summary: "Apply downward RMS-style compression with explicit timing and ratio.",
       intent_support: "planner_supported",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       parameters: [
         {
           name: "threshold_db",
@@ -463,7 +463,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "dynamics",
       summary: "Apply a peak limiter with explicit ceiling and timing controls.",
       intent_support: "planner_supported",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       parameters: [
         {
           name: "ceiling_dbtp",
@@ -502,7 +502,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       summary:
         "Apply a compand-based, transient-biased dynamics curve with explicit threshold and timing controls.",
       intent_support: "runtime_only",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       planner_notes: ["Runtime-available but not yet chosen by the baseline planner."],
       parameters: [
         {
@@ -554,7 +554,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "dynamics",
       summary: "Apply deterministic hard clipping with explicit ceiling and oversampling.",
       intent_support: "runtime_only",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       planner_notes: ["Runtime-available but not yet chosen by the baseline planner."],
       parameters: [
         {
@@ -607,7 +607,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "dynamics",
       summary: "Apply downward gating to low-level content with explicit threshold and timing.",
       intent_support: "runtime_only",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       planner_notes: ["Runtime-available but not yet chosen by the baseline planner."],
       parameters: [
         {
@@ -709,7 +709,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "timing",
       summary: "Reverse the full clip deterministically.",
       intent_support: "runtime_only",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       planner_notes: ["Runtime-available but not yet chosen by the baseline planner."],
       parameters: [],
     }),
@@ -751,7 +751,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "stereo",
       summary: "Swap left and right stereo channels deterministically.",
       intent_support: "runtime_only",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       channel_requirements: {
         exact_channels: 2,
       },
@@ -791,7 +791,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "stereo",
       summary: "Attenuate one stereo channel by an explicit correction amount.",
       intent_support: "runtime_only",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       channel_requirements: {
         exact_channels: 2,
       },
@@ -823,7 +823,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "stereo",
       summary: "Apply explicit bell EQ bands to the mid and/or side image components.",
       intent_support: "runtime_only",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       channel_requirements: {
         exact_channels: 2,
       },
@@ -851,7 +851,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "stereo",
       summary: "Widen or narrow an existing stereo image conservatively.",
       intent_support: "planner_supported",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       channel_requirements: {
         exact_channels: 2,
       },
@@ -874,7 +874,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "restoration",
       summary: "Apply conservative broadband denoise aimed at steady background noise.",
       intent_support: "planner_supported",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       parameters: [
         {
           name: "reduction_db",
@@ -1060,7 +1060,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "effects",
       summary: "Apply bit-depth reduction with explicit sample hold, blend, and crusher mode.",
       intent_support: "runtime_only",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       planner_notes: ["Runtime-available Layer 1 effect. Not yet chosen by the baseline planner."],
       parameters: [
         {
@@ -1108,7 +1108,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "effects",
       summary: "Apply stronger nonlinear drive for intentionally obvious harmonic distortion.",
       intent_support: "runtime_only",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       planner_notes: ["Runtime-available Layer 1 effect. Not yet chosen by the baseline planner."],
       parameters: [
         {
@@ -1158,7 +1158,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       summary:
         "Apply gentler harmonic drive intended for thickening rather than aggressive clipping.",
       intent_support: "runtime_only",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       planner_notes: ["Runtime-available Layer 1 effect. Not yet chosen by the baseline planner."],
       parameters: [
         {
@@ -1207,7 +1207,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "effects",
       summary: "Apply a short modulated comb effect with explicit depth and sweep rate.",
       intent_support: "runtime_only",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       planner_notes: ["Runtime-available Layer 1 effect. Not yet chosen by the baseline planner."],
       parameters: [
         {
@@ -1276,7 +1276,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "effects",
       summary: "Apply a moving phase-shift effect with explicit delay, decay, and sweep rate.",
       intent_support: "runtime_only",
-      supported_target_scopes: ["full_file"],
+      supported_target_scopes: ["full_file", "time_range"],
       planner_notes: ["Runtime-available Layer 1 effect. Not yet chosen by the baseline planner."],
       parameters: [
         {

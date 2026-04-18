@@ -113,6 +113,29 @@ describe("capabilities module", () => {
     }
   });
 
+  it("publishes the first region-targeting cohort explicitly in the manifest", () => {
+    expect(getRuntimeOperationCapability("gain").supported_target_scopes).toEqual([
+      "full_file",
+      "time_range",
+    ]);
+    expect(getRuntimeOperationCapability("low_shelf").supported_target_scopes).toEqual([
+      "full_file",
+      "time_range",
+    ]);
+    expect(getRuntimeOperationCapability("compressor").supported_target_scopes).toEqual([
+      "full_file",
+      "time_range",
+    ]);
+    expect(getRuntimeOperationCapability("stereo_width").supported_target_scopes).toEqual([
+      "full_file",
+      "time_range",
+    ]);
+    expect(getRuntimeOperationCapability("reverb").supported_target_scopes).toEqual(["full_file"]);
+    expect(getRuntimeOperationCapability("channel_remap").supported_target_scopes).toEqual([
+      "full_file",
+    ]);
+  });
+
   it("keeps operation names unique and taxonomy-aligned", () => {
     const operations = defaultRuntimeCapabilityManifest.operations;
     const operationNames = operations.map((operation) => operation.name);

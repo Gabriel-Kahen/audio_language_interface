@@ -80,6 +80,6 @@ See `docs/api.md` for the concrete callable tool surface and payload conventions
 - `plan_edits` is exposed as a callable tool and returns a contract-valid `EditPlan`.
 - `describe_runtime_capabilities` is exposed as a callable tool and returns a contract-valid `RuntimeCapabilityManifest`.
 - `apply_edit_plan` stays schema-aligned with the published `EditPlan` contract and forwards supported runtime operations directly to `modules/transforms`.
-- `apply_edit_plan` also preflights a small set of stable runtime prerequisites such as stereo-only width processing and full-file-only target scopes for some operations.
+- `apply_edit_plan` preflights published target-scope support from the runtime capability manifest and still validates runtime prerequisites such as stereo-only processing where applicable.
 - The tool layer does not maintain session state or resolve artifacts by id.
 - Tool-specific argument validation happens inside handlers rather than through one centralized schema per tool.

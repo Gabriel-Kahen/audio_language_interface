@@ -1,5 +1,6 @@
 import {
   defaultRuntimeCapabilityManifest,
+  getRuntimeOperationCapability,
   type RuntimeOperationName,
 } from "@audio-language-interface/capabilities";
 import {
@@ -116,16 +117,17 @@ function validateArguments(value: unknown, request: ToolRequest): ApplyEditPlanA
     }
 
     if (
-      ["compressor", "limiter", "stereo_width", "denoise"].includes(step.operation) &&
-      step.target.scope !== "full_file"
+      !getRuntimeOperationCapability(step.operation).supported_target_scopes.includes(
+        step.target.scope,
+      )
     ) {
       throw new ToolInputError(
         "invalid_arguments",
-        `arguments.edit_plan.steps[${index}].target.scope must be 'full_file' for ${step.operation}.`,
+        `arguments.edit_plan.steps[${index}].target.scope is not published for ${step.operation}.`,
         {
           field: `arguments.edit_plan.steps[${index}].target.scope`,
           operation: step.operation,
-          required_scope: "full_file",
+          published_scopes: getRuntimeOperationCapability(step.operation).supported_target_scopes,
           received_scope: step.target.scope,
         },
       );
@@ -140,11 +142,10 @@ function validateArguments(value: unknown, request: ToolRequest): ApplyEditPlanA
       if (message.includes("only supports full_file")) {
         throw new ToolInputError(
           "invalid_arguments",
-          `arguments.edit_plan.steps[${index}].target.scope must be 'full_file' for ${step.operation}.`,
+          `arguments.edit_plan.steps[${index}].target.scope is not supported for ${step.operation}.`,
           {
             field: `arguments.edit_plan.steps[${index}].target.scope`,
             operation: step.operation,
-            required_scope: "full_file",
             received_scope: step.target.scope,
           },
         );

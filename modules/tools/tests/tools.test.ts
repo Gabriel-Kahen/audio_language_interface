@@ -158,7 +158,7 @@ function buildEditPlan(versionId: string): Record<string, unknown> {
   return {
     schema_version: "1.0.0",
     plan_id: "plan_123",
-    capability_manifest_id: "capmanifest_20260417A",
+    capability_manifest_id: "capmanifest_20260418A",
     asset_id: "asset_example",
     version_id: versionId,
     user_request: "Trim the intro.",
@@ -188,7 +188,7 @@ function buildSingleStepEditPlan(
   return {
     schema_version: "1.0.0",
     plan_id: "plan_123",
-    capability_manifest_id: "capmanifest_20260417A",
+    capability_manifest_id: "capmanifest_20260418A",
     asset_id: "asset_example",
     version_id: versionId,
     user_request: `Run ${operation}.`,
@@ -215,7 +215,7 @@ function buildTransformRecord(
     schema_version: "1.0.0",
     record_id: "transform_123",
     plan_id: "plan_123",
-    capability_manifest_id: "capmanifest_20260417A",
+    capability_manifest_id: "capmanifest_20260418A",
     asset_id: "asset_example",
     input_version_id: inputVersionId,
     output_version_id: outputVersionId,
@@ -224,6 +224,9 @@ function buildTransformRecord(
     operations: [
       {
         operation: "trim",
+        target: {
+          scope: "full_file",
+        },
         parameters: {
           start_seconds: 0,
           end_seconds: 2.5,
@@ -641,6 +644,7 @@ describe("tools module", () => {
         operations: [
           {
             operation: "compressor",
+            target: { scope: "full_file" },
             parameters: {
               threshold_db: -18,
               ratio: 2,
@@ -723,6 +727,7 @@ describe("tools module", () => {
         operations: [
           {
             operation: "trim_silence",
+            target: { scope: "full_file" },
             parameters: {
               threshold_dbfs: -45,
               trim_leading: true,
@@ -774,6 +779,7 @@ describe("tools module", () => {
         operations: [
           {
             operation: "reverse",
+            target: { scope: "full_file" },
             parameters: {},
             status: "applied",
           },
@@ -813,6 +819,7 @@ describe("tools module", () => {
         operations: [
           {
             operation: "low_shelf",
+            target: { scope: "full_file" },
             parameters: {
               frequency_hz: 180,
               gain_db: -3,
@@ -822,6 +829,7 @@ describe("tools module", () => {
           },
           {
             operation: "notch_filter",
+            target: { scope: "full_file" },
             parameters: {
               frequency_hz: 3200,
               q: 8,
@@ -830,6 +838,7 @@ describe("tools module", () => {
           },
           {
             operation: "tilt_eq",
+            target: { scope: "full_file" },
             parameters: {
               pivot_frequency_hz: 1200,
               gain_db: 2,
@@ -839,6 +848,7 @@ describe("tools module", () => {
           },
           {
             operation: "high_shelf",
+            target: { scope: "full_file" },
             parameters: {
               frequency_hz: 6500,
               gain_db: 2.5,
@@ -862,7 +872,7 @@ describe("tools module", () => {
           edit_plan: {
             schema_version: "1.0.0",
             plan_id: "plan_123",
-            capability_manifest_id: "capmanifest_20260417C",
+            capability_manifest_id: "capmanifest_20260418A",
             asset_id: "asset_example",
             version_id: "ver_input",
             user_request: "Tighten the lows, notch the harsh resonance, and add a little air.",
@@ -1160,6 +1170,7 @@ describe("tools module", () => {
         operations: [
           {
             operation: "denoise",
+            target: { scope: "full_file" },
             parameters: {
               reduction_db: 6,
               noise_floor_dbfs: -58,
@@ -1168,6 +1179,7 @@ describe("tools module", () => {
           },
           {
             operation: "stereo_width",
+            target: { scope: "full_file" },
             parameters: {
               width_multiplier: 1.15,
             },
@@ -1189,7 +1201,7 @@ describe("tools module", () => {
           edit_plan: {
             schema_version: "1.0.0",
             plan_id: "plan_123",
-            capability_manifest_id: "capmanifest_20260417A",
+            capability_manifest_id: "capmanifest_20260418A",
             asset_id: "asset_example",
             version_id: "ver_input",
             user_request: "Denoise and widen this.",
@@ -1324,7 +1336,7 @@ describe("tools module", () => {
           edit_plan: {
             schema_version: "1.0.0",
             plan_id: "plan_123",
-            capability_manifest_id: "capmanifest_20260417A",
+            capability_manifest_id: "capmanifest_20260418A",
             asset_id: "asset_example",
             version_id: "ver_input",
             user_request: "Collapse to mono and then widen it.",
@@ -1383,7 +1395,7 @@ describe("tools module", () => {
           edit_plan: {
             schema_version: "1.0.0",
             plan_id: "plan_123",
-            capability_manifest_id: "capmanifest_20260417A",
+            capability_manifest_id: "capmanifest_20260418A",
             asset_id: "asset_example",
             version_id: "ver_input",
             user_request: "Widen the left side only.",
@@ -1426,6 +1438,7 @@ describe("tools module", () => {
         operations: [
           {
             operation: "pitch_shift",
+            target: { scope: "full_file" },
             parameters: {
               semitones: 2,
               pitch_ratio: 1.122449,
@@ -1463,6 +1476,61 @@ describe("tools module", () => {
 
     expect(applyEditPlan).toHaveBeenCalledOnce();
     expect(response.status).toBe("ok");
+  });
+
+  it("allows published time_range runtime operations through to transforms", async () => {
+    const applyEditPlan = vi.fn(async (_options: unknown) => ({
+      outputVersion: buildAudioVersion("ver_output"),
+      transformRecord: {
+        ...buildTransformRecord("ver_input", "ver_output"),
+        operations: [
+          {
+            operation: "gain",
+            target: { scope: "time_range", start_seconds: 0.5, end_seconds: 1.5 },
+            parameters: {
+              gain_db: 4,
+            },
+            status: "applied",
+          },
+        ],
+      },
+      commands: [],
+      warnings: [],
+    }));
+
+    const response = await executeToolRequest(
+      buildRequest({
+        tool_name: "apply_edit_plan",
+        asset_id: "asset_example",
+        version_id: "ver_input",
+        arguments: {
+          audio_version: buildAudioVersion("ver_input"),
+          edit_plan: {
+            ...buildSingleStepEditPlan("ver_input", "gain", { gain_db: 4 }),
+            capability_manifest_id: "capmanifest_20260418A",
+            steps: [
+              {
+                step_id: "step_1",
+                operation: "gain",
+                target: { scope: "time_range", start_seconds: 0.5, end_seconds: 1.5 },
+                parameters: { gain_db: 4 },
+                expected_effects: ["raise the selected window level"],
+                safety_limits: ["keep the clip below the chosen limit"],
+              },
+            ],
+          },
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/workspace",
+        runtime: createRuntimeOverrides({
+          applyEditPlan: applyEditPlan as unknown as ToolsRuntime["applyEditPlan"],
+        }),
+      },
+    );
+
+    expect(response.status).toBe("ok");
+    expect(applyEditPlan).toHaveBeenCalledOnce();
   });
 
   it("rejects non-integer preview sample rates and channels", async () => {

@@ -304,7 +304,7 @@ function createEditPlan(versionId: string, prompt: string, goals: string[]): Edi
   return {
     schema_version: "1.0.0",
     plan_id: `plan_${versionId}`,
-    capability_manifest_id: "capmanifest_20260417A",
+    capability_manifest_id: "capmanifest_20260418A",
     asset_id: "asset_benchmark_01",
     version_id: versionId,
     user_request: prompt,

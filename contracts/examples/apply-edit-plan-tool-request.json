@@ -33,7 +33,7 @@
     "edit_plan": {
       "schema_version": "1.0.0",
       "plan_id": "plan_01HZZ0FIRSTSLICEPLAN00000001",
-      "capability_manifest_id": "capmanifest_20260417C",
+      "capability_manifest_id": "capmanifest_20260418A",
       "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
       "version_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
       "user_request": "Tighten the lows, remove the harsh ring, brighten the top a little, and gently tilt the whole balance upward.",
@@ -61,7 +61,9 @@
           "step_id": "step_low_shelf_1",
           "operation": "low_shelf",
           "target": {
-            "scope": "full_file"
+            "scope": "time_range",
+            "start_seconds": 0.5,
+            "end_seconds": 1.5
           },
           "parameters": {
             "frequency_hz": 180,

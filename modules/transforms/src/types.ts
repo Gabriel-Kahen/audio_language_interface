@@ -100,6 +100,7 @@ export interface EditPlan {
 
 export interface TransformRecordOperation {
   operation: OperationName;
+  target: EditTarget;
   parameters: Record<string, unknown>;
   status: OperationStatus;
 }

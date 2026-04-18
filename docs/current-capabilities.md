@@ -136,7 +136,7 @@ The baseline planner currently plans only against operations marked `planner_sup
 
 Current tool-surface caveats:
 
-- `apply_edit_plan` supports the published runtime capability surface, but still validates explicit runtime prerequisites such as stereo-only width processing and full-file-only target scopes for some operations
+- `apply_edit_plan` supports the published runtime capability surface, including first-cohort `time_range` execution for selected duration-preserving Layer 1 operations, while still validating explicit runtime prerequisites such as stereo-only processing where applicable
 - `plan_edits` only chooses operations marked as `planner_supported` in the runtime capability manifest
 - explicit technical callers can still submit runtime-only Layer 1 effect steps when they stay inside the published contract surface
 

@@ -647,6 +647,7 @@ function createTransformResult(
       operations: [
         {
           operation: "parametric_eq",
+          target: plan.steps[0]?.target ?? { scope: "full_file" },
           parameters: plan.steps[0]?.parameters ?? {},
           status: "applied",
         },

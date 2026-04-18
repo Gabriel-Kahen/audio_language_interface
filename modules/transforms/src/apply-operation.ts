@@ -32,6 +32,7 @@ export async function applyOperation(
     options.parameters,
     options.target ?? { scope: "full_file" },
   );
+  const effectiveTarget = options.target ?? { scope: "full_file" };
   const inputPath = path.resolve(options.workspaceRoot, options.version.audio.storage_ref);
   const command = buildFfmpegTransformCommand({
     ...(options.ffmpegPath !== undefined ? { ffmpegPath: options.ffmpegPath } : {}),
@@ -64,7 +65,7 @@ export async function applyOperation(
     startedAt: startedAtDate.toISOString(),
     finishedAt: finishedAtDate.toISOString(),
     runtimeMs: finishedAtDate.getTime() - startedAtDate.getTime(),
-    operations: [createAppliedOperation(options.operation, effectiveParameters)],
+    operations: [createAppliedOperation(options.operation, effectiveTarget, effectiveParameters)],
     warnings,
   });
   const outputVersion = createOutputVersion({

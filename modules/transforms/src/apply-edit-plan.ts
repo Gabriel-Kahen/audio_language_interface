@@ -81,7 +81,7 @@ export async function applyEditPlan(options: ApplyEditPlanOptions): Promise<Appl
     );
 
     commands.push(command);
-    operations.push(createAppliedOperation(step.operation, effectiveParameters));
+    operations.push(createAppliedOperation(step.operation, step.target, effectiveParameters));
     currentVersion = {
       schema_version: CONTRACT_SCHEMA_VERSION,
       version_id:

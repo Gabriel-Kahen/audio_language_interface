@@ -38,12 +38,24 @@
           "type": "object",
           "required": ["schema_version", "version_id", "asset_id", "lineage", "audio"],
           "properties": {
-            "schema_version": { "$ref": "./common.schema.json#/$defs/schemaVersion" },
-            "version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
-            "asset_id": { "$ref": "./common.schema.json#/$defs/assetId" },
-            "lineage": { "type": "object" },
-            "audio": { "type": "object" },
-            "state": { "type": "object" }
+            "schema_version": {
+              "$ref": "./common.schema.json#/$defs/schemaVersion"
+            },
+            "version_id": {
+              "$ref": "./common.schema.json#/$defs/versionId"
+            },
+            "asset_id": {
+              "$ref": "./common.schema.json#/$defs/assetId"
+            },
+            "lineage": {
+              "type": "object"
+            },
+            "audio": {
+              "type": "object"
+            },
+            "state": {
+              "type": "object"
+            }
           },
           "additionalProperties": false
         },
@@ -110,45 +122,93 @@
                   "safety_limits"
                 ],
                 "properties": {
-                  "step_id": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
-                  "operation": { "$ref": "./common.schema.json#/$defs/operationName" },
-                  "target": { "$ref": "./common.schema.json#/$defs/editTarget" },
-                  "parameters": { "type": "object" },
-                  "expected_effects": { "$ref": "./common.schema.json#/$defs/stringArray" },
-                  "safety_limits": { "$ref": "./common.schema.json#/$defs/stringArray" }
+                  "step_id": {
+                    "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                  },
+                  "operation": {
+                    "$ref": "./common.schema.json#/$defs/operationName"
+                  },
+                  "target": {
+                    "$ref": "./common.schema.json#/$defs/editTarget"
+                  },
+                  "parameters": {
+                    "type": "object"
+                  },
+                  "expected_effects": {
+                    "$ref": "./common.schema.json#/$defs/stringArray"
+                  },
+                  "safety_limits": {
+                    "$ref": "./common.schema.json#/$defs/stringArray"
+                  }
                 },
                 "allOf": [
                   {
-                    "if": { "properties": { "operation": { "const": "gain" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "gain"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
-                        "parameters": { "$ref": "./common.schema.json#/$defs/gainParameters" }
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/gainParameters"
+                        }
                       }
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "normalize" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "normalize"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
-                        "parameters": { "$ref": "./common.schema.json#/$defs/normalizeParameters" }
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/normalizeParameters"
+                        }
                       }
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "trim" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "trim"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "parameters": { "$ref": "./common.schema.json#/$defs/trimParameters" }
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/trimParameters"
+                        }
                       }
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "trim_silence" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "trim_silence"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileTarget"
+                        },
                         "parameters": {
                           "$ref": "./common.schema.json#/$defs/trimSilenceParameters"
                         }
@@ -156,28 +216,56 @@
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "fade" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "fade"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
-                        "parameters": { "$ref": "./common.schema.json#/$defs/fadeParameters" }
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/fadeParameters"
+                        }
                       }
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "pitch_shift" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "pitch_shift"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
-                        "parameters": { "$ref": "./common.schema.json#/$defs/pitchShiftParameters" }
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/pitchShiftParameters"
+                        }
                       }
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "parametric_eq" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "parametric_eq"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
                         "parameters": {
                           "$ref": "./common.schema.json#/$defs/parametricEqParameters"
                         }
@@ -185,46 +273,94 @@
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "high_pass_filter" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "high_pass_filter"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
-                        "parameters": { "$ref": "./common.schema.json#/$defs/filterParameters" }
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/filterParameters"
+                        }
                       }
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "low_pass_filter" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "low_pass_filter"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
-                        "parameters": { "$ref": "./common.schema.json#/$defs/filterParameters" }
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/filterParameters"
+                        }
                       }
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "high_shelf" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "high_shelf"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
-                        "parameters": { "$ref": "./common.schema.json#/$defs/shelfParameters" }
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/shelfParameters"
+                        }
                       }
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "low_shelf" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "low_shelf"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
-                        "parameters": { "$ref": "./common.schema.json#/$defs/shelfParameters" }
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/shelfParameters"
+                        }
                       }
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "notch_filter" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "notch_filter"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
                         "parameters": {
                           "$ref": "./common.schema.json#/$defs/notchFilterParameters"
                         }
@@ -232,37 +368,75 @@
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "tilt_eq" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "tilt_eq"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
-                        "parameters": { "$ref": "./common.schema.json#/$defs/tiltEqParameters" }
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/tiltEqParameters"
+                        }
                       }
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "compressor" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "compressor"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
-                        "parameters": { "$ref": "./common.schema.json#/$defs/compressorParameters" }
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/compressorParameters"
+                        }
                       }
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "limiter" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "limiter"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
-                        "parameters": { "$ref": "./common.schema.json#/$defs/limiterParameters" }
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/limiterParameters"
+                        }
                       }
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "time_stretch" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "time_stretch"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileTarget"
+                        },
                         "parameters": {
                           "$ref": "./common.schema.json#/$defs/timeStretchRequestParameters"
                         }
@@ -270,37 +444,75 @@
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "reverse" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "reverse"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
-                        "parameters": { "$ref": "./common.schema.json#/$defs/reverseParameters" }
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/reverseParameters"
+                        }
                       }
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "mono_sum" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "mono_sum"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
-                        "parameters": { "$ref": "./common.schema.json#/$defs/monoSumParameters" }
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/monoSumParameters"
+                        }
                       }
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "pan" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "pan"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
-                        "parameters": { "$ref": "./common.schema.json#/$defs/panParameters" }
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/panParameters"
+                        }
                       }
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "channel_swap" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "channel_swap"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
                         "parameters": {
                           "$ref": "./common.schema.json#/$defs/channelSwapParameters"
                         }
@@ -308,10 +520,18 @@
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "channel_remap" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "channel_remap"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileTarget"
+                        },
                         "parameters": {
                           "$ref": "./common.schema.json#/$defs/channelRemapParameters"
                         }
@@ -320,11 +540,17 @@
                   },
                   {
                     "if": {
-                      "properties": { "operation": { "const": "stereo_balance_correction" } }
+                      "properties": {
+                        "operation": {
+                          "const": "stereo_balance_correction"
+                        }
+                      }
                     },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
                         "parameters": {
                           "$ref": "./common.schema.json#/$defs/stereoBalanceCorrectionParameters"
                         }
@@ -332,19 +558,37 @@
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "mid_side_eq" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "mid_side_eq"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
-                        "parameters": { "$ref": "./common.schema.json#/$defs/midSideEqParameters" }
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/midSideEqParameters"
+                        }
                       }
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "stereo_width" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "stereo_width"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
                         "parameters": {
                           "$ref": "./common.schema.json#/$defs/stereoWidthParameters"
                         }
@@ -352,11 +596,21 @@
                     }
                   },
                   {
-                    "if": { "properties": { "operation": { "const": "denoise" } } },
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "denoise"
+                        }
+                      }
+                    },
                     "then": {
                       "properties": {
-                        "target": { "$ref": "./common.schema.json#/$defs/fullFileTarget" },
-                        "parameters": { "$ref": "./common.schema.json#/$defs/denoiseParameters" }
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/denoiseParameters"
+                        }
                       }
                     }
                   }

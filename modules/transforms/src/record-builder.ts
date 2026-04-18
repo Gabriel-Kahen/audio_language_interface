@@ -1,14 +1,21 @@
 import { createTransformRecordId } from "./path-policy.js";
-import type { OperationName, TransformRecord, TransformRecordOperation } from "./types.js";
+import type {
+  EditTarget,
+  OperationName,
+  TransformRecord,
+  TransformRecordOperation,
+} from "./types.js";
 import { CONTRACT_SCHEMA_VERSION } from "./types.js";
 
 /** Creates a transform-record operation entry for a successfully applied step. */
 export function createAppliedOperation(
   operation: OperationName,
+  target: EditTarget,
   parameters: Record<string, unknown>,
 ): TransformRecordOperation {
   return {
     operation,
+    target,
     parameters,
     status: "applied",
   };
