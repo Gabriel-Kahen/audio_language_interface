@@ -85,6 +85,7 @@ describe("request cycle integration", () => {
         "plan",
         "apply",
         "analyze_output",
+        "compare",
         "render_baseline",
         "render_candidate",
         "compare",
@@ -225,6 +226,96 @@ describe("request cycle integration", () => {
 
         return true;
       });
+    });
+  });
+
+  it("can run one explicit revision pass while keeping iteration history inspectable", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const inputPath = path.join(workspaceRoot, "fixtures", "tone.wav");
+      await writeFixtureWav(inputPath, { sampleRateHz: 44_100, durationSeconds: 1.25 });
+
+      const result = await runRequestCycle({
+        workspaceRoot,
+        userRequest: "Make this loop darker and less harsh.",
+        input: {
+          kind: "import",
+          inputPath,
+          importOptions: {
+            importedAt: "2026-04-14T20:27:00Z",
+          },
+        },
+        revision: {
+          enabled: true,
+          shouldRevise: ({ history }) => ({
+            shouldRevise: history.length === 1,
+            rationale: "Integration test requests one additional explicit pass.",
+          }),
+        },
+        dependencies: {
+          ...defaultOrchestrationDependencies,
+          applyEditPlan: async (options) =>
+            applyEditPlan({ ...options, executor: copyAudioExecutor }),
+          renderPreview: async (options) =>
+            renderPreview({
+              ...options,
+              executor: copyAudioExecutor,
+              probeExecutor: createProbeExecutor({
+                format: "mp3",
+                codec: "mp3",
+                sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
+                channels: options.channels ?? options.version.audio.channels,
+                durationSeconds: options.version.audio.duration_seconds,
+              }),
+            }),
+          renderExport: async (options) =>
+            renderExport({
+              ...options,
+              executor: copyAudioExecutor,
+              probeExecutor: createProbeExecutor({
+                format: options.format ?? "wav",
+                codec: options.format === "flac" ? "flac" : "pcm_s16le",
+                sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
+                channels: options.channels ?? options.version.audio.channels,
+                durationSeconds: options.version.audio.duration_seconds,
+              }),
+            }),
+        },
+      });
+
+      expect(result.result_kind).toBe("applied");
+      expect(result.iterations).toHaveLength(2);
+      expect(result.revision).toEqual({
+        shouldRevise: true,
+        rationale: "Integration test requests one additional explicit pass.",
+        source: "caller",
+      });
+      expect(result.semanticProfile).toBeUndefined();
+      expect(result.editPlan).toBeUndefined();
+      expect(result.transformResult).toBeUndefined();
+      expect(result.comparisonReport.goal_alignment).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            goal: "slightly reduce perceived brightness",
+          }),
+        ]),
+      );
+      expect(result.outputVersion.parent_version_id).toBe(
+        result.iterations?.[0]?.outputVersion.version_id,
+      );
+      expect(listAncestorVersionIds(result.sessionGraph, result.outputVersion.version_id)).toEqual([
+        result.iterations?.[0]?.outputVersion.version_id,
+        result.inputVersion.version_id,
+      ]);
+      expect(
+        result.trace
+          .filter((entry) =>
+            ["semantic_profile", "plan", "apply", "analyze_output", "compare"].includes(
+              entry.stage,
+            ),
+          )
+          .filter((entry) => entry.pass !== undefined)
+          .map((entry) => entry.pass),
+      ).toEqual([1, 1, 1, 1, 1, 2, 2, 2, 2, 2]);
     });
   });
 

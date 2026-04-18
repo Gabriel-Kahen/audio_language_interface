@@ -1,10 +1,16 @@
 import { createSessionId } from "@audio-language-interface/core";
 import { executeWithFailurePolicy, OrchestrationStageError } from "./failure-policy.js";
 import { importAndAnalyze } from "./flows/import-and-analyze.js";
-import { planAndApply } from "./flows/plan-and-apply.js";
+import { planApplyComparePass } from "./flows/plan-apply-compare.js";
 import { renderAndCompare } from "./flows/render-and-compare.js";
 import { resolveFollowUpRequest } from "./follow-up-request.js";
-import type { FollowUpResolution, RequestCycleResult, RunRequestCycleOptions } from "./types.js";
+import type {
+  FollowUpResolution,
+  IterationResult,
+  RequestCycleResult,
+  RevisionDecision,
+  RunRequestCycleOptions,
+} from "./types.js";
 
 /** Runs one explicit request cycle from import or current version through comparison. */
 export async function runRequestCycle(
@@ -18,10 +24,8 @@ export async function runRequestCycle(
   let asset = options.input.kind === "existing" ? options.input.asset : undefined;
   let inputVersion = options.input.kind === "existing" ? options.input.version : undefined;
   let inputAnalysis: RequestCycleResult["inputAnalysis"] | undefined;
-  let semanticProfile: RequestCycleResult["semanticProfile"];
-  let editPlan: RequestCycleResult["editPlan"] | undefined;
-  let transformResult: RequestCycleResult["transformResult"] | undefined;
-  let outputVersion: RequestCycleResult["outputVersion"] | undefined;
+  const iterations: IterationResult[] = [];
+  let revision: RevisionDecision | undefined;
   let resolvedUserRequest = options.userRequest;
   let followUpResolution: FollowUpResolution = {
     kind: "apply",
@@ -166,72 +170,78 @@ export async function runRequestCycle(
     sessionGraph = options.dependencies.recordAnalysisReport(sessionGraph, inputAnalysis);
   }
 
+  let currentVersion = inputVersion;
+  let currentAnalysis = inputAnalysis;
+
   try {
-    const planResult = await planAndApply({
+    const firstIteration = await planApplyComparePass({
       workspaceRoot: options.workspaceRoot,
+      iteration: 1,
       userRequest: resolvedUserRequest,
-      version: inputVersion,
-      analysisReport: inputAnalysis,
+      version: currentVersion,
+      analysisReport: currentAnalysis,
+      analysisOptions: options.analysisOptions,
       dependencies: options.dependencies,
       failurePolicy: options.failurePolicy,
+      trace,
     });
-    trace.push(...planResult.trace);
+    iterations.push(firstIteration);
+    sessionGraph = recordAppliedIterationArtifacts(options, sessionGraph, firstIteration);
+    currentVersion = firstIteration.outputVersion;
+    currentAnalysis = firstIteration.outputAnalysis;
+    revision = await decideRevision(options, firstIteration, iterations);
 
-    semanticProfile = planResult.semanticProfile;
-    editPlan = planResult.editPlan;
-    transformResult = planResult.transformResult;
-    outputVersion = planResult.outputVersion;
+    if (revision.shouldRevise) {
+      const secondIteration = await planApplyComparePass({
+        workspaceRoot: options.workspaceRoot,
+        iteration: 2,
+        userRequest: resolvedUserRequest,
+        version: currentVersion,
+        analysisReport: currentAnalysis,
+        analysisOptions: options.analysisOptions,
+        dependencies: options.dependencies,
+        failurePolicy: options.failurePolicy,
+        trace,
+      });
+      iterations.push(secondIteration);
+      sessionGraph = recordAppliedIterationArtifacts(options, sessionGraph, secondIteration);
+      currentVersion = secondIteration.outputVersion;
+      currentAnalysis = secondIteration.outputAnalysis;
+    }
   } catch (error) {
     if (!(error instanceof OrchestrationStageError)) {
       throw error;
     }
 
-    sessionGraph = recordPlanningArtifacts(
-      options,
-      sessionGraph,
-      error.partialResult?.semanticProfile,
-      error.partialResult?.editPlan,
-    );
+    sessionGraph = recordAppliedIterationPartial(options, sessionGraph, error.partialResult);
 
     throw rethrowStageError(error, {
       asset,
       inputVersion,
       inputAnalysis,
+      ...(iterations.length === 0 ? {} : { iterations: [...iterations] }),
+      ...(revision === undefined ? {} : { revision }),
       sessionGraph,
       ...error.partialResult,
     });
   }
 
-  sessionGraph = recordPlanningArtifacts(options, sessionGraph, semanticProfile, editPlan);
-  sessionGraph = options.dependencies.recordAudioVersion(sessionGraph, outputVersion, {
-    ...(options.branchId === undefined ? {} : { branch_id: options.branchId }),
-  });
-  sessionGraph = options.dependencies.recordTransformRecord(
-    sessionGraph,
-    transformResult.transformRecord,
-  );
+  const finalIteration = iterations.at(-1);
+  if (!finalIteration) {
+    throw new Error("Request cycle did not produce an applied iteration.");
+  }
 
-  const outputAnalysis = await executeWithFailurePolicy({
-    stage: "analyze_output",
-    operation: () =>
-      options.dependencies.analyzeAudioVersion(outputVersion, {
-        workspaceRoot: options.workspaceRoot,
-        ...options.analysisOptions,
-      }),
-    failurePolicy: options.failurePolicy,
-    getPartialResult: () => ({
-      asset,
-      inputVersion,
-      inputAnalysis,
-      semanticProfile,
-      editPlan,
-      transformResult,
-      outputVersion,
-      sessionGraph,
-    }),
-    trace,
-  });
-  sessionGraph = options.dependencies.recordAnalysisReport(sessionGraph, outputAnalysis);
+  const exposeTopLevelIterationArtifacts = iterations.length === 1;
+  const semanticProfile = exposeTopLevelIterationArtifacts
+    ? finalIteration.semanticProfile
+    : undefined;
+  const editPlan = exposeTopLevelIterationArtifacts ? finalIteration.editPlan : undefined;
+  const transformResult = exposeTopLevelIterationArtifacts
+    ? finalIteration.transformResult
+    : undefined;
+  const outputVersion = finalIteration.outputVersion;
+  const outputAnalysis = finalIteration.outputAnalysis;
+  const cycleEditPlan = iterations[0]?.editPlan;
 
   let baselineRender: RequestCycleResult["baselineRender"] | undefined;
   let candidateRender: RequestCycleResult["candidateRender"] | undefined;
@@ -244,7 +254,9 @@ export async function runRequestCycle(
       candidateVersion: outputVersion,
       baselineAnalysis: inputAnalysis,
       candidateAnalysis: outputAnalysis,
-      editPlan,
+      ...(cycleEditPlan !== undefined && cycleEditPlan.version_id === inputVersion.version_id
+        ? { editPlan: cycleEditPlan }
+        : {}),
       renderKind: options.renderKind,
       dependencies: options.dependencies,
       failurePolicy: options.failurePolicy,
@@ -276,11 +288,13 @@ export async function runRequestCycle(
       asset,
       inputVersion,
       inputAnalysis,
-      semanticProfile,
-      editPlan,
-      transformResult,
+      ...(semanticProfile === undefined ? {} : { semanticProfile }),
+      ...(editPlan === undefined ? {} : { editPlan }),
+      ...(transformResult === undefined ? {} : { transformResult }),
       outputVersion,
       outputAnalysis,
+      iterations,
+      ...(revision === undefined ? {} : { revision }),
       sessionGraph,
       ...error.partialResult,
     });
@@ -296,6 +310,8 @@ export async function runRequestCycle(
     inputVersion,
     inputAnalysis,
     followUpResolution,
+    iterations,
+    ...(revision === undefined ? {} : { revision }),
     ...(semanticProfile === undefined ? {} : { semanticProfile }),
     ...(editPlan === undefined ? {} : { editPlan }),
     outputVersion,
@@ -516,6 +532,166 @@ function recordPlanningArtifacts(
   }
 
   return nextGraph;
+}
+
+function recordAppliedIterationArtifacts(
+  options: RunRequestCycleOptions,
+  sessionGraph: RequestCycleResult["sessionGraph"],
+  iteration: IterationResult,
+): RequestCycleResult["sessionGraph"] {
+  let nextGraph = recordPlanningArtifacts(
+    options,
+    sessionGraph,
+    iteration.semanticProfile,
+    iteration.editPlan,
+  );
+  nextGraph = options.dependencies.recordAudioVersion(nextGraph, iteration.outputVersion, {
+    ...(options.branchId === undefined ? {} : { branch_id: options.branchId }),
+  });
+  nextGraph = options.dependencies.recordTransformRecord(
+    nextGraph,
+    iteration.transformResult.transformRecord,
+  );
+  nextGraph = options.dependencies.recordAnalysisReport(nextGraph, iteration.outputAnalysis);
+  nextGraph = options.dependencies.recordComparisonReport(nextGraph, iteration.comparisonReport);
+  return nextGraph;
+}
+
+function recordAppliedIterationPartial(
+  options: RunRequestCycleOptions,
+  sessionGraph: RequestCycleResult["sessionGraph"],
+  partialResult: Record<string, unknown> | undefined,
+): RequestCycleResult["sessionGraph"] {
+  if (!partialResult) {
+    return sessionGraph;
+  }
+
+  let nextGraph = recordPlanningArtifacts(
+    options,
+    sessionGraph,
+    "semanticProfile" in partialResult
+      ? (partialResult.semanticProfile as RequestCycleResult["semanticProfile"])
+      : undefined,
+    "editPlan" in partialResult
+      ? (partialResult.editPlan as RequestCycleResult["editPlan"])
+      : undefined,
+  );
+
+  if ("outputVersion" in partialResult && partialResult.outputVersion) {
+    nextGraph = options.dependencies.recordAudioVersion(
+      nextGraph,
+      partialResult.outputVersion as RequestCycleResult["outputVersion"],
+      {
+        ...(options.branchId === undefined ? {} : { branch_id: options.branchId }),
+      },
+    );
+  }
+
+  if ("transformResult" in partialResult && partialResult.transformResult) {
+    const transformResult = partialResult.transformResult as
+      | RequestCycleResult["transformResult"]
+      | undefined;
+    if (transformResult) {
+      nextGraph = options.dependencies.recordTransformRecord(
+        nextGraph,
+        transformResult.transformRecord,
+      );
+    }
+  }
+
+  if ("outputAnalysis" in partialResult && partialResult.outputAnalysis) {
+    nextGraph = options.dependencies.recordAnalysisReport(
+      nextGraph,
+      partialResult.outputAnalysis as RequestCycleResult["outputAnalysis"],
+    );
+  }
+
+  if ("comparisonReport" in partialResult && partialResult.comparisonReport) {
+    nextGraph = options.dependencies.recordComparisonReport(
+      nextGraph,
+      partialResult.comparisonReport as RequestCycleResult["comparisonReport"],
+    );
+  }
+
+  return nextGraph;
+}
+
+async function decideRevision(
+  options: RunRequestCycleOptions,
+  iteration: IterationResult,
+  history: IterationResult[],
+): Promise<RevisionDecision> {
+  if (!options.revision?.enabled) {
+    return {
+      shouldRevise: false,
+      rationale: "Revision loop disabled for this request cycle.",
+      source: "disabled",
+    };
+  }
+
+  const callerDecision = options.revision.shouldRevise;
+  if (callerDecision) {
+    const rawDecision = await callerDecision({ iteration, history });
+    if (typeof rawDecision === "boolean") {
+      return {
+        shouldRevise: rawDecision,
+        rationale: rawDecision
+          ? "Caller revision policy requested one additional pass."
+          : "Caller revision policy declined an additional pass.",
+        source: "caller",
+      };
+    }
+
+    return {
+      shouldRevise: rawDecision.shouldRevise,
+      rationale:
+        rawDecision.rationale ??
+        (rawDecision.shouldRevise
+          ? "Caller revision policy requested one additional pass."
+          : "Caller revision policy declined an additional pass."),
+      source: "caller",
+    };
+  }
+
+  const goalStatuses = iteration.comparisonReport.goal_alignment ?? [];
+  const hasUnmetGoal = goalStatuses.some((goal) => goal.status === "not_met");
+  const severeRegression = (iteration.comparisonReport.regressions ?? []).some(
+    (regression) => regression.severity >= 0.7,
+  );
+
+  if (goalStatuses.length === 0) {
+    return {
+      shouldRevise: false,
+      rationale:
+        "Revision loop enabled, but the first pass did not produce goal-alignment evidence to justify an automatic follow-up pass.",
+      source: "default_policy",
+    };
+  }
+
+  if (severeRegression) {
+    return {
+      shouldRevise: false,
+      rationale:
+        "Revision loop enabled, but the first pass introduced a severe regression, so orchestration stopped instead of compounding the edit.",
+      source: "default_policy",
+    };
+  }
+
+  if (hasUnmetGoal) {
+    return {
+      shouldRevise: true,
+      rationale:
+        "Revision loop enabled, and the first pass left at least one requested goal unmet without triggering a severe regression, so orchestration will attempt one more explicit pass.",
+      source: "default_policy",
+    };
+  }
+
+  return {
+    shouldRevise: false,
+    rationale:
+      "Revision loop enabled, but the first pass already met or mostly met the requested goals, so orchestration stopped after one pass.",
+    source: "default_policy",
+  };
 }
 
 function rethrowStageError<TPartial>(

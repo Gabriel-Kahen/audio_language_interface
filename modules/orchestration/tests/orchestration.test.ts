@@ -233,6 +233,70 @@ describe("runRequestCycle", () => {
     expect(secondCycle.editPlan?.user_request).toBe("Make it darker");
   });
 
+  it("preserves pass history and caller rationale when one revision pass is requested", async () => {
+    const asset = createAsset();
+    const inputVersion = createVersion("ver_input");
+    const compareRenderEditPlans: unknown[] = [];
+    const dependencies = createDependencies({
+      compareRenders: ({ baselineRender, candidateRender, editPlan }) => {
+        compareRenderEditPlans.push(editPlan);
+        return createComparisonReport(
+          baselineRender.render_id,
+          candidateRender.render_id,
+          "render",
+          editPlan,
+        );
+      },
+    });
+
+    const result = await runRequestCycle({
+      workspaceRoot: "/workspace",
+      userRequest: "Make it darker",
+      input: {
+        kind: "existing",
+        asset,
+        version: inputVersion,
+      },
+      revision: {
+        enabled: true,
+        shouldRevise: ({ history }) => ({
+          shouldRevise: history.length === 1,
+          rationale: "One explicit follow-up pass is required for this test.",
+        }),
+      },
+      dependencies,
+    });
+
+    expect(result.result_kind).toBe("applied");
+    expect(result.iterations).toHaveLength(2);
+    expect(result.revision).toEqual({
+      shouldRevise: true,
+      rationale: "One explicit follow-up pass is required for this test.",
+      source: "caller",
+    });
+    expect(result.outputVersion.version_id).toBe("ver_output2");
+    expect(result.iterations?.map((iteration) => iteration.outputVersion.version_id)).toEqual([
+      "ver_output",
+      "ver_output2",
+    ]);
+    expect(
+      result.iterations?.map((iteration) => iteration.comparisonReport.baseline.ref_id),
+    ).toEqual(["ver_input", "ver_output"]);
+    expect(
+      result.trace.filter((entry) => entry.stage === "plan").map((entry) => entry.pass),
+    ).toEqual([1, 2]);
+    expect(result.semanticProfile).toBeUndefined();
+    expect(result.editPlan).toBeUndefined();
+    expect(result.transformResult).toBeUndefined();
+    expect(result.comparisonReport.goal_alignment).toEqual([
+      { goal: "slightly reduce perceived brightness", status: "met" },
+    ]);
+    expect(compareRenderEditPlans).toEqual([
+      expect.objectContaining({ version_id: inputVersion.version_id }),
+    ]);
+    expect(validateSessionGraph(result.sessionGraph).valid).toBe(true);
+  });
+
   it("executes undo follow-ups by reverting to the prior active version", async () => {
     const asset = createAsset();
     const inputVersion = createVersion("ver_input");
@@ -465,8 +529,13 @@ function createDependencies(
     }),
     compareVersions: ({ baselineVersion, candidateVersion }) =>
       createComparisonReport(baselineVersion.version_id, candidateVersion.version_id, "version"),
-    compareRenders: ({ baselineRender, candidateRender }) =>
-      createComparisonReport(baselineRender.render_id, candidateRender.render_id, "render"),
+    compareRenders: ({ baselineRender, candidateRender, editPlan }) =>
+      createComparisonReport(
+        baselineRender.render_id,
+        candidateRender.render_id,
+        "render",
+        editPlan,
+      ),
     createSessionGraph,
     revertToVersion,
     recordAudioAsset,
@@ -683,6 +752,7 @@ function createComparisonReport(
   baselineRefId: string,
   candidateRefId: string,
   refType: "version" | "render",
+  editPlan?: { goals: string[] },
 ): ComparisonReport {
   return {
     schema_version: "1.0.0",
@@ -703,6 +773,14 @@ function createComparisonReport(
         delta: -1,
       },
     ],
+    ...(editPlan === undefined
+      ? {}
+      : {
+          goal_alignment: editPlan.goals.map((goal) => ({
+            goal,
+            status: "met" as const,
+          })),
+        }),
     summary: {
       plain_text: "candidate is darker",
     },

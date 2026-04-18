@@ -14,6 +14,7 @@ The current v1 surface stays thin by:
 
 - `runRequestCycle(options)`
 - `importAndAnalyze(options)`
+- `planApplyComparePass(options)`
 - `planAndApply(options)`
 - `renderAndCompare(options)`
 - `iterativeRefine(options)`
@@ -60,6 +61,8 @@ The returned result includes:
 - input and output versions
 - input and output analyses
 - follow-up resolution metadata
+- optional `iterations[]` when an applied cycle executed one or more explicit version-to-version passes
+- optional `revision` describing whether orchestration chose one additional revision pass and why
 - optional semantic profile
 - edit plan and transform result for applied cycles
 - baseline and candidate render artifacts
@@ -105,6 +108,12 @@ The default behavior is one attempt with no retries.
 - forwards `analysisOptions` on each analysis pass
 - stops when `maxIterations` is reached or `shouldContinue` returns false
 
+`planApplyComparePass(options)`
+
+- runs one explicit version-level pass
+- returns the pass-local semantic profile, edit plan, transform result, output analysis, and version comparison report
+- is the shared building block for `iterativeRefine()` and the optional `runRequestCycle()` revision pass
+
 `resolveFollowUpRequest(options)`
 
 - resolves plain requests directly
@@ -114,6 +123,20 @@ The default behavior is one attempt with no retries.
 - throws when the current session state is insufficient to resolve the follow-up safely
 
 `runRequestCycle(options)` now uses this resolver for `input.kind = "existing"`, which lets repeated requests such as `more`, `less`, and `undo` reuse explicit session history without introducing hidden orchestration state.
+
+When `options.revision.enabled` is true, `runRequestCycle()` may execute one additional explicit pass after the first version-level comparison. The default policy is conservative:
+
+- stop immediately when no goal-alignment evidence exists
+- stop when the first pass introduces a severe regression
+- revise once when at least one goal is still `not_met` and no severe regression was introduced
+
+Callers may override that decision through `options.revision.shouldRevise(...)`.
+
+Important comparison behavior:
+
+- each explicit pass records its own version-level `compare` stage and `ComparisonReport`
+- the final render comparison still compares the original input against the final output
+- only pass-level stages carry `trace[].pass`; the final render comparison does not
 
 For revert-style execution, callers must provide `dependencies.getAudioVersionById({ asset, sessionGraph, versionId })`.
 

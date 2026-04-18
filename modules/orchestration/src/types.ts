@@ -53,6 +53,7 @@ export interface WorkflowTraceEntry {
   started_at: string;
   completed_at: string;
   attempts: number;
+  pass?: number;
   message?: string;
 }
 
@@ -120,6 +121,7 @@ export interface PlanAndApplyOptions {
   userRequest: string;
   version: AudioVersion;
   analysisReport: AnalysisReport;
+  pass?: number;
   semanticProfile?: SemanticProfile;
   outputDir?: string;
   outputVersionId?: string;
@@ -178,6 +180,25 @@ export interface IterationResult {
   transformResult: ApplyTransformsResult;
 }
 
+export interface RevisionDecision {
+  shouldRevise: boolean;
+  rationale: string;
+  source: "disabled" | "default_policy" | "caller";
+}
+
+export interface RequestCycleRevisionOptions {
+  enabled?: boolean;
+  shouldRevise?:
+    | ((input: {
+        iteration: IterationResult;
+        history: IterationResult[];
+      }) =>
+        | boolean
+        | { shouldRevise: boolean; rationale?: string }
+        | Promise<boolean | { shouldRevise: boolean; rationale?: string }>)
+    | undefined;
+}
+
 export interface IterativeRefineOptions {
   workspaceRoot: string;
   userRequest: string;
@@ -226,6 +247,7 @@ export interface RunRequestCycleOptions {
   input: RequestCycleInput;
   analysisOptions?: AnalyzeAudioOptions;
   renderKind?: "preview" | "final" | undefined;
+  revision?: RequestCycleRevisionOptions;
   sessionId?: string;
   branchId?: string;
   dependencies: OrchestrationDependencies;
@@ -238,6 +260,8 @@ export interface RequestCycleResult {
   inputVersion: AudioVersion;
   inputAnalysis: AnalysisReport;
   followUpResolution: FollowUpResolution;
+  iterations?: IterationResult[];
+  revision?: RevisionDecision;
   semanticProfile?: SemanticProfile;
   editPlan?: EditPlan;
   outputVersion: AudioVersion;
