@@ -233,6 +233,61 @@ describe("runRequestCycle", () => {
     expect(secondCycle.editPlan?.user_request).toBe("Make it darker");
   });
 
+  it("preserves pass history and caller rationale when one revision pass is requested", async () => {
+    const asset = createAsset();
+    const inputVersion = createVersion("ver_input");
+    const compareRenderEditPlans: unknown[] = [];
+    const dependencies = createDependencies({
+      compareRenders: ({ baselineRender, candidateRender, editPlan }) => {
+        compareRenderEditPlans.push(editPlan);
+        return createComparisonReport(
+          baselineRender.render_id,
+          candidateRender.render_id,
+          "render",
+        );
+      },
+    });
+
+    const result = await runRequestCycle({
+      workspaceRoot: "/workspace",
+      userRequest: "Make it darker",
+      input: {
+        kind: "existing",
+        asset,
+        version: inputVersion,
+      },
+      revision: {
+        enabled: true,
+        shouldRevise: ({ history }) => ({
+          shouldRevise: history.length === 1,
+          rationale: "One explicit follow-up pass is required for this test.",
+        }),
+      },
+      dependencies,
+    });
+
+    expect(result.result_kind).toBe("applied");
+    expect(result.iterations).toHaveLength(2);
+    expect(result.revision).toEqual({
+      shouldRevise: true,
+      rationale: "One explicit follow-up pass is required for this test.",
+      source: "caller",
+    });
+    expect(result.outputVersion.version_id).toBe("ver_output2");
+    expect(result.iterations?.map((iteration) => iteration.outputVersion.version_id)).toEqual([
+      "ver_output",
+      "ver_output2",
+    ]);
+    expect(
+      result.iterations?.map((iteration) => iteration.comparisonReport.baseline.ref_id),
+    ).toEqual(["ver_input", "ver_output"]);
+    expect(
+      result.trace.filter((entry) => entry.stage === "plan").map((entry) => entry.pass),
+    ).toEqual([1, 2]);
+    expect(compareRenderEditPlans).toEqual([undefined]);
+    expect(validateSessionGraph(result.sessionGraph).valid).toBe(true);
+  });
+
   it("executes undo follow-ups by reverting to the prior active version", async () => {
     const asset = createAsset();
     const inputVersion = createVersion("ver_input");

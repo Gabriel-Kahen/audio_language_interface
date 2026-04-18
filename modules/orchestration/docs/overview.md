@@ -12,6 +12,7 @@ The current implementation is a thin integration layer over the existing runtime
 
 - `runRequestCycle(options)`
 - `importAndAnalyze(options)`
+- `planApplyComparePass(options)`
 - `planAndApply(options)`
 - `renderAndCompare(options)`
 - `iterativeRefine(options)`
@@ -23,6 +24,7 @@ The current implementation is a thin integration layer over the existing runtime
 
 - `src/run-request-cycle.ts`: end-to-end workflow entrypoint
 - `src/flows/import-and-analyze.ts`: ingest plus analysis path
+- `src/flows/plan-apply-compare.ts`: one explicit plan/apply/analyze/compare pass
 - `src/flows/plan-and-apply.ts`: planning plus execution path
 - `src/flows/render-and-compare.ts`: output and evaluation path
 - `src/flows/iterative-refine.ts`: repeated adjustment loop
@@ -62,11 +64,13 @@ The current implementation is a thin integration layer over the existing runtime
 - `importAndAnalyze` now defaults imports to `io`'s shared WAV normalization target when callers do not supply a normalization target, so the imported version remains compatible with the current WAV-only analysis baseline.
 - Flow errors are wrapped as `OrchestrationStageError` values with stage names and partial results when available, including follow-up resolution failures before planning begins.
 - `iterativeRefine` repeats plan, apply, analyze, and compare until `maxIterations` is reached or the caller stops the loop.
+- `runRequestCycle` can optionally execute one additional revision pass after the first version-level comparison. The decision stays explicit through `options.revision` and every applied pass is preserved in `result.iterations`.
 - `resolveFollowUpRequest` can safely expand `more` to the last recorded request, resolve `less` against version ancestry, and resolve `undo` against explicit active-ref history.
 
 ## Current limitations
 
 - Orchestration depends on the same narrow first-slice module capabilities as the underlying runtime modules.
 - Revert-like follow-ups are fully executable when the caller provides `getAudioVersionById`, which lets orchestration materialize the referenced `AudioVersion` artifact explicitly before re-analyzing and re-rendering it.
+- When `runRequestCycle` performs a second pass, the final render comparison still compares the original input against the final output. The per-pass version comparisons remain available in `result.iterations` and are also recorded into session history.
 - It does not provide hidden persistence, job scheduling, or service hosting behavior.
 - There is no dedicated CLI or app entrypoint that wraps these orchestration APIs yet.

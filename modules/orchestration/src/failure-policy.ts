@@ -26,6 +26,7 @@ export async function executeWithFailurePolicy<T, TPartial>(options: {
   operation: () => Promise<T>;
   failurePolicy?: FailurePolicy | undefined;
   getPartialResult?: (() => TPartial) | undefined;
+  pass?: number | undefined;
   trace: WorkflowTraceEntry[];
 }): Promise<T> {
   const maxAttempts = options.failurePolicy?.maxAttemptsByStage?.[options.stage] ?? 1;
@@ -43,6 +44,7 @@ export async function executeWithFailurePolicy<T, TPartial>(options: {
         started_at: startedAt,
         completed_at: new Date().toISOString(),
         attempts: attempt,
+        ...(options.pass === undefined ? {} : { pass: options.pass }),
       });
       return result;
     } catch (error) {
@@ -65,6 +67,7 @@ export async function executeWithFailurePolicy<T, TPartial>(options: {
         started_at: startedAt,
         completed_at: new Date().toISOString(),
         attempts: attempt,
+        ...(options.pass === undefined ? {} : { pass: options.pass }),
         message: normalizedError.message,
       });
 

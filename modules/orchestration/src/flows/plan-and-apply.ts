@@ -22,6 +22,7 @@ export async function planAndApply(options: PlanAndApplyOptions): Promise<PlanAn
       operation: () => Promise.resolve(buildSemanticProfile(options.analysisReport)),
       failurePolicy: options.failurePolicy,
       getPartialResult: () => ({ editPlan }),
+      pass: options.pass,
       trace,
     });
   }
@@ -45,6 +46,7 @@ export async function planAndApply(options: PlanAndApplyOptions): Promise<PlanAn
       ),
     failurePolicy: options.failurePolicy,
     getPartialResult: () => ({ semanticProfile }),
+    pass: options.pass,
     trace,
   });
 
@@ -65,6 +67,7 @@ export async function planAndApply(options: PlanAndApplyOptions): Promise<PlanAn
       }),
     failurePolicy: options.failurePolicy,
     getPartialResult: () => ({ semanticProfile, editPlan }),
+    pass: options.pass,
     trace,
   });
 
