@@ -347,7 +347,8 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
     defineOperation({
       name: "transient_shaper",
       category: "dynamics",
-      summary: "Emphasize or soften attack transients with explicit threshold and timing controls.",
+      summary:
+        "Apply a compand-based, transient-biased dynamics curve with explicit threshold and timing controls.",
       intent_support: "runtime_only",
       supported_target_scopes: ["full_file"],
       planner_notes: ["Runtime-available but not yet chosen by the baseline planner."],
@@ -356,7 +357,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
           name: "attack_amount_db",
           value_type: "number",
           required: true,
-          description: "Signed transient attack emphasis amount.",
+          description: "Signed strength of the transient-biased shaping curve.",
           minimum: -12,
           maximum: 12,
           unit: "dB",
@@ -366,7 +367,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
           name: "threshold_db",
           value_type: "number",
           required: true,
-          description: "Threshold above which the transient emphasis engages.",
+          description: "Threshold where the shaping curve begins to diverge from unity.",
           minimum: -60,
           maximum: 0,
           unit: "dB",
@@ -408,7 +409,8 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
           name: "ceiling_dbfs",
           value_type: "number",
           required: true,
-          description: "Clipping ceiling.",
+          description:
+            "Peak ceiling that is normalized to the clip point before clipping and restored after.",
           minimum: -24,
           maximum: 0,
           unit: "dBFS",

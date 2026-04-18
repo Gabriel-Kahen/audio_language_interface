@@ -276,7 +276,7 @@ describe("buildOperation", () => {
     });
 
     expect(clipper.filterChain).toBe(
-      "volume=6dB,asoftclip=type=hard:threshold=1:output=1:param=1:oversample=4,volume=-9dB",
+      "volume=6dB,apsyclip=level_in=1:level_out=1:clip=0.354813:adaptive=0.5:iterations=10:level=0",
     );
     expect(clipper.effectiveParameters).toEqual({
       ceiling_dbfs: -9,
@@ -999,6 +999,44 @@ describe("applyOperation", () => {
         status: "applied",
       },
     ]);
+
+    const clipperPassThroughWorkspaceRoot = await createWorkspace();
+    const clipperPassThroughVersion = await createRealAudioVersionFixture(
+      clipperPassThroughWorkspaceRoot,
+      {
+        durationSeconds: 1,
+        sampleRateHz: 44100,
+        channels: 1,
+        peakAmplitude: 3000,
+      },
+    );
+    const clipperPassThroughSourcePeakDbfs = await measurePeakLevelDbfs(
+      path.join(clipperPassThroughWorkspaceRoot, clipperPassThroughVersion.audio.storage_ref),
+    );
+    const clipperPassThroughResult = await applyOperation({
+      workspaceRoot: clipperPassThroughWorkspaceRoot,
+      version: clipperPassThroughVersion,
+      operation: "clipper",
+      parameters: {
+        ceiling_dbfs: -9,
+        input_gain_db: 0,
+        output_gain_db: 0,
+        oversample_factor: 4,
+      },
+      outputVersionId: "ver_01HZY000000000000000000T3B",
+      recordId: "transform_01HZY0000000000000000T3B",
+      createdAt: new Date("2026-04-17T18:20:18Z"),
+    });
+    const clipperPassThroughPeakDbfs = await measurePeakLevelDbfs(
+      path.join(
+        clipperPassThroughWorkspaceRoot,
+        clipperPassThroughResult.outputVersion.audio.storage_ref,
+      ),
+    );
+
+    expect(Math.abs(clipperPassThroughPeakDbfs - clipperPassThroughSourcePeakDbfs)).toBeLessThan(
+      0.5,
+    );
 
     const gateWorkspaceRoot = await createWorkspace();
     const gateVersion = await createNoisyAudioVersionFixture(gateWorkspaceRoot);

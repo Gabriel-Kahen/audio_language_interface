@@ -108,9 +108,8 @@ export function buildClipperOperation(
       CLIPPER_OVERSAMPLE_MIN,
       CLIPPER_OVERSAMPLE_MAX,
     ) ?? 2;
-
   return {
-    filterChain: `volume=${formatNumber(inputGainDb)}dB,asoftclip=type=hard:threshold=1:output=1:param=1:oversample=${oversampleFactor},volume=${formatNumber(ceilingDbfs + outputGainDb)}dB`,
+    filterChain: `volume=${formatNumber(inputGainDb)}dB,apsyclip=level_in=1:level_out=${formatNumber(dbToLinear(outputGainDb))}:clip=${formatNumber(dbToLinear(ceilingDbfs))}:adaptive=0.5:iterations=10:level=0`,
     effectiveParameters: {
       ceiling_dbfs: ceilingDbfs,
       input_gain_db: inputGainDb,

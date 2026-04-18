@@ -701,9 +701,10 @@ Parameters:
 
 Rules:
 
-- positive `attack_amount_db` emphasizes attack transients; negative values soften them
+- positive `attack_amount_db` makes the compand-based shaping curve more aggressive; negative values soften it
 - `threshold_db` must stay between `-60` and `0`
 - `attack_ms` and `release_ms` must stay inside the published runtime ranges when provided
+- this runtime is best suited to transient-rich or percussive material and may still reshape sustained content above `threshold_db`
 
 Target support:
 
@@ -727,6 +728,7 @@ Parameters:
 Rules:
 
 - `ceiling_dbfs` must stay between `-24` and `0`
+- the runtime normalizes the requested ceiling to the clip point before clipping, then restores the requested post-clip ceiling afterward
 - optional gain controls must stay inside the published runtime range
 - `oversample_factor` must be an integer between `1` and `8`
 
@@ -737,7 +739,7 @@ Target support:
 FFmpeg filter family:
 
 ```text
-volume=...,asoftclip=...
+volume=...,apsyclip=...
 ```
 
 ### `gate`
