@@ -79,6 +79,10 @@ Supported but conservative areas:
 - `parametric_eq`
 - `high_pass_filter`
 - `low_pass_filter`
+- `high_shelf`
+- `low_shelf`
+- `notch_filter`
+- `tilt_eq`
 - `compressor`
 - `limiter`
 - `time_stretch`
@@ -112,7 +116,7 @@ The baseline planner currently plans only against operations marked `planner_sup
 - `stereo_width`
 - `denoise`
 
-`time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility operations, and the new Layer 1 effect operations are runtime-available but not yet selected by the baseline planner.
+`time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility operations, the new surgical EQ operations, and the new Layer 1 effect operations are runtime-available but not yet selected by the baseline planner.
 
 ### Implemented Tool Surface
 

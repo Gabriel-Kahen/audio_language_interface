@@ -56,6 +56,10 @@ The current published contract allows these operation names in `steps[].operatio
 - `parametric_eq`
 - `high_pass_filter`
 - `low_pass_filter`
+- `high_shelf`
+- `low_shelf`
+- `notch_filter`
+- `tilt_eq`
 - `compressor`
 - `limiter`
 - `time_stretch`
@@ -89,6 +93,10 @@ In the current baseline, the capability manifest restricts these operations to `
 
 - `compressor`
 - `limiter`
+- `high_shelf`
+- `low_shelf`
+- `notch_filter`
+- `tilt_eq`
 - `time_stretch`
 - `stereo_width`
 - `denoise`
@@ -116,6 +124,10 @@ Current expanded parameter surfaces:
 - `stereo_balance_correction`: `target_channel` and `correction_db`
 - `stereo_width`: `width_multiplier`
 - `denoise`: `reduction_db`, with optional `noise_floor_dbfs`
+- `high_shelf`: `frequency_hz`, `gain_db`, and `q`
+- `low_shelf`: `frequency_hz`, `gain_db`, and `q`
+- `notch_filter`: `frequency_hz` and `q`
+- `tilt_eq`: `pivot_frequency_hz`, `gain_db`, and `q`
 - `reverb`: `pre_delay_ms`, `reflection_spacing_ms`, `tail_taps`, and `decay`, with optional `dry_mix` and `wet_mix`
 - `delay`: `delay_ms`, with optional `dry_mix` and `wet_mix`
 - `echo`: `delay_ms` and `decay`, with optional `dry_mix` and `wet_mix`
@@ -146,7 +158,7 @@ Published pitch-shift surface:
 
 `pitch_shift` is currently documented as a whole-file transform that keeps duration close to the original. The runtime may record optional derived fields such as FFmpeg rate and tempo-compensation factors in the emitted `TransformRecord`.
 
-The new Layer 1 runtime effects are intentionally published as `runtime_only` capability-manifest operations in the current baseline. They are valid in the contract surface for explicit technical callers and future planner work, but they are not yet selected automatically by the baseline planner.
+The new surgical tone-shaping operations and Layer 1 runtime effects are intentionally published as `runtime_only` capability-manifest operations in the current baseline. They are valid in the contract surface for explicit technical callers and future planner work, but they are not yet selected automatically by the baseline planner.
 
 ## Optional fields
 

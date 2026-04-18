@@ -58,6 +58,66 @@ export function buildLowPassFilterOperation(
   };
 }
 
+export function buildHighShelfOperation(
+  audio: AudioVersion["audio"],
+  parameters: Record<string, unknown>,
+  target?: EditTarget,
+): OperationBuildResult {
+  assertFullFileTarget("high_shelf", target);
+  const normalized = normalizeShelfParameters(parameters, "high_shelf", audio.sample_rate_hz / 2);
+
+  return {
+    filterChain: `highshelf=f=${formatNumber(normalized.frequency_hz)}:t=q:w=${formatNumber(normalized.q)}:g=${formatNumber(normalized.gain_db)}`,
+    effectiveParameters: normalized,
+    nextAudio: { ...audio },
+  };
+}
+
+export function buildLowShelfOperation(
+  audio: AudioVersion["audio"],
+  parameters: Record<string, unknown>,
+  target?: EditTarget,
+): OperationBuildResult {
+  assertFullFileTarget("low_shelf", target);
+  const normalized = normalizeShelfParameters(parameters, "low_shelf", audio.sample_rate_hz / 2);
+
+  return {
+    filterChain: `lowshelf=f=${formatNumber(normalized.frequency_hz)}:t=q:w=${formatNumber(normalized.q)}:g=${formatNumber(normalized.gain_db)}`,
+    effectiveParameters: normalized,
+    nextAudio: { ...audio },
+  };
+}
+
+export function buildNotchFilterOperation(
+  audio: AudioVersion["audio"],
+  parameters: Record<string, unknown>,
+  target?: EditTarget,
+): OperationBuildResult {
+  assertFullFileTarget("notch_filter", target);
+  const normalized = normalizeNotchParameters(parameters, "notch_filter", audio.sample_rate_hz / 2);
+
+  return {
+    filterChain: `bandreject=f=${formatNumber(normalized.frequency_hz)}:t=q:w=${formatNumber(normalized.q)}`,
+    effectiveParameters: normalized,
+    nextAudio: { ...audio },
+  };
+}
+
+export function buildTiltEqOperation(
+  audio: AudioVersion["audio"],
+  parameters: Record<string, unknown>,
+  target?: EditTarget,
+): OperationBuildResult {
+  assertFullFileTarget("tilt_eq", target);
+  const normalized = normalizeTiltEqParameters(parameters, audio.sample_rate_hz / 2);
+
+  return {
+    filterChain: `tiltshelf=f=${formatNumber(normalized.pivot_frequency_hz)}:t=q:w=${formatNumber(normalized.q)}:g=${formatNumber(-normalized.gain_db)}`,
+    effectiveParameters: normalized,
+    nextAudio: { ...audio },
+  };
+}
+
 function normalizeBellBand(value: unknown, index: number, nyquist: number) {
   if (typeof value !== "object" || value === null) {
     throw new Error(`parametric_eq.bands[${index}] must be an object.`);
@@ -107,10 +167,99 @@ function readCutoffFrequency(
   return frequencyHz;
 }
 
+function normalizeShelfParameters(
+  parameters: Record<string, unknown>,
+  operation: string,
+  nyquist: number,
+) {
+  const frequencyHz = readPositiveFrequency(
+    parameters.frequency_hz,
+    `${operation}.frequency_hz`,
+    nyquist,
+  );
+  const gainDb = readFiniteNumberInRange(parameters.gain_db, `${operation}.gain_db`, -24, 24);
+  const q = readPositiveNumber(parameters.q, `${operation}.q`);
+
+  return {
+    frequency_hz: frequencyHz,
+    gain_db: gainDb,
+    q,
+  };
+}
+
+function normalizeNotchParameters(
+  parameters: Record<string, unknown>,
+  operation: string,
+  nyquist: number,
+) {
+  const frequencyHz = readPositiveFrequency(
+    parameters.frequency_hz,
+    `${operation}.frequency_hz`,
+    nyquist,
+  );
+  const q = readPositiveNumber(parameters.q, `${operation}.q`);
+
+  return {
+    frequency_hz: frequencyHz,
+    q,
+  };
+}
+
+function normalizeTiltEqParameters(parameters: Record<string, unknown>, nyquist: number) {
+  const pivotFrequencyHz = readPositiveFrequency(
+    parameters.pivot_frequency_hz,
+    "tilt_eq.pivot_frequency_hz",
+    nyquist,
+  );
+  const gainDb = readFiniteNumberInRange(parameters.gain_db, "tilt_eq.gain_db", -24, 24);
+  const q = readPositiveNumber(parameters.q, "tilt_eq.q");
+
+  return {
+    pivot_frequency_hz: pivotFrequencyHz,
+    gain_db: gainDb,
+    q,
+  };
+}
+
 function assertFullFileTarget(operation: string, target?: EditTarget): void {
   if (target?.scope !== undefined && target.scope !== "full_file") {
     throw new Error(`${operation} only supports full_file targets in the initial implementation.`);
   }
+}
+
+function readPositiveFrequency(value: unknown, label: string, nyquist: number): number {
+  const frequencyHz = readFiniteNumber(value, label);
+
+  if (frequencyHz <= 0 || frequencyHz >= nyquist) {
+    throw new Error(`${label} must be between 0 and Nyquist.`);
+  }
+
+  return frequencyHz;
+}
+
+function readPositiveNumber(value: unknown, label: string): number {
+  const numeric = readFiniteNumber(value, label);
+
+  if (numeric <= 0) {
+    throw new Error(`${label} must be greater than 0.`);
+  }
+
+  return numeric;
+}
+
+function readFiniteNumberInRange(
+  value: unknown,
+  label: string,
+  minimum: number,
+  maximum: number,
+): number {
+  const numeric = readFiniteNumber(value, label);
+
+  if (numeric < minimum || numeric > maximum) {
+    throw new Error(`${label} must be between ${minimum} and ${maximum}.`);
+  }
+
+  return numeric;
 }
 
 function readFiniteNumber(value: unknown, label: string): number {

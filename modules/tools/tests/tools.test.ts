@@ -805,6 +805,118 @@ describe("tools module", () => {
     expect(response.status).toBe("ok");
   });
 
+  it("allows runtime-only surgical tone-shaping plans through to transforms", async () => {
+    const applyEditPlan = vi.fn(async (_options: unknown) => ({
+      outputVersion: buildAudioVersion("ver_output"),
+      transformRecord: {
+        ...buildTransformRecord("ver_input", "ver_output"),
+        operations: [
+          {
+            operation: "low_shelf",
+            parameters: {
+              frequency_hz: 180,
+              gain_db: -3,
+              q: 0.7,
+            },
+            status: "applied",
+          },
+          {
+            operation: "notch_filter",
+            parameters: {
+              frequency_hz: 3200,
+              q: 8,
+            },
+            status: "applied",
+          },
+          {
+            operation: "tilt_eq",
+            parameters: {
+              pivot_frequency_hz: 1200,
+              gain_db: 2,
+              q: 0.6,
+            },
+            status: "applied",
+          },
+          {
+            operation: "high_shelf",
+            parameters: {
+              frequency_hz: 6500,
+              gain_db: 2.5,
+              q: 0.8,
+            },
+            status: "applied",
+          },
+        ],
+      },
+      commands: [],
+      warnings: [],
+    }));
+
+    const response = await executeToolRequest(
+      buildRequest({
+        tool_name: "apply_edit_plan",
+        asset_id: "asset_example",
+        version_id: "ver_input",
+        arguments: {
+          audio_version: buildAudioVersion("ver_input"),
+          edit_plan: {
+            schema_version: "1.0.0",
+            plan_id: "plan_123",
+            capability_manifest_id: "capmanifest_20260417C",
+            asset_id: "asset_example",
+            version_id: "ver_input",
+            user_request: "Tighten the lows, notch the harsh resonance, and add a little air.",
+            goals: ["reduce excess low weight", "remove harsh resonance", "add some brightness"],
+            created_at: "2026-04-17T20:30:05Z",
+            steps: [
+              {
+                step_id: "step_1",
+                operation: "low_shelf",
+                target: { scope: "full_file" },
+                parameters: { frequency_hz: 180, gain_db: -3, q: 0.7 },
+                expected_effects: ["reduce low weight"],
+                safety_limits: ["keep the low-end cut subtle"],
+              },
+              {
+                step_id: "step_2",
+                operation: "notch_filter",
+                target: { scope: "full_file" },
+                parameters: { frequency_hz: 3200, q: 8 },
+                expected_effects: ["remove a narrow harsh band"],
+                safety_limits: ["avoid hollowing out the source"],
+              },
+              {
+                step_id: "step_3",
+                operation: "tilt_eq",
+                target: { scope: "full_file" },
+                parameters: { pivot_frequency_hz: 1200, gain_db: 2, q: 0.6 },
+                expected_effects: ["brighten the overall balance"],
+                safety_limits: ["avoid making the source brittle"],
+              },
+              {
+                step_id: "step_4",
+                operation: "high_shelf",
+                target: { scope: "full_file" },
+                parameters: { frequency_hz: 6500, gain_db: 2.5, q: 0.8 },
+                expected_effects: ["add a touch of air"],
+                safety_limits: ["avoid harsh top-end buildup"],
+              },
+            ],
+          },
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/workspace",
+        runtime: createRuntimeOverrides({
+          applyEditPlan: applyEditPlan as unknown as ToolsRuntime["applyEditPlan"],
+        }),
+      },
+    );
+
+    expect(applyEditPlan).toHaveBeenCalledOnce();
+    expect(response.status).toBe("ok");
+  });
+
   it("routes compare_versions and wraps the report", async () => {
     const compareVersions = vi.fn((_options: unknown) => ({
       schema_version: "1.0.0" as const,

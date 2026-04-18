@@ -3,7 +3,7 @@
   "request_id": "toolreq_01HZZ0APPLYEDITPLANREQ000001",
   "tool_name": "apply_edit_plan",
   "status": "ok",
-  "completed_at": "2026-04-14T20:20:08Z",
+  "completed_at": "2026-04-17T20:30:08Z",
   "result": {
     "output_version": {
       "schema_version": "1.0.0",
@@ -34,46 +34,46 @@
       "schema_version": "1.0.0",
       "record_id": "transform_01HZZ0FIRSTSLICERECORD0001",
       "plan_id": "plan_01HZZ0FIRSTSLICEPLAN00000001",
-      "capability_manifest_id": "capmanifest_20260417B",
+      "capability_manifest_id": "capmanifest_20260417C",
       "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
       "input_version_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
       "output_version_id": "ver_01HZZ0FIRSTSLICEEDIT00000001",
-      "started_at": "2026-04-14T20:20:06Z",
-      "finished_at": "2026-04-14T20:20:08Z",
+      "started_at": "2026-04-17T20:30:06Z",
+      "finished_at": "2026-04-17T20:30:08Z",
       "runtime_ms": 891,
       "operations": [
         {
-          "operation": "denoise",
+          "operation": "low_shelf",
           "parameters": {
-            "reduction_db": 6,
-            "noise_floor_dbfs": -58
+            "frequency_hz": 180,
+            "gain_db": -3,
+            "q": 0.7
           },
           "status": "applied"
         },
         {
-          "operation": "compressor",
+          "operation": "notch_filter",
           "parameters": {
-            "threshold_db": -18,
-            "ratio": 2,
-            "attack_ms": 15,
-            "release_ms": 120,
-            "makeup_gain_db": 1.5
+            "frequency_hz": 3200,
+            "q": 8
           },
           "status": "applied"
         },
         {
-          "operation": "limiter",
+          "operation": "tilt_eq",
           "parameters": {
-            "ceiling_dbtp": -1,
-            "release_ms": 60,
-            "lookahead_ms": 5
+            "pivot_frequency_hz": 1200,
+            "gain_db": 2,
+            "q": 0.6
           },
           "status": "applied"
         },
         {
-          "operation": "stereo_width",
+          "operation": "high_shelf",
           "parameters": {
-            "width_multiplier": 1.18
+            "frequency_hz": 6500,
+            "gain_db": 2.5,
+            "q": 0.8
           },
           "status": "applied"
         }
@@ -82,10 +82,97 @@
     "commands": [
       {
         "executable": "ffmpeg",
-        "args": ["-i", "input.wav", "-af", "anequalizer=...", "output.wav"],
+        "args": [
+          "-y",
+          "-i",
+          "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEBASE00000001.wav",
+          "-vn",
+          "-sn",
+          "-dn",
+          "-map_metadata",
+          "-1",
+          "-af",
+          "lowshelf=f=180:t=q:w=0.7:g=-3",
+          "-ar",
+          "44100",
+          "-ac",
+          "2",
+          "-c:a",
+          "pcm_s16le",
+          "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.step-1.wav"
+        ],
+        "output_path": "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.step-1.wav"
+      },
+      {
+        "executable": "ffmpeg",
+        "args": [
+          "-y",
+          "-i",
+          "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.step-1.wav",
+          "-vn",
+          "-sn",
+          "-dn",
+          "-map_metadata",
+          "-1",
+          "-af",
+          "bandreject=f=3200:t=q:w=8",
+          "-ar",
+          "44100",
+          "-ac",
+          "2",
+          "-c:a",
+          "pcm_s16le",
+          "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.step-2.wav"
+        ],
+        "output_path": "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.step-2.wav"
+      },
+      {
+        "executable": "ffmpeg",
+        "args": [
+          "-y",
+          "-i",
+          "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.step-2.wav",
+          "-vn",
+          "-sn",
+          "-dn",
+          "-map_metadata",
+          "-1",
+          "-af",
+          "tiltshelf=f=1200:t=q:w=0.6:g=-2",
+          "-ar",
+          "44100",
+          "-ac",
+          "2",
+          "-c:a",
+          "pcm_s16le",
+          "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.step-3.wav"
+        ],
+        "output_path": "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.step-3.wav"
+      },
+      {
+        "executable": "ffmpeg",
+        "args": [
+          "-y",
+          "-i",
+          "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.step-3.wav",
+          "-vn",
+          "-sn",
+          "-dn",
+          "-map_metadata",
+          "-1",
+          "-af",
+          "highshelf=f=6500:t=q:w=0.8:g=2.5",
+          "-ar",
+          "44100",
+          "-ac",
+          "2",
+          "-c:a",
+          "pcm_s16le",
+          "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.wav"
+        ],
         "output_path": "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.wav"
       }
     ]
   },
-  "warnings": ["Executed a conservative runtime transform chain."]
+  "warnings": ["Executed a conservative runtime tone-shaping chain."]
 }

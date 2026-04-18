@@ -304,6 +304,74 @@ describe("buildOperation", () => {
     });
   });
 
+  it("normalizes surgical tone-shaping parameters into explicit FFmpeg filters", () => {
+    const audio = createAudioVersion("storage/audio/source.wav").audio;
+
+    const highShelf = buildOperation(
+      audio,
+      "high_shelf",
+      {
+        frequency_hz: 6500,
+        gain_db: 2.5,
+        q: 0.8,
+      },
+      { scope: "full_file" },
+    );
+    const lowShelf = buildOperation(
+      audio,
+      "low_shelf",
+      {
+        frequency_hz: 180,
+        gain_db: -2.5,
+        q: 0.7,
+      },
+      { scope: "full_file" },
+    );
+    const notch = buildOperation(
+      audio,
+      "notch_filter",
+      {
+        frequency_hz: 3200,
+        q: 8,
+      },
+      { scope: "full_file" },
+    );
+    const tilt = buildOperation(
+      audio,
+      "tilt_eq",
+      {
+        pivot_frequency_hz: 1200,
+        gain_db: 3,
+        q: 0.6,
+      },
+      { scope: "full_file" },
+    );
+
+    expect(highShelf.filterChain).toBe("highshelf=f=6500:t=q:w=0.8:g=2.5");
+    expect(highShelf.effectiveParameters).toEqual({
+      frequency_hz: 6500,
+      gain_db: 2.5,
+      q: 0.8,
+    });
+    expect(lowShelf.filterChain).toBe("lowshelf=f=180:t=q:w=0.7:g=-2.5");
+    expect(lowShelf.effectiveParameters).toEqual({
+      frequency_hz: 180,
+      gain_db: -2.5,
+      q: 0.7,
+    });
+    expect(notch.filterChain).toBe("bandreject=f=3200:t=q:w=8");
+    expect(notch.effectiveParameters).toEqual({
+      frequency_hz: 3200,
+      q: 8,
+    });
+    expect(tilt.filterChain).toBe("tiltshelf=f=1200:t=q:w=0.6:g=-3");
+    expect(tilt.effectiveParameters).toEqual({
+      pivot_frequency_hz: 1200,
+      gain_db: 3,
+      q: 0.6,
+    });
+  });
+
   it("normalizes creative effect parameters into explicit FFmpeg filters", () => {
     const audio = createAudioVersion("storage/audio/source.wav").audio;
 
@@ -611,6 +679,33 @@ describe("buildOperation", () => {
         { scope: "full_file" },
       ),
     ).toThrow(/between -80 and -20/);
+  });
+
+  it("rejects surgical tone-shaping parameters outside the published range", () => {
+    expect(() =>
+      buildOperation(
+        createAudioVersion("storage/audio/source.wav").audio,
+        "high_shelf",
+        {
+          frequency_hz: 6500,
+          gain_db: 30,
+          q: 0.8,
+        },
+        { scope: "full_file" },
+      ),
+    ).toThrow(/between -24 and 24/);
+
+    expect(() =>
+      buildOperation(
+        createAudioVersion("storage/audio/source.wav").audio,
+        "notch_filter",
+        {
+          frequency_hz: 3200,
+          q: 0,
+        },
+        { scope: "full_file" },
+      ),
+    ).toThrow(/greater than 0/);
   });
 
   it("rejects pitch shifts outside the supported semitone range", () => {
@@ -1013,6 +1108,129 @@ describe("applyOperation", () => {
           asetrate_hz: 88200,
           tempo_ratio: 0.5,
           atempo_factors: [0.5],
+        },
+        status: "applied",
+      },
+    ]);
+  });
+
+  it("applies surgical tone-shaping operations with deterministic spectral changes", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createToneShapingFixture(workspaceRoot);
+    const sourcePath = path.join(workspaceRoot, version.audio.storage_ref);
+
+    const firstHighShelf = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "high_shelf",
+      parameters: {
+        frequency_hz: 6500,
+        gain_db: 9,
+        q: 0.8,
+      },
+      outputVersionId: "ver_01HZYTONE000000000000001",
+      recordId: "transform_01HZYTONE0000000000001",
+      createdAt: new Date("2026-04-17T20:30:00Z"),
+    });
+    const secondHighShelf = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "high_shelf",
+      parameters: {
+        frequency_hz: 6500,
+        gain_db: 9,
+        q: 0.8,
+      },
+      outputVersionId: "ver_01HZYTONE000000000000002",
+      recordId: "transform_01HZYTONE0000000000002",
+      createdAt: new Date("2026-04-17T20:30:00Z"),
+    });
+    const lowShelf = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "low_shelf",
+      parameters: {
+        frequency_hz: 180,
+        gain_db: -9,
+        q: 0.7,
+      },
+      outputVersionId: "ver_01HZYTONE000000000000003",
+      recordId: "transform_01HZYTONE0000000000003",
+      createdAt: new Date("2026-04-17T20:30:00Z"),
+    });
+    const notch = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "notch_filter",
+      parameters: {
+        frequency_hz: 3200,
+        q: 8,
+      },
+      outputVersionId: "ver_01HZYTONE000000000000004",
+      recordId: "transform_01HZYTONE0000000000004",
+      createdAt: new Date("2026-04-17T20:30:00Z"),
+    });
+    const tilt = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "tilt_eq",
+      parameters: {
+        pivot_frequency_hz: 1200,
+        gain_db: 9,
+        q: 0.6,
+      },
+      outputVersionId: "ver_01HZYTONE000000000000005",
+      recordId: "transform_01HZYTONE0000000000005",
+      createdAt: new Date("2026-04-17T20:30:00Z"),
+    });
+
+    const sourceHighDb = await measureFilteredRmsLevelDb(
+      sourcePath,
+      "highpass=f=5000,astats=metadata=1:reset=0",
+    );
+    const highShelfHighDb = await measureFilteredRmsLevelDb(
+      path.join(workspaceRoot, firstHighShelf.outputVersion.audio.storage_ref),
+      "highpass=f=5000,astats=metadata=1:reset=0",
+    );
+    const sourceLowDb = await measureFilteredRmsLevelDb(
+      sourcePath,
+      "lowpass=f=250,astats=metadata=1:reset=0",
+    );
+    const lowShelfLowDb = await measureFilteredRmsLevelDb(
+      path.join(workspaceRoot, lowShelf.outputVersion.audio.storage_ref),
+      "lowpass=f=250,astats=metadata=1:reset=0",
+    );
+    const sourceNotchDb = await measureFilteredRmsLevelDb(
+      sourcePath,
+      "bandpass=f=3200:t=q:w=8,astats=metadata=1:reset=0",
+    );
+    const notchBandDb = await measureFilteredRmsLevelDb(
+      path.join(workspaceRoot, notch.outputVersion.audio.storage_ref),
+      "bandpass=f=3200:t=q:w=8,astats=metadata=1:reset=0",
+    );
+    const sourceTiltBalance = await measureHighMinusLowBalanceDb(sourcePath);
+    const tiltBalance = await measureHighMinusLowBalanceDb(
+      path.join(workspaceRoot, tilt.outputVersion.audio.storage_ref),
+    );
+    const firstHighShelfBytes = await readFile(
+      path.join(workspaceRoot, firstHighShelf.outputVersion.audio.storage_ref),
+    );
+    const secondHighShelfBytes = await readFile(
+      path.join(workspaceRoot, secondHighShelf.outputVersion.audio.storage_ref),
+    );
+
+    expect(highShelfHighDb).toBeGreaterThan(sourceHighDb + 2);
+    expect(lowShelfLowDb).toBeLessThan(sourceLowDb - 4);
+    expect(notchBandDb).toBeLessThan(sourceNotchDb - 3);
+    expect(tiltBalance).toBeGreaterThan(sourceTiltBalance + 4);
+    expect(firstHighShelfBytes.equals(secondHighShelfBytes)).toBe(true);
+    expect(firstHighShelf.transformRecord.operations).toEqual([
+      {
+        operation: "high_shelf",
+        parameters: {
+          frequency_hz: 6500,
+          gain_db: 9,
+          q: 0.8,
         },
         status: "applied",
       },
@@ -1706,6 +1924,26 @@ async function createStereoWidthFixture(workspaceRoot: string): Promise<AudioVer
   });
 }
 
+async function createToneShapingFixture(workspaceRoot: string): Promise<AudioVersion> {
+  const sampleRateHz = 44100;
+  const durationSeconds = 1;
+  const totalFrames = Math.round(durationSeconds * sampleRateHz);
+  const mono = Array.from({ length: totalFrames }, (_, index) => {
+    const low = Math.sin((2 * Math.PI * 120 * index) / sampleRateHz) * 9000;
+    const lowMid = Math.sin((2 * Math.PI * 700 * index) / sampleRateHz) * 5000;
+    const notch = Math.sin((2 * Math.PI * 3200 * index) / sampleRateHz) * 6500;
+    const high = Math.sin((2 * Math.PI * 6500 * index) / sampleRateHz) * 2600;
+    return Math.round(low + lowMid + notch + high);
+  });
+
+  return createCustomAudioVersionFixture(workspaceRoot, {
+    sampleRateHz,
+    channels: 1,
+    channelLayout: "mono",
+    samples: [mono],
+  });
+}
+
 async function createAsymmetricStereoFixture(workspaceRoot: string): Promise<AudioVersion> {
   const sampleRateHz = 44100;
   const durationSeconds = 1;
@@ -2027,6 +2265,19 @@ async function measureDominantFrequencyHz(absolutePath: string): Promise<number>
 
   const analyzedSeconds = (endIndex - startIndex) / metadata.sampleRateHz;
   return crossings / (2 * analyzedSeconds);
+}
+
+async function measureHighMinusLowBalanceDb(absolutePath: string): Promise<number> {
+  const highDb = await measureFilteredRmsLevelDb(
+    absolutePath,
+    "highpass=f=4000,astats=metadata=1:reset=0",
+  );
+  const lowDb = await measureFilteredRmsLevelDb(
+    absolutePath,
+    "lowpass=f=250,astats=metadata=1:reset=0",
+  );
+
+  return highDb - lowDb;
 }
 
 function parseLastMetricValue(stderr: string, pattern: RegExp, label: string): number {

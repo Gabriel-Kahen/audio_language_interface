@@ -142,6 +142,38 @@
             }
           },
           {
+            "if": { "properties": { "operation": { "const": "high_shelf" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/shelfParameters" }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "operation": { "const": "low_shelf" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/shelfParameters" }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "operation": { "const": "notch_filter" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/notchFilterParameters" }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "operation": { "const": "tilt_eq" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/tiltEqParameters" }
+              }
+            }
+          },
+          {
             "if": { "properties": { "operation": { "const": "compressor" } } },
             "then": {
               "properties": {

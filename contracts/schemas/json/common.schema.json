@@ -171,6 +171,10 @@
         "parametric_eq",
         "high_pass_filter",
         "low_pass_filter",
+        "high_shelf",
+        "low_shelf",
+        "notch_filter",
+        "tilt_eq",
         "compressor",
         "limiter",
         "time_stretch",
@@ -527,6 +531,61 @@
           "required": ["cutoff_hz"]
         }
       ]
+    },
+    "shelfParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frequency_hz", "gain_db", "q"],
+      "properties": {
+        "frequency_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "gain_db": {
+          "type": "number",
+          "minimum": -24,
+          "maximum": 24
+        },
+        "q": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "notchFilterParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frequency_hz", "q"],
+      "properties": {
+        "frequency_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "q": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "tiltEqParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pivot_frequency_hz", "gain_db", "q"],
+      "properties": {
+        "pivot_frequency_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "gain_db": {
+          "type": "number",
+          "minimum": -24,
+          "maximum": 24
+        },
+        "q": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
     },
     "compressorParameters": {
       "type": "object",

@@ -2,59 +2,46 @@
   "schema_version": "1.0.0",
   "record_id": "transform_01HZX8F7J2V3M4N5P6Q7R8S9T0",
   "plan_id": "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0",
-  "capability_manifest_id": "capmanifest_20260417B",
+  "capability_manifest_id": "capmanifest_20260417C",
   "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
   "input_version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
   "output_version_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
-  "started_at": "2026-04-14T20:20:18Z",
-  "finished_at": "2026-04-14T20:20:18Z",
+  "started_at": "2026-04-17T20:30:18Z",
+  "finished_at": "2026-04-17T20:30:18Z",
   "runtime_ms": 42,
   "operations": [
     {
-      "operation": "pitch_shift",
+      "operation": "low_shelf",
       "parameters": {
-        "semitones": 2,
-        "pitch_ratio": 1.122449,
-        "asetrate_hz": 49500,
-        "tempo_ratio": 0.890909,
-        "atempo_factors": [0.890909]
+        "frequency_hz": 180,
+        "gain_db": -3,
+        "q": 0.7
       },
       "status": "applied"
     },
     {
-      "operation": "denoise",
+      "operation": "notch_filter",
       "parameters": {
-        "reduction_db": 6,
-        "noise_floor_dbfs": -58
+        "frequency_hz": 3200,
+        "q": 8
       },
       "status": "applied"
     },
     {
-      "operation": "compressor",
+      "operation": "tilt_eq",
       "parameters": {
-        "threshold_db": -18,
-        "ratio": 2,
-        "attack_ms": 15,
-        "release_ms": 120,
-        "knee_db": 3,
-        "makeup_gain_db": 1.5
+        "pivot_frequency_hz": 1200,
+        "gain_db": 2,
+        "q": 0.6
       },
       "status": "applied"
     },
     {
-      "operation": "limiter",
+      "operation": "high_shelf",
       "parameters": {
-        "ceiling_dbtp": -1,
-        "release_ms": 80,
-        "lookahead_ms": 5,
-        "input_gain_db": 0
-      },
-      "status": "applied"
-    },
-    {
-      "operation": "stereo_width",
-      "parameters": {
-        "width_multiplier": 1.18
+        "frequency_hz": 6500,
+        "gain_db": 2.5,
+        "q": 0.8
       },
       "status": "applied"
     }
