@@ -1,5 +1,6 @@
 import type { AnalysisReport } from "@audio-language-interface/analysis";
 
+import { DESCRIPTOR_CATEGORY_BY_LABEL, type DESCRIPTOR_TAXONOMY } from "./descriptor-taxonomy.js";
 import type { SemanticDescriptor } from "./types.js";
 
 export function buildSemanticSummary(input: {
@@ -8,9 +9,7 @@ export function buildSemanticSummary(input: {
   unresolvedTerms: string[];
 }): { plain_text: string; caveats?: string[] } {
   const strongestDescriptorConfidence = input.descriptors[0]?.confidence ?? 0;
-  const topLabels = input.descriptors
-    .slice(0, 3)
-    .map((descriptor) => formatLabel(descriptor.label));
+  const topLabels = selectSummaryLabels(input.descriptors).map((label) => formatLabel(label));
   const caveats: string[] = [];
 
   if (input.report.summary.confidence !== undefined && input.report.summary.confidence < 0.65) {
@@ -83,4 +82,65 @@ function joinLabels(labels: string[]): string {
   }
 
   return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
+}
+
+function selectSummaryLabels(descriptors: SemanticDescriptor[]): string[] {
+  const categoryPriority: Array<keyof typeof DESCRIPTOR_TAXONOMY> = [
+    "tonalBalance",
+    "level",
+    "dynamics",
+    "artifacts",
+    "space",
+  ];
+  const selected = new Set<string>();
+  const strongestByCategory = new Map<string, string>();
+  const availableLabels = new Set(descriptors.map((descriptor) => descriptor.label));
+
+  for (const descriptor of descriptors) {
+    const label = descriptor.label as keyof typeof DESCRIPTOR_CATEGORY_BY_LABEL;
+    const category = DESCRIPTOR_CATEGORY_BY_LABEL[label];
+    if (!category || strongestByCategory.has(category)) {
+      continue;
+    }
+
+    if (
+      descriptor.label === "balanced" &&
+      descriptors.some(
+        (candidate) =>
+          candidate.label !== "balanced" &&
+          DESCRIPTOR_CATEGORY_BY_LABEL[
+            candidate.label as keyof typeof DESCRIPTOR_CATEGORY_BY_LABEL
+          ] === "tonalBalance",
+      )
+    ) {
+      continue;
+    }
+
+    strongestByCategory.set(category, descriptor.label);
+  }
+
+  for (const category of categoryPriority) {
+    const label = strongestByCategory.get(category);
+    if (!label) {
+      continue;
+    }
+
+    selected.add(label);
+    if (selected.size >= 4) {
+      return [...selected];
+    }
+  }
+
+  for (const descriptor of descriptors) {
+    if (availableLabels.has("balanced") && descriptor.label === "balanced" && selected.size > 0) {
+      continue;
+    }
+
+    selected.add(descriptor.label);
+    if (selected.size >= 4) {
+      break;
+    }
+  }
+
+  return [...selected];
 }

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import type { AnalysisReport } from "@audio-language-interface/analysis";
+import type { AnalysisAnnotation, AnalysisReport } from "@audio-language-interface/analysis";
 import { describe, expect, it } from "vitest";
 
 import { buildSemanticProfile, isValidSemanticProfile } from "../src/index.js";
@@ -81,6 +81,10 @@ function createReport(overrides: Partial<AnalysisReport> = {}): AnalysisReport {
       },
     },
   };
+}
+
+function createAnnotation(annotation: AnalysisAnnotation): AnalysisAnnotation {
+  return annotation;
 }
 
 describe("buildSemanticProfile", () => {
@@ -251,6 +255,99 @@ describe("buildSemanticProfile", () => {
     expect(profile.unresolved_terms).toContain("bright");
   });
 
+  it("assigns muddy when low-mid buildup clearly outweighs upper presence", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          spectral_balance: createSpectralBalance({
+            low_band_db: -14,
+            mid_band_db: -8,
+            high_band_db: -13,
+            spectral_centroid_hz: 1600,
+          }),
+        },
+        annotations: [],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).toContain("muddy");
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).not.toContain("warm");
+  });
+
+  it("assigns warm when low-band weight is present without muddy masking", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          spectral_balance: createSpectralBalance({
+            low_band_db: -10,
+            mid_band_db: -11.2,
+            high_band_db: -13.2,
+            spectral_centroid_hz: 1900,
+          }),
+        },
+        annotations: [],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).toContain("warm");
+    expect(profile.unresolved_terms ?? []).not.toContain("warm");
+  });
+
+  it("assigns airy only when top-end lift stays open rather than harsh", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          spectral_balance: createSpectralBalance({
+            low_band_db: -18,
+            mid_band_db: -13,
+            high_band_db: -10.5,
+            spectral_centroid_hz: 3200,
+          }),
+        },
+        annotations: [],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).toEqual(
+      expect.arrayContaining(["bright", "airy"]),
+    );
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).not.toContain("sibilant");
+  });
+
+  it("assigns sibilant when strong upper-presence harshness evidence is explicit", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          spectral_balance: createSpectralBalance({
+            low_band_db: -18,
+            mid_band_db: -14,
+            high_band_db: -7,
+            spectral_centroid_hz: 3100,
+          }),
+        },
+        annotations: [
+          createAnnotation({
+            kind: "harshness",
+            start_seconds: 0,
+            end_seconds: 4,
+            bands_hz: [2500, 6000],
+            severity: 0.68,
+            evidence: "presence-band energy spikes sharply on consonant bursts around 5 kHz",
+          }),
+        ],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).toEqual(
+      expect.arrayContaining(["sibilant", "slightly_harsh"]),
+    );
+    expect(profile.unresolved_terms ?? []).not.toContain("sibilant");
+  });
+
   it("keeps near-threshold punch evidence unresolved", () => {
     const profile = buildSemanticProfile(
       createReport({
@@ -278,6 +375,107 @@ describe("buildSemanticProfile", () => {
 
     expect(profile.descriptors.map((descriptor) => descriptor.label)).not.toContain("punchy");
     expect(profile.unresolved_terms).toContain("punchy");
+  });
+
+  it("assigns controlled when dynamics stay moderate and contained", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          levels: {
+            ...loadExampleReport().measurements.levels,
+            integrated_lufs: -16,
+            true_peak_dbtp: -3,
+            rms_dbfs: -17,
+            sample_peak_dbfs: -4,
+            headroom_db: 4,
+          },
+          dynamics: createDynamics({
+            crest_factor_db: 7.5,
+            transient_density_per_second: 0.9,
+            rms_short_term_dbfs: -16,
+            dynamic_range_db: 6.2,
+            transient_crest_db: 7.8,
+            punch_window_ratio: 0.12,
+          }),
+          artifacts: {
+            clipping_detected: false,
+            noise_floor_dbfs: -68,
+            clipped_sample_count: 0,
+          },
+        },
+        annotations: [],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).toContain("controlled");
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).not.toContain("punchy");
+  });
+
+  it("assigns loud and quiet only at conservative level extremes", () => {
+    const loudProfile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          levels: {
+            ...loadExampleReport().measurements.levels,
+            integrated_lufs: -9.8,
+            true_peak_dbtp: -0.6,
+            rms_dbfs: -12.5,
+            sample_peak_dbfs: -0.8,
+            headroom_db: 0.8,
+          },
+        },
+      }),
+    );
+    const quietProfile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          levels: {
+            ...loadExampleReport().measurements.levels,
+            integrated_lufs: -22.5,
+            true_peak_dbtp: -8,
+            rms_dbfs: -24,
+            sample_peak_dbfs: -9,
+            headroom_db: 9,
+          },
+        },
+      }),
+    );
+
+    expect(loudProfile.descriptors.map((descriptor) => descriptor.label)).toContain("loud");
+    expect(quietProfile.descriptors.map((descriptor) => descriptor.label)).toContain("quiet");
+  });
+
+  it("assigns level_unstable when wide dynamic swings and level spread agree", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          levels: {
+            ...loadExampleReport().measurements.levels,
+            integrated_lufs: -17.5,
+            true_peak_dbtp: -2.4,
+            rms_dbfs: -18.5,
+            sample_peak_dbfs: -2.8,
+            headroom_db: 2.8,
+          },
+          dynamics: createDynamics({
+            crest_factor_db: 11.5,
+            transient_density_per_second: 1.2,
+            rms_short_term_dbfs: -12,
+            dynamic_range_db: 13.5,
+            transient_crest_db: 10.8,
+            punch_window_ratio: 0.18,
+          }),
+        },
+        annotations: [],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).toContain("level_unstable");
+    expect(profile.summary.plain_text).toContain("level unstable");
   });
 
   it("keeps mild harshness unresolved below the assignment threshold", () => {
@@ -309,6 +507,65 @@ describe("buildSemanticProfile", () => {
       "slightly_harsh",
     );
     expect(profile.unresolved_terms).toContain("slightly_harsh");
+  });
+
+  it("maps explicit restoration annotations into hum_present and clicks_present", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        annotations: [
+          createAnnotation({
+            kind: "hum",
+            start_seconds: 0,
+            end_seconds: 4,
+            bands_hz: [60, 180],
+            severity: 0.57,
+            evidence: "steady mains-related tone persists at 60 Hz with harmonics",
+          }),
+          createAnnotation({
+            kind: "click",
+            start_seconds: 1.2,
+            end_seconds: 1.23,
+            severity: 0.52,
+            evidence: "short impulsive pop reaches 0.88 full scale around 1.22 seconds",
+          }),
+        ],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).toEqual(
+      expect.arrayContaining(["hum_present", "clicks_present"]),
+    );
+  });
+
+  it("keeps weak restoration evidence unresolved instead of over-assigning", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        annotations: [
+          createAnnotation({
+            kind: "hum",
+            start_seconds: 0,
+            end_seconds: 4,
+            bands_hz: [60, 180],
+            severity: 0.24,
+            evidence: "possible faint low-frequency tone near the mains region",
+          }),
+          createAnnotation({
+            kind: "clicks",
+            start_seconds: 2,
+            end_seconds: 2.04,
+            severity: 0.22,
+            evidence: "possible short click-like burst near 2.02 seconds",
+          }),
+        ],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).not.toEqual(
+      expect.arrayContaining(["hum_present", "clicks_present"]),
+    );
+    expect(profile.unresolved_terms).toEqual(
+      expect.arrayContaining(["hum_present", "clicks_present"]),
+    );
   });
 
   it("uses more cautious summary wording when evidence remains unresolved", () => {

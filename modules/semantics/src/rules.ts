@@ -8,10 +8,13 @@ export function assessDescriptors(report: AnalysisReport): SemanticAssessment {
   const unresolvedTerms = new Set<string>();
 
   addBrightnessDescriptors(report, descriptors, unresolvedTerms);
+  addTonalBodyDescriptors(report, descriptors, unresolvedTerms);
   addSpatialDescriptors(report, descriptors, unresolvedTerms);
   addDynamicsDescriptors(report, descriptors, unresolvedTerms);
+  addLevelDescriptors(report, descriptors, unresolvedTerms);
   addArtifactDescriptors(report, descriptors);
   addNoiseDescriptors(report, descriptors, unresolvedTerms);
+  addRestorationDescriptors(report, descriptors, unresolvedTerms);
   addHarshnessDescriptors(report, descriptors, unresolvedTerms);
 
   return {
@@ -84,6 +87,145 @@ function addBrightnessDescriptors(
 
   if (brightnessTiltDb <= -4 || centroidHz <= 1800) {
     unresolvedTerms.add("dark");
+  }
+}
+
+function addTonalBodyDescriptors(
+  report: AnalysisReport,
+  descriptors: SemanticDescriptor[],
+  unresolvedTerms: Set<string>,
+): void {
+  const spectral = report.measurements.spectral_balance;
+  const annotations = report.annotations ?? [];
+  const brightnessTiltDb =
+    spectral.brightness_tilt_db ?? spectral.high_band_db - spectral.low_band_db;
+  const presenceRatioDb =
+    spectral.harshness_ratio_db ?? spectral.high_band_db - spectral.mid_band_db;
+  const lowMidExcessDb = spectral.mid_band_db - spectral.high_band_db;
+  const bassWarmthDeltaDb = spectral.low_band_db - spectral.high_band_db;
+  const centroidHz = spectral.spectral_centroid_hz;
+  const harshnessAnnotation = findStrongestAnnotation(annotations, "harshness");
+  const harshnessSeverity = harshnessAnnotation?.annotation.severity ?? 0;
+  const sibilanceAnnotation = findStrongestAnnotationByKinds(annotations, [
+    "sibilance",
+    "sibilant",
+  ]);
+  const sibilanceSeverity = sibilanceAnnotation?.annotation.severity ?? 0;
+  const evidenceRef = measurementEvidenceRef(report, "spectral_balance");
+
+  if (lowMidExcessDb >= 3.5 && presenceRatioDb <= -3.5 && centroidHz >= 700 && centroidHz <= 2200) {
+    descriptors.push({
+      label: "muddy",
+      confidence: clamp(
+        0.58 +
+          Math.min((lowMidExcessDb - 3.5) / 8, 0.14) +
+          Math.min((-3.5 - presenceRatioDb) / 8, 0.12) +
+          Math.min((2200 - centroidHz) / 2500, 0.08),
+      ),
+      evidence_refs: [evidenceRef],
+      rationale:
+        "Low-mid energy outweighs upper-band presence by a clear margin and the spectral centroid stays in a low-mid-heavy range.",
+    });
+  } else if (lowMidExcessDb >= 2.5 || presenceRatioDb <= -2.5) {
+    unresolvedTerms.add("muddy");
+  }
+
+  if (
+    !hasDescriptor(descriptors, "muddy") &&
+    bassWarmthDeltaDb >= 2.5 &&
+    bassWarmthDeltaDb <= 6.5 &&
+    centroidHz >= 1400 &&
+    centroidHz <= 2600 &&
+    presenceRatioDb >= -3.5 &&
+    presenceRatioDb <= 2.5 &&
+    lowMidExcessDb < 4.5
+  ) {
+    descriptors.push({
+      label: "warm",
+      confidence: clamp(
+        0.57 +
+          Math.min((bassWarmthDeltaDb - 2.5) / 8, 0.14) +
+          Math.min((centroidHz - 1400) / 2400, 0.08) +
+          Math.min((2.5 - Math.abs(presenceRatioDb)) / 8, 0.08),
+      ),
+      evidence_refs: [evidenceRef],
+      rationale:
+        "Low-band weight is clearly present without the stronger low-mid masking or upper-band rolloff that would read as muddy or dull.",
+    });
+  } else if (
+    !hasDescriptor(descriptors, "muddy") &&
+    bassWarmthDeltaDb >= 1.5 &&
+    centroidHz >= 1200 &&
+    centroidHz <= 2800 &&
+    presenceRatioDb >= -4.5 &&
+    presenceRatioDb <= 3.5
+  ) {
+    unresolvedTerms.add("warm");
+  }
+
+  if (
+    sibilanceSeverity < 0.25 &&
+    harshnessSeverity < 0.28 &&
+    brightnessTiltDb >= 5.5 &&
+    centroidHz >= 3000 &&
+    presenceRatioDb <= 4.5
+  ) {
+    descriptors.push({
+      label: "airy",
+      confidence: clamp(
+        0.58 +
+          Math.min((brightnessTiltDb - 5.5) / 10, 0.14) +
+          Math.min((centroidHz - 3000) / 4000, 0.1) +
+          Math.min((4.5 - presenceRatioDb) / 10, 0.06),
+      ),
+      evidence_refs: [evidenceRef],
+      rationale:
+        "Upper-band extension is clearly elevated while upper-presence harshness remains limited, which supports an open rather than abrasive top end.",
+    });
+  } else if (
+    sibilanceSeverity < 0.4 &&
+    harshnessSeverity < 0.4 &&
+    brightnessTiltDb >= 5 &&
+    centroidHz >= 2500
+  ) {
+    unresolvedTerms.add("airy");
+  }
+
+  if (sibilanceAnnotation && sibilanceSeverity >= 0.45) {
+    descriptors.push({
+      label: "sibilant",
+      confidence: clamp(0.61 + sibilanceSeverity * 0.24),
+      evidence_refs: [annotationEvidenceRef(report, sibilanceAnnotation.index), evidenceRef],
+      rationale: sibilanceAnnotation.annotation.evidence?.length
+        ? `An explicit sibilance annotation is present with elevated upper-presence energy: ${sibilanceAnnotation.annotation.evidence}.`
+        : "An explicit sibilance annotation is present with elevated upper-presence energy.",
+    });
+    return;
+  }
+
+  if (
+    harshnessAnnotation &&
+    (harshnessAnnotation.annotation.bands_hz?.[0] ?? 0) >= 2500 &&
+    (harshnessAnnotation.annotation.bands_hz?.[1] ?? 0) >= 5000 &&
+    harshnessSeverity >= 0.55 &&
+    presenceRatioDb >= 5.5 &&
+    centroidHz >= 2000
+  ) {
+    descriptors.push({
+      label: "sibilant",
+      confidence: clamp(
+        0.58 + harshnessSeverity * 0.2 + Math.min((presenceRatioDb - 5.5) / 8, 0.12),
+      ),
+      evidence_refs: [annotationEvidenceRef(report, harshnessAnnotation.index), evidenceRef],
+      rationale: harshnessAnnotation.annotation.evidence?.length
+        ? `Upper-presence energy is strongly elevated in the annotated 2.5 kHz to 6 kHz region, which is consistent with sibilant emphasis: ${harshnessAnnotation.annotation.evidence}.`
+        : "Upper-presence energy is strongly elevated in the annotated 2.5 kHz to 6 kHz region, which is consistent with sibilant emphasis.",
+    });
+    return;
+  }
+
+  if (sibilanceSeverity >= 0.25 || (harshnessSeverity >= 0.4 && presenceRatioDb >= 4.5)) {
+    unresolvedTerms.add("sibilant");
   }
 }
 
@@ -209,10 +351,7 @@ function addDynamicsDescriptors(
       rationale:
         "Transient activity, localized impact evidence, and short-term punch windows are all elevated without clear compression-like counterevidence.",
     });
-    return;
-  }
-
-  if (
+  } else if (
     (dynamics.transient_density_per_second >= 1.1 &&
       dynamics.crest_factor_db >= 8.5 &&
       (transientCrestDb >= 8 || punchWindowRatio >= 0.18)) ||
@@ -222,6 +361,125 @@ function addDynamicsDescriptors(
       dynamics.crest_factor_db >= 9)
   ) {
     unresolvedTerms.add("punchy");
+  }
+
+  const controlledEvidenceRefs = [
+    measurementEvidenceRef(report, "dynamics"),
+    measurementEvidenceRef(report, "levels"),
+  ];
+  const shortTermLiftDb = dynamics.rms_short_term_dbfs - report.measurements.levels.integrated_lufs;
+
+  if (
+    !report.measurements.artifacts.clipping_detected &&
+    dynamics.dynamic_range_db >= 4.5 &&
+    dynamics.dynamic_range_db <= 7 &&
+    dynamics.crest_factor_db >= 6 &&
+    dynamics.crest_factor_db <= 8 &&
+    transientCrestDb <= 8.5 &&
+    dynamics.transient_density_per_second <= 1 &&
+    punchWindowRatio <= 0.2 &&
+    shortTermLiftDb >= -2 &&
+    shortTermLiftDb <= 2.5 &&
+    transientImpactSeverity < 0.2
+  ) {
+    descriptors.push({
+      label: "controlled",
+      confidence: clamp(
+        0.57 +
+          Math.min((7 - dynamics.dynamic_range_db) / 4, 0.1) +
+          Math.min((8 - dynamics.crest_factor_db) / 3, 0.08) +
+          Math.min((0.2 - punchWindowRatio) / 0.2, 0.08),
+      ),
+      evidence_refs: controlledEvidenceRefs,
+      rationale:
+        "Dynamic range, crest factor, and short-term punch stay in a moderate range without clipping or large level swings.",
+    });
+  } else if (
+    !report.measurements.artifacts.clipping_detected &&
+    ((dynamics.dynamic_range_db >= 4.5 &&
+      dynamics.dynamic_range_db <= 8.5 &&
+      dynamics.crest_factor_db >= 6 &&
+      dynamics.crest_factor_db <= 9 &&
+      dynamics.transient_density_per_second <= 1.15 &&
+      punchWindowRatio <= 0.24 &&
+      shortTermLiftDb >= -1.5 &&
+      shortTermLiftDb <= 2.75 &&
+      transientImpactSeverity < 0.25) ||
+      (transientImpactSeverity < 0.2 &&
+        dynamics.dynamic_range_db >= 4.5 &&
+        dynamics.dynamic_range_db <= 7.5 &&
+        dynamics.crest_factor_db >= 6 &&
+        dynamics.crest_factor_db <= 8.8 &&
+        dynamics.transient_density_per_second <= 1.05 &&
+        shortTermLiftDb >= -1.25 &&
+        shortTermLiftDb <= 2.5))
+  ) {
+    unresolvedTerms.add("controlled");
+  }
+}
+
+function addLevelDescriptors(
+  report: AnalysisReport,
+  descriptors: SemanticDescriptor[],
+  unresolvedTerms: Set<string>,
+): void {
+  const levels = report.measurements.levels;
+  const dynamics = report.measurements.dynamics;
+  const evidenceRefs = [
+    measurementEvidenceRef(report, "levels"),
+    measurementEvidenceRef(report, "dynamics"),
+  ];
+  const shortTermLiftDb = dynamics.rms_short_term_dbfs - levels.integrated_lufs;
+
+  if (levels.integrated_lufs >= -11.5 && levels.rms_dbfs >= -14 && levels.true_peak_dbtp >= -1.5) {
+    descriptors.push({
+      label: "loud",
+      confidence: clamp(
+        0.61 +
+          Math.min((levels.integrated_lufs + 11.5) / 6, 0.14) +
+          Math.min((levels.true_peak_dbtp + 1.5) / 2, 0.08),
+      ),
+      evidence_refs: evidenceRefs,
+      rationale: "Integrated loudness, RMS level, and true peak all sit in a high-output range.",
+    });
+  } else if (
+    levels.integrated_lufs >= -13.8 &&
+    levels.rms_dbfs >= -15.5 &&
+    levels.true_peak_dbtp >= -2
+  ) {
+    unresolvedTerms.add("loud");
+  }
+
+  if (levels.integrated_lufs <= -20 && levels.rms_dbfs <= -22) {
+    descriptors.push({
+      label: "quiet",
+      confidence: clamp(
+        0.61 +
+          Math.min((-20 - levels.integrated_lufs) / 12, 0.14) +
+          Math.min((-22 - levels.rms_dbfs) / 10, 0.08),
+      ),
+      evidence_refs: evidenceRefs,
+      rationale:
+        "Integrated loudness and RMS level both remain well below the current conservative output range.",
+    });
+  } else if (levels.integrated_lufs <= -18.5 || levels.rms_dbfs <= -20.5) {
+    unresolvedTerms.add("quiet");
+  }
+
+  if (dynamics.dynamic_range_db >= 12 && shortTermLiftDb >= 3.5) {
+    descriptors.push({
+      label: "level_unstable",
+      confidence: clamp(
+        0.58 +
+          Math.min((dynamics.dynamic_range_db - 12) / 8, 0.14) +
+          Math.min((shortTermLiftDb - 3.5) / 6, 0.1),
+      ),
+      evidence_refs: evidenceRefs,
+      rationale:
+        "Short-term level sits materially above the integrated program level and the measured dynamic range is wide, which points to unstable overall level.",
+    });
+  } else if (dynamics.dynamic_range_db >= 10 || shortTermLiftDb >= 2.5) {
+    unresolvedTerms.add("level_unstable");
   }
 }
 
@@ -284,6 +542,55 @@ function addNoiseDescriptors(
   }
 }
 
+function addRestorationDescriptors(
+  report: AnalysisReport,
+  descriptors: SemanticDescriptor[],
+  unresolvedTerms: Set<string>,
+): void {
+  const annotations = report.annotations ?? [];
+  const humAnnotation = findStrongestAnnotationByKinds(annotations, [
+    "hum",
+    "hum_tone",
+    "mains_hum",
+  ]);
+  const humSeverity = humAnnotation?.annotation.severity ?? 0;
+  const clickAnnotation = findStrongestAnnotationByKinds(annotations, [
+    "click",
+    "clicks",
+    "click_pop",
+    "impulse_click",
+    "pop",
+    "pops",
+  ]);
+  const clickSeverity = clickAnnotation?.annotation.severity ?? 0;
+
+  if (humAnnotation && humSeverity >= 0.4) {
+    descriptors.push({
+      label: "hum_present",
+      confidence: clamp(0.6 + humSeverity * 0.24),
+      evidence_refs: [annotationEvidenceRef(report, humAnnotation.index)],
+      rationale: humAnnotation.annotation.evidence?.length
+        ? `A steady low-frequency hum annotation is present: ${humAnnotation.annotation.evidence}.`
+        : "A steady low-frequency hum annotation is present.",
+    });
+  } else if (humSeverity >= 0.2) {
+    unresolvedTerms.add("hum_present");
+  }
+
+  if (clickAnnotation && clickSeverity >= 0.38) {
+    descriptors.push({
+      label: "clicks_present",
+      confidence: clamp(0.58 + clickSeverity * 0.26),
+      evidence_refs: [annotationEvidenceRef(report, clickAnnotation.index)],
+      rationale: clickAnnotation.annotation.evidence?.length
+        ? `A short impulsive click annotation is present: ${clickAnnotation.annotation.evidence}.`
+        : "A short impulsive click annotation is present.",
+    });
+  } else if (clickSeverity >= 0.2) {
+    unresolvedTerms.add("clicks_present");
+  }
+}
+
 function addHarshnessDescriptors(
   report: AnalysisReport,
   descriptors: SemanticDescriptor[],
@@ -324,11 +631,27 @@ function addHarshnessDescriptors(
   }
 }
 
+function hasDescriptor(descriptors: SemanticDescriptor[], label: string): boolean {
+  return descriptors.some((descriptor) => descriptor.label === label);
+}
+
 function findStrongestAnnotation(
   annotations: AnalysisAnnotation[],
   kind: string,
 ): { annotation: AnalysisAnnotation; index: number } | undefined {
   return findAnnotations(annotations, kind)[0];
+}
+
+function findStrongestAnnotationByKinds(
+  annotations: AnalysisAnnotation[],
+  kinds: string[],
+): { annotation: AnalysisAnnotation; index: number } | undefined {
+  const normalizedKinds = new Set(kinds);
+
+  return annotations
+    .map((annotation, index) => ({ annotation, index }))
+    .filter((item) => normalizedKinds.has(item.annotation.kind))
+    .sort((left, right) => right.annotation.severity - left.annotation.severity)[0];
 }
 
 function findAnnotations(
