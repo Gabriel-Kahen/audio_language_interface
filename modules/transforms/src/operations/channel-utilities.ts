@@ -150,6 +150,7 @@ export function buildChannelRemapOperation(
     buildOutputChannelExpression(routes, outputChannel),
   );
   const channelLayout = resolveChannelLayout(outputChannels);
+  const { channel_layout: _ignoredChannelLayout, ...audioWithoutChannelLayout } = audio;
 
   return {
     filterChain: `pan=${formatOutputLayout(outputChannels)}|${outputExpressions.join("|")}`,
@@ -158,7 +159,7 @@ export function buildChannelRemapOperation(
       routes,
     },
     nextAudio: {
-      ...audio,
+      ...audioWithoutChannelLayout,
       channels: outputChannels,
       ...(channelLayout === undefined ? {} : { channel_layout: channelLayout }),
     },

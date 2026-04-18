@@ -223,6 +223,22 @@ describe("buildOperation", () => {
     expect(remapped.nextAudio.channels).toBe(1);
     expect(remapped.nextAudio.channel_layout).toBe("mono");
 
+    const remappedToFourChannels = buildOperation(
+      createAudioVersion("storage/audio/source.wav").audio,
+      "channel_remap",
+      {
+        output_channels: 4,
+        routes: [
+          { output_channel: 0, input_channel: 0 },
+          { output_channel: 1, input_channel: 1 },
+        ],
+      },
+      { scope: "full_file" },
+    );
+
+    expect(remappedToFourChannels.nextAudio.channels).toBe(4);
+    expect(remappedToFourChannels.nextAudio.channel_layout).toBeUndefined();
+
     expect(midSideEq.filterChain).toBe(
       "stereotools=mode=lr>ms,equalizer=f=220:t=q:w=1.2:g=-1.5:c=FL,equalizer=f=660:t=q:w=1.1:g=3:c=FR,stereotools=mode=ms>lr",
     );
