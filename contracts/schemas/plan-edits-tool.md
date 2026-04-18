@@ -35,3 +35,11 @@ The tool follows the shared `ToolResponse` envelope and may return:
 - `provenance_mismatch`
 - `invalid_result_contract`
 - `handler_failed`
+
+Planner clarification failures are surfaced as `invalid_arguments` with `error.details.field = "arguments.user_request"` plus a stable `failure_class` of:
+
+- `supported_but_underspecified`
+- `unsupported`
+- `supported_runtime_only_but_not_planner_enabled`
+
+When available, `error.details` also includes `matched_requests`, `runtime_only_operations`, `planner_supported_operations`, `capability_manifest_id`, and `suggested_directions`.

@@ -8,6 +8,7 @@ import {
 import { assertValidAudioVersion } from "@audio-language-interface/core";
 import { assertValidSemanticProfile } from "@audio-language-interface/semantics";
 
+import { createPlanningFailure } from "./failures.js";
 import { parseUserRequest } from "./parse-request.js";
 import { buildPlannedSteps } from "./step-builders.js";
 import type { EditPlan, PlanEditsOptions } from "./types.js";
@@ -62,7 +63,8 @@ export function planEdits(options: PlanEditsOptions): EditPlan {
   });
 
   if (steps.length === 0) {
-    throw new Error(
+    throw createPlanningFailure(
+      "supported_but_underspecified",
       "The baseline planner could not derive an executable plan from the request without guessing unsupported behavior.",
     );
   }
@@ -105,32 +107,54 @@ function resolvePlannerObjectives(
   analysisReport: PlanEditsOptions["analysisReport"],
   semanticProfile: PlanEditsOptions["semanticProfile"],
 ): ReturnType<typeof parseUserRequest> {
-  if (objectives.ambiguous_requests.length > 0) {
-    throw new Error(
-      `The request includes ambiguous phrasing ${formatQuotedList(objectives.ambiguous_requests)}. Please clarify with a supported direction such as darker, less harsh, more controlled dynamics, or peak limiting.`,
+  if (objectives.supported_but_underspecified_requests.length > 0) {
+    throw createPlanningFailure(
+      "supported_but_underspecified",
+      `The request includes underspecified phrasing ${formatQuotedList(objectives.supported_but_underspecified_requests)}. Please clarify with a supported direction such as darker, less harsh, more controlled dynamics, or peak limiting.`,
+      {
+        matched_requests: objectives.supported_but_underspecified_requests,
+      },
     );
   }
 
   if (objectives.unsupported_requests.length > 0) {
-    throw new Error(
+    throw createPlanningFailure(
+      "unsupported",
       `The baseline planner does not support ${formatQuotedList(objectives.unsupported_requests)}. Planner-supported runtime operations in manifest ${defaultRuntimeCapabilityManifest.manifest_id} are ${formatQuotedList(plannerSupportedRuntimeOperations)}.`,
+      {
+        matched_requests: objectives.unsupported_requests,
+      },
+    );
+  }
+
+  if (objectives.supported_runtime_only_but_not_planner_enabled_requests.length > 0) {
+    throw createPlanningFailure(
+      "supported_runtime_only_but_not_planner_enabled",
+      `The request asks for ${formatQuotedList(objectives.supported_runtime_only_but_not_planner_enabled_requests)}, which is available in runtime manifest ${defaultRuntimeCapabilityManifest.manifest_id} but not planner-enabled in the baseline planner.`,
+      {
+        matched_requests: objectives.supported_runtime_only_but_not_planner_enabled_requests,
+        runtime_only_operations: objectives.runtime_only_operations_requested,
+      },
     );
   }
 
   if (objectives.wants_darker && objectives.wants_brighter) {
-    throw new Error(
+    throw createPlanningFailure(
+      "supported_but_underspecified",
       "The request asks for both darker and brighter tonal moves. Please choose one tonal direction.",
     );
   }
 
   if (objectives.wants_louder && objectives.wants_quieter) {
-    throw new Error(
+    throw createPlanningFailure(
+      "supported_but_underspecified",
       "The request asks for both louder and quieter level changes. Please choose one level direction.",
     );
   }
 
   if (objectives.wants_wider && objectives.wants_narrower) {
-    throw new Error(
+    throw createPlanningFailure(
+      "supported_but_underspecified",
       "The request asks for both wider and narrower stereo moves. Please choose one stereo direction.",
     );
   }
@@ -160,7 +184,8 @@ function resolvePlannerObjectives(
         analysisReport.measurements.artifacts.noise_floor_dbfs >= -56);
 
     if (!hasNoiseEvidence) {
-      throw new Error(
+      throw createPlanningFailure(
+        "supported_but_underspecified",
         "The request asks for noise reduction, but the baseline planner only supports conservative denoise when analysis indicates steady noise. Please use a more specific supported direction or inspect the noise evidence first.",
       );
     }
@@ -176,7 +201,8 @@ function resolvePlannerObjectives(
     );
 
     if (audioVersion.audio.channels < 2) {
-      throw new Error(
+      throw createPlanningFailure(
+        "supported_but_underspecified",
         "The baseline planner only supports stereo-width changes for audio that already has at least two channels.",
       );
     }
@@ -186,25 +212,29 @@ function resolvePlannerObjectives(
       stereo.correlation < 0.1 ||
       strongestStereoAmbiguitySeverity >= 0.3
     ) {
-      throw new Error(
+      throw createPlanningFailure(
+        "supported_but_underspecified",
         "The current stereo image is too imbalanced or ambiguous for a conservative stereo-width edit.",
       );
     }
 
     if (objectives.wants_wider && (semanticLabels.has("wide") || stereo.width >= 0.35)) {
-      throw new Error(
+      throw createPlanningFailure(
+        "supported_but_underspecified",
         "The request asks for more width, but the current audio already reads as materially wide. The baseline planner will not widen it further without clearer constraints.",
       );
     }
 
     if (objectives.wants_wider && stereo.width <= 0.05) {
-      throw new Error(
+      throw createPlanningFailure(
+        "supported_but_underspecified",
         "The current audio reads effectively mono, so the baseline planner will not invent stereo width from near-mono material.",
       );
     }
 
     if (objectives.wants_narrower && stereo.width <= 0.12) {
-      throw new Error(
+      throw createPlanningFailure(
+        "supported_but_underspecified",
         "The current audio is already narrow, so the baseline planner will not collapse it further without a clearer technical target.",
       );
     }
@@ -230,7 +260,8 @@ function resolvePlannerObjectives(
     return effectiveObjectives;
   }
 
-  throw new Error(
+  throw createPlanningFailure(
+    "supported_but_underspecified",
     "The request asks to clean up the audio, but the baseline planner only supports conservative tonal cleanup when analysis or semantics point to harshness or muddiness, or conservative denoise when analysis indicates steady noise. Please ask for a supported direction such as less harsh, darker, less muddy, rumble removal, or explicit noise reduction.",
   );
 }

@@ -60,6 +60,7 @@ The initial implementation is a deterministic baseline planner. It uses conserva
 - supports explicit denoise requests only when analysis indicates steady noise and keeps broader restoration requests explicit
 - supports explicit stereo-width requests only for already-stereo material when the current image is safe to adjust conservatively
 - fails instead of guessing when the request cannot be mapped to an explicit supported operation
+- classifies planner refusals explicitly as `supported_but_underspecified`, `unsupported`, or `supported_runtime_only_but_not_planner_enabled` so adapters can ask for clarification without pretending the runtime or planner can do more than they actually can
 
 See `modules/planning/docs/heuristics.md` for the current phrase-to-operation mappings.
 

@@ -1,4 +1,36 @@
-import type { ParsedEditObjectives } from "./types.js";
+import type { OperationName, ParsedEditObjectives } from "./types.js";
+
+interface RuntimeOnlyPhraseMatch {
+  phrase: string;
+  operation: OperationName;
+}
+
+const RUNTIME_ONLY_PHRASE_MATCHERS: RuntimeOnlyPhraseMatch[] = [
+  { phrase: "reverb", operation: "reverb" },
+  { phrase: "delay", operation: "delay" },
+  { phrase: "echo", operation: "echo" },
+  { phrase: "bitcrush", operation: "bitcrush" },
+  { phrase: "bit crush", operation: "bitcrush" },
+  { phrase: "distortion", operation: "distortion" },
+  { phrase: "distort", operation: "distortion" },
+  { phrase: "saturation", operation: "saturation" },
+  { phrase: "saturate", operation: "saturation" },
+  { phrase: "flanger", operation: "flanger" },
+  { phrase: "phaser", operation: "phaser" },
+  { phrase: "pitch shift", operation: "pitch_shift" },
+  { phrase: "pitch up", operation: "pitch_shift" },
+  { phrase: "pitch down", operation: "pitch_shift" },
+  { phrase: "transpose", operation: "pitch_shift" },
+  { phrase: "reverse", operation: "reverse" },
+  { phrase: "trim silence", operation: "trim_silence" },
+  { phrase: "remove silence", operation: "trim_silence" },
+  { phrase: "speed up", operation: "time_stretch" },
+  { phrase: "slow down", operation: "time_stretch" },
+  { phrase: "time stretch", operation: "time_stretch" },
+  { phrase: "pan", operation: "pan" },
+  { phrase: "mono", operation: "mono_sum" },
+  { phrase: "normalize", operation: "normalize" },
+];
 
 /**
  * Normalizes a natural-language request into a small set of baseline planning
@@ -6,9 +38,11 @@ import type { ParsedEditObjectives } from "./types.js";
  */
 export function parseUserRequest(userRequest: string): ParsedEditObjectives {
   const normalizedRequest = normalizeRequest(userRequest);
+  const runtimeOnlyMatches = parseRuntimeOnlyRequests(normalizedRequest);
   const parsed: ParsedEditObjectives = {
     raw_request: userRequest,
     normalized_request: normalizedRequest,
+    request_classification: "supported",
     wants_darker: containsAny(normalizedRequest, [
       "darker",
       "darken",
@@ -94,8 +128,14 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "keep the transients",
       "preserve transient",
     ]),
-    ambiguous_requests: parseAmbiguousRequests(normalizedRequest),
+    supported_but_underspecified_requests: parseUnderspecifiedRequests(normalizedRequest),
     unsupported_requests: parseUnsupportedRequests(normalizedRequest),
+    supported_runtime_only_but_not_planner_enabled_requests: runtimeOnlyMatches.map(
+      (match) => match.phrase,
+    ),
+    runtime_only_operations_requested: [
+      ...new Set(runtimeOnlyMatches.map((match) => match.operation)),
+    ],
     intensity: parseIntensity(normalizedRequest),
   };
 
@@ -113,6 +153,8 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
   if (fadeOutSeconds !== undefined) {
     parsed.fade_out_seconds = fadeOutSeconds;
   }
+
+  parsed.request_classification = classifyRequest(parsed);
 
   return parsed;
 }
@@ -163,7 +205,7 @@ function parseUnsupportedRequests(value: string): string[] {
   return [...matches];
 }
 
-function parseAmbiguousRequests(value: string): string[] {
+function parseUnderspecifiedRequests(value: string): string[] {
   const matches = new Set<string>();
 
   collectMatchedPhrases(matches, value, [
@@ -172,9 +214,72 @@ function parseAmbiguousRequests(value: string): string[] {
     "hit harder",
     "harder",
     "bigger",
+    "improve it",
+    "fix it",
   ]);
 
   return [...matches];
+}
+
+function parseRuntimeOnlyRequests(value: string): RuntimeOnlyPhraseMatch[] {
+  const matches: RuntimeOnlyPhraseMatch[] = [];
+  const seen = new Set<string>();
+
+  for (const matcher of RUNTIME_ONLY_PHRASE_MATCHERS) {
+    if (!value.includes(matcher.phrase)) {
+      continue;
+    }
+
+    const key = `${matcher.phrase}:${matcher.operation}`;
+    if (seen.has(key)) {
+      continue;
+    }
+
+    matches.push(matcher);
+    seen.add(key);
+  }
+
+  return matches;
+}
+
+function classifyRequest(
+  parsed: ParsedEditObjectives,
+): ParsedEditObjectives["request_classification"] {
+  if (parsed.unsupported_requests.length > 0) {
+    return "unsupported";
+  }
+
+  if (parsed.supported_runtime_only_but_not_planner_enabled_requests.length > 0) {
+    return "supported_runtime_only_but_not_planner_enabled";
+  }
+
+  if (parsed.supported_but_underspecified_requests.length > 0 || !hasSupportedIntent(parsed)) {
+    return "supported_but_underspecified";
+  }
+
+  return "supported";
+}
+
+function hasSupportedIntent(parsed: ParsedEditObjectives): boolean {
+  return (
+    parsed.wants_darker ||
+    parsed.wants_brighter ||
+    parsed.wants_cleaner ||
+    parsed.wants_less_harsh ||
+    parsed.wants_less_muddy ||
+    parsed.wants_more_warmth ||
+    parsed.wants_remove_rumble ||
+    parsed.wants_louder ||
+    parsed.wants_quieter ||
+    parsed.wants_more_controlled_dynamics ||
+    parsed.wants_peak_control ||
+    parsed.wants_denoise ||
+    parsed.wants_wider ||
+    parsed.wants_narrower ||
+    parsed.trim_range !== undefined ||
+    parsed.fade_in_seconds !== undefined ||
+    parsed.fade_out_seconds !== undefined
+  );
 }
 
 function wantsMoreControlledDynamics(value: string): boolean {

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { defaultRuntimeCapabilityManifest } from "@audio-language-interface/capabilities";
 import { DEFAULT_NORMALIZATION_TARGET } from "@audio-language-interface/io";
+import { PlanningFailure } from "@audio-language-interface/planning";
 
 import { describe, expect, it, vi } from "vitest";
 
@@ -488,6 +489,54 @@ describe("tools module", () => {
       }),
     );
     expect(isValidToolResponse(response)).toBe(true);
+  });
+
+  it("surfaces planner clarification failures from plan_edits as invalid_arguments", async () => {
+    const planEdits = vi.fn(async () => {
+      throw new PlanningFailure(
+        "The request asks for reverb, which is runtime-available but not planner-enabled.",
+        {
+          failure_class: "supported_runtime_only_but_not_planner_enabled",
+          matched_requests: ["reverb"],
+          runtime_only_operations: ["reverb"],
+          capability_manifest_id: "capmanifest_test",
+          planner_supported_operations: ["gain", "compressor"],
+          suggested_directions: ["less harsh", "more controlled dynamics"],
+        },
+      );
+    });
+
+    const response = await executeToolRequest(
+      buildRequest({
+        tool_name: "plan_edits",
+        asset_id: "asset_example",
+        version_id: "ver_candidate",
+        arguments: {
+          audio_version: buildAudioVersion("ver_candidate"),
+          analysis_report: buildAnalysis("analysis_candidate", "ver_candidate"),
+          semantic_profile: buildSemanticProfile("analysis_candidate", "ver_candidate"),
+          user_request: "Add reverb.",
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/workspace",
+        runtime: createRuntimeOverrides({
+          planEdits: planEdits as unknown as ToolsRuntime["planEdits"],
+        }),
+      },
+    );
+
+    expect(response.status).toBe("error");
+    expect(response.error?.code).toBe("invalid_arguments");
+    expect(response.error?.details).toEqual({
+      field: "arguments.user_request",
+      failure_class: "supported_runtime_only_but_not_planner_enabled",
+      matched_requests: ["reverb"],
+      runtime_only_operations: ["reverb"],
+      capability_manifest_id: "capmanifest_test",
+      planner_supported_operations: ["gain", "compressor"],
+      suggested_directions: ["less harsh", "more controlled dynamics"],
+    });
   });
 
   it("rejects plan_edits request provenance mismatches before execution", async () => {
