@@ -6,7 +6,7 @@ import type {
 } from "./types.js";
 import { CONTRACT_SCHEMA_VERSION } from "./types.js";
 
-const MANIFEST_GENERATED_AT = "2026-04-18T20:15:00Z";
+const MANIFEST_GENERATED_AT = "2026-04-18T22:45:00Z";
 
 function defineOperation(capability: RuntimeOperationCapability): RuntimeOperationCapability {
   return capability;
@@ -14,17 +14,18 @@ function defineOperation(capability: RuntimeOperationCapability): RuntimeOperati
 
 export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
   schema_version: CONTRACT_SCHEMA_VERSION,
-  manifest_id: "capmanifest_20260418A",
+  manifest_id: "capmanifest_20260418B",
   generated_at: MANIFEST_GENERATED_AT,
   runtime_layer: "audio_runtime",
   summary:
     "Published runtime capability surface for deterministic audio editing, including first-cohort time_range execution for segment-safe Layer 1 operations.",
   limitations: [
     "Region targeting currently exposes explicit time_range support for a conservative first cohort of duration-preserving operations.",
+    "Measurement-aware normalization now supports peak and integrated-loudness gain staging, but the baseline planner does not yet choose it automatically.",
     "time_stretch is runtime-available but not yet selected by the baseline planner.",
     "Transient shaping, clipping, and gating are runtime-available but not yet selected by the baseline planner.",
     "Duration-changing operations, tail-bearing ambience effects, and channel-topology-changing operations remain full_file only in the current runtime.",
-    "Stereo routing primitives are runtime-available but not yet selected by the baseline planner.",
+    "Stereo routing and the newer restoration primitives are runtime-available but not yet selected by the baseline planner.",
   ],
   operations: [
     defineOperation({
@@ -47,7 +48,8 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
     defineOperation({
       name: "normalize",
       category: "level",
-      summary: "Apply peak normalization using caller-supplied peak measurements.",
+      summary:
+        "Apply explicit gain normalization using built-in or caller-supplied peak and integrated-loudness measurements.",
       intent_support: "runtime_only",
       supported_target_scopes: ["full_file", "time_range"],
       planner_notes: ["Not chosen by the baseline planner without explicit technical intent."],
@@ -57,14 +59,14 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
           value_type: "enum",
           required: true,
           description: "Normalization mode.",
-          enum_values: ["peak"],
+          enum_values: ["peak", "integrated_lufs"],
           default_value: "peak",
           example_value: "peak",
         },
         {
           name: "target_peak_dbfs",
           value_type: "number",
-          required: true,
+          required: false,
           description: "Requested post-normalization peak level.",
           maximum: 0,
           unit: "dBFS",
@@ -73,11 +75,47 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
         {
           name: "measured_peak_dbfs",
           value_type: "number",
-          required: true,
-          description: "Measured current peak level used to compute gain.",
+          required: false,
+          description:
+            "Measured current peak level used to compute gain. Optional during execution because the runtime can probe it.",
           maximum: 0,
           unit: "dBFS",
           example_value: -4.2,
+        },
+        {
+          name: "target_integrated_lufs",
+          value_type: "number",
+          required: false,
+          description: "Requested post-normalization integrated loudness.",
+          unit: "LUFS",
+          example_value: -14,
+        },
+        {
+          name: "measured_integrated_lufs",
+          value_type: "number",
+          required: false,
+          description:
+            "Measured current integrated loudness. Optional during execution because the runtime can probe it.",
+          unit: "LUFS",
+          example_value: -19.3,
+        },
+        {
+          name: "max_true_peak_dbtp",
+          value_type: "number",
+          required: false,
+          description: "Optional true-peak ceiling that can limit the applied loudness gain.",
+          maximum: 0,
+          unit: "dBTP",
+          example_value: -1,
+        },
+        {
+          name: "measured_true_peak_dbtp",
+          value_type: "number",
+          required: false,
+          description: "Measured current true peak used to enforce the optional ceiling.",
+          maximum: 0,
+          unit: "dBTP",
+          example_value: -3.4,
         },
       ],
     }),
@@ -894,6 +932,168 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
           maximum: 0,
           unit: "dBFS",
           example_value: -58,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "de_esser",
+      category: "restoration",
+      summary:
+        "Reduce sibilant high-frequency bursts with explicit intensity and frequency targeting.",
+      intent_support: "runtime_only",
+      supported_target_scopes: ["full_file", "time_range"],
+      planner_notes: [
+        "Runtime-available restoration primitive. Not yet chosen by the baseline planner.",
+      ],
+      parameters: [
+        {
+          name: "intensity",
+          value_type: "number",
+          required: true,
+          description: "Overall de-essing intensity.",
+          minimum: 0,
+          maximum: 1,
+          unit: "ratio",
+          example_value: 0.45,
+        },
+        {
+          name: "max_reduction",
+          value_type: "number",
+          required: false,
+          description: "Maximum amount of de-essing that may be applied.",
+          minimum: 0,
+          maximum: 1,
+          unit: "ratio",
+          example_value: 0.6,
+        },
+        {
+          name: "frequency_hz",
+          value_type: "number",
+          required: false,
+          description: "Approximate center frequency for the sibilant region.",
+          minimum: 1000,
+          unit: "Hz",
+          example_value: 5500,
+        },
+      ],
+    }),
+    defineOperation({
+      name: "declick",
+      category: "restoration",
+      summary:
+        "Repair short impulsive clicks with explicit analysis window and detection controls.",
+      intent_support: "runtime_only",
+      supported_target_scopes: ["full_file", "time_range"],
+      planner_notes: [
+        "Runtime-available restoration primitive. Not yet chosen by the baseline planner.",
+      ],
+      parameters: [
+        {
+          name: "window_ms",
+          value_type: "number",
+          required: true,
+          description: "Analysis window size used by the click-repair pass.",
+          minimum: 10,
+          maximum: 100,
+          unit: "ms",
+          example_value: 55,
+        },
+        {
+          name: "overlap_percent",
+          value_type: "number",
+          required: false,
+          description: "Window overlap used by the repair process.",
+          minimum: 50,
+          maximum: 95,
+          unit: "percent",
+          example_value: 75,
+        },
+        {
+          name: "ar_order",
+          value_type: "integer",
+          required: false,
+          description: "Autoregression order used while reconstructing impulsive defects.",
+          minimum: 0,
+          maximum: 25,
+          example_value: 2,
+        },
+        {
+          name: "threshold",
+          value_type: "number",
+          required: false,
+          description: "Repair threshold for impulsive detections.",
+          minimum: 1,
+          maximum: 100,
+          example_value: 2,
+        },
+        {
+          name: "burst_fusion",
+          value_type: "number",
+          required: false,
+          description: "Burst fusion factor for clustered clicks.",
+          minimum: 0,
+          maximum: 10,
+          example_value: 2,
+        },
+        {
+          name: "method",
+          value_type: "enum",
+          required: false,
+          description: "Overlap method used by the repair pass.",
+          enum_values: ["add", "save"],
+          default_value: "add",
+          example_value: "add",
+        },
+      ],
+    }),
+    defineOperation({
+      name: "dehum",
+      category: "restoration",
+      summary:
+        "Apply a deterministic harmonic notch stack to suppress electrical hum fundamentals and harmonics.",
+      intent_support: "runtime_only",
+      supported_target_scopes: ["full_file", "time_range"],
+      planner_notes: [
+        "Runtime-available restoration primitive. Not yet chosen by the baseline planner.",
+      ],
+      parameters: [
+        {
+          name: "fundamental_hz",
+          value_type: "number",
+          required: true,
+          description: "Hum fundamental frequency, typically 50 Hz or 60 Hz.",
+          minimum: 40,
+          maximum: 120,
+          unit: "Hz",
+          example_value: 60,
+        },
+        {
+          name: "harmonics",
+          value_type: "integer",
+          required: false,
+          description: "Number of harmonic notches to apply above the fundamental.",
+          minimum: 1,
+          maximum: 10,
+          example_value: 4,
+        },
+        {
+          name: "q",
+          value_type: "number",
+          required: false,
+          description: "Q factor for each harmonic notch.",
+          minimum: 0.1,
+          maximum: 100,
+          example_value: 18,
+        },
+        {
+          name: "mix",
+          value_type: "number",
+          required: false,
+          description: "Wet/dry mix for the hum-reduced signal.",
+          minimum: 0,
+          maximum: 1,
+          unit: "ratio",
+          example_value: 1,
         },
       ],
     }),

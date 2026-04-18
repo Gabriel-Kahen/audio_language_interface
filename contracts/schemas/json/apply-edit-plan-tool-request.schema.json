@@ -613,6 +613,63 @@
                         }
                       }
                     }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "de_esser"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/deEsserParameters"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "declick"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/declickParameters"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "dehum"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "target": {
+                          "$ref": "./common.schema.json#/$defs/fullFileOrTimeRangeTarget"
+                        },
+                        "parameters": {
+                          "$ref": "./common.schema.json#/$defs/dehumParameters"
+                        }
+                      }
+                    }
                   }
                 ]
               }

@@ -271,6 +271,30 @@
                         "parameters": { "$ref": "./common.schema.json#/$defs/denoiseParameters" }
                       }
                     }
+                  },
+                  {
+                    "if": { "properties": { "operation": { "const": "de_esser" } } },
+                    "then": {
+                      "properties": {
+                        "parameters": { "$ref": "./common.schema.json#/$defs/deEsserParameters" }
+                      }
+                    }
+                  },
+                  {
+                    "if": { "properties": { "operation": { "const": "declick" } } },
+                    "then": {
+                      "properties": {
+                        "parameters": { "$ref": "./common.schema.json#/$defs/declickParameters" }
+                      }
+                    }
+                  },
+                  {
+                    "if": { "properties": { "operation": { "const": "dehum" } } },
+                    "then": {
+                      "properties": {
+                        "parameters": { "$ref": "./common.schema.json#/$defs/dehumParameters" }
+                      }
+                    }
                   }
                 ]
               }

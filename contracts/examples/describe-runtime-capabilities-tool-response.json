@@ -1,24 +1,285 @@
 {
   "schema_version": "1.0.0",
-  "request_id": "toolreq_DescribeRuntime001",
+  "request_id": "toolreq_01HZX8S7J2V3M4N5P6Q7R8S9T0",
   "tool_name": "describe_runtime_capabilities",
   "status": "ok",
-  "completed_at": "2026-04-17T18:00:01Z",
+  "completed_at": "2026-04-14T20:20:12Z",
   "result": {
     "runtime_capability_manifest": {
       "schema_version": "1.0.0",
-      "manifest_id": "capmanifest_20260418A",
-      "generated_at": "2026-04-18T20:15:00Z",
+      "manifest_id": "capmanifest_20260418B",
+      "generated_at": "2026-04-18T22:45:00Z",
       "runtime_layer": "audio_runtime",
       "summary": "Published runtime capability surface for deterministic audio editing, including first-cohort time_range execution for segment-safe Layer 1 operations.",
       "limitations": [
         "Region targeting currently exposes explicit time_range support for a conservative first cohort of duration-preserving operations.",
+        "Measurement-aware normalization now supports peak and integrated-loudness gain staging, but the baseline planner does not yet choose it automatically.",
         "time_stretch is runtime-available but not yet selected by the baseline planner.",
         "Transient shaping, clipping, and gating are runtime-available but not yet selected by the baseline planner.",
         "Duration-changing operations, tail-bearing ambience effects, and channel-topology-changing operations remain full_file only in the current runtime.",
-        "Stereo routing primitives are runtime-available but not yet selected by the baseline planner."
+        "Stereo routing and the newer restoration primitives are runtime-available but not yet selected by the baseline planner."
       ],
       "operations": [
+        {
+          "name": "gain",
+          "category": "level",
+          "summary": "Apply explicit gain change in decibels.",
+          "intent_support": "planner_supported",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "parameters": [
+            {
+              "name": "gain_db",
+              "value_type": "number",
+              "required": true,
+              "description": "Gain adjustment in decibels.",
+              "unit": "dB",
+              "example_value": -1.5
+            }
+          ]
+        },
+        {
+          "name": "normalize",
+          "category": "level",
+          "summary": "Apply explicit gain normalization using built-in or caller-supplied peak and integrated-loudness measurements.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "planner_notes": [
+            "Not chosen by the baseline planner without explicit technical intent."
+          ],
+          "parameters": [
+            {
+              "name": "mode",
+              "value_type": "enum",
+              "required": true,
+              "description": "Normalization mode.",
+              "enum_values": ["peak", "integrated_lufs"],
+              "default_value": "peak",
+              "example_value": "peak"
+            },
+            {
+              "name": "target_peak_dbfs",
+              "value_type": "number",
+              "required": false,
+              "description": "Requested post-normalization peak level.",
+              "maximum": 0,
+              "unit": "dBFS",
+              "example_value": -1
+            },
+            {
+              "name": "measured_peak_dbfs",
+              "value_type": "number",
+              "required": false,
+              "description": "Measured current peak level used to compute gain. Optional during execution because the runtime can probe it.",
+              "maximum": 0,
+              "unit": "dBFS",
+              "example_value": -4.2
+            },
+            {
+              "name": "target_integrated_lufs",
+              "value_type": "number",
+              "required": false,
+              "description": "Requested post-normalization integrated loudness.",
+              "unit": "LUFS",
+              "example_value": -14
+            },
+            {
+              "name": "measured_integrated_lufs",
+              "value_type": "number",
+              "required": false,
+              "description": "Measured current integrated loudness. Optional during execution because the runtime can probe it.",
+              "unit": "LUFS",
+              "example_value": -19.3
+            },
+            {
+              "name": "max_true_peak_dbtp",
+              "value_type": "number",
+              "required": false,
+              "description": "Optional true-peak ceiling that can limit the applied loudness gain.",
+              "maximum": 0,
+              "unit": "dBTP",
+              "example_value": -1
+            },
+            {
+              "name": "measured_true_peak_dbtp",
+              "value_type": "number",
+              "required": false,
+              "description": "Measured current true peak used to enforce the optional ceiling.",
+              "maximum": 0,
+              "unit": "dBTP",
+              "example_value": -3.4
+            }
+          ]
+        },
+        {
+          "name": "trim",
+          "category": "timing",
+          "summary": "Trim the clip by explicit start and end times.",
+          "intent_support": "planner_supported",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "parameters": [
+            {
+              "name": "start_seconds",
+              "value_type": "number",
+              "required": false,
+              "description": "Trim start time in seconds.",
+              "minimum": 0,
+              "unit": "seconds",
+              "example_value": 0.1
+            },
+            {
+              "name": "end_seconds",
+              "value_type": "number",
+              "required": false,
+              "description": "Trim end time in seconds.",
+              "minimum": 0,
+              "unit": "seconds",
+              "example_value": 2.9
+            }
+          ]
+        },
+        {
+          "name": "trim_silence",
+          "category": "timing",
+          "summary": "Crop leading and/or trailing silence using deterministic edge detection.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file"],
+          "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+          "parameters": [
+            {
+              "name": "threshold_dbfs",
+              "value_type": "number",
+              "required": true,
+              "description": "Silence threshold used for edge cropping.",
+              "minimum": -80,
+              "maximum": 0,
+              "unit": "dBFS",
+              "example_value": -48
+            },
+            {
+              "name": "trim_leading",
+              "value_type": "boolean",
+              "required": true,
+              "description": "Whether to remove leading silence.",
+              "example_value": true
+            },
+            {
+              "name": "trim_trailing",
+              "value_type": "boolean",
+              "required": true,
+              "description": "Whether to remove trailing silence.",
+              "example_value": true
+            },
+            {
+              "name": "window_seconds",
+              "value_type": "number",
+              "required": false,
+              "description": "Optional silence-analysis window.",
+              "minimum": 0.001,
+              "maximum": 10,
+              "unit": "seconds",
+              "example_value": 0.02
+            }
+          ]
+        },
+        {
+          "name": "fade",
+          "category": "timing",
+          "summary": "Apply fade-in and/or fade-out at clip boundaries.",
+          "intent_support": "planner_supported",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "parameters": [
+            {
+              "name": "fade_in_seconds",
+              "value_type": "number",
+              "required": false,
+              "description": "Fade-in duration.",
+              "minimum": 0,
+              "unit": "seconds",
+              "example_value": 0.05
+            },
+            {
+              "name": "fade_out_seconds",
+              "value_type": "number",
+              "required": false,
+              "description": "Fade-out duration.",
+              "minimum": 0,
+              "unit": "seconds",
+              "example_value": 0.08
+            }
+          ]
+        },
+        {
+          "name": "pitch_shift",
+          "category": "tonal",
+          "summary": "Shift pitch while keeping duration close to the original through deterministic FFmpeg chaining.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+          "parameters": [
+            {
+              "name": "semitones",
+              "value_type": "number",
+              "required": true,
+              "description": "Pitch shift in semitones.",
+              "minimum": -24,
+              "maximum": 24,
+              "unit": "semitones",
+              "example_value": 2
+            }
+          ]
+        },
+        {
+          "name": "parametric_eq",
+          "category": "tonal",
+          "summary": "Apply one or more bell EQ bands.",
+          "intent_support": "planner_supported",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "parameters": [
+            {
+              "name": "bands",
+              "value_type": "string",
+              "required": true,
+              "description": "Non-empty array of bell-band objects with type, frequency_hz, gain_db, and q.",
+              "example_value": "array"
+            }
+          ]
+        },
+        {
+          "name": "high_pass_filter",
+          "category": "tonal",
+          "summary": "Remove low-frequency content below a cutoff frequency.",
+          "intent_support": "planner_supported",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "parameters": [
+            {
+              "name": "frequency_hz",
+              "value_type": "number",
+              "required": true,
+              "description": "High-pass cutoff frequency.",
+              "minimum": 0.01,
+              "unit": "Hz",
+              "example_value": 40
+            }
+          ]
+        },
+        {
+          "name": "low_pass_filter",
+          "category": "tonal",
+          "summary": "Remove high-frequency content above a cutoff frequency.",
+          "intent_support": "planner_supported",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "parameters": [
+            {
+              "name": "frequency_hz",
+              "value_type": "number",
+              "required": true,
+              "description": "Low-pass cutoff frequency.",
+              "minimum": 0.01,
+              "unit": "Hz",
+              "example_value": 9000
+            }
+          ]
+        },
         {
           "name": "high_shelf",
           "category": "tonal",
@@ -60,6 +321,208 @@
           ]
         },
         {
+          "name": "low_shelf",
+          "category": "tonal",
+          "summary": "Boost or cut the lower spectrum below an explicit shelf frequency.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "planner_notes": [
+            "Runtime-available Layer 1 surgical tone-shaping operation. Not yet chosen by the baseline planner."
+          ],
+          "parameters": [
+            {
+              "name": "frequency_hz",
+              "value_type": "number",
+              "required": true,
+              "description": "Shelf transition frequency.",
+              "minimum": 0.01,
+              "unit": "Hz",
+              "example_value": 180
+            },
+            {
+              "name": "gain_db",
+              "value_type": "number",
+              "required": true,
+              "description": "Low-band shelf gain.",
+              "minimum": -24,
+              "maximum": 24,
+              "unit": "dB",
+              "example_value": -2.5
+            },
+            {
+              "name": "q",
+              "value_type": "number",
+              "required": true,
+              "description": "Shelf transition sharpness expressed as a Q factor.",
+              "minimum": 0.01,
+              "unit": "Q",
+              "example_value": 0.7
+            }
+          ]
+        },
+        {
+          "name": "notch_filter",
+          "category": "tonal",
+          "summary": "Reject a narrow band around an explicit center frequency.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "planner_notes": [
+            "Runtime-available Layer 1 surgical tone-shaping operation. Not yet chosen by the baseline planner."
+          ],
+          "parameters": [
+            {
+              "name": "frequency_hz",
+              "value_type": "number",
+              "required": true,
+              "description": "Center frequency of the rejected band.",
+              "minimum": 0.01,
+              "unit": "Hz",
+              "example_value": 3200
+            },
+            {
+              "name": "q",
+              "value_type": "number",
+              "required": true,
+              "description": "Notch narrowness expressed as a Q factor.",
+              "minimum": 0.01,
+              "unit": "Q",
+              "example_value": 8
+            }
+          ]
+        },
+        {
+          "name": "tilt_eq",
+          "category": "tonal",
+          "summary": "Tilt the spectrum around a pivot frequency with equal and opposite high/low emphasis.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "planner_notes": [
+            "Runtime-available Layer 1 surgical tone-shaping operation. Not yet chosen by the baseline planner."
+          ],
+          "parameters": [
+            {
+              "name": "pivot_frequency_hz",
+              "value_type": "number",
+              "required": true,
+              "description": "Pivot frequency around which the spectrum tilts.",
+              "minimum": 0.01,
+              "unit": "Hz",
+              "example_value": 1200
+            },
+            {
+              "name": "gain_db",
+              "value_type": "number",
+              "required": true,
+              "description": "Tilt amount; positive values brighten and negative values darken.",
+              "minimum": -24,
+              "maximum": 24,
+              "unit": "dB",
+              "example_value": 3
+            },
+            {
+              "name": "q",
+              "value_type": "number",
+              "required": true,
+              "description": "Tilt transition sharpness expressed as a Q factor.",
+              "minimum": 0.01,
+              "unit": "Q",
+              "example_value": 0.6
+            }
+          ]
+        },
+        {
+          "name": "compressor",
+          "category": "dynamics",
+          "summary": "Apply downward RMS-style compression with explicit timing and ratio.",
+          "intent_support": "planner_supported",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "parameters": [
+            {
+              "name": "threshold_db",
+              "value_type": "number",
+              "required": true,
+              "description": "Compression threshold.",
+              "maximum": 0,
+              "unit": "dB",
+              "example_value": -18
+            },
+            {
+              "name": "ratio",
+              "value_type": "number",
+              "required": true,
+              "description": "Compression ratio.",
+              "minimum": 1.01,
+              "unit": "ratio",
+              "example_value": 2
+            },
+            {
+              "name": "attack_ms",
+              "value_type": "number",
+              "required": true,
+              "description": "Compressor attack time.",
+              "minimum": 0.01,
+              "unit": "ms",
+              "example_value": 15
+            },
+            {
+              "name": "release_ms",
+              "value_type": "number",
+              "required": true,
+              "description": "Compressor release time.",
+              "minimum": 0.01,
+              "unit": "ms",
+              "example_value": 120
+            },
+            {
+              "name": "makeup_gain_db",
+              "value_type": "number",
+              "required": false,
+              "description": "Optional post-compression makeup gain.",
+              "unit": "dB",
+              "default_value": 0,
+              "example_value": 0
+            }
+          ]
+        },
+        {
+          "name": "limiter",
+          "category": "dynamics",
+          "summary": "Apply a peak limiter with explicit ceiling and timing controls.",
+          "intent_support": "planner_supported",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "parameters": [
+            {
+              "name": "ceiling_dbtp",
+              "value_type": "number",
+              "required": true,
+              "description": "True-peak ceiling.",
+              "maximum": 0,
+              "unit": "dBTP",
+              "example_value": -1
+            },
+            {
+              "name": "release_ms",
+              "value_type": "number",
+              "required": false,
+              "description": "Limiter release time.",
+              "minimum": 0.01,
+              "unit": "ms",
+              "default_value": 80,
+              "example_value": 80
+            },
+            {
+              "name": "lookahead_ms",
+              "value_type": "number",
+              "required": false,
+              "description": "Limiter lookahead time.",
+              "minimum": 0.01,
+              "unit": "ms",
+              "default_value": 5,
+              "example_value": 5
+            }
+          ]
+        },
+        {
           "name": "transient_shaper",
           "category": "dynamics",
           "summary": "Apply a compand-based, transient-biased dynamics curve with explicit threshold and timing controls.",
@@ -86,8 +549,202 @@
               "maximum": 0,
               "unit": "dB",
               "example_value": -24
+            },
+            {
+              "name": "attack_ms",
+              "value_type": "number",
+              "required": false,
+              "description": "Transient detector attack time.",
+              "minimum": 0.1,
+              "maximum": 50,
+              "unit": "ms",
+              "default_value": 5,
+              "example_value": 5
+            },
+            {
+              "name": "release_ms",
+              "value_type": "number",
+              "required": false,
+              "description": "Transient detector release time.",
+              "minimum": 1,
+              "maximum": 500,
+              "unit": "ms",
+              "default_value": 80,
+              "example_value": 80
             }
           ]
+        },
+        {
+          "name": "clipper",
+          "category": "dynamics",
+          "summary": "Apply deterministic hard clipping with explicit ceiling and oversampling.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+          "parameters": [
+            {
+              "name": "ceiling_dbfs",
+              "value_type": "number",
+              "required": true,
+              "description": "Peak ceiling that is normalized to the clip point before clipping and restored after.",
+              "minimum": -24,
+              "maximum": 0,
+              "unit": "dBFS",
+              "example_value": -9
+            },
+            {
+              "name": "input_gain_db",
+              "value_type": "number",
+              "required": false,
+              "description": "Optional gain applied before clipping.",
+              "minimum": -24,
+              "maximum": 24,
+              "unit": "dB",
+              "default_value": 0,
+              "example_value": 6
+            },
+            {
+              "name": "output_gain_db",
+              "value_type": "number",
+              "required": false,
+              "description": "Optional gain applied after clipping.",
+              "minimum": -24,
+              "maximum": 24,
+              "unit": "dB",
+              "default_value": 0,
+              "example_value": 0
+            },
+            {
+              "name": "oversample_factor",
+              "value_type": "integer",
+              "required": false,
+              "description": "Oversampling factor used by the clipping stage.",
+              "minimum": 1,
+              "maximum": 8,
+              "default_value": 2,
+              "example_value": 4
+            }
+          ]
+        },
+        {
+          "name": "gate",
+          "category": "dynamics",
+          "summary": "Apply downward gating to low-level content with explicit threshold and timing.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+          "parameters": [
+            {
+              "name": "threshold_db",
+              "value_type": "number",
+              "required": true,
+              "description": "Gate threshold.",
+              "minimum": -80,
+              "maximum": 0,
+              "unit": "dB",
+              "example_value": -36
+            },
+            {
+              "name": "range_db",
+              "value_type": "number",
+              "required": false,
+              "description": "Maximum attenuation applied below threshold.",
+              "minimum": 0,
+              "maximum": 96,
+              "unit": "dB",
+              "default_value": 60,
+              "example_value": 72
+            },
+            {
+              "name": "ratio",
+              "value_type": "number",
+              "required": false,
+              "description": "Gate expansion ratio.",
+              "minimum": 1.01,
+              "maximum": 20,
+              "unit": "ratio",
+              "default_value": 8,
+              "example_value": 10
+            },
+            {
+              "name": "attack_ms",
+              "value_type": "number",
+              "required": false,
+              "description": "Gate attack time.",
+              "minimum": 0.01,
+              "maximum": 2000,
+              "unit": "ms",
+              "default_value": 5,
+              "example_value": 5
+            },
+            {
+              "name": "release_ms",
+              "value_type": "number",
+              "required": false,
+              "description": "Gate release time.",
+              "minimum": 0.01,
+              "maximum": 9000,
+              "unit": "ms",
+              "default_value": 80,
+              "example_value": 120
+            }
+          ]
+        },
+        {
+          "name": "time_stretch",
+          "category": "timing",
+          "summary": "Change duration while preserving pitch through deterministic tempo chaining.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file"],
+          "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+          "parameters": [
+            {
+              "name": "stretch_ratio",
+              "value_type": "number",
+              "required": false,
+              "description": "Output duration divided by input duration.",
+              "minimum": 0.25,
+              "maximum": 4,
+              "unit": "ratio",
+              "example_value": 1.1
+            },
+            {
+              "name": "source_tempo_bpm",
+              "value_type": "number",
+              "required": false,
+              "description": "Known source tempo used to derive stretch ratio.",
+              "minimum": 0.01,
+              "unit": "BPM",
+              "example_value": 120
+            },
+            {
+              "name": "target_tempo_bpm",
+              "value_type": "number",
+              "required": false,
+              "description": "Known target tempo used to derive stretch ratio.",
+              "minimum": 0.01,
+              "unit": "BPM",
+              "example_value": 90
+            }
+          ]
+        },
+        {
+          "name": "reverse",
+          "category": "timing",
+          "summary": "Reverse the full clip deterministically.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+          "parameters": []
+        },
+        {
+          "name": "mono_sum",
+          "category": "stereo",
+          "summary": "Collapse the clip to mono by averaging the available channels.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file"],
+          "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+          "parameters": []
         },
         {
           "name": "pan",
@@ -110,6 +767,315 @@
               "minimum": -1,
               "maximum": 1,
               "example_value": 0.35
+            }
+          ]
+        },
+        {
+          "name": "channel_swap",
+          "category": "stereo",
+          "summary": "Swap left and right stereo channels deterministically.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "channel_requirements": {
+            "exact_channels": 2
+          },
+          "constraints": ["Requires stereo 2-channel input."],
+          "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+          "parameters": []
+        },
+        {
+          "name": "channel_remap",
+          "category": "stereo",
+          "summary": "Apply an explicit channel-routing matrix with per-route gain controls.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file"],
+          "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+          "parameters": [
+            {
+              "name": "output_channels",
+              "value_type": "integer",
+              "required": true,
+              "description": "Number of output channels to render.",
+              "minimum": 1,
+              "maximum": 8,
+              "example_value": 2
+            },
+            {
+              "name": "routes",
+              "value_type": "string",
+              "required": true,
+              "description": "Non-empty array of route objects with output_channel, input_channel, and optional gain.",
+              "example_value": "array"
+            }
+          ]
+        },
+        {
+          "name": "stereo_balance_correction",
+          "category": "stereo",
+          "summary": "Attenuate one stereo channel by an explicit correction amount.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "channel_requirements": {
+            "exact_channels": 2
+          },
+          "constraints": ["Requires stereo 2-channel input."],
+          "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+          "parameters": [
+            {
+              "name": "target_channel",
+              "value_type": "enum",
+              "required": true,
+              "description": "Stereo channel to attenuate.",
+              "enum_values": ["left", "right"],
+              "example_value": "left"
+            },
+            {
+              "name": "correction_db",
+              "value_type": "number",
+              "required": true,
+              "description": "Attenuation amount applied to the named channel.",
+              "minimum": 0.01,
+              "maximum": 24,
+              "unit": "dB",
+              "example_value": 3
+            }
+          ]
+        },
+        {
+          "name": "mid_side_eq",
+          "category": "stereo",
+          "summary": "Apply explicit bell EQ bands to the mid and/or side image components.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "channel_requirements": {
+            "exact_channels": 2
+          },
+          "constraints": ["Requires stereo 2-channel input."],
+          "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+          "parameters": [
+            {
+              "name": "mid_bands",
+              "value_type": "string",
+              "required": false,
+              "description": "Optional non-empty array of bell EQ bands applied to the mid channel.",
+              "example_value": "array"
+            },
+            {
+              "name": "side_bands",
+              "value_type": "string",
+              "required": false,
+              "description": "Optional non-empty array of bell EQ bands applied to the side channel.",
+              "example_value": "array"
+            }
+          ]
+        },
+        {
+          "name": "stereo_width",
+          "category": "stereo",
+          "summary": "Widen or narrow an existing stereo image conservatively.",
+          "intent_support": "planner_supported",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "channel_requirements": {
+            "exact_channels": 2
+          },
+          "constraints": ["Requires stereo 2-channel input."],
+          "parameters": [
+            {
+              "name": "width_multiplier",
+              "value_type": "number",
+              "required": true,
+              "description": "Stereo width multiplier.",
+              "minimum": 0,
+              "maximum": 2,
+              "unit": "ratio",
+              "example_value": 1.15
+            }
+          ]
+        },
+        {
+          "name": "denoise",
+          "category": "restoration",
+          "summary": "Apply conservative broadband denoise aimed at steady background noise.",
+          "intent_support": "planner_supported",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "parameters": [
+            {
+              "name": "reduction_db",
+              "value_type": "number",
+              "required": true,
+              "description": "Broadband noise reduction amount.",
+              "minimum": 0.01,
+              "maximum": 24,
+              "unit": "dB",
+              "example_value": 6
+            },
+            {
+              "name": "noise_floor_dbfs",
+              "value_type": "number",
+              "required": false,
+              "description": "Optional steady-noise floor estimate used by the runtime.",
+              "maximum": 0,
+              "unit": "dBFS",
+              "example_value": -58
+            }
+          ]
+        },
+        {
+          "name": "de_esser",
+          "category": "restoration",
+          "summary": "Reduce sibilant high-frequency bursts with explicit intensity and frequency targeting.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "planner_notes": [
+            "Runtime-available restoration primitive. Not yet chosen by the baseline planner."
+          ],
+          "parameters": [
+            {
+              "name": "intensity",
+              "value_type": "number",
+              "required": true,
+              "description": "Overall de-essing intensity.",
+              "minimum": 0,
+              "maximum": 1,
+              "unit": "ratio",
+              "example_value": 0.45
+            },
+            {
+              "name": "max_reduction",
+              "value_type": "number",
+              "required": false,
+              "description": "Maximum amount of de-essing that may be applied.",
+              "minimum": 0,
+              "maximum": 1,
+              "unit": "ratio",
+              "example_value": 0.6
+            },
+            {
+              "name": "frequency_hz",
+              "value_type": "number",
+              "required": false,
+              "description": "Approximate center frequency for the sibilant region.",
+              "minimum": 1000,
+              "unit": "Hz",
+              "example_value": 5500
+            }
+          ]
+        },
+        {
+          "name": "declick",
+          "category": "restoration",
+          "summary": "Repair short impulsive clicks with explicit analysis window and detection controls.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "planner_notes": [
+            "Runtime-available restoration primitive. Not yet chosen by the baseline planner."
+          ],
+          "parameters": [
+            {
+              "name": "window_ms",
+              "value_type": "number",
+              "required": true,
+              "description": "Analysis window size used by the click-repair pass.",
+              "minimum": 10,
+              "maximum": 100,
+              "unit": "ms",
+              "example_value": 55
+            },
+            {
+              "name": "overlap_percent",
+              "value_type": "number",
+              "required": false,
+              "description": "Window overlap used by the repair process.",
+              "minimum": 50,
+              "maximum": 95,
+              "unit": "percent",
+              "example_value": 75
+            },
+            {
+              "name": "ar_order",
+              "value_type": "integer",
+              "required": false,
+              "description": "Autoregression order used while reconstructing impulsive defects.",
+              "minimum": 0,
+              "maximum": 25,
+              "example_value": 2
+            },
+            {
+              "name": "threshold",
+              "value_type": "number",
+              "required": false,
+              "description": "Repair threshold for impulsive detections.",
+              "minimum": 1,
+              "maximum": 100,
+              "example_value": 2
+            },
+            {
+              "name": "burst_fusion",
+              "value_type": "number",
+              "required": false,
+              "description": "Burst fusion factor for clustered clicks.",
+              "minimum": 0,
+              "maximum": 10,
+              "example_value": 2
+            },
+            {
+              "name": "method",
+              "value_type": "enum",
+              "required": false,
+              "description": "Overlap method used by the repair pass.",
+              "enum_values": ["add", "save"],
+              "default_value": "add",
+              "example_value": "add"
+            }
+          ]
+        },
+        {
+          "name": "dehum",
+          "category": "restoration",
+          "summary": "Apply a deterministic harmonic notch stack to suppress electrical hum fundamentals and harmonics.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "planner_notes": [
+            "Runtime-available restoration primitive. Not yet chosen by the baseline planner."
+          ],
+          "parameters": [
+            {
+              "name": "fundamental_hz",
+              "value_type": "number",
+              "required": true,
+              "description": "Hum fundamental frequency, typically 50 Hz or 60 Hz.",
+              "minimum": 40,
+              "maximum": 120,
+              "unit": "Hz",
+              "example_value": 60
+            },
+            {
+              "name": "harmonics",
+              "value_type": "integer",
+              "required": false,
+              "description": "Number of harmonic notches to apply above the fundamental.",
+              "minimum": 1,
+              "maximum": 10,
+              "example_value": 4
+            },
+            {
+              "name": "q",
+              "value_type": "number",
+              "required": false,
+              "description": "Q factor for each harmonic notch.",
+              "minimum": 0.1,
+              "maximum": 100,
+              "example_value": 18
+            },
+            {
+              "name": "mix",
+              "value_type": "number",
+              "required": false,
+              "description": "Wet/dry mix for the hum-reduced signal.",
+              "minimum": 0,
+              "maximum": 1,
+              "unit": "ratio",
+              "example_value": 1
             }
           ]
         },
@@ -142,6 +1108,433 @@
               "maximum": 250,
               "unit": "ms",
               "example_value": 18
+            },
+            {
+              "name": "tail_taps",
+              "value_type": "integer",
+              "required": true,
+              "description": "Number of generated reflection taps in the tail.",
+              "minimum": 2,
+              "maximum": 8,
+              "example_value": 4
+            },
+            {
+              "name": "decay",
+              "value_type": "number",
+              "required": true,
+              "description": "Base decay factor applied to the reflection tail.",
+              "minimum": 0.01,
+              "maximum": 0.95,
+              "unit": "ratio",
+              "example_value": 0.6
+            },
+            {
+              "name": "dry_mix",
+              "value_type": "number",
+              "required": false,
+              "description": "Optional dry contribution mixed with the reverb tail.",
+              "minimum": 0,
+              "maximum": 1,
+              "example_value": 0.82
+            },
+            {
+              "name": "wet_mix",
+              "value_type": "number",
+              "required": false,
+              "description": "Optional wet contribution mixed back from the reverb tail.",
+              "minimum": 0,
+              "maximum": 1,
+              "example_value": 0.35
+            }
+          ]
+        },
+        {
+          "name": "delay",
+          "category": "effects",
+          "summary": "Apply a straightforward single-repeat delay with explicit dry and wet mix.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file"],
+          "planner_notes": [
+            "Runtime-available Layer 1 effect. Not yet chosen by the baseline planner."
+          ],
+          "parameters": [
+            {
+              "name": "delay_ms",
+              "value_type": "number",
+              "required": true,
+              "description": "Delay time before the repeated signal returns.",
+              "minimum": 0.01,
+              "maximum": 5000,
+              "unit": "ms",
+              "example_value": 320
+            },
+            {
+              "name": "dry_mix",
+              "value_type": "number",
+              "required": false,
+              "description": "Optional dry contribution preserved alongside the delay return.",
+              "minimum": 0,
+              "maximum": 1,
+              "default_value": 0.85,
+              "example_value": 0.85
+            },
+            {
+              "name": "wet_mix",
+              "value_type": "number",
+              "required": false,
+              "description": "Optional wet contribution returned from the delayed branch.",
+              "minimum": 0,
+              "maximum": 1,
+              "default_value": 0.35,
+              "example_value": 0.35
+            }
+          ]
+        },
+        {
+          "name": "echo",
+          "category": "effects",
+          "summary": "Apply an echo with explicit delay, decay, and dry/wet balance controls.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file"],
+          "planner_notes": [
+            "Runtime-available Layer 1 effect. Not yet chosen by the baseline planner."
+          ],
+          "parameters": [
+            {
+              "name": "delay_ms",
+              "value_type": "number",
+              "required": true,
+              "description": "Delay time before the first audible echo repeat.",
+              "minimum": 1,
+              "maximum": 5000,
+              "unit": "ms",
+              "example_value": 240
+            },
+            {
+              "name": "decay",
+              "value_type": "number",
+              "required": true,
+              "description": "Relative decay applied to each repeated echo.",
+              "minimum": 0.01,
+              "maximum": 0.95,
+              "unit": "ratio",
+              "example_value": 0.35
+            },
+            {
+              "name": "dry_mix",
+              "value_type": "number",
+              "required": false,
+              "description": "Optional dry contribution sent around the echo path.",
+              "minimum": 0,
+              "maximum": 1,
+              "default_value": 0.8,
+              "example_value": 0.8
+            },
+            {
+              "name": "wet_mix",
+              "value_type": "number",
+              "required": false,
+              "description": "Optional wet contribution returned from the echo path.",
+              "minimum": 0,
+              "maximum": 1,
+              "default_value": 0.4,
+              "example_value": 0.4
+            }
+          ]
+        },
+        {
+          "name": "bitcrush",
+          "category": "effects",
+          "summary": "Apply bit-depth reduction with explicit sample hold, blend, and crusher mode.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "planner_notes": [
+            "Runtime-available Layer 1 effect. Not yet chosen by the baseline planner."
+          ],
+          "parameters": [
+            {
+              "name": "bit_depth",
+              "value_type": "integer",
+              "required": true,
+              "description": "Target crushed bit depth.",
+              "minimum": 1,
+              "maximum": 24,
+              "unit": "bits",
+              "example_value": 8
+            },
+            {
+              "name": "sample_hold_samples",
+              "value_type": "integer",
+              "required": true,
+              "description": "Number of samples held before the crusher updates again.",
+              "minimum": 1,
+              "maximum": 250,
+              "example_value": 12
+            },
+            {
+              "name": "mix",
+              "value_type": "number",
+              "required": false,
+              "description": "Optional wet/dry crusher blend.",
+              "minimum": 0,
+              "maximum": 1,
+              "default_value": 1,
+              "example_value": 0.75
+            },
+            {
+              "name": "mode",
+              "value_type": "enum",
+              "required": false,
+              "description": "Crusher transfer curve mode.",
+              "enum_values": ["lin", "log"],
+              "default_value": "lin",
+              "example_value": "log"
+            }
+          ]
+        },
+        {
+          "name": "distortion",
+          "category": "effects",
+          "summary": "Apply stronger nonlinear drive for intentionally obvious harmonic distortion.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "planner_notes": [
+            "Runtime-available Layer 1 effect. Not yet chosen by the baseline planner."
+          ],
+          "parameters": [
+            {
+              "name": "drive_db",
+              "value_type": "number",
+              "required": true,
+              "description": "Input drive amount pushed into the distortion stage.",
+              "minimum": 0,
+              "maximum": 36,
+              "unit": "dB",
+              "example_value": 18
+            },
+            {
+              "name": "threshold",
+              "value_type": "number",
+              "required": true,
+              "description": "Soft-clip threshold used by the distortion stage.",
+              "minimum": 0.01,
+              "maximum": 1,
+              "example_value": 0.4
+            },
+            {
+              "name": "output_gain_db",
+              "value_type": "number",
+              "required": false,
+              "description": "Optional output trim applied after distortion.",
+              "minimum": -24,
+              "maximum": 24,
+              "unit": "dB",
+              "example_value": -6
+            },
+            {
+              "name": "oversample_factor",
+              "value_type": "integer",
+              "required": false,
+              "description": "Optional oversampling factor for the distortion backend.",
+              "minimum": 1,
+              "maximum": 8,
+              "default_value": 2,
+              "example_value": 4
+            }
+          ]
+        },
+        {
+          "name": "saturation",
+          "category": "effects",
+          "summary": "Apply gentler harmonic drive intended for thickening rather than aggressive clipping.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "planner_notes": [
+            "Runtime-available Layer 1 effect. Not yet chosen by the baseline planner."
+          ],
+          "parameters": [
+            {
+              "name": "drive_db",
+              "value_type": "number",
+              "required": true,
+              "description": "Input drive amount pushed into the saturation stage.",
+              "minimum": 0,
+              "maximum": 24,
+              "unit": "dB",
+              "example_value": 9
+            },
+            {
+              "name": "curve",
+              "value_type": "enum",
+              "required": false,
+              "description": "Named soft-clip curve used for the saturation stage.",
+              "enum_values": ["tanh", "atan", "cubic"],
+              "default_value": "tanh",
+              "example_value": "atan"
+            },
+            {
+              "name": "output_gain_db",
+              "value_type": "number",
+              "required": false,
+              "description": "Optional output trim applied after saturation.",
+              "minimum": -24,
+              "maximum": 24,
+              "unit": "dB",
+              "example_value": -3
+            },
+            {
+              "name": "oversample_factor",
+              "value_type": "integer",
+              "required": false,
+              "description": "Optional oversampling factor for the saturation backend.",
+              "minimum": 1,
+              "maximum": 8,
+              "default_value": 2,
+              "example_value": 4
+            }
+          ]
+        },
+        {
+          "name": "flanger",
+          "category": "effects",
+          "summary": "Apply a short modulated comb effect with explicit depth and sweep rate.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "planner_notes": [
+            "Runtime-available Layer 1 effect. Not yet chosen by the baseline planner."
+          ],
+          "parameters": [
+            {
+              "name": "delay_ms",
+              "value_type": "number",
+              "required": true,
+              "description": "Base delay of the flanger comb path.",
+              "minimum": 0,
+              "maximum": 30,
+              "unit": "ms",
+              "example_value": 2.5
+            },
+            {
+              "name": "depth_ms",
+              "value_type": "number",
+              "required": true,
+              "description": "Maximum modulation depth of the delayed comb path.",
+              "minimum": 0,
+              "maximum": 10,
+              "unit": "ms",
+              "example_value": 4
+            },
+            {
+              "name": "rate_hz",
+              "value_type": "number",
+              "required": true,
+              "description": "LFO sweep rate of the flange modulation.",
+              "minimum": 0.1,
+              "maximum": 10,
+              "unit": "Hz",
+              "example_value": 0.8
+            },
+            {
+              "name": "feedback_percent",
+              "value_type": "number",
+              "required": true,
+              "description": "Feedback amount of the modulated comb path.",
+              "minimum": -95,
+              "maximum": 95,
+              "unit": "percent",
+              "example_value": 30
+            },
+            {
+              "name": "mix_percent",
+              "value_type": "number",
+              "required": true,
+              "description": "Width or wet mix amount used by the flanger backend.",
+              "minimum": 0,
+              "maximum": 100,
+              "unit": "percent",
+              "example_value": 65
+            },
+            {
+              "name": "waveform",
+              "value_type": "enum",
+              "required": false,
+              "description": "LFO waveform for the flange sweep.",
+              "enum_values": ["sinusoidal", "triangular"],
+              "default_value": "sinusoidal",
+              "example_value": "triangular"
+            }
+          ]
+        },
+        {
+          "name": "phaser",
+          "category": "effects",
+          "summary": "Apply a moving phase-shift effect with explicit delay, decay, and sweep rate.",
+          "intent_support": "runtime_only",
+          "supported_target_scopes": ["full_file", "time_range"],
+          "planner_notes": [
+            "Runtime-available Layer 1 effect. Not yet chosen by the baseline planner."
+          ],
+          "parameters": [
+            {
+              "name": "input_gain_db",
+              "value_type": "number",
+              "required": false,
+              "description": "Optional input gain sent into the phaser network.",
+              "minimum": -60,
+              "maximum": 0,
+              "unit": "dB",
+              "default_value": -8,
+              "example_value": -10
+            },
+            {
+              "name": "output_gain_db",
+              "value_type": "number",
+              "required": false,
+              "description": "Optional output gain returned from the phaser network.",
+              "minimum": -60,
+              "maximum": 24,
+              "unit": "dB",
+              "default_value": -2,
+              "example_value": -4
+            },
+            {
+              "name": "delay_ms",
+              "value_type": "number",
+              "required": true,
+              "description": "Internal phase-network delay.",
+              "minimum": 0,
+              "maximum": 5,
+              "unit": "ms",
+              "example_value": 2.5
+            },
+            {
+              "name": "decay",
+              "value_type": "number",
+              "required": true,
+              "description": "Decay or resonance amount inside the phase network.",
+              "minimum": 0,
+              "maximum": 0.99,
+              "unit": "ratio",
+              "example_value": 0.5
+            },
+            {
+              "name": "rate_hz",
+              "value_type": "number",
+              "required": true,
+              "description": "LFO sweep rate of the phase modulation.",
+              "minimum": 0.1,
+              "maximum": 2,
+              "unit": "Hz",
+              "example_value": 0.7
+            },
+            {
+              "name": "waveform",
+              "value_type": "enum",
+              "required": false,
+              "description": "LFO waveform for the phaser sweep.",
+              "enum_values": ["sinusoidal", "triangular"],
+              "default_value": "sinusoidal",
+              "example_value": "sinusoidal"
             }
           ]
         }

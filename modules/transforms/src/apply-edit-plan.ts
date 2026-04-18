@@ -7,6 +7,7 @@ import {
 } from "./ffmpeg-adapter.js";
 import { buildOperation } from "./operation-spec.js";
 import { probeOutputAudioMetadata } from "./output-metadata.js";
+import { resolveExecutionParameters } from "./parameter-resolution.js";
 import { createOutputVersionId, resolveTransformOutputPath } from "./path-policy.js";
 import { createAppliedOperation, createTransformRecord } from "./record-builder.js";
 import type {
@@ -35,19 +36,33 @@ export async function applyEditPlan(options: ApplyEditPlanOptions): Promise<Appl
   const commands: FfmpegCommand[] = [];
   const operations: TransformRecordOperation[] = [];
   const warnings: string[] = [];
-  const builtSteps: Array<{
-    step: ApplyEditPlanOptions["plan"]["steps"][number];
-    built: ReturnType<typeof buildOperation>;
-  }> = [];
-  let currentAudio = options.version.audio;
+  let preflightAudio = options.version.audio;
   for (const step of options.plan.steps) {
-    const built = buildOperation(currentAudio, step.operation, step.parameters, step.target);
-    builtSteps.push({ step, built });
-    currentAudio = built.nextAudio;
+    const built = buildOperation(
+      preflightAudio,
+      step.operation,
+      resolvePreflightParameters(step.operation, step.parameters),
+      step.target,
+    );
+    preflightAudio = built.nextAudio;
   }
   let currentVersion = options.version;
 
-  for (const [index, { step, built }] of builtSteps.entries()) {
+  for (const [index, step] of options.plan.steps.entries()) {
+    const resolvedParameters = await resolveExecutionParameters({
+      workspaceRoot: options.workspaceRoot,
+      version: currentVersion,
+      operation: step.operation,
+      parameters: step.parameters,
+      target: step.target,
+      ...(options.ffmpegPath === undefined ? {} : { ffmpegPath: options.ffmpegPath }),
+    });
+    const built = buildOperation(
+      currentVersion.audio,
+      step.operation,
+      resolvedParameters,
+      step.target,
+    );
     const resolvedPath = resolveTransformOutputPath({
       workspaceRoot: options.workspaceRoot,
       ...(options.outputDir !== undefined ? { outputDir: options.outputDir } : {}),
@@ -140,6 +155,41 @@ export async function applyEditPlan(options: ApplyEditPlanOptions): Promise<Appl
     commands,
     warnings,
   };
+}
+
+function resolvePreflightParameters(
+  operation: TransformRecordOperation["operation"],
+  parameters: Record<string, unknown>,
+): Record<string, unknown> {
+  if (operation !== "normalize") {
+    return parameters;
+  }
+
+  const mode = parameters.mode ?? "peak";
+
+  if (mode === "peak" && parameters.measured_peak_dbfs === undefined) {
+    return {
+      ...parameters,
+      mode: "peak",
+      measured_peak_dbfs: -6,
+    };
+  }
+
+  if (mode === "integrated_lufs") {
+    return {
+      ...parameters,
+      mode: "integrated_lufs",
+      ...(parameters.measured_integrated_lufs === undefined
+        ? { measured_integrated_lufs: -20 }
+        : {}),
+      ...(parameters.max_true_peak_dbtp === undefined ||
+      parameters.measured_true_peak_dbtp !== undefined
+        ? {}
+        : { measured_true_peak_dbtp: -6 }),
+    };
+  }
+
+  return parameters;
 }
 
 function finalizeOperationParameters(

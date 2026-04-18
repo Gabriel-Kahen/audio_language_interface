@@ -93,6 +93,54 @@ describe("buildOperation", () => {
     });
   });
 
+  it("normalizes peak and integrated-loudness normalize parameters into explicit gain filters", () => {
+    const audio = createAudioVersion("storage/audio/source.wav").audio;
+
+    const peakResult = buildOperation(
+      audio,
+      "normalize",
+      {
+        mode: "peak",
+        target_peak_dbfs: -1,
+        measured_peak_dbfs: -4.2,
+      },
+      { scope: "full_file" },
+    );
+    const lufsResult = buildOperation(
+      audio,
+      "normalize",
+      {
+        mode: "integrated_lufs",
+        target_integrated_lufs: -14,
+        measured_integrated_lufs: -18.5,
+        max_true_peak_dbtp: -1,
+        measured_true_peak_dbtp: -3.2,
+      },
+      { scope: "full_file" },
+    );
+
+    expect(peakResult.filterChain).toBe("volume=3.2dB");
+    expect(peakResult.effectiveParameters).toEqual({
+      mode: "peak",
+      target_peak_dbfs: -1,
+      measured_peak_dbfs: -4.2,
+      applied_gain_db: 3.2,
+    });
+
+    expect(lufsResult.filterChain).toBe("volume=2.2dB");
+    expect(lufsResult.effectiveParameters).toEqual({
+      mode: "integrated_lufs",
+      target_integrated_lufs: -14,
+      measured_integrated_lufs: -18.5,
+      max_true_peak_dbtp: -1,
+      measured_true_peak_dbtp: -3.2,
+      applied_gain_db: 2.2,
+      estimated_integrated_lufs: -16.3,
+      estimated_true_peak_dbtp: -1,
+      gain_limited_by_true_peak: true,
+    });
+  });
+
   it("updates duration metadata for trim", () => {
     const result = buildOperation(
       createAudioVersion("storage/audio/source.wav").audio,
@@ -440,6 +488,74 @@ describe("buildOperation", () => {
     expect(result.effectiveParameters).toEqual({
       reduction_db: 6,
       noise_floor_dbfs: -58,
+    });
+  });
+
+  it("normalizes restoration parameters into explicit FFmpeg filters", () => {
+    const audio = createAudioVersion("storage/audio/source.wav").audio;
+
+    const deEsser = buildOperation(
+      audio,
+      "de_esser",
+      {
+        intensity: 0.45,
+        max_reduction: 0.6,
+        frequency_hz: 5512.5,
+      },
+      { scope: "full_file" },
+    );
+    const declick = buildOperation(
+      audio,
+      "declick",
+      {
+        window_ms: 45,
+        overlap_percent: 80,
+        ar_order: 3,
+        threshold: 4,
+        burst_fusion: 2.5,
+        method: "save",
+      },
+      { scope: "full_file" },
+    );
+    const dehum = buildOperation(
+      audio,
+      "dehum",
+      {
+        fundamental_hz: 60,
+        harmonics: 4,
+        q: 18,
+        mix: 0.75,
+      },
+      { scope: "full_file" },
+    );
+
+    expect(deEsser.filterChain).toBe("deesser=i=0.45:m=0.6:f=0.25:s=o");
+    expect(deEsser.effectiveParameters).toEqual({
+      intensity: 0.45,
+      max_reduction: 0.6,
+      frequency_hz: 5512.5,
+      normalized_frequency: 0.25,
+    });
+
+    expect(declick.filterChain).toBe("adeclick=w=45:o=80:a=3:t=4:b=2.5:m=save");
+    expect(declick.effectiveParameters).toEqual({
+      window_ms: 45,
+      overlap_percent: 80,
+      ar_order: 3,
+      threshold: 4,
+      burst_fusion: 2.5,
+      method: "save",
+    });
+
+    expect(dehum.filterChain).toBe(
+      "asplit=2[dry][wet];[wet]bandreject=f=60:t=q:w=18,bandreject=f=120:t=q:w=18,bandreject=f=180:t=q:w=18,bandreject=f=240:t=q:w=18,volume=0.75[wetmix];[dry]volume=0.25[drymix];[drymix][wetmix]amix=inputs=2:normalize=0",
+    );
+    expect(dehum.effectiveParameters).toEqual({
+      fundamental_hz: 60,
+      harmonics: 4,
+      q: 18,
+      mix: 0.75,
+      applied_frequencies_hz: [60, 120, 180, 240],
     });
   });
 
@@ -1777,6 +1893,181 @@ describe("applyOperation", () => {
     ]);
   });
 
+  it("auto-measures peak normalization and records the derived peak metrics", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createRealAudioVersionFixture(workspaceRoot, {
+      durationSeconds: 1,
+      sampleRateHz: 44100,
+      channels: 1,
+      peakAmplitude: 9000,
+    });
+
+    const result = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "normalize",
+      target: { scope: "full_file" },
+      parameters: {
+        mode: "peak",
+        target_peak_dbfs: -1,
+      },
+      outputVersionId: "ver_01HZYMEASURE000000000001",
+      recordId: "transform_01HZYMEASURE0000000001",
+      createdAt: new Date("2026-04-18T22:45:00Z"),
+    });
+
+    const normalizedPeakDbfs = await measurePeakLevelDbfs(
+      path.join(workspaceRoot, result.outputVersion.audio.storage_ref),
+    );
+
+    expect(normalizedPeakDbfs).toBeGreaterThan(-1.2);
+    expect(normalizedPeakDbfs).toBeLessThan(-0.8);
+    expect(result.transformRecord.operations).toEqual([
+      {
+        operation: "normalize",
+        target: { scope: "full_file" },
+        parameters: expect.objectContaining({
+          mode: "peak",
+          target_peak_dbfs: -1,
+          measured_peak_dbfs: expect.any(Number),
+          applied_gain_db: expect.any(Number),
+        }),
+        status: "applied",
+      },
+    ]);
+  });
+
+  it("auto-measures integrated loudness normalization and moves the result toward the target", async () => {
+    const workspaceRoot = await createWorkspace();
+    const version = await createRealAudioVersionFixture(workspaceRoot, {
+      durationSeconds: 1,
+      sampleRateHz: 44100,
+      channels: 1,
+      peakAmplitude: 2500,
+    });
+
+    const result = await applyOperation({
+      workspaceRoot,
+      version,
+      operation: "normalize",
+      target: { scope: "full_file" },
+      parameters: {
+        mode: "integrated_lufs",
+        target_integrated_lufs: -18,
+        max_true_peak_dbtp: -1,
+      },
+      outputVersionId: "ver_01HZYMEASURE000000000002",
+      recordId: "transform_01HZYMEASURE0000000002",
+      createdAt: new Date("2026-04-18T22:45:00Z"),
+    });
+
+    const outputPath = path.join(workspaceRoot, result.outputVersion.audio.storage_ref);
+    const measuredLoudness = await measureIntegratedLoudness(outputPath);
+
+    expect(measuredLoudness.integratedLufs).toBeGreaterThan(-19.2);
+    expect(measuredLoudness.integratedLufs).toBeLessThan(-17.2);
+    expect(measuredLoudness.truePeakDbtp).toBeLessThanOrEqual(-0.7);
+    expect(result.transformRecord.operations).toEqual([
+      {
+        operation: "normalize",
+        target: { scope: "full_file" },
+        parameters: expect.objectContaining({
+          mode: "integrated_lufs",
+          target_integrated_lufs: -18,
+          measured_integrated_lufs: expect.any(Number),
+          measured_true_peak_dbtp: expect.any(Number),
+          max_true_peak_dbtp: -1,
+          applied_gain_db: expect.any(Number),
+        }),
+        status: "applied",
+      },
+    ]);
+  });
+
+  it("applies real restoration operations deterministically and reduces targeted artifacts", async () => {
+    const deEssWorkspaceRoot = await createWorkspace();
+    const deEssVersion = await createDeEsserFixture(deEssWorkspaceRoot);
+    const deEsserResult = await applyOperation({
+      workspaceRoot: deEssWorkspaceRoot,
+      version: deEssVersion,
+      operation: "de_esser",
+      target: { scope: "full_file" },
+      parameters: {
+        intensity: 0.6,
+        max_reduction: 0.7,
+        frequency_hz: 7000,
+      },
+      outputVersionId: "ver_01HZYRESTORE00000000001",
+      recordId: "transform_01HZYRESTORE000000001",
+      createdAt: new Date("2026-04-18T22:45:00Z"),
+    });
+    const clickWorkspaceRoot = await createWorkspace();
+    const clickVersion = await createClickyAudioVersionFixture(clickWorkspaceRoot);
+    const declickResult = await applyOperation({
+      workspaceRoot: clickWorkspaceRoot,
+      version: clickVersion,
+      operation: "declick",
+      target: { scope: "full_file" },
+      parameters: {
+        window_ms: 55,
+        threshold: 2,
+      },
+      outputVersionId: "ver_01HZYRESTORE00000000002",
+      recordId: "transform_01HZYRESTORE000000002",
+      createdAt: new Date("2026-04-18T22:45:00Z"),
+    });
+    const humWorkspaceRoot = await createWorkspace();
+    const humVersion = await createHumFixture(humWorkspaceRoot);
+    const dehumResult = await applyOperation({
+      workspaceRoot: humWorkspaceRoot,
+      version: humVersion,
+      operation: "dehum",
+      target: { scope: "full_file" },
+      parameters: {
+        fundamental_hz: 60,
+        harmonics: 4,
+        q: 18,
+      },
+      outputVersionId: "ver_01HZYRESTORE00000000003",
+      recordId: "transform_01HZYRESTORE000000003",
+      createdAt: new Date("2026-04-18T22:45:00Z"),
+    });
+
+    const sourceSibilanceDb = await measureFrequencyBandRmsDb(
+      path.join(deEssWorkspaceRoot, deEssVersion.audio.storage_ref),
+      5000,
+      9000,
+    );
+    const deEssedSibilanceDb = await measureFrequencyBandRmsDb(
+      path.join(deEssWorkspaceRoot, deEsserResult.outputVersion.audio.storage_ref),
+      5000,
+      9000,
+    );
+    const sourceClickCrestDb = await measurePeakToRmsDeltaDb(
+      path.join(clickWorkspaceRoot, clickVersion.audio.storage_ref),
+    );
+    const declickedCrestDb = await measurePeakToRmsDeltaDb(
+      path.join(clickWorkspaceRoot, declickResult.outputVersion.audio.storage_ref),
+    );
+    const sourceHumBandDb = await measureFrequencyBandRmsDb(
+      path.join(humWorkspaceRoot, humVersion.audio.storage_ref),
+      50,
+      80,
+    );
+    const dehummedBandDb = await measureFrequencyBandRmsDb(
+      path.join(humWorkspaceRoot, dehumResult.outputVersion.audio.storage_ref),
+      50,
+      80,
+    );
+
+    expect(deEssedSibilanceDb).toBeLessThan(sourceSibilanceDb - 1);
+    expect(declickedCrestDb).toBeLessThan(sourceClickCrestDb - 2);
+    expect(dehummedBandDb).toBeLessThan(sourceHumBandDb - 4);
+    expect(deEsserResult.transformRecord.operations[0]?.operation).toBe("de_esser");
+    expect(declickResult.transformRecord.operations[0]?.operation).toBe("declick");
+    expect(dehumResult.transformRecord.operations[0]?.operation).toBe("dehum");
+  });
+
   it("applies a real pitch shift deterministically and raises the dominant frequency", async () => {
     const workspaceRoot = await createWorkspace();
     const version = await createRealAudioVersionFixture(workspaceRoot, {
@@ -2269,7 +2560,7 @@ describe("applyEditPlan", () => {
     const plan: EditPlan = {
       schema_version: "1.0.0",
       plan_id: "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0",
-      capability_manifest_id: "capmanifest_20260418A",
+      capability_manifest_id: "capmanifest_20260418B",
       asset_id: version.asset_id,
       version_id: version.version_id,
       user_request: "Trim, soften edges, and reduce level slightly.",
@@ -2327,7 +2618,7 @@ describe("applyEditPlan", () => {
     const plan: EditPlan = {
       schema_version: "1.0.0",
       plan_id: "plan_01HZYREGIONPLAN0000000001",
-      capability_manifest_id: "capmanifest_20260418A",
+      capability_manifest_id: "capmanifest_20260418B",
       asset_id: version.asset_id,
       version_id: version.version_id,
       user_request: "Cut a little low end in the middle, then fade the whole clip.",
@@ -2386,7 +2677,7 @@ describe("applyEditPlan", () => {
     const plan: EditPlan = {
       schema_version: "1.0.0",
       plan_id: "plan_01HZY2INVALID000000000001",
-      capability_manifest_id: "capmanifest_20260418A",
+      capability_manifest_id: "capmanifest_20260418B",
       asset_id: version.asset_id,
       version_id: version.version_id,
       user_request: "Collapse to mono, then widen it.",
@@ -2837,6 +3128,69 @@ async function createNoisyAudioVersionFixture(workspaceRoot: string): Promise<Au
   });
 }
 
+async function createDeEsserFixture(workspaceRoot: string): Promise<AudioVersion> {
+  const sampleRateHz = 44100;
+  const durationSeconds = 1;
+  const totalFrames = Math.round(durationSeconds * sampleRateHz);
+  const mono = Array.from({ length: totalFrames }, (_, index) => {
+    const timeSeconds = index / sampleRateHz;
+    const body = Math.sin((2 * Math.PI * 220 * index) / sampleRateHz) * 5500;
+    const sibilantEnvelope =
+      (timeSeconds >= 0.18 && timeSeconds <= 0.32) || (timeSeconds >= 0.58 && timeSeconds <= 0.72)
+        ? 1
+        : 0.15;
+    const sibilance =
+      Math.sin((2 * Math.PI * 7000 * index) / sampleRateHz) * 8500 * sibilantEnvelope;
+    return Math.round(body + sibilance);
+  });
+
+  return createCustomAudioVersionFixture(workspaceRoot, {
+    sampleRateHz,
+    channels: 1,
+    channelLayout: "mono",
+    samples: [mono],
+  });
+}
+
+async function createClickyAudioVersionFixture(workspaceRoot: string): Promise<AudioVersion> {
+  const sampleRateHz = 44100;
+  const durationSeconds = 1;
+  const totalFrames = Math.round(durationSeconds * sampleRateHz);
+  const clickFrames = new Set([2205, 8820, 15435, 28665, 37485]);
+  const mono = Array.from({ length: totalFrames }, (_, index) => {
+    const body = Math.sin((2 * Math.PI * 330 * index) / sampleRateHz) * 6500;
+    const click = clickFrames.has(index) ? 28000 : 0;
+    return Math.round(body + click);
+  });
+
+  return createCustomAudioVersionFixture(workspaceRoot, {
+    sampleRateHz,
+    channels: 1,
+    channelLayout: "mono",
+    samples: [mono],
+  });
+}
+
+async function createHumFixture(workspaceRoot: string): Promise<AudioVersion> {
+  const sampleRateHz = 44100;
+  const durationSeconds = 1;
+  const totalFrames = Math.round(durationSeconds * sampleRateHz);
+  const mono = Array.from({ length: totalFrames }, (_, index) => {
+    const program = Math.sin((2 * Math.PI * 440 * index) / sampleRateHz) * 6500;
+    const hum60 = Math.sin((2 * Math.PI * 60 * index) / sampleRateHz) * 4200;
+    const hum120 = Math.sin((2 * Math.PI * 120 * index) / sampleRateHz) * 2600;
+    const hum180 = Math.sin((2 * Math.PI * 180 * index) / sampleRateHz) * 1800;
+    return Math.round(program + hum60 + hum120 + hum180);
+  });
+
+  return createCustomAudioVersionFixture(workspaceRoot, {
+    sampleRateHz,
+    channels: 1,
+    channelLayout: "mono",
+    samples: [mono],
+  });
+}
+
 async function createTransientFixture(workspaceRoot: string): Promise<AudioVersion> {
   const sampleRateHz = 44100;
   const durationSeconds = 1;
@@ -3077,6 +3431,49 @@ async function measurePeakToRmsDeltaDb(absolutePath: string): Promise<number> {
   ]);
 
   return peakDbfs - rmsDb;
+}
+
+async function measureIntegratedLoudness(absolutePath: string): Promise<{
+  integratedLufs: number;
+  truePeakDbtp: number;
+}> {
+  const { stderr } = await execFile("ffmpeg", [
+    "-hide_banner",
+    "-nostats",
+    "-i",
+    absolutePath,
+    "-af",
+    "loudnorm=I=-24:TP=-2:LRA=7:print_format=json",
+    "-f",
+    "null",
+    "-",
+  ]);
+  const jsonMatch = stderr.match(/\{[\s\S]*?"input_i"\s*:\s*"[^"]+"[\s\S]*?\}/u);
+
+  if (jsonMatch === null) {
+    throw new Error(`Could not parse loudnorm output for ${absolutePath}.`);
+  }
+
+  const payload = JSON.parse(jsonMatch[0]) as {
+    input_i?: string;
+    input_tp?: string;
+  };
+
+  return {
+    integratedLufs: Number(payload.input_i),
+    truePeakDbtp: Number(payload.input_tp),
+  };
+}
+
+async function measureFrequencyBandRmsDb(
+  absolutePath: string,
+  lowHz: number,
+  highHz: number,
+): Promise<number> {
+  return measureFilteredRmsLevelDb(
+    absolutePath,
+    `highpass=f=${lowHz},lowpass=f=${highHz},astats=metadata=1:reset=0`,
+  );
 }
 
 async function measureMidSideBalanceDb(absolutePath: string): Promise<{

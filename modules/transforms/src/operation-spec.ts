@@ -34,7 +34,13 @@ import {
 } from "./operations/eq.js";
 import { buildGainOperation, buildNormalizeOperation } from "./operations/gain.js";
 import { buildPitchShiftOperation } from "./operations/pitch.js";
-import { buildDenoiseOperation, buildStereoWidthOperation } from "./operations/spatial-cleanup.js";
+import {
+  buildDeclickOperation,
+  buildDeEsserOperation,
+  buildDehumOperation,
+  buildDenoiseOperation,
+} from "./operations/restoration.js";
+import { buildStereoWidthOperation } from "./operations/spatial-cleanup.js";
 import { buildTimeStretchOperation } from "./operations/time-stretch.js";
 import {
   buildFadeOperation,
@@ -151,6 +157,12 @@ function buildResolvedOperation(
       return buildStereoWidthOperation(audio, parameters, target);
     case "denoise":
       return buildDenoiseOperation(audio, parameters, target);
+    case "de_esser":
+      return buildDeEsserOperation(audio, parameters, target);
+    case "declick":
+      return buildDeclickOperation(audio, parameters, target);
+    case "dehum":
+      return buildDehumOperation(audio, parameters, target);
     default:
       throw new Error(`Unsupported transform operation: ${operation satisfies never}`);
   }

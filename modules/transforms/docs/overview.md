@@ -63,6 +63,9 @@ The implemented operation set is currently:
 - `mid_side_eq`
 - `stereo_width`
 - `denoise`
+- `de_esser`
+- `declick`
+- `dehum`
 - `reverb`
 - `delay`
 - `echo`
@@ -91,7 +94,7 @@ Target support is intentionally conservative in the current implementation:
 - `channel_swap` accepts `full_file` and `time_range`, and requires stereo 2-channel input
 - `channel_remap` only accepts `full_file`
 - `stereo_balance_correction`, `mid_side_eq`, and `stereo_width` accept `full_file` and `time_range`, and require stereo 2-channel input
-- `denoise` accepts `full_file` and `time_range`
+- `denoise`, `de_esser`, `declick`, and `dehum` accept `full_file` and `time_range`
 - `bitcrush`, `distortion`, `saturation`, `flanger`, and `phaser` accept `full_file` and `time_range`
 - `reverb`, `delay`, and `echo` only accept `full_file`
 - `trim_silence` only accepts `full_file`
@@ -192,10 +195,12 @@ This module consumes and emits repository contracts directly:
 - `mid_side_eq` requires stereo input and currently supports only bell bands on the mid and/or side components. It does not yet expose shelves, filters, or dynamics in M/S space.
 - `stereo_width` uses FFmpeg `extrastereo` with clipping disabled and only supports stereo 2-channel material. It is intended for subtle widening or narrowing, not aggressive spatial effects or multichannel imaging.
 - `denoise` uses FFmpeg `afftdn` with a fixed broadband profile, explicit reduction, explicit or defaulted noise floor, and adaptive tracking disabled. It is intentionally conservative and is best suited to steady broadband noise rather than clicks, hum removal, or profile-learned restoration.
+- `de_esser` is a thin FFmpeg `deesser` wrapper. It reduces sibilant energy deterministically, but it is not speech-aware, multiband, or source-selective.
+- `declick` is a thin FFmpeg `adeclick` wrapper. It is aimed at short impulsive clicks and pops, not broadband denoise or full declipping.
+- `dehum` is an explicit harmonic notch stack built from `bandreject`. It works best for steady mains hum and harmonics, not drifting buzz or complex electrical contamination.
 - `trim_silence` uses a fixed RMS detector with `start_mode=all`; callers control only threshold, optional analysis window, and whether to crop the head, tail, or both.
 - `pitch_shift` uses FFmpeg `asetrate`, `aresample`, and an explicit `atempo` compensation chain to keep duration close to the original. It is deterministic and inspectable, but it is not formant-preserving and is best suited to moderate shifts rather than transparent vocal correction.
-- No automatic loudness or peak measurement. `normalize` requires caller-supplied `measured_peak_dbfs`.
-- `normalize` supports only `mode: "peak"`.
+- `normalize` now supports `mode: "peak"` and `mode: "integrated_lufs"`, and `applyOperation` / `applyEditPlan` can auto-measure missing peak or loudness inputs at execution time. Direct `buildOperation(...)` calls still require explicit measurement fields because they only build an inspectable filter chain and do not have file access.
 - `parametric_eq` supports only bell bands.
 - `high_shelf`, `low_shelf`, and `notch_filter` expose one band per operation and do not yet support band stacks.
 - `tilt_eq` exposes one tilt pivot plus a single signed gain control. It does not yet expose alternate slope models or multi-band tilt shapes.

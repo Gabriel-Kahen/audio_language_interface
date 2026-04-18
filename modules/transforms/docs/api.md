@@ -130,7 +130,7 @@ Validates one operation and converts it into an inspectable intermediate form:
 
 This function does not touch the filesystem and does not run FFmpeg.
 
-For the Layer 1 effect family (`reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, and `phaser`), the surgical tone-shaping family (`high_shelf`, `low_shelf`, `notch_filter`, and `tilt_eq`), and the transient/control family (`transient_shaper`, `clipper`, and `gate`), the published contract surface is the caller-facing parameter object plus the recorded `TransformRecord` parameters. Some operations also record derived values such as generated reverb tap timings or normalized defaults when those values describe the exact applied result.
+For the Layer 1 effect family (`reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, and `phaser`), the surgical tone-shaping family (`high_shelf`, `low_shelf`, `notch_filter`, and `tilt_eq`), the transient/control family (`transient_shaper`, `clipper`, and `gate`), and the restoration family (`denoise`, `de_esser`, `declick`, and `dehum`), the published contract surface is the caller-facing parameter object plus the recorded `TransformRecord` parameters. Some operations also record derived values such as generated reverb tap timings, normalized defaults, or applied notch frequencies when those values describe the exact applied result.
 
 For the current first-cohort `time_range` surface, region targeting is implemented by trimming the selected window, applying the existing deterministic full-file transform to that window, trimming the processed window back to the requested duration, and concatenating it with the untouched prefix and suffix. Duration-changing transforms, channel-topology changes, and tail-bearing ambience effects remain `full_file` only.
 
@@ -157,15 +157,23 @@ volume=<gain_db>dB
 
 Parameters:
 
-- `mode: "peak"` only
-- `target_peak_dbfs: number`
-- `measured_peak_dbfs: number`
+- `mode: "peak" | "integrated_lufs"`
+- peak mode:
+  - `target_peak_dbfs: number`
+  - optional `measured_peak_dbfs: number`
+- integrated-loudness mode:
+  - `target_integrated_lufs: number`
+  - optional `measured_integrated_lufs: number`
+  - optional `max_true_peak_dbtp: number`, default `-1`
+  - optional `measured_true_peak_dbtp: number`
 
 Rules:
 
-- both peak values must be `<= 0`
-- applied gain is computed as `target_peak_dbfs - measured_peak_dbfs`
-- the module does not measure peaks itself
+- peak values and true-peak values must be `<= 0`
+- peak mode applies `target_peak_dbfs - measured_peak_dbfs`
+- integrated-loudness mode applies `target_integrated_lufs - measured_integrated_lufs`, optionally capped by `max_true_peak_dbtp - measured_true_peak_dbtp`
+- `applyOperation(...)` and `applyEditPlan(...)` can auto-measure missing peak or loudness fields at execution time
+- direct `buildOperation(...)` calls still require explicit measurement fields because they do not have file access
 
 Target support:
 
@@ -710,6 +718,89 @@ Fixed execution behavior:
 - adaptive tracking is disabled with `tn=0` and `tr=0`
 - the implementation uses a fixed broadband denoise profile rather than learned noise capture
 - this is intentionally conservative and best suited to steady broadband noise
+
+### `de_esser`
+
+Parameters:
+
+- `intensity: number`
+- optional `max_reduction: number`, default `0.5`
+- optional `frequency_hz: number`, default `5500`
+
+Rules:
+
+- `intensity` and `max_reduction` must stay between `0` and `1`
+- `frequency_hz` must stay between `1000` and Nyquist when provided
+- the emitted `TransformRecord` also records `normalized_frequency`
+
+Target support:
+
+- `full_file`
+- `time_range`
+
+Fixed execution behavior:
+
+- FFmpeg filter: `deesser`
+- output mode is fixed to `s=o`
+- this is a deterministic sibilance-reduction primitive, not a speech-aware vocal processor
+
+### `declick`
+
+Parameters:
+
+- `window_ms: number`
+- optional `overlap_percent: number`, default `75`
+- optional `ar_order: integer`, default `2`
+- optional `threshold: number`, default `2`
+- optional `burst_fusion: number`, default `2`
+- optional `method: "add" | "save"`, default `"add"`
+
+Rules:
+
+- `window_ms` must stay between `10` and `100`
+- `overlap_percent` must stay between `50` and `95`
+- `ar_order` must stay between `0` and `25`
+- `threshold` must stay between `1` and `100`
+- `burst_fusion` must stay between `0` and `10`
+
+Target support:
+
+- `full_file`
+- `time_range`
+
+Fixed execution behavior:
+
+- FFmpeg filter: `adeclick`
+- overlap method maps directly to FFmpeg `m=add|save`
+- this is intended for short impulsive clicks and pops, not full declipping
+
+### `dehum`
+
+Parameters:
+
+- `fundamental_hz: number`
+- optional `harmonics: integer`, default `4`
+- optional `q: number`, default `18`
+- optional `mix: number`, default `1`
+
+Rules:
+
+- `fundamental_hz` must stay between `40` and `120`
+- `harmonics` must stay between `1` and `10`
+- `q` must stay between `0.1` and `100`
+- `mix` must stay between `0` and `1`
+- the emitted `TransformRecord` also records `applied_frequencies_hz`
+
+Target support:
+
+- `full_file`
+- `time_range`
+
+Fixed execution behavior:
+
+- the implementation constructs an explicit harmonic notch stack from `bandreject`
+- frequencies above Nyquist are omitted automatically
+- `mix < 1` is implemented as explicit dry/wet recombination with `amix`
 
 ### `reverb`
 

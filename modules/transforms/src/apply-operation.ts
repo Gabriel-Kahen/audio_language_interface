@@ -7,6 +7,7 @@ import {
 } from "./ffmpeg-adapter.js";
 import { buildOperation } from "./operation-spec.js";
 import { probeOutputAudioMetadata } from "./output-metadata.js";
+import { resolveExecutionParameters } from "./parameter-resolution.js";
 import { createOutputVersionId, resolveTransformOutputPath } from "./path-policy.js";
 import { createAppliedOperation, createTransformRecord } from "./record-builder.js";
 import type { ApplyOperationOptions, ApplyTransformsResult, AudioVersion } from "./types.js";
@@ -26,13 +27,21 @@ export async function applyOperation(
     ...(options.outputDir !== undefined ? { outputDir: options.outputDir } : {}),
     versionId: outputVersionId,
   });
+  const effectiveTarget = options.target ?? { scope: "full_file" };
+  const resolvedParameters = await resolveExecutionParameters({
+    workspaceRoot: options.workspaceRoot,
+    version: options.version,
+    operation: options.operation,
+    parameters: options.parameters,
+    target: effectiveTarget,
+    ...(options.ffmpegPath === undefined ? {} : { ffmpegPath: options.ffmpegPath }),
+  });
   const built = buildOperation(
     options.version.audio,
     options.operation,
-    options.parameters,
-    options.target ?? { scope: "full_file" },
+    resolvedParameters,
+    effectiveTarget,
   );
-  const effectiveTarget = options.target ?? { scope: "full_file" };
   const inputPath = path.resolve(options.workspaceRoot, options.version.audio.storage_ref);
   const command = buildFfmpegTransformCommand({
     ...(options.ffmpegPath !== undefined ? { ffmpegPath: options.ffmpegPath } : {}),

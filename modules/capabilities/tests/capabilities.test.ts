@@ -118,6 +118,10 @@ describe("capabilities module", () => {
       "full_file",
       "time_range",
     ]);
+    expect(getRuntimeOperationCapability("normalize").supported_target_scopes).toEqual([
+      "full_file",
+      "time_range",
+    ]);
     expect(getRuntimeOperationCapability("low_shelf").supported_target_scopes).toEqual([
       "full_file",
       "time_range",
@@ -133,6 +137,18 @@ describe("capabilities module", () => {
     expect(getRuntimeOperationCapability("reverb").supported_target_scopes).toEqual(["full_file"]);
     expect(getRuntimeOperationCapability("channel_remap").supported_target_scopes).toEqual([
       "full_file",
+    ]);
+    expect(getRuntimeOperationCapability("de_esser").supported_target_scopes).toEqual([
+      "full_file",
+      "time_range",
+    ]);
+    expect(getRuntimeOperationCapability("declick").supported_target_scopes).toEqual([
+      "full_file",
+      "time_range",
+    ]);
+    expect(getRuntimeOperationCapability("dehum").supported_target_scopes).toEqual([
+      "full_file",
+      "time_range",
     ]);
   });
 
@@ -166,6 +182,9 @@ describe("capabilities module", () => {
         "mid_side_eq",
         "stereo_width",
         "denoise",
+        "de_esser",
+        "declick",
+        "dehum",
       ]),
     );
   });

@@ -3,12 +3,6 @@ import type { AudioVersion, EditTarget, OperationBuildResult } from "../types.js
 const STEREO_WIDTH_MIN = 0;
 const STEREO_WIDTH_MAX = 2;
 
-const DENOISE_REDUCTION_MIN_DB = 0.01;
-const DENOISE_REDUCTION_MAX_DB = 24;
-const DENOISE_NOISE_FLOOR_MIN_DBFS = -80;
-const DENOISE_NOISE_FLOOR_MAX_DBFS = -20;
-const DEFAULT_DENOISE_NOISE_FLOOR_DBFS = -50;
-
 export function buildStereoWidthOperation(
   audio: AudioVersion["audio"],
   parameters: Record<string, unknown>,
@@ -39,36 +33,6 @@ export function buildStereoWidthOperation(
   };
 }
 
-export function buildDenoiseOperation(
-  audio: AudioVersion["audio"],
-  parameters: Record<string, unknown>,
-  target?: EditTarget,
-): OperationBuildResult {
-  assertFullFileTarget("denoise", target);
-  const reductionDb = readBoundedNumber(
-    parameters.reduction_db,
-    "denoise.reduction_db",
-    DENOISE_REDUCTION_MIN_DB,
-    DENOISE_REDUCTION_MAX_DB,
-  );
-  const noiseFloorDbfs =
-    readOptionalBoundedNumber(
-      parameters.noise_floor_dbfs,
-      "denoise.noise_floor_dbfs",
-      DENOISE_NOISE_FLOOR_MIN_DBFS,
-      DENOISE_NOISE_FLOOR_MAX_DBFS,
-    ) ?? DEFAULT_DENOISE_NOISE_FLOOR_DBFS;
-
-  return {
-    filterChain: `afftdn=nr=${formatNumber(reductionDb)}:nf=${formatNumber(noiseFloorDbfs)}:tn=0:tr=0:ad=0.5:fo=1:nl=min:om=o`,
-    effectiveParameters: {
-      reduction_db: reductionDb,
-      noise_floor_dbfs: noiseFloorDbfs,
-    },
-    nextAudio: { ...audio },
-  };
-}
-
 function assertFullFileTarget(operation: string, target?: EditTarget): void {
   if (target?.scope !== undefined && target.scope !== "full_file") {
     throw new Error(`${operation} only supports full_file targets in the current runtime.`);
@@ -85,19 +49,6 @@ function readBoundedNumber(value: unknown, label: string, min: number, max: numb
   }
 
   return roundToSixDecimals(value);
-}
-
-function readOptionalBoundedNumber(
-  value: unknown,
-  label: string,
-  min: number,
-  max: number,
-): number | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  return readBoundedNumber(value, label, min, max);
 }
 
 function roundToSixDecimals(value: number): number {

@@ -133,6 +133,11 @@ function validateArguments(value: unknown, request: ToolRequest): ApplyEditPlanA
       );
     }
 
+    if (step.operation === "normalize" && normalizeRequiresExecutionMeasurement(step.parameters)) {
+      currentAudio = { ...currentAudio };
+      continue;
+    }
+
     try {
       const built = buildOperation(currentAudio, step.operation, step.parameters, step.target);
       currentAudio = built.nextAudio;
@@ -179,6 +184,24 @@ function validateArguments(value: unknown, request: ToolRequest): ApplyEditPlanA
     ...(outputVersionId === undefined ? {} : { outputVersionId }),
     ...(recordId === undefined ? {} : { recordId }),
   };
+}
+
+function normalizeRequiresExecutionMeasurement(parameters: Record<string, unknown>): boolean {
+  const mode = parameters.mode ?? "peak";
+
+  if (mode === "peak") {
+    return parameters.measured_peak_dbfs === undefined;
+  }
+
+  if (mode === "integrated_lufs") {
+    return (
+      parameters.measured_integrated_lufs === undefined ||
+      (parameters.max_true_peak_dbtp !== undefined &&
+        parameters.measured_true_peak_dbtp === undefined)
+    );
+  }
+
+  return false;
 }
 
 export const applyEditPlanTool: ToolDefinition<ApplyEditPlanArguments, Record<string, unknown>> = {

@@ -62,6 +62,9 @@ The current published contract allows these operation names in `steps[].operatio
 - `tilt_eq`
 - `compressor`
 - `limiter`
+- `transient_shaper`
+- `clipper`
+- `gate`
 - `time_stretch`
 - `reverse`
 - `mono_sum`
@@ -72,6 +75,9 @@ The current published contract allows these operation names in `steps[].operatio
 - `mid_side_eq`
 - `denoise`
 - `stereo_width`
+- `de_esser`
+- `declick`
+- `dehum`
 - `reverb`
 - `delay`
 - `echo`
@@ -101,7 +107,7 @@ In the current baseline, the capability manifest exposes `time_range` for a cons
 - the EQ family (`parametric_eq`, `high_pass_filter`, `low_pass_filter`, `high_shelf`, `low_shelf`, `notch_filter`, `tilt_eq`)
 - the dynamics/control family (`compressor`, `limiter`, `transient_shaper`, `clipper`, `gate`)
 - `reverse`
-- selected stereo cleanup operations (`channel_swap`, `stereo_balance_correction`, `mid_side_eq`, `stereo_width`, `denoise`)
+- selected stereo cleanup and restoration operations (`channel_swap`, `stereo_balance_correction`, `mid_side_eq`, `stereo_width`, `denoise`, `de_esser`, `declick`, `dehum`)
 - selected drive/modulation operations (`bitcrush`, `distortion`, `saturation`, `flanger`, `phaser`)
 
 The capability manifest still restricts these operations to `full_file`:
@@ -133,6 +139,9 @@ Current expanded parameter surfaces:
 - `mid_side_eq`: at least one of `mid_bands` or `side_bands`
 - `stereo_width`: `width_multiplier`
 - `denoise`: `reduction_db`, with optional `noise_floor_dbfs`
+- `de_esser`: `intensity`, with optional `max_reduction` and `frequency_hz`
+- `declick`: `window_ms`, with optional `overlap_percent`, `ar_order`, `threshold`, `burst_fusion`, and `method`
+- `dehum`: `fundamental_hz`, with optional `harmonics`, `q`, and `mix`
 - `high_shelf`: `frequency_hz`, `gain_db`, and `q`
 - `low_shelf`: `frequency_hz`, `gain_db`, and `q`
 - `notch_filter`: `frequency_hz` and `q`
@@ -146,7 +155,7 @@ Current expanded parameter surfaces:
 - `flanger`: `delay_ms`, `depth_ms`, `feedback_percent`, `mix_percent`, and `rate_hz`, with optional `waveform`
 - `phaser`: `delay_ms`, `decay`, and `rate_hz`, with optional `input_gain_db`, `output_gain_db`, and `waveform`
 
-The machine-readable schema also keeps the existing baseline operation shapes explicit for `gain`, `normalize`, `trim`, `fade`, `parametric_eq`, `high_pass_filter`, and `low_pass_filter`.
+The machine-readable schema also keeps the existing baseline operation shapes explicit for `gain`, `normalize`, `trim`, `fade`, `parametric_eq`, `high_pass_filter`, and `low_pass_filter`. `normalize` now supports both peak and integrated-loudness modes, and execution-time payloads may add derived fields such as `applied_gain_db`, `estimated_integrated_lufs`, `estimated_true_peak_dbtp`, and `gain_limited_by_true_peak`.
 
 `trim_silence` is a separate full-file operation for deterministic edge cropping. It keeps manual time-range trimming (`trim`) distinct from silence-detection-driven auto-cropping.
 
@@ -167,7 +176,7 @@ Published pitch-shift surface:
 
 `pitch_shift` is currently documented as a whole-file transform that keeps duration close to the original. The runtime may record optional derived fields such as FFmpeg rate and tempo-compensation factors in the emitted `TransformRecord`.
 
-The new surgical tone-shaping operations, stereo-routing operations, transient/control operations, and Layer 1 runtime effects are intentionally published as `runtime_only` capability-manifest operations in the current baseline. They are valid in the contract surface for explicit technical callers and future planner work, but they are not yet selected automatically by the baseline planner.
+The new surgical tone-shaping operations, stereo-routing operations, transient/control operations, restoration operations, and Layer 1 runtime effects are intentionally published as `runtime_only` capability-manifest operations in the current baseline. They are valid in the contract surface for explicit technical callers and future planner work, but they are not yet selected automatically by the baseline planner.
 
 ## Optional fields
 

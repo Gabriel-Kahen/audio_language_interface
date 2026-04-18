@@ -1,15 +1,16 @@
 {
   "schema_version": "1.0.0",
-  "manifest_id": "capmanifest_20260418A",
-  "generated_at": "2026-04-18T20:15:00Z",
+  "manifest_id": "capmanifest_20260418B",
+  "generated_at": "2026-04-18T22:45:00Z",
   "runtime_layer": "audio_runtime",
   "summary": "Published runtime capability surface for deterministic audio editing, including first-cohort time_range execution for segment-safe Layer 1 operations.",
   "limitations": [
     "Region targeting currently exposes explicit time_range support for a conservative first cohort of duration-preserving operations.",
+    "Measurement-aware normalization now supports peak and integrated-loudness gain staging, but the baseline planner does not yet choose it automatically.",
     "time_stretch is runtime-available but not yet selected by the baseline planner.",
     "Transient shaping, clipping, and gating are runtime-available but not yet selected by the baseline planner.",
     "Duration-changing operations, tail-bearing ambience effects, and channel-topology-changing operations remain full_file only in the current runtime.",
-    "Stereo routing primitives are runtime-available but not yet selected by the baseline planner."
+    "Stereo routing and the newer restoration primitives are runtime-available but not yet selected by the baseline planner."
   ],
   "operations": [
     {
@@ -32,7 +33,7 @@
     {
       "name": "normalize",
       "category": "level",
-      "summary": "Apply peak normalization using caller-supplied peak measurements.",
+      "summary": "Apply explicit gain normalization using built-in or caller-supplied peak and integrated-loudness measurements.",
       "intent_support": "runtime_only",
       "supported_target_scopes": ["full_file", "time_range"],
       "planner_notes": ["Not chosen by the baseline planner without explicit technical intent."],
@@ -42,14 +43,14 @@
           "value_type": "enum",
           "required": true,
           "description": "Normalization mode.",
-          "enum_values": ["peak"],
+          "enum_values": ["peak", "integrated_lufs"],
           "default_value": "peak",
           "example_value": "peak"
         },
         {
           "name": "target_peak_dbfs",
           "value_type": "number",
-          "required": true,
+          "required": false,
           "description": "Requested post-normalization peak level.",
           "maximum": 0,
           "unit": "dBFS",
@@ -58,11 +59,45 @@
         {
           "name": "measured_peak_dbfs",
           "value_type": "number",
-          "required": true,
-          "description": "Measured current peak level used to compute gain.",
+          "required": false,
+          "description": "Measured current peak level used to compute gain. Optional during execution because the runtime can probe it.",
           "maximum": 0,
           "unit": "dBFS",
           "example_value": -4.2
+        },
+        {
+          "name": "target_integrated_lufs",
+          "value_type": "number",
+          "required": false,
+          "description": "Requested post-normalization integrated loudness.",
+          "unit": "LUFS",
+          "example_value": -14
+        },
+        {
+          "name": "measured_integrated_lufs",
+          "value_type": "number",
+          "required": false,
+          "description": "Measured current integrated loudness. Optional during execution because the runtime can probe it.",
+          "unit": "LUFS",
+          "example_value": -19.3
+        },
+        {
+          "name": "max_true_peak_dbtp",
+          "value_type": "number",
+          "required": false,
+          "description": "Optional true-peak ceiling that can limit the applied loudness gain.",
+          "maximum": 0,
+          "unit": "dBTP",
+          "example_value": -1
+        },
+        {
+          "name": "measured_true_peak_dbtp",
+          "value_type": "number",
+          "required": false,
+          "description": "Measured current true peak used to enforce the optional ceiling.",
+          "maximum": 0,
+          "unit": "dBTP",
+          "example_value": -3.4
         }
       ]
     },
@@ -94,6 +129,50 @@
       ]
     },
     {
+      "name": "trim_silence",
+      "category": "timing",
+      "summary": "Crop leading and/or trailing silence using deterministic edge detection.",
+      "intent_support": "runtime_only",
+      "supported_target_scopes": ["full_file"],
+      "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+      "parameters": [
+        {
+          "name": "threshold_dbfs",
+          "value_type": "number",
+          "required": true,
+          "description": "Silence threshold used for edge cropping.",
+          "minimum": -80,
+          "maximum": 0,
+          "unit": "dBFS",
+          "example_value": -48
+        },
+        {
+          "name": "trim_leading",
+          "value_type": "boolean",
+          "required": true,
+          "description": "Whether to remove leading silence.",
+          "example_value": true
+        },
+        {
+          "name": "trim_trailing",
+          "value_type": "boolean",
+          "required": true,
+          "description": "Whether to remove trailing silence.",
+          "example_value": true
+        },
+        {
+          "name": "window_seconds",
+          "value_type": "number",
+          "required": false,
+          "description": "Optional silence-analysis window.",
+          "minimum": 0.001,
+          "maximum": 10,
+          "unit": "seconds",
+          "example_value": 0.02
+        }
+      ]
+    },
+    {
       "name": "fade",
       "category": "timing",
       "summary": "Apply fade-in and/or fade-out at clip boundaries.",
@@ -117,6 +196,26 @@
           "minimum": 0,
           "unit": "seconds",
           "example_value": 0.08
+        }
+      ]
+    },
+    {
+      "name": "pitch_shift",
+      "category": "tonal",
+      "summary": "Shift pitch while keeping duration close to the original through deterministic FFmpeg chaining.",
+      "intent_support": "runtime_only",
+      "supported_target_scopes": ["full_file", "time_range"],
+      "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+      "parameters": [
+        {
+          "name": "semitones",
+          "value_type": "number",
+          "required": true,
+          "description": "Pitch shift in semitones.",
+          "minimum": -24,
+          "maximum": 24,
+          "unit": "semitones",
+          "example_value": 2
         }
       ]
     },
@@ -593,14 +692,50 @@
         {
           "name": "stretch_ratio",
           "value_type": "number",
-          "required": true,
+          "required": false,
           "description": "Output duration divided by input duration.",
           "minimum": 0.25,
           "maximum": 4,
           "unit": "ratio",
           "example_value": 1.1
+        },
+        {
+          "name": "source_tempo_bpm",
+          "value_type": "number",
+          "required": false,
+          "description": "Known source tempo used to derive stretch ratio.",
+          "minimum": 0.01,
+          "unit": "BPM",
+          "example_value": 120
+        },
+        {
+          "name": "target_tempo_bpm",
+          "value_type": "number",
+          "required": false,
+          "description": "Known target tempo used to derive stretch ratio.",
+          "minimum": 0.01,
+          "unit": "BPM",
+          "example_value": 90
         }
       ]
+    },
+    {
+      "name": "reverse",
+      "category": "timing",
+      "summary": "Reverse the full clip deterministically.",
+      "intent_support": "runtime_only",
+      "supported_target_scopes": ["full_file", "time_range"],
+      "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+      "parameters": []
+    },
+    {
+      "name": "mono_sum",
+      "category": "stereo",
+      "summary": "Collapse the clip to mono by averaging the available channels.",
+      "intent_support": "runtime_only",
+      "supported_target_scopes": ["full_file"],
+      "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+      "parameters": []
     },
     {
       "name": "pan",
@@ -627,6 +762,19 @@
       ]
     },
     {
+      "name": "channel_swap",
+      "category": "stereo",
+      "summary": "Swap left and right stereo channels deterministically.",
+      "intent_support": "runtime_only",
+      "supported_target_scopes": ["full_file", "time_range"],
+      "channel_requirements": {
+        "exact_channels": 2
+      },
+      "constraints": ["Requires stereo 2-channel input."],
+      "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+      "parameters": []
+    },
+    {
       "name": "channel_remap",
       "category": "stereo",
       "summary": "Apply an explicit channel-routing matrix with per-route gain controls.",
@@ -649,6 +797,38 @@
           "required": true,
           "description": "Non-empty array of route objects with output_channel, input_channel, and optional gain.",
           "example_value": "array"
+        }
+      ]
+    },
+    {
+      "name": "stereo_balance_correction",
+      "category": "stereo",
+      "summary": "Attenuate one stereo channel by an explicit correction amount.",
+      "intent_support": "runtime_only",
+      "supported_target_scopes": ["full_file", "time_range"],
+      "channel_requirements": {
+        "exact_channels": 2
+      },
+      "constraints": ["Requires stereo 2-channel input."],
+      "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+      "parameters": [
+        {
+          "name": "target_channel",
+          "value_type": "enum",
+          "required": true,
+          "description": "Stereo channel to attenuate.",
+          "enum_values": ["left", "right"],
+          "example_value": "left"
+        },
+        {
+          "name": "correction_db",
+          "value_type": "number",
+          "required": true,
+          "description": "Attenuation amount applied to the named channel.",
+          "minimum": 0.01,
+          "maximum": 24,
+          "unit": "dB",
+          "example_value": 3
         }
       ]
     },
@@ -728,6 +908,165 @@
           "maximum": 0,
           "unit": "dBFS",
           "example_value": -58
+        }
+      ]
+    },
+    {
+      "name": "de_esser",
+      "category": "restoration",
+      "summary": "Reduce sibilant high-frequency bursts with explicit intensity and frequency targeting.",
+      "intent_support": "runtime_only",
+      "supported_target_scopes": ["full_file", "time_range"],
+      "planner_notes": [
+        "Runtime-available restoration primitive. Not yet chosen by the baseline planner."
+      ],
+      "parameters": [
+        {
+          "name": "intensity",
+          "value_type": "number",
+          "required": true,
+          "description": "Overall de-essing intensity.",
+          "minimum": 0,
+          "maximum": 1,
+          "unit": "ratio",
+          "example_value": 0.45
+        },
+        {
+          "name": "max_reduction",
+          "value_type": "number",
+          "required": false,
+          "description": "Maximum amount of de-essing that may be applied.",
+          "minimum": 0,
+          "maximum": 1,
+          "unit": "ratio",
+          "example_value": 0.6
+        },
+        {
+          "name": "frequency_hz",
+          "value_type": "number",
+          "required": false,
+          "description": "Approximate center frequency for the sibilant region.",
+          "minimum": 1000,
+          "unit": "Hz",
+          "example_value": 5500
+        }
+      ]
+    },
+    {
+      "name": "declick",
+      "category": "restoration",
+      "summary": "Repair short impulsive clicks with explicit analysis window and detection controls.",
+      "intent_support": "runtime_only",
+      "supported_target_scopes": ["full_file", "time_range"],
+      "planner_notes": [
+        "Runtime-available restoration primitive. Not yet chosen by the baseline planner."
+      ],
+      "parameters": [
+        {
+          "name": "window_ms",
+          "value_type": "number",
+          "required": true,
+          "description": "Analysis window size used by the click-repair pass.",
+          "minimum": 10,
+          "maximum": 100,
+          "unit": "ms",
+          "example_value": 55
+        },
+        {
+          "name": "overlap_percent",
+          "value_type": "number",
+          "required": false,
+          "description": "Window overlap used by the repair process.",
+          "minimum": 50,
+          "maximum": 95,
+          "unit": "percent",
+          "example_value": 75
+        },
+        {
+          "name": "ar_order",
+          "value_type": "integer",
+          "required": false,
+          "description": "Autoregression order used while reconstructing impulsive defects.",
+          "minimum": 0,
+          "maximum": 25,
+          "example_value": 2
+        },
+        {
+          "name": "threshold",
+          "value_type": "number",
+          "required": false,
+          "description": "Repair threshold for impulsive detections.",
+          "minimum": 1,
+          "maximum": 100,
+          "example_value": 2
+        },
+        {
+          "name": "burst_fusion",
+          "value_type": "number",
+          "required": false,
+          "description": "Burst fusion factor for clustered clicks.",
+          "minimum": 0,
+          "maximum": 10,
+          "example_value": 2
+        },
+        {
+          "name": "method",
+          "value_type": "enum",
+          "required": false,
+          "description": "Overlap method used by the repair pass.",
+          "enum_values": ["add", "save"],
+          "default_value": "add",
+          "example_value": "add"
+        }
+      ]
+    },
+    {
+      "name": "dehum",
+      "category": "restoration",
+      "summary": "Apply a deterministic harmonic notch stack to suppress electrical hum fundamentals and harmonics.",
+      "intent_support": "runtime_only",
+      "supported_target_scopes": ["full_file", "time_range"],
+      "planner_notes": [
+        "Runtime-available restoration primitive. Not yet chosen by the baseline planner."
+      ],
+      "parameters": [
+        {
+          "name": "fundamental_hz",
+          "value_type": "number",
+          "required": true,
+          "description": "Hum fundamental frequency, typically 50 Hz or 60 Hz.",
+          "minimum": 40,
+          "maximum": 120,
+          "unit": "Hz",
+          "example_value": 60
+        },
+        {
+          "name": "harmonics",
+          "value_type": "integer",
+          "required": false,
+          "description": "Number of harmonic notches to apply above the fundamental.",
+          "minimum": 1,
+          "maximum": 10,
+          "example_value": 4
+        },
+        {
+          "name": "q",
+          "value_type": "number",
+          "required": false,
+          "description": "Q factor for each harmonic notch.",
+          "minimum": 0.1,
+          "maximum": 100,
+          "example_value": 18
+        },
+        {
+          "name": "mix",
+          "value_type": "number",
+          "required": false,
+          "description": "Wet/dry mix for the hum-reduced signal.",
+          "minimum": 0,
+          "maximum": 1,
+          "unit": "ratio",
+          "example_value": 1
         }
       ]
     },

@@ -148,6 +148,9 @@ The current runtime can execute:
 - `mid_side_eq`
 - `stereo_width`
 - `denoise`
+- `de_esser`
+- `declick`
+- `dehum`
 - `reverb`
 - `delay`
 - `echo`
@@ -174,7 +177,7 @@ At the moment, that includes:
 - `stereo_width`
 - `denoise`
 
-`time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility and stereo-routing operations, the new surgical EQ operations, the transient/control operations, and the new Layer 1 effect operations are runtime-available but not yet part of the default planner surface. The transient-shaper surface is currently a compand-based, transient-biased runtime primitive rather than a full transient-designer model.
+`time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility and stereo-routing operations, the new surgical EQ operations, the transient/control operations, and the newer restoration/effect operations are runtime-available but not yet part of the default planner surface. `normalize` now supports peak and integrated-loudness gain staging with built-in execution-time measurement, but it also remains a runtime-only technical operation for now. The transient-shaper surface is currently a compand-based, transient-biased runtime primitive rather than a full transient-designer model.
 
 ### Tool Surface
 

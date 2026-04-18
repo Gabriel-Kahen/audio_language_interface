@@ -158,7 +158,7 @@ function buildEditPlan(versionId: string): Record<string, unknown> {
   return {
     schema_version: "1.0.0",
     plan_id: "plan_123",
-    capability_manifest_id: "capmanifest_20260418A",
+    capability_manifest_id: "capmanifest_20260418B",
     asset_id: "asset_example",
     version_id: versionId,
     user_request: "Trim the intro.",
@@ -188,7 +188,7 @@ function buildSingleStepEditPlan(
   return {
     schema_version: "1.0.0",
     plan_id: "plan_123",
-    capability_manifest_id: "capmanifest_20260418A",
+    capability_manifest_id: "capmanifest_20260418B",
     asset_id: "asset_example",
     version_id: versionId,
     user_request: `Run ${operation}.`,
@@ -215,7 +215,7 @@ function buildTransformRecord(
     schema_version: "1.0.0",
     record_id: "transform_123",
     plan_id: "plan_123",
-    capability_manifest_id: "capmanifest_20260418A",
+    capability_manifest_id: "capmanifest_20260418B",
     asset_id: "asset_example",
     input_version_id: inputVersionId,
     output_version_id: outputVersionId,
@@ -872,7 +872,7 @@ describe("tools module", () => {
           edit_plan: {
             schema_version: "1.0.0",
             plan_id: "plan_123",
-            capability_manifest_id: "capmanifest_20260418A",
+            capability_manifest_id: "capmanifest_20260418B",
             asset_id: "asset_example",
             version_id: "ver_input",
             user_request: "Tighten the lows, notch the harsh resonance, and add a little air.",
@@ -1201,7 +1201,7 @@ describe("tools module", () => {
           edit_plan: {
             schema_version: "1.0.0",
             plan_id: "plan_123",
-            capability_manifest_id: "capmanifest_20260418A",
+            capability_manifest_id: "capmanifest_20260418B",
             asset_id: "asset_example",
             version_id: "ver_input",
             user_request: "Denoise and widen this.",
@@ -1228,6 +1228,73 @@ describe("tools module", () => {
                 },
                 expected_effects: ["widen image"],
                 safety_limits: ["avoid phase issues"],
+              },
+            ],
+          },
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/workspace",
+        runtime: createRuntimeOverrides({
+          applyEditPlan: applyEditPlan as unknown as ToolsRuntime["applyEditPlan"],
+        }),
+      },
+    );
+
+    expect(applyEditPlan).toHaveBeenCalledOnce();
+    expect(response.status).toBe("ok");
+  });
+
+  it("allows normalize steps with runtime-measured inputs through to transforms", async () => {
+    const applyEditPlan = vi.fn(async (_options: unknown) => ({
+      outputVersion: buildAudioVersion("ver_output"),
+      transformRecord: {
+        ...buildTransformRecord("ver_input", "ver_output"),
+        operations: [
+          {
+            operation: "normalize",
+            target: { scope: "time_range", start_seconds: 0.2, end_seconds: 0.8 },
+            parameters: {
+              mode: "peak",
+              target_peak_dbfs: -1,
+              measured_peak_dbfs: -4.8,
+              applied_gain_db: 3.8,
+            },
+            status: "applied",
+          },
+        ],
+      },
+      commands: [],
+      warnings: [],
+    }));
+
+    const response = await executeToolRequest(
+      buildRequest({
+        tool_name: "apply_edit_plan",
+        asset_id: "asset_example",
+        version_id: "ver_input",
+        arguments: {
+          audio_version: buildAudioVersion("ver_input"),
+          edit_plan: {
+            schema_version: "1.0.0",
+            plan_id: "plan_123",
+            capability_manifest_id: "capmanifest_20260418B",
+            asset_id: "asset_example",
+            version_id: "ver_input",
+            user_request: "Normalize just the middle section.",
+            goals: ["normalize section"],
+            created_at: "2026-04-14T20:20:07Z",
+            steps: [
+              {
+                step_id: "step_1",
+                operation: "normalize",
+                target: { scope: "time_range", start_seconds: 0.2, end_seconds: 0.8 },
+                parameters: {
+                  mode: "peak",
+                  target_peak_dbfs: -1,
+                },
+                expected_effects: ["match section peak"],
+                safety_limits: ["avoid clipping"],
               },
             ],
           },
@@ -1336,7 +1403,7 @@ describe("tools module", () => {
           edit_plan: {
             schema_version: "1.0.0",
             plan_id: "plan_123",
-            capability_manifest_id: "capmanifest_20260418A",
+            capability_manifest_id: "capmanifest_20260418B",
             asset_id: "asset_example",
             version_id: "ver_input",
             user_request: "Collapse to mono and then widen it.",
@@ -1395,7 +1462,7 @@ describe("tools module", () => {
           edit_plan: {
             schema_version: "1.0.0",
             plan_id: "plan_123",
-            capability_manifest_id: "capmanifest_20260418A",
+            capability_manifest_id: "capmanifest_20260418B",
             asset_id: "asset_example",
             version_id: "ver_input",
             user_request: "Widen the left side only.",
@@ -1507,7 +1574,7 @@ describe("tools module", () => {
           audio_version: buildAudioVersion("ver_input"),
           edit_plan: {
             ...buildSingleStepEditPlan("ver_input", "gain", { gain_db: 4 }),
-            capability_manifest_id: "capmanifest_20260418A",
+            capability_manifest_id: "capmanifest_20260418B",
             steps: [
               {
                 step_id: "step_1",

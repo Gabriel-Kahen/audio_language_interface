@@ -98,6 +98,9 @@ Supported but conservative areas:
 - `mid_side_eq`
 - `stereo_width`
 - `denoise`
+- `de_esser`
+- `declick`
+- `dehum`
 - `reverb`
 - `delay`
 - `echo`
@@ -123,6 +126,7 @@ The baseline planner currently plans only against operations marked `planner_sup
 - `denoise`
 
 `time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility and stereo-routing operations, the new surgical EQ operations, the transient/control operations, and the new Layer 1 effect operations are runtime-available but not yet selected by the baseline planner. The current `transient_shaper` surface is compand-based and best suited to transient-rich material.
+`normalize` now supports peak and integrated-loudness gain staging with built-in execution-time measurement, but it remains a runtime-only technical operation for now.
 
 ### Implemented Tool Surface
 

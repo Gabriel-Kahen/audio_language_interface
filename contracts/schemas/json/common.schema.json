@@ -190,6 +190,9 @@
         "mid_side_eq",
         "stereo_width",
         "denoise",
+        "de_esser",
+        "declick",
+        "dehum",
         "reverb",
         "delay",
         "echo",
@@ -319,10 +322,10 @@
     "normalizeParameters": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["mode", "target_peak_dbfs", "measured_peak_dbfs"],
+      "required": ["mode"],
       "properties": {
         "mode": {
-          "const": "peak"
+          "enum": ["peak", "integrated_lufs"]
         },
         "target_peak_dbfs": {
           "type": "number",
@@ -332,10 +335,49 @@
           "type": "number",
           "maximum": 0
         },
+        "target_integrated_lufs": {
+          "type": "number"
+        },
+        "measured_integrated_lufs": {
+          "type": "number"
+        },
+        "max_true_peak_dbtp": {
+          "type": "number",
+          "maximum": 0
+        },
+        "measured_true_peak_dbtp": {
+          "type": "number",
+          "maximum": 0
+        },
         "applied_gain_db": {
           "type": "number"
+        },
+        "estimated_integrated_lufs": {
+          "type": "number"
+        },
+        "estimated_true_peak_dbtp": {
+          "type": "number"
+        },
+        "gain_limited_by_true_peak": {
+          "type": "boolean"
         }
-      }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "mode": { "const": "peak" },
+            "target_peak_dbfs": true
+          },
+          "required": ["mode", "target_peak_dbfs"]
+        },
+        {
+          "properties": {
+            "mode": { "const": "integrated_lufs" },
+            "target_integrated_lufs": true
+          },
+          "required": ["mode", "target_integrated_lufs"]
+        }
+      ]
     },
     "trimParameters": {
       "type": "object",
@@ -973,6 +1015,102 @@
         "noise_floor_dbfs": {
           "type": "number",
           "maximum": 0
+        }
+      }
+    },
+    "deEsserParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intensity"],
+      "properties": {
+        "intensity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "max_reduction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "frequency_hz": {
+          "type": "number",
+          "minimum": 1000
+        },
+        "normalized_frequency": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "declickParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["window_ms"],
+      "properties": {
+        "window_ms": {
+          "type": "number",
+          "minimum": 10,
+          "maximum": 100
+        },
+        "overlap_percent": {
+          "type": "number",
+          "minimum": 50,
+          "maximum": 95
+        },
+        "ar_order": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 25
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "burst_fusion": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "method": {
+          "enum": ["add", "save"]
+        }
+      }
+    },
+    "dehumParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fundamental_hz"],
+      "properties": {
+        "fundamental_hz": {
+          "type": "number",
+          "minimum": 40,
+          "maximum": 120
+        },
+        "harmonics": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "q": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100
+        },
+        "mix": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "applied_frequencies_hz": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
         }
       }
     },
