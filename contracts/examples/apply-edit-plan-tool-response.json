@@ -3,7 +3,7 @@
   "request_id": "toolreq_01HZZ0APPLYEDITPLANREQ000001",
   "tool_name": "apply_edit_plan",
   "status": "ok",
-  "completed_at": "2026-04-14T20:20:08Z",
+  "completed_at": "2026-04-17T20:30:08Z",
   "result": {
     "output_version": {
       "schema_version": "1.0.0",
@@ -83,11 +83,92 @@
       {
         "executable": "ffmpeg",
         "args": [
+          "-y",
           "-i",
-          "input.wav",
+          "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEBASE00000001.wav",
+          "-vn",
+          "-sn",
+          "-dn",
+          "-map_metadata",
+          "-1",
           "-af",
-          "lowshelf=...,bandreject=...,tiltshelf=...,highshelf=...",
-          "output.wav"
+          "lowshelf=f=180:t=q:w=0.7:g=-3",
+          "-ar",
+          "44100",
+          "-ac",
+          "2",
+          "-c:a",
+          "pcm_s16le",
+          "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.step-1.wav"
+        ],
+        "output_path": "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.step-1.wav"
+      },
+      {
+        "executable": "ffmpeg",
+        "args": [
+          "-y",
+          "-i",
+          "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.step-1.wav",
+          "-vn",
+          "-sn",
+          "-dn",
+          "-map_metadata",
+          "-1",
+          "-af",
+          "bandreject=f=3200:t=q:w=8",
+          "-ar",
+          "44100",
+          "-ac",
+          "2",
+          "-c:a",
+          "pcm_s16le",
+          "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.step-2.wav"
+        ],
+        "output_path": "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.step-2.wav"
+      },
+      {
+        "executable": "ffmpeg",
+        "args": [
+          "-y",
+          "-i",
+          "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.step-2.wav",
+          "-vn",
+          "-sn",
+          "-dn",
+          "-map_metadata",
+          "-1",
+          "-af",
+          "tiltshelf=f=1200:t=q:w=0.6:g=-2",
+          "-ar",
+          "44100",
+          "-ac",
+          "2",
+          "-c:a",
+          "pcm_s16le",
+          "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.step-3.wav"
+        ],
+        "output_path": "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.step-3.wav"
+      },
+      {
+        "executable": "ffmpeg",
+        "args": [
+          "-y",
+          "-i",
+          "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.step-3.wav",
+          "-vn",
+          "-sn",
+          "-dn",
+          "-map_metadata",
+          "-1",
+          "-af",
+          "highshelf=f=6500:t=q:w=0.8:g=2.5",
+          "-ar",
+          "44100",
+          "-ac",
+          "2",
+          "-c:a",
+          "pcm_s16le",
+          "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.wav"
         ],
         "output_path": "/workspace/storage/audio/ver_01HZZ0FIRSTSLICEEDIT00000001.wav"
       }

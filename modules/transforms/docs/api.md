@@ -320,13 +320,13 @@ Parameters:
 
 - `frequency_hz: number`
 - `gain_db: number`
-- optional `q: number`, default `0.707`
+- `q: number`
 
 Rules:
 
 - `frequency_hz` must be greater than `0` and less than the current sample-rate Nyquist frequency
 - `gain_db` must stay within the published runtime contract range
-- `q` must be positive when provided
+- `q` must be positive
 
 Target support:
 
@@ -344,13 +344,13 @@ Parameters:
 
 - `frequency_hz: number`
 - `gain_db: number`
-- optional `q: number`, default `0.707`
+- `q: number`
 
 Rules:
 
 - `frequency_hz` must be greater than `0` and less than the current sample-rate Nyquist frequency
 - `gain_db` must stay within the published runtime contract range
-- `q` must be positive when provided
+- `q` must be positive
 
 Target support:
 
@@ -367,12 +367,12 @@ lowshelf=f=<frequency_hz>:t=q:w=<q>:g=<gain_db>
 Parameters:
 
 - `frequency_hz: number`
-- optional `q: number`, default `4`
+- `q: number`
 
 Rules:
 
 - `frequency_hz` must be greater than `0` and less than the current sample-rate Nyquist frequency
-- `q` must be positive when provided
+- `q` must be positive
 
 Target support:
 
@@ -390,13 +390,13 @@ Parameters:
 
 - `pivot_frequency_hz: number`
 - `gain_db: number`
-- optional `slope_q: number`, default `0.3`
+- `q: number`
 
 Rules:
 
 - `pivot_frequency_hz` must be greater than `0` and less than the current sample-rate Nyquist frequency
 - positive `gain_db` is defined as a brighter, more top-heavy tilt in the public contract
-- `slope_q` must be positive when provided
+- `q` must be positive
 
 Target support:
 
@@ -405,7 +405,7 @@ Target support:
 FFmpeg filter:
 
 ```text
-tiltshelf=f=<pivot_frequency_hz>:t=q:w=<slope_q>:g=<backend_gain_db>
+tiltshelf=f=<pivot_frequency_hz>:t=q:w=<q>:g=<backend_gain_db>
 ```
 
 Implementation note:
