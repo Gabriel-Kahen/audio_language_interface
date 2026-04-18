@@ -1,5 +1,11 @@
 # Phase 1 Roadmap
 
+Historical note:
+
+This document records the original Phase 1 execution slice that established the repository's first reliable end-to-end workflow.
+It is retained for planning history, not as the live source of truth for the current runtime surface.
+For the current capability surface, see `README.md`, `docs/current-capabilities.md`, and `docs/phase-2-plan.md`.
+
 ## Goal
 
 Deliver one reliable end-to-end editing loop for LLM-driven audio manipulation.
@@ -143,7 +149,7 @@ Success criteria:
 
 ### `transforms`
 
-- harden the current first-slice operation set:
+- harden the original first-slice operation set:
   - `gain`
   - `normalize`
   - `trim`

@@ -220,6 +220,6 @@ Module-local tests cover:
 - single-operation application output shape
 - ordered edit plan execution
 - workspace-relative output path behavior
-- real compressor, limiter, time stretch, stereo width, denoise, and pitch-shift output verification
-- real reverse, mono-sum, pan, channel-swap, channel-remap, stereo-balance-correction, and mid-side-EQ output verification
+- real measurement-aware normalize, dynamics/control, stereo/routing, restoration, and selected effect output verification
+- real time stretch, reverse, mono-sum, pitch-shift, and region-targeted output verification
 - JSON Schema alignment for emitted `AudioVersion` and `TransformRecord`

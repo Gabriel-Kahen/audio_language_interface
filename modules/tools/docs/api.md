@@ -87,8 +87,10 @@ Returns `output_version`, `transform_record`, and normalized FFmpeg `commands`. 
 
 Current runtime-aware tool behavior:
 
-- tool-layer validation accepts the published runtime capability operation set, including runtime-only operations such as `time_stretch` when the caller provides an explicit valid plan
-- tool-layer validation also preflights a small set of runtime constraints that are stable enough to expose explicitly today, such as `stereo_width` requiring stereo 2-channel input and some runtime operations requiring `full_file` scope
+- tool-layer validation accepts the published runtime capability operation set, including runtime-only operations when the caller provides an explicit valid plan
+- tool-layer validation preflights published target-scope support from the runtime capability manifest, including the current first-cohort `time_range` surface and the remaining `full_file`-only operations
+- tool-layer validation also preflights a small set of stable runtime constraints such as stereo-only processing requirements
+- `apply_edit_plan` may omit measured peak or loudness fields for `normalize`; the runtime resolves those measurements during execution while keeping the canonical plan and record contracts explicit
 
 ### `render_preview`
 

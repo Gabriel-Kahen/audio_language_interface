@@ -12,7 +12,10 @@ The repository already includes:
 
 - a published `RuntimeCapabilityManifest`
 - capability-grounded planning that no longer imports runtime internals
-- deterministic runtime support for `compressor`, `limiter`, `stereo_width`, `denoise`, and `time_stretch`
+- deterministic runtime support for a broad Layer 1 operation set spanning level, timing, tonal, dynamics/control, stereo/routing, restoration, and creative effects
+- first-cohort `time_range` targeting for duration-preserving, channel-stable operations
+- measurement-aware `normalize` execution with peak and integrated-loudness modes
+- restoration primitives such as `de_esser`, `declick`, and `dehum`
 - adapter-layer tool discovery through `describe_runtime_capabilities`
 - schema-aligned `EditPlan` and `TransformRecord` artifacts that record `capability_manifest_id`
 
@@ -85,6 +88,7 @@ Detailed tasks:
 4. Extend `compare` to detect likely regressions such as:
    - over-compression
    - peak issues
+   - loudness-target drift
    - stereo instability
    - excessive noise-reduction artifacts
    - unintended duration or loudness drift when applicable

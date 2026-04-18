@@ -18,9 +18,9 @@ This file explains the purpose of the current top-level scaffolding so new agent
 - `docs/architecture.md`: layered architecture map for shared/foundation, runtime, intent, adapters, and evaluation.
 - `docs/implementation-plan.md`: dependency order, cross-layer boundary rules, and rollout plan for agents.
 - `docs/roadmap.md`: medium-term roadmap beyond the current implementation slice.
-- `docs/phase-1-roadmap.md`: first-slice delivery roadmap.
+- `docs/phase-1-roadmap.md`: historical record of the original first-slice delivery roadmap.
 - `docs/phase-2-plan.md`: next capability wave and execution plan.
-- `docs/agent-assignments.md`: current agent ownership map across roadmap tasks.
+- `docs/agent-assignments.md`: historical record of the original Phase 1 agent ownership map.
 - `docs/current-capabilities.md`: implemented repository scope and current limitations.
 - `docs/contributor-guide.md`: contributor onboarding, validation, and extension guidance.
 - `docs/dependency-policy.md`: allowed dependency and license guidance for the repo.

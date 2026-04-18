@@ -101,7 +101,7 @@ Interpretation note: `transient_density_per_second` alone is not sufficient punc
 - A punch-sensitive window is one above `-30 dBFS` RMS with crest at least `9 dB`
 - Consecutive punch-sensitive windows are merged into one annotation
 - Annotation severity is `clamp((maxCrestDb - 9) / 9, 0, 1)` within the merged region
-- Band hint is `[60, 4000]` to indicate the broad low-to-presence range most relevant to first-slice punch preservation
+- Band hint is `[60, 4000]` to indicate the broad low-to-presence range most relevant to the current punch-preservation prompt family
 
 ## Transient-map detector
 

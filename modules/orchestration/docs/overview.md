@@ -69,7 +69,7 @@ The current implementation is a thin integration layer over the existing runtime
 
 ## Current limitations
 
-- Orchestration depends on the same narrow first-slice module capabilities as the underlying runtime modules.
+- Orchestration depends on the same current module capabilities as the underlying runtime and intent layers. It does not add hidden planning breadth, hidden transform support, or alternate capability discovery on top of them.
 - Revert-like follow-ups are fully executable when the caller provides `getAudioVersionById`, which lets orchestration materialize the referenced `AudioVersion` artifact explicitly before re-analyzing and re-rendering it.
 - When `runRequestCycle` performs a second pass, the final render comparison still compares the original input against the final output. The per-pass version comparisons remain available in `result.iterations` and are also recorded into session history.
 - It does not provide hidden persistence, job scheduling, or service hosting behavior.

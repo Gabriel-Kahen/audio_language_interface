@@ -169,15 +169,23 @@ At the moment, that includes:
 - `gain`
 - `trim`
 - `fade`
+- `normalize`
 - `parametric_eq`
 - `high_pass_filter`
 - `low_pass_filter`
+- `high_shelf`
+- `low_shelf`
+- `notch_filter`
+- `tilt_eq`
 - `compressor`
 - `limiter`
 - `stereo_width`
 - `denoise`
+- `de_esser`
+- `declick`
+- `dehum`
 
-`time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility and stereo-routing operations, the new surgical EQ operations, the transient/control operations, and the newer restoration/effect operations are runtime-available but not yet part of the default planner surface. `normalize` now supports peak and integrated-loudness gain staging with built-in execution-time measurement, but it also remains a runtime-only technical operation for now. The transient-shaper surface is currently a compand-based, transient-biased runtime primitive rather than a full transient-designer model.
+`time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility and stereo-routing operations, the transient/control operations, and the newer creative effect operations are runtime-available but not yet part of the default planner surface. The transient-shaper surface is currently a compand-based, transient-biased runtime primitive rather than a full transient-designer model.
 
 ### Tool Surface
 
@@ -200,6 +208,9 @@ The current system is strongest on conservative editing requests such as:
 - darker
 - less harsh
 - slightly cleaner
+- explicit loudness normalization
+- airier, warmer, or less muddy through conservative surgical EQ
+- tame sibilance, remove explicitly specified `50 Hz` or `60 Hz` hum, and clean up clicks
 - more controlled
 - control peaks
 - widen or narrow slightly when stereo evidence supports it

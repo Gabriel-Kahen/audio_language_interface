@@ -2,20 +2,21 @@
 
 ## Purpose
 
-This document records the medium-term roadmap for the project beyond the current Phase 1 slice.
+This document records the medium-term roadmap for the project beyond the original Phase 1 slice.
 
-Use `docs/phase-1-roadmap.md` for the detailed current execution plan. Use this file for the broader progression of the project.
+Use `docs/phase-2-plan.md` for the current execution plan.
+Use `docs/phase-1-roadmap.md` only as the historical record of the original first-slice rollout.
 
-## Phase 1
+## Historical Phase 1
 
-Current focus:
+Original focus:
 
 - single-file editing
 - WAV-first analysis
 - conservative tonal shaping and cleanup
 - contract-first pipeline reliability
 
-Detailed plan:
+Historical detailed plan:
 
 - see `docs/phase-1-roadmap.md`
 
@@ -37,36 +38,38 @@ The repository now already includes:
 
 1. published runtime capability discovery
 2. planning grounded against capability metadata rather than transform internals
-3. deterministic support for `compressor`, `limiter`, `stereo_width`, `denoise`, and `time_stretch`
+3. a broad deterministic Layer 1 runtime surface spanning level, timing, tonal, dynamics/control, stereo/routing, restoration, and creative effect operations
+4. first-cohort `time_range` targeting for duration-preserving, channel-stable operations
+5. measurement-aware `normalize` execution plus runtime restoration primitives such as `de_esser`, `declick`, and `dehum`
 
 That means the next Phase 2 work is no longer "add the first serious transforms."
-It is to deepen reliability, comparison quality, and planner coverage around the capabilities that already exist.
+It is to deepen reliability, comparison quality, and planner coverage around the much larger runtime surface that already exists.
 
 See `docs/phase-2-plan.md` for the current execution order, module tasks, and testing expectations.
 
-### Better transform coverage
+### Deeper runtime precision
 
-- expand the supported transform set beyond the initial tonal-shaping core
-- prioritize transforms that directly support the current prompt family and nearby requests
+- deepen the current runtime so its broad operation set becomes easier to target, verify, and plan against safely
+- prioritize precision gaps such as stronger compare behavior, richer planner grounding, and the remaining hard region-targeting cases
 
 Why this matters:
 
-- the current system can mostly reshape tone, trim, and render
-- many natural editing requests need more than EQ and fades
-- the planner becomes much more useful when it can choose from a slightly richer but still constrained operation set
+- the runtime now covers far more than the original tonal-shaping core, but some of that surface is still runtime-only or only partially verifiable
+- natural-language editing quality depends more on precise contracts and comparison signals than on adding more raw effect count
+- the planner only becomes more useful when runtime breadth is paired with honest capability metadata and measurable outcomes
 
 Priority runtime follow-ups:
 
 1. improve verification and compare behavior for existing runtime transforms
 2. expand planner support where the capability manifest says the runtime is ready
-3. add carefully chosen new runtime transforms only after they have contract, compare, and planner justification
-4. keep `pitch_shift` deferred until the repo has a deterministic, contractable implementation path
+3. finish the remaining hard Layer 1 gaps, especially tail-aware region targeting and deeper runtime ergonomics
+4. add carefully chosen new runtime transforms only after they have contract, compare, and planner justification
 
 Recommended order:
 
-1. make current dynamics, stereo, and cleanup transforms easier to plan and verify correctly
+1. make the current runtime surface easier to plan and verify correctly
 2. extend planner coverage only when semantics and compare can support the feature honestly
-3. add new transform classes only after the current runtime/intent boundary stays clean
+3. close the most important runtime gaps before widening the surface further
 
 Key workstreams:
 
@@ -79,7 +82,7 @@ Key workstreams:
 
 Module impact:
 
-- `transforms`: implement and validate new operations
+- `transforms`: harden current operations, target support, and runtime ergonomics
 - `planning`: learn when to use them and when not to
 - `compare`: detect whether they helped or introduced regressions
 - `tools`: expose or guard them through the tool boundary
@@ -113,7 +116,7 @@ Why this matters:
 
 Scope of improvement:
 
-- recognize broader phrasing for the current first-slice descriptors
+- recognize broader phrasing for the current supported descriptor families
 - separate intent into categories such as tonal change, cleanup, dynamics preservation, and unsupported creative requests
 - identify requests that require clarification before action
 - identify requests that should be rejected because the current transform set cannot satisfy them safely
@@ -218,7 +221,7 @@ Scope of semantic improvement:
 - make descriptor rules more calibrated on real examples
 - improve confidence handling when evidence conflicts
 - make summary language useful to LLMs without pretending uncertainty does not exist
-- expand descriptor support carefully around the first-slice needs rather than trying to cover every possible studio term
+- expand descriptor support carefully around the current supported request families rather than trying to cover every possible studio term
 
 Key workstreams:
 

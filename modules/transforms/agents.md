@@ -15,7 +15,7 @@ Own deterministic audio editing and signal transformation.
 - gain and normalization operations
 - EQ and filtering
 - compression, limiting, and dynamics shaping
-- denoise and cleanup operations
+- cleanup, restoration, and creative effect operations
 - pitch, time, stereo, and channel-utility transforms
 - operation logging tied to exact parameters used
 

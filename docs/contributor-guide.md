@@ -8,7 +8,7 @@ Use it when you need to understand what the repository supports today, how to va
 
 ## Current Slice
 
-The repository currently supports one narrow but real workflow:
+The repository currently supports one real, inspectable single-file editing workflow:
 
 - import one local audio file
 - analyze a materialized WAV version
@@ -19,12 +19,19 @@ The repository currently supports one narrow but real workflow:
 - compare before and after
 - record lineage in a session graph
 
-The strongest supported prompt family today is tonal shaping and cleanup for short clips or loops:
+The strongest supported prompt family today is conservative tonal shaping, loudness, cleanup, and dynamics work for short clips or loops:
 
 - `darker`
 - `less harsh`
 - `slightly cleaner`
 - `preserve punch`
+- `normalize`
+- `airier`, `warmer`, `less muddy`, or `less harsh ring`
+- `tame sibilance`
+- `remove 50 Hz hum` or `remove 60 Hz hum`
+- `clean up clicks`
+- `more controlled`
+- `control peaks`
 
 See `docs/current-capabilities.md` for the exact implementation boundary.
 

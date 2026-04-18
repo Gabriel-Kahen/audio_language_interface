@@ -73,8 +73,10 @@ pnpm exec biome check modules/transforms
 
 The current repository state includes expanded coverage around:
 
-- dynamics transforms (`compressor`, `limiter`)
-- width and denoise behavior
+- dynamics and control transforms (`compressor`, `limiter`, `transient_shaper`, `clipper`, `gate`)
+- stereo and routing behavior (`stereo_width`, `pan`, `channel_swap`, `channel_remap`, `mid_side_eq`)
+- restoration behavior (`denoise`, `de_esser`, `declick`, `dehum`)
+- measurement-aware normalization and target-scope execution behavior
 - repeated request-cycle behavior
 - compare-layer regression logic
 
@@ -152,7 +154,7 @@ Current CI steps:
 2. setup Node and pnpm
 3. install system `ffmpeg`
 4. install workspace dependencies
-5. run `pnpm ci`
+5. run `pnpm run ci`
 
 ## System dependency note
 

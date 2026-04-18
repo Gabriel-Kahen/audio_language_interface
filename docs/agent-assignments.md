@@ -1,5 +1,11 @@
 # Agent Assignments
 
+Historical note:
+
+This document records the original Phase 1 parallelization plan.
+It is retained as coordination history and does not describe the full current runtime surface or the latest Phase 2 priorities.
+Use `docs/phase-2-plan.md` and current module docs for the live project state.
+
 ## Goal
 
 Assign roadmap tasks to focused agents so work can proceed in parallel without blurring module ownership.
@@ -15,7 +21,7 @@ Rules:
 - cross-module changes should be limited to published contracts, examples, and docs when required
 - integration agents may compose modules but should not reimplement lower-level logic
 
-## Current Phase 1 Assignments
+## Original Phase 1 Assignments
 
 ### Agent A: Contracts And Fixtures
 
@@ -77,7 +83,7 @@ Owns:
 
 Tasks:
 
-1. Harden deterministic transform execution for the first-slice operation set.
+1. Harden deterministic transform execution for the original first-slice operation set.
 2. Improve preview render reliability and output validation.
 3. Add real-file transform and render tests where practical.
 

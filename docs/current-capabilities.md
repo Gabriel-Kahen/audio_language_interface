@@ -13,7 +13,7 @@ The current repository supports a real single-file natural-language editing slic
 - import one local audio file into workspace storage
 - analyze a WAV-backed `AudioVersion`
 - derive a conservative `SemanticProfile`
-- plan small deterministic edits for a narrow prompt family
+- plan small deterministic edits for a conservative but growing supported request family
 - apply deterministic FFmpeg-backed transforms
 - render preview and limited export artifacts
 - compare baseline and candidate versions or renders

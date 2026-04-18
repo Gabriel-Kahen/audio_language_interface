@@ -6,7 +6,7 @@ Evaluate module quality and end-to-end reliability for LLM-driven audio manipula
 
 This module is the evaluation layer over the rest of the architecture.
 
-The current implementation provides a first benchmark harness for compare-driven evaluation of the initial prompt family. It is not yet backed by committed real audio fixtures.
+The current implementation provides a first benchmark harness for compare-driven evaluation of the current supported prompt family. It is not yet backed by committed real audio fixtures.
 
 The benchmark runtime is implemented under `modules/benchmarks/src` and is currently focused on a compare-driven, synthetic-first prompt suite.
 
@@ -16,7 +16,7 @@ The benchmark runtime is implemented under `modules/benchmarks/src` and is curre
 - run repeatable benchmark jobs
 - score and summarize benchmark results
 
-The initial implementation now includes a compare-focused first-slice suite for:
+The current implementation includes a compare-focused synthetic suite for:
 
 - `darker`
 - `less harsh`
@@ -61,7 +61,7 @@ The initial implementation now includes a compare-focused first-slice suite for:
 
 - benchmark cases are still synthetic-first
 - fixture-backed end-to-end benchmark runs are a later step
-- current scoring is centered on compare outputs for the first supported prompt family
+- current scoring is centered on compare outputs for the currently benchmarked supported prompt family
 
 ## Current scoring model
 
