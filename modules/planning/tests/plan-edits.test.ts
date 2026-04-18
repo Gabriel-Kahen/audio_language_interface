@@ -70,6 +70,22 @@ describe("parseUserRequest", () => {
     expect(parsed.runtime_only_operations_requested).toEqual(["reverb", "delay"]);
     expect(parsed.request_classification).toBe("supported_runtime_only_but_not_planner_enabled");
   });
+
+  it("does not treat mono-compatibility wording as a mono-sum request", () => {
+    const parsed = parseUserRequest("Widen this slightly, but keep it mono compatible.");
+
+    expect(parsed.wants_wider).toBe(true);
+    expect(parsed.supported_runtime_only_but_not_planner_enabled_requests).toEqual([]);
+    expect(parsed.request_classification).toBe("supported");
+  });
+
+  it("keeps underspecified classification ahead of runtime-only for mixed prompts", () => {
+    const parsed = parseUserRequest("Make it better and add reverb.");
+
+    expect(parsed.supported_but_underspecified_requests).toContain("make it better");
+    expect(parsed.supported_runtime_only_but_not_planner_enabled_requests).toContain("reverb");
+    expect(parsed.request_classification).toBe("supported_but_underspecified");
+  });
 });
 
 describe("planEdits", () => {

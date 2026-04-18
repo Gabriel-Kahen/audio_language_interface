@@ -3,6 +3,7 @@ import type { OperationName, ParsedEditObjectives } from "./types.js";
 interface RuntimeOnlyPhraseMatch {
   phrase: string;
   operation: OperationName;
+  mode?: "substring" | "word" | "regex";
 }
 
 const RUNTIME_ONLY_PHRASE_MATCHERS: RuntimeOnlyPhraseMatch[] = [
@@ -27,8 +28,15 @@ const RUNTIME_ONLY_PHRASE_MATCHERS: RuntimeOnlyPhraseMatch[] = [
   { phrase: "speed up", operation: "time_stretch" },
   { phrase: "slow down", operation: "time_stretch" },
   { phrase: "time stretch", operation: "time_stretch" },
-  { phrase: "pan", operation: "pan" },
-  { phrase: "mono", operation: "mono_sum" },
+  {
+    phrase: "\\bpan(?:\\s+(?:left|right|center|centre)|\\s+it\\s+(?:left|right))\\b",
+    operation: "pan",
+    mode: "regex",
+  },
+  { phrase: "make it mono", operation: "mono_sum" },
+  { phrase: "sum to mono", operation: "mono_sum" },
+  { phrase: "collapse to mono", operation: "mono_sum" },
+  { phrase: "convert to mono", operation: "mono_sum" },
   { phrase: "normalize", operation: "normalize" },
 ];
 
@@ -226,7 +234,7 @@ function parseRuntimeOnlyRequests(value: string): RuntimeOnlyPhraseMatch[] {
   const seen = new Set<string>();
 
   for (const matcher of RUNTIME_ONLY_PHRASE_MATCHERS) {
-    if (!value.includes(matcher.phrase)) {
+    if (!matchesRuntimeOnlyPhrase(value, matcher)) {
       continue;
     }
 
@@ -249,12 +257,20 @@ function classifyRequest(
     return "unsupported";
   }
 
-  if (parsed.supported_runtime_only_but_not_planner_enabled_requests.length > 0) {
+  if (
+    parsed.supported_runtime_only_but_not_planner_enabled_requests.length > 0 &&
+    parsed.supported_but_underspecified_requests.length === 0 &&
+    !hasSupportedIntent(parsed)
+  ) {
     return "supported_runtime_only_but_not_planner_enabled";
   }
 
   if (parsed.supported_but_underspecified_requests.length > 0 || !hasSupportedIntent(parsed)) {
     return "supported_but_underspecified";
+  }
+
+  if (parsed.supported_runtime_only_but_not_planner_enabled_requests.length > 0) {
+    return "supported_runtime_only_but_not_planner_enabled";
   }
 
   return "supported";
@@ -303,6 +319,21 @@ function collectMatchedPhrases(matches: Set<string>, value: string, phrases: str
       matches.add(phrase);
     }
   }
+}
+
+function matchesRuntimeOnlyPhrase(value: string, matcher: RuntimeOnlyPhraseMatch): boolean {
+  switch (matcher.mode) {
+    case "regex":
+      return new RegExp(matcher.phrase).test(value);
+    case "word":
+      return new RegExp(`\\b${escapeForRegex(matcher.phrase)}\\b`).test(value);
+    default:
+      return value.includes(matcher.phrase);
+  }
+}
+
+function escapeForRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function parseTrimRange(value: string): ParsedEditObjectives["trim_range"] {
