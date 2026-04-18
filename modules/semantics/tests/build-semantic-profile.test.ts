@@ -210,7 +210,7 @@ describe("buildSemanticProfile", () => {
     );
 
     expect(profile.descriptors.map((descriptor) => descriptor.label)).toEqual([]);
-    expect(profile.unresolved_terms).toEqual(["bright", "slightly_harsh", "wide"]);
+    expect(profile.unresolved_terms).toEqual(["bright", "controlled", "slightly_harsh", "wide"]);
     expect(profile.summary.caveats).toBeDefined();
   });
 

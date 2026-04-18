@@ -367,7 +367,7 @@ function addDynamicsDescriptors(
     measurementEvidenceRef(report, "dynamics"),
     measurementEvidenceRef(report, "levels"),
   ];
-  const shortTermLiftDb = dynamics.rms_short_term_dbfs - report.measurements.levels.integrated_lufs;
+  const shortTermRmsOffsetDb = dynamics.rms_short_term_dbfs - report.measurements.levels.rms_dbfs;
 
   if (
     !report.measurements.artifacts.clipping_detected &&
@@ -378,8 +378,8 @@ function addDynamicsDescriptors(
     transientCrestDb <= 8.5 &&
     dynamics.transient_density_per_second <= 1 &&
     punchWindowRatio <= 0.2 &&
-    shortTermLiftDb >= -2 &&
-    shortTermLiftDb <= 2.5 &&
+    shortTermRmsOffsetDb >= -1.5 &&
+    shortTermRmsOffsetDb <= 2 &&
     transientImpactSeverity < 0.2
   ) {
     descriptors.push({
@@ -392,7 +392,7 @@ function addDynamicsDescriptors(
       ),
       evidence_refs: controlledEvidenceRefs,
       rationale:
-        "Dynamic range, crest factor, and short-term punch stay in a moderate range without clipping or large level swings.",
+        "Dynamic range, crest factor, and sample-domain short-term RMS spread stay in a moderate range without clipping or large level swings.",
     });
   } else if (
     !report.measurements.artifacts.clipping_detected &&
@@ -402,8 +402,8 @@ function addDynamicsDescriptors(
       dynamics.crest_factor_db <= 9 &&
       dynamics.transient_density_per_second <= 1.15 &&
       punchWindowRatio <= 0.24 &&
-      shortTermLiftDb >= -1.5 &&
-      shortTermLiftDb <= 2.75 &&
+      shortTermRmsOffsetDb >= -2 &&
+      shortTermRmsOffsetDb <= 2.5 &&
       transientImpactSeverity < 0.25) ||
       (transientImpactSeverity < 0.2 &&
         dynamics.dynamic_range_db >= 4.5 &&
@@ -411,8 +411,8 @@ function addDynamicsDescriptors(
         dynamics.crest_factor_db >= 6 &&
         dynamics.crest_factor_db <= 8.8 &&
         dynamics.transient_density_per_second <= 1.05 &&
-        shortTermLiftDb >= -1.25 &&
-        shortTermLiftDb <= 2.5))
+        shortTermRmsOffsetDb >= -1.75 &&
+        shortTermRmsOffsetDb <= 2.25))
   ) {
     unresolvedTerms.add("controlled");
   }
@@ -429,7 +429,7 @@ function addLevelDescriptors(
     measurementEvidenceRef(report, "levels"),
     measurementEvidenceRef(report, "dynamics"),
   ];
-  const shortTermLiftDb = dynamics.rms_short_term_dbfs - levels.integrated_lufs;
+  const shortTermRmsOffsetDb = dynamics.rms_short_term_dbfs - levels.rms_dbfs;
 
   if (levels.integrated_lufs >= -11.5 && levels.rms_dbfs >= -14 && levels.true_peak_dbtp >= -1.5) {
     descriptors.push({
@@ -466,19 +466,19 @@ function addLevelDescriptors(
     unresolvedTerms.add("quiet");
   }
 
-  if (dynamics.dynamic_range_db >= 12 && shortTermLiftDb >= 3.5) {
+  if (dynamics.dynamic_range_db >= 12 && shortTermRmsOffsetDb >= 3.5) {
     descriptors.push({
       label: "level_unstable",
       confidence: clamp(
         0.58 +
           Math.min((dynamics.dynamic_range_db - 12) / 8, 0.14) +
-          Math.min((shortTermLiftDb - 3.5) / 6, 0.1),
+          Math.min((shortTermRmsOffsetDb - 3.5) / 6, 0.1),
       ),
       evidence_refs: evidenceRefs,
       rationale:
-        "Short-term level sits materially above the integrated program level and the measured dynamic range is wide, which points to unstable overall level.",
+        "Short-term sample-domain RMS sits materially above the overall RMS level and the measured dynamic range is wide, which points to unstable overall level.",
     });
-  } else if (dynamics.dynamic_range_db >= 10 || shortTermLiftDb >= 2.5) {
+  } else if (dynamics.dynamic_range_db >= 10 || shortTermRmsOffsetDb >= 2.5) {
     unresolvedTerms.add("level_unstable");
   }
 }

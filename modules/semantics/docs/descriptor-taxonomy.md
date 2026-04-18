@@ -6,6 +6,8 @@ The initial `semantics` implementation only assigns labels that can be traced di
 
 ## Supported descriptors
 
+The table below describes the semantic contract surface. A few labels are forward-compatible and only become assignable when upstream analysis producers emit the matching annotations.
+
 | Label | Evidence source | Assignment intent |
 | --- | --- | --- |
 | `bright` | `measurements.spectral_balance` | High-band energy clearly exceeds low-band energy and centroid is elevated. |
@@ -20,14 +22,14 @@ The initial `semantics` implementation only assigns labels that can be traced di
 | `narrow` | `measurements.stereo` | Some stereo spread exists, but it remains constrained. |
 | `wide` | `measurements.stereo` plus `annotations[*].kind == stereo_width` | Side energy is meaningfully present, stable width evidence is sustained, and ambiguity stays limited. |
 | `punchy` | `measurements.dynamics` | Crest factor and transient density are both elevated. |
-| `controlled` | `measurements.dynamics` plus `measurements.levels` | Dynamic swings, crest factor, and short-term level spread all remain contained. |
+| `controlled` | `measurements.dynamics` plus `measurements.levels` | Dynamic swings, crest factor, and sample-domain short-term RMS spread all remain contained. |
 | `loud` | `measurements.levels` plus `measurements.dynamics` | Integrated loudness, RMS level, and true peak all sit in a high-output range. |
 | `quiet` | `measurements.levels` plus `measurements.dynamics` | Integrated loudness and RMS level both sit well below the current conservative output range. |
-| `level_unstable` | `measurements.levels` plus `measurements.dynamics` | Dynamic range and short-term level spread suggest unstable overall level. |
+| `level_unstable` | `measurements.levels` plus `measurements.dynamics` | Dynamic range and sample-domain short-term RMS spread suggest unstable overall level. |
 | `clipped` | `measurements.artifacts` | Clipping was directly detected. |
 | `noisy` | `annotations[*].kind == noise` plus `measurements.artifacts` | Sustained broadband-like floor evidence covers a meaningful region and the estimated floor is elevated. |
-| `hum_present` | explicit `annotations[*]` from upstream analysis | A steady hum-like artifact is explicitly annotated strongly enough to support a restoration term. |
-| `clicks_present` | explicit `annotations[*]` from upstream analysis | Short impulsive click/pop artifacts are explicitly annotated strongly enough to support a restoration term. |
+| `hum_present` | explicit `annotations[*]` from upstream analysis | A steady hum-like artifact is explicitly annotated strongly enough to support a restoration term. The current baseline analyzer does not emit this annotation yet. |
+| `clicks_present` | explicit `annotations[*]` from upstream analysis | Short impulsive click/pop artifacts are explicitly annotated strongly enough to support a restoration term. The current baseline analyzer does not emit this annotation yet. |
 
 ## Conservative behavior
 
@@ -37,6 +39,7 @@ The initial `semantics` implementation only assigns labels that can be traced di
 - `warm` is intentionally narrower than generic bass-heavy. If low-mid masking is too strong, the module prefers `muddy` and leaves `warm` unresolved.
 - `airy` requires elevated top-end extension without stronger sibilance or harshness evidence that would make the descriptor misleading.
 - `sibilant`, `hum_present`, and `clicks_present` stay unresolved unless upstream analysis emits explicit supporting annotations. The semantics layer does not invent those restoration descriptors from broad aggregate measurements.
+- The current baseline analyzer does not yet emit `hum_present` or `clicks_present` source annotations, so those labels are contract-level forward support rather than baseline end-to-end coverage today.
 - `slightly_harsh` requires both a harshness annotation and enough upper-mid excess to keep the label tied to measurable evidence.
 - `wide` also requires width evidence to stay materially positive and not conflict with localized width-ambiguity or major left-right imbalance.
 - When explicit `stereo_ambiguity` evidence is present, `wide` remains unresolved rather than being dropped silently, even if the aggregate correlation is too risky for assignment.

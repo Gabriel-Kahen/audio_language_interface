@@ -80,16 +80,16 @@ The currently assigned descriptor family includes:
 - `level_unstable`
 - `clipped`
 - `noisy`
-- `hum_present`
-- `clicks_present`
+
+The semantic taxonomy also reserves restoration descriptors such as `hum_present` and `clicks_present`, but the current baseline analysis pipeline does not emit those annotation kinds yet. They are only assigned when an upstream `AnalysisReport` already carries explicit hum/click annotations.
 
 ## Current limitations
 
 - Descriptor assignment is rule-based and only grounded in currently implemented analysis measurements and annotations.
-- Terms like `hum_present`, `clicks_present`, and strongly explicit `sibilant` still require matching annotations from upstream analysis. When those annotations are absent, the module leaves the terms unresolved instead of inferring them from aggregate measurements.
+- Terms like `hum_present`, `clicks_present`, and strongly explicit `sibilant` still require matching annotations from upstream analysis. The current baseline analyzer does not emit hum/click annotations yet, so those restoration labels are forward-compatible semantic support rather than baseline end-to-end output today.
 - `warm` and `muddy` are intentionally separated. The module only assigns `warm` when low-band weight is present without the stronger low-mid masking that would justify `muddy`.
-- `controlled` is intentionally conservative. It is only assigned when dynamic range, crest factor, transient density, and short-term level spread all cluster inside a restrained range without clipping.
-- `loud`, `quiet`, and `level_unstable` are based on measured level and dynamics fields only. They are not mastering-value judgments and are intentionally anchored to explicit thresholds.
+- `controlled` is intentionally conservative. It is only assigned when dynamic range, crest factor, transient density, and sample-domain short-term RMS spread all cluster inside a restrained range without clipping.
+- `loud`, `quiet`, and `level_unstable` are based on measured level and dynamics fields only. They are not mastering-value judgments and are intentionally anchored to explicit thresholds in the same sample-domain or loudness-domain measurements, rather than cross-domain offsets.
 - `noisy` is only assigned when a localized `noise` annotation and an elevated `noise_floor_dbfs` agree. The aggregate floor value alone is still treated as insufficient.
 - `wide` is only assigned when aggregate width, positive correlation, and sustained `stereo_width` coverage agree without competing width-ambiguity evidence.
 - `noisy` now also requires sustained `noise` coverage, not just one qualifying annotation plus an elevated floor estimate.
