@@ -16,11 +16,14 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "reduce brightness",
       "softer top end",
     ]),
-    wants_brighter: containsAny(normalizedRequest, [
-      "brighter",
-      "brighten",
-      "more presence",
+    wants_brighter: containsAny(normalizedRequest, ["brighter", "brighten", "more presence"]),
+    wants_more_air: containsAny(normalizedRequest, [
+      "airier",
       "more air",
+      "add some air",
+      "add a little air",
+      "open up the top",
+      "more sparkle",
     ]),
     wants_cleaner: containsAny(normalizedRequest, [
       "cleaner",
@@ -35,6 +38,9 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "smoother",
       "softer",
       "less aggressive",
+      "harsh ring",
+      "ringing resonance",
+      "resonance",
     ]),
     wants_less_muddy: containsAny(normalizedRequest, [
       "less muddy",
@@ -45,6 +51,15 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
     wants_remove_rumble: containsAny(normalizedRequest, ["rumble", "subsonic", "low end noise"]),
     wants_louder: containsAny(normalizedRequest, ["louder", "turn up", "more level"]),
     wants_quieter: containsAny(normalizedRequest, ["quieter", "turn down", "lower level"]),
+    wants_more_even_level: containsAny(normalizedRequest, [
+      "more even",
+      "even out the level",
+      "even out the loudness",
+      "more even level",
+      "more consistent level",
+      "normalize",
+      "normalise",
+    ]),
     wants_more_controlled_dynamics: wantsMoreControlledDynamics(normalizedRequest),
     wants_peak_control: containsAny(normalizedRequest, [
       "control peaks",
@@ -65,11 +80,49 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "reduce hiss",
       "dehiss",
       "de hiss",
-      "remove hum",
-      "reduce hum",
-      "remove buzz",
-      "reduce buzz",
     ]),
+    wants_tame_sibilance: containsAny(normalizedRequest, [
+      "tame sibilance",
+      "tame the sibilance",
+      "reduce sibilance",
+      "less sibilant",
+      "de ess",
+      "de-ess",
+      "deess",
+      "de esser",
+      "de-esser",
+      "deesser",
+      "tame the ess",
+      "soften the ess",
+    ]),
+    wants_remove_clicks: containsAny(normalizedRequest, [
+      "remove clicks",
+      "removing clicks",
+      "reduce clicks",
+      "clean up clicks",
+      "declick",
+      "de click",
+      "remove click",
+      "removing click",
+      "click repair",
+      "repair clicks",
+      "remove pops",
+      "reduce pops",
+      "repair pops",
+    ]),
+    wants_remove_hum:
+      containsAny(normalizedRequest, [
+        "remove hum",
+        "reduce hum",
+        "dehum",
+        "de hum",
+        "remove buzz",
+        "reduce buzz",
+        "mains hum",
+        "electrical hum",
+      ]) ||
+      ((normalizedRequest.includes("hum") || normalizedRequest.includes("buzz")) &&
+        containsAny(normalizedRequest, ["remove", "reduce"])),
     wants_wider: containsAny(normalizedRequest, [
       "wider",
       "widen",
@@ -98,6 +151,11 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
     unsupported_requests: parseUnsupportedRequests(normalizedRequest),
     intensity: parseIntensity(normalizedRequest),
   };
+
+  const humFrequencyHz = parseHumFrequency(normalizedRequest);
+  if (humFrequencyHz !== undefined) {
+    parsed.hum_frequency_hz = humFrequencyHz;
+  }
 
   const trimRange = parseTrimRange(normalizedRequest);
   if (trimRange) {
@@ -145,12 +203,6 @@ function parseUnsupportedRequests(value: string): string[] {
   const matches = new Set<string>();
 
   collectMatchedPhrases(matches, value, [
-    "click",
-    "clicks",
-    "declick",
-    "de click",
-    "pop",
-    "pops",
     "declip",
     "de clip",
     "repair clipping",
@@ -235,4 +287,21 @@ function parseNamedDuration(value: string, label: "fade in" | "fade out"): numbe
 
   const seconds = Number(match[1]);
   return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
+}
+
+function parseHumFrequency(value: string): number | undefined {
+  const explicitMatch = value.match(/\b(50|60)\s*hz\b/);
+  if (explicitMatch) {
+    return Number(explicitMatch[1]);
+  }
+
+  if (value.includes("50 cycle")) {
+    return 50;
+  }
+
+  if (value.includes("60 cycle")) {
+    return 60;
+  }
+
+  return undefined;
 }

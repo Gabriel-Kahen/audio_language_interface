@@ -7,12 +7,16 @@ import {
 import {
   assertValidFadeSpans,
   buildCompressorSafetyLimits,
+  buildDeclickSafetyLimits,
+  buildDeEsserSafetyLimits,
+  buildDehumSafetyLimits,
   buildDenoiseSafetyLimits,
   buildEqSafetyLimits,
   buildFadeSafetyLimits,
   buildFilterSafetyLimits,
   buildGainSafetyLimits,
   buildLimiterSafetyLimits,
+  buildNormalizeSafetyLimits,
   buildStereoWidthSafetyLimits,
   buildTrimSafetyLimits,
   resolveEqGainDb,
@@ -46,9 +50,24 @@ export function buildPlannedSteps(context: StepBuildContext): EditPlanStep[] {
     steps.push(fadeStep);
   }
 
+  const declickStep = buildDeclickStep(context.objectives);
+  if (declickStep) {
+    steps.push(declickStep);
+  }
+
+  const dehumStep = buildDehumStep(context.objectives);
+  if (dehumStep) {
+    steps.push(dehumStep);
+  }
+
   const denoiseStep = buildDenoiseStep(context.objectives, context.analysisReport);
   if (denoiseStep) {
     steps.push(denoiseStep);
+  }
+
+  const deEsserStep = buildDeEsserStep(context.objectives);
+  if (deEsserStep) {
+    steps.push(deEsserStep);
   }
 
   const filterStep = buildRumbleStep(context.objectives);
@@ -56,10 +75,7 @@ export function buildPlannedSteps(context: StepBuildContext): EditPlanStep[] {
     steps.push(filterStep);
   }
 
-  const eqStep = buildEqStep(context);
-  if (eqStep) {
-    steps.push(eqStep);
-  }
+  steps.push(...buildTonalSteps(context));
 
   const compressorStep = buildCompressorStep(context.objectives);
   if (compressorStep) {
@@ -74,6 +90,11 @@ export function buildPlannedSteps(context: StepBuildContext): EditPlanStep[] {
   const stereoWidthStep = buildStereoWidthStep(context.objectives);
   if (stereoWidthStep) {
     steps.push(stereoWidthStep);
+  }
+
+  const normalizeStep = buildNormalizeStep(context.objectives, context.analysisReport);
+  if (normalizeStep) {
+    steps.push(normalizeStep);
   }
 
   const gainStep = buildGainStep(context.objectives, context.analysisReport);
@@ -182,6 +203,53 @@ function buildRumbleStep(objectives: ParsedEditObjectives): EditPlanStep | undef
   };
 }
 
+function buildDeclickStep(objectives: ParsedEditObjectives): EditPlanStep | undefined {
+  if (!objectives.wants_remove_clicks) {
+    return undefined;
+  }
+
+  return {
+    ...assertPlannerStepSupport("declick", "full_file"),
+    step_id: "step_declick_1",
+    operation: "declick",
+    target: { scope: "full_file" },
+    parameters: {
+      window_ms:
+        objectives.intensity === "subtle" ? 45 : objectives.intensity === "strong" ? 60 : 55,
+      overlap_percent: 75,
+      ar_order: 2,
+      threshold: objectives.intensity === "strong" ? 2.4 : 2,
+      burst_fusion: 2,
+      method: "add",
+    },
+    expected_effects: ["repair short impulsive clicks and pops conservatively"],
+    safety_limits: buildDeclickSafetyLimits(),
+  };
+}
+
+function buildDehumStep(objectives: ParsedEditObjectives): EditPlanStep | undefined {
+  if (!objectives.wants_remove_hum) {
+    return undefined;
+  }
+
+  return {
+    ...assertPlannerStepSupport("dehum", "full_file"),
+    step_id: "step_dehum_1",
+    operation: "dehum",
+    target: { scope: "full_file" },
+    parameters: {
+      fundamental_hz: objectives.hum_frequency_hz ?? 60,
+      harmonics: 4,
+      q: objectives.intensity === "strong" ? 20 : 18,
+      mix: objectives.intensity === "subtle" ? 0.85 : 1,
+    },
+    expected_effects: [
+      `reduce narrowband hum centered around ${(objectives.hum_frequency_hz ?? 60).toFixed(0)} Hz and its harmonics`,
+    ],
+    safety_limits: buildDehumSafetyLimits(),
+  };
+}
+
 function buildDenoiseStep(
   objectives: ParsedEditObjectives,
   analysisReport: AnalysisReport,
@@ -205,108 +273,134 @@ function buildDenoiseStep(
   };
 }
 
-function buildEqStep({
-  objectives,
-  analysisReport,
-  semanticProfile,
-}: StepBuildContext): EditPlanStep | undefined {
-  const bands: Array<Record<string, unknown>> = [];
-  const expectedEffects: string[] = [];
-  const harshnessAnnotation = analysisReport.annotations?.find(
-    (annotation) => annotation.kind === "harshness",
-  );
-  const semanticLabels = new Set(
-    semanticProfile.descriptors
-      .filter((descriptor) => descriptor.confidence >= 0.6)
-      .map((descriptor) => descriptor.label),
-  );
-
-  if (
-    objectives.wants_less_harsh &&
-    (semanticLabels.has("slightly_harsh") ||
-      semanticLabels.has("harsh") ||
-      harshnessAnnotation !== undefined)
-  ) {
-    const harshBand = harshnessAnnotation?.bands_hz ?? [3000, 4500];
-    bands.push({
-      type: "bell",
-      frequency_hz: midpoint(harshBand[0], harshBand[1]),
-      gain_db: resolveEqGainDb(objectives, "cut"),
-      q: 1.2,
-    });
-    expectedEffects.push("reduce upper-mid harshness");
-  }
-
-  if (objectives.wants_darker) {
-    bands.push({
-      type: "bell",
-      frequency_hz: 6500,
-      gain_db: resolveBrightnessCutGainDb(objectives),
-      q: 0.8,
-    });
-    expectedEffects.push("slightly reduce perceived brightness");
-  }
-
-  if (objectives.wants_brighter) {
-    bands.push({
-      type: "bell",
-      frequency_hz: 5000,
-      gain_db: resolveEqGainDb(objectives, "boost") * 0.75,
-      q: 0.8,
-    });
-    expectedEffects.push("slightly increase upper-band presence");
-  }
-
-  if (objectives.wants_less_muddy) {
-    bands.push({
-      type: "bell",
-      frequency_hz: 280,
-      gain_db: resolveEqGainDb(objectives, "cut") * 0.75,
-      q: 1,
-    });
-    expectedEffects.push("reduce low-mid mud");
-  }
-
-  if (objectives.wants_more_warmth) {
-    bands.push({
-      type: "bell",
-      frequency_hz: 180,
-      gain_db: resolveEqGainDb(objectives, "boost") * 0.75,
-      q: 0.9,
-    });
-    expectedEffects.push("slightly increase warmth");
-  }
-
-  if (bands.length === 0) {
+function buildDeEsserStep(objectives: ParsedEditObjectives): EditPlanStep | undefined {
+  if (!objectives.wants_tame_sibilance) {
     return undefined;
   }
 
   return {
-    ...assertPlannerStepSupport("parametric_eq", "full_file"),
-    step_id: "step_eq_1",
-    operation: "parametric_eq",
+    ...assertPlannerStepSupport("de_esser", "full_file"),
+    step_id: "step_de_esser_1",
+    operation: "de_esser",
     target: { scope: "full_file" },
-    parameters: { bands: bands.map(roundBandValues) },
-    expected_effects: expectedEffects,
-    safety_limits: buildEqSafetyLimits(objectives),
+    parameters: {
+      intensity:
+        objectives.intensity === "subtle" ? 0.3 : objectives.intensity === "strong" ? 0.5 : 0.4,
+      max_reduction:
+        objectives.intensity === "subtle" ? 0.35 : objectives.intensity === "strong" ? 0.55 : 0.45,
+      frequency_hz: 5500,
+    },
+    expected_effects: ["reduce sibilant bursts without broadly dulling the top end"],
+    safety_limits: buildDeEsserSafetyLimits(),
   };
 }
 
-function resolveBrightnessCutGainDb(objectives: ParsedEditObjectives): number {
-  const baseCut = resolveEqGainDb(objectives, "cut") * 0.75;
+function buildTonalSteps({ objectives, analysisReport }: StepBuildContext): EditPlanStep[] {
+  const steps: EditPlanStep[] = [];
+  const harshnessAnnotation = analysisReport.annotations?.find(
+    (annotation) => annotation.kind === "harshness",
+  );
 
-  if (objectives.preserve_punch) {
-    return Math.min(-1, Number((baseCut * 0.9).toFixed(2)));
+  if (objectives.wants_less_harsh) {
+    const harshBand = harshnessAnnotation?.bands_hz ?? [3000, 4500];
+    steps.push({
+      ...assertPlannerStepSupport("notch_filter", "full_file"),
+      step_id: "step_notch_filter_1",
+      operation: "notch_filter",
+      target: { scope: "full_file" },
+      parameters: {
+        frequency_hz: midpoint(harshBand[0], harshBand[1]),
+        q: objectives.intensity === "strong" ? 8.5 : 8,
+      },
+      expected_effects: ["reduce a narrow harsh resonance"],
+      safety_limits: buildEqSafetyLimits(objectives),
+    });
   }
 
-  return baseCut;
+  if (objectives.wants_darker || objectives.wants_brighter) {
+    steps.push({
+      ...assertPlannerStepSupport("tilt_eq", "full_file"),
+      step_id: "step_tilt_eq_1",
+      operation: "tilt_eq",
+      target: { scope: "full_file" },
+      parameters: {
+        pivot_frequency_hz: 1200,
+        gain_db: resolveTiltGainDb(objectives),
+        q: 0.6,
+      },
+      expected_effects: [
+        objectives.wants_darker
+          ? "tilt the overall balance slightly darker"
+          : "tilt the overall balance slightly brighter",
+      ],
+      safety_limits: buildEqSafetyLimits(objectives),
+    });
+  }
+
+  if (objectives.wants_less_muddy) {
+    steps.push({
+      ...assertPlannerStepSupport("low_shelf", "full_file"),
+      step_id: "step_low_shelf_1",
+      operation: "low_shelf",
+      target: { scope: "full_file" },
+      parameters: {
+        frequency_hz: 220,
+        gain_db: Number((resolveEqGainDb(objectives, "cut") * 0.75).toFixed(2)),
+        q: 0.75,
+      },
+      expected_effects: ["trim excess low-mid weight without hollowing the mids"],
+      safety_limits: buildEqSafetyLimits(objectives),
+    });
+  }
+
+  if (objectives.wants_more_warmth) {
+    steps.push({
+      ...assertPlannerStepSupport("low_shelf", "full_file"),
+      step_id: steps.some((step) => step.operation === "low_shelf")
+        ? "step_low_shelf_2"
+        : "step_low_shelf_1",
+      operation: "low_shelf",
+      target: { scope: "full_file" },
+      parameters: {
+        frequency_hz: 180,
+        gain_db: Number((resolveEqGainDb(objectives, "boost") * 0.75).toFixed(2)),
+        q: 0.7,
+      },
+      expected_effects: ["add a little low-band warmth"],
+      safety_limits: buildEqSafetyLimits(objectives),
+    });
+  }
+
+  if (objectives.wants_more_air) {
+    steps.push({
+      ...assertPlannerStepSupport("high_shelf", "full_file"),
+      step_id: "step_high_shelf_1",
+      operation: "high_shelf",
+      target: { scope: "full_file" },
+      parameters: {
+        frequency_hz: 6500,
+        gain_db: Number((resolveEqGainDb(objectives, "boost") * 0.75).toFixed(2)),
+        q: 0.8,
+      },
+      expected_effects: ["add a little upper-band air"],
+      safety_limits: buildEqSafetyLimits(objectives),
+    });
+  }
+
+  return steps;
+}
+
+function resolveTiltGainDb(objectives: ParsedEditObjectives): number {
+  const magnitude = resolveEqGainDb(objectives, objectives.wants_darker ? "cut" : "boost");
+  const scaledMagnitude = objectives.wants_darker ? magnitude * 0.75 : magnitude * 0.85;
+  return Number(scaledMagnitude.toFixed(2));
 }
 
 function buildGainStep(
   objectives: ParsedEditObjectives,
   analysisReport: AnalysisReport,
 ): EditPlanStep | undefined {
-  if (objectives.wants_louder === objectives.wants_quieter) {
+  if (objectives.wants_more_even_level || objectives.wants_louder === objectives.wants_quieter) {
     return undefined;
   }
 
@@ -338,6 +432,49 @@ function buildGainStep(
     parameters: { gain_db: gainDb },
     expected_effects: ["increase level within measured peak headroom"],
     safety_limits: buildGainSafetyLimits(),
+  };
+}
+
+function buildNormalizeStep(
+  objectives: ParsedEditObjectives,
+  analysisReport: AnalysisReport,
+): EditPlanStep | undefined {
+  if (!objectives.wants_more_even_level) {
+    return undefined;
+  }
+
+  const targetIntegratedLufs =
+    analysisReport.measurements.levels.integrated_lufs +
+    (objectives.wants_louder
+      ? objectives.intensity === "subtle"
+        ? 1
+        : objectives.intensity === "strong"
+          ? 2
+          : 1.5
+      : objectives.intensity === "strong"
+        ? 1
+        : 0.5);
+
+  return {
+    ...assertPlannerStepSupport("normalize", "full_file"),
+    step_id: "step_normalize_1",
+    operation: "normalize",
+    target: { scope: "full_file" },
+    parameters: {
+      mode: "integrated_lufs",
+      target_integrated_lufs: Number(targetIntegratedLufs.toFixed(1)),
+      measured_integrated_lufs: Number(
+        analysisReport.measurements.levels.integrated_lufs.toFixed(1),
+      ),
+      max_true_peak_dbtp: -1,
+      measured_true_peak_dbtp: Number(analysisReport.measurements.levels.true_peak_dbtp.toFixed(1)),
+    },
+    expected_effects: [
+      objectives.wants_louder
+        ? "raise and normalize overall loudness conservatively"
+        : "normalize overall loudness conservatively",
+    ],
+    safety_limits: buildNormalizeSafetyLimits(),
   };
 }
 
@@ -434,18 +571,6 @@ function buildStereoWidthStep(objectives: ParsedEditObjectives): EditPlanStep | 
 
 function midpoint(start: number, end: number): number {
   return Number(((start + end) / 2).toFixed(2));
-}
-
-function roundBandValues(band: Record<string, unknown>): Record<string, unknown> {
-  return {
-    ...band,
-    frequency_hz:
-      typeof band.frequency_hz === "number"
-        ? Number(band.frequency_hz.toFixed(2))
-        : band.frequency_hz,
-    gain_db: typeof band.gain_db === "number" ? Number(band.gain_db.toFixed(2)) : band.gain_db,
-    q: typeof band.q === "number" ? Number(band.q.toFixed(2)) : band.q,
-  };
 }
 
 function assertPlannerStepSupport(

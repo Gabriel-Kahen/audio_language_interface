@@ -6,7 +6,7 @@ import type {
 } from "./types.js";
 import { CONTRACT_SCHEMA_VERSION } from "./types.js";
 
-const MANIFEST_GENERATED_AT = "2026-04-18T22:45:00Z";
+const MANIFEST_GENERATED_AT = "2026-04-18T23:30:00Z";
 
 function defineOperation(capability: RuntimeOperationCapability): RuntimeOperationCapability {
   return capability;
@@ -14,18 +14,18 @@ function defineOperation(capability: RuntimeOperationCapability): RuntimeOperati
 
 export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
   schema_version: CONTRACT_SCHEMA_VERSION,
-  manifest_id: "capmanifest_20260418B",
+  manifest_id: "capmanifest_20260418C",
   generated_at: MANIFEST_GENERATED_AT,
   runtime_layer: "audio_runtime",
   summary:
     "Published runtime capability surface for deterministic audio editing, including first-cohort time_range execution for segment-safe Layer 1 operations.",
   limitations: [
     "Region targeting currently exposes explicit time_range support for a conservative first cohort of duration-preserving operations.",
-    "Measurement-aware normalization now supports peak and integrated-loudness gain staging, but the baseline planner does not yet choose it automatically.",
+    "The baseline planner now uses normalization plus a narrow surgical tone-shaping and restoration wave for explicit supported prompt families only.",
     "time_stretch is runtime-available but not yet selected by the baseline planner.",
     "Transient shaping, clipping, and gating are runtime-available but not yet selected by the baseline planner.",
     "Duration-changing operations, tail-bearing ambience effects, and channel-topology-changing operations remain full_file only in the current runtime.",
-    "Stereo routing and the newer restoration primitives are runtime-available but not yet selected by the baseline planner.",
+    "Stereo routing and broader Layer 1 effect operations remain runtime-available but not yet selected by the baseline planner.",
   ],
   operations: [
     defineOperation({
@@ -50,9 +50,11 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "level",
       summary:
         "Apply explicit gain normalization using built-in or caller-supplied peak and integrated-loudness measurements.",
-      intent_support: "runtime_only",
+      intent_support: "planner_supported",
       supported_target_scopes: ["full_file", "time_range"],
-      planner_notes: ["Not chosen by the baseline planner without explicit technical intent."],
+      planner_notes: [
+        "Chosen by the baseline planner for narrow louder or more-even overall loudness requests.",
+      ],
       parameters: [
         {
           name: "mode",
@@ -295,11 +297,9 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       name: "high_shelf",
       category: "tonal",
       summary: "Boost or cut the upper spectrum above an explicit shelf frequency.",
-      intent_support: "runtime_only",
+      intent_support: "planner_supported",
       supported_target_scopes: ["full_file", "time_range"],
-      planner_notes: [
-        "Runtime-available Layer 1 surgical tone-shaping operation. Not yet chosen by the baseline planner.",
-      ],
+      planner_notes: ["Chosen by the baseline planner for explicit upper-air requests."],
       parameters: [
         {
           name: "frequency_hz",
@@ -335,10 +335,10 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       name: "low_shelf",
       category: "tonal",
       summary: "Boost or cut the lower spectrum below an explicit shelf frequency.",
-      intent_support: "runtime_only",
+      intent_support: "planner_supported",
       supported_target_scopes: ["full_file", "time_range"],
       planner_notes: [
-        "Runtime-available Layer 1 surgical tone-shaping operation. Not yet chosen by the baseline planner.",
+        "Chosen by the baseline planner for narrow warmth and low-mid cleanup requests.",
       ],
       parameters: [
         {
@@ -375,11 +375,9 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       name: "notch_filter",
       category: "tonal",
       summary: "Reject a narrow band around an explicit center frequency.",
-      intent_support: "runtime_only",
+      intent_support: "planner_supported",
       supported_target_scopes: ["full_file", "time_range"],
-      planner_notes: [
-        "Runtime-available Layer 1 surgical tone-shaping operation. Not yet chosen by the baseline planner.",
-      ],
+      planner_notes: ["Chosen by the baseline planner for explicit harsh-ring reduction requests."],
       parameters: [
         {
           name: "frequency_hz",
@@ -406,10 +404,10 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "tonal",
       summary:
         "Tilt the spectrum around a pivot frequency with equal and opposite high/low emphasis.",
-      intent_support: "runtime_only",
+      intent_support: "planner_supported",
       supported_target_scopes: ["full_file", "time_range"],
       planner_notes: [
-        "Runtime-available Layer 1 surgical tone-shaping operation. Not yet chosen by the baseline planner.",
+        "Chosen by the baseline planner for overall brighter or darker tilt requests.",
       ],
       parameters: [
         {
@@ -940,11 +938,9 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "restoration",
       summary:
         "Reduce sibilant high-frequency bursts with explicit intensity and frequency targeting.",
-      intent_support: "runtime_only",
+      intent_support: "planner_supported",
       supported_target_scopes: ["full_file", "time_range"],
-      planner_notes: [
-        "Runtime-available restoration primitive. Not yet chosen by the baseline planner.",
-      ],
+      planner_notes: ["Chosen by the baseline planner for explicit sibilance-control requests."],
       parameters: [
         {
           name: "intensity",
@@ -982,11 +978,9 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "restoration",
       summary:
         "Repair short impulsive clicks with explicit analysis window and detection controls.",
-      intent_support: "runtime_only",
+      intent_support: "planner_supported",
       supported_target_scopes: ["full_file", "time_range"],
-      planner_notes: [
-        "Runtime-available restoration primitive. Not yet chosen by the baseline planner.",
-      ],
+      planner_notes: ["Chosen by the baseline planner for explicit click-cleanup requests."],
       parameters: [
         {
           name: "window_ms",
@@ -1051,11 +1045,9 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "restoration",
       summary:
         "Apply a deterministic harmonic notch stack to suppress electrical hum fundamentals and harmonics.",
-      intent_support: "runtime_only",
+      intent_support: "planner_supported",
       supported_target_scopes: ["full_file", "time_range"],
-      planner_notes: [
-        "Runtime-available restoration primitive. Not yet chosen by the baseline planner.",
-      ],
+      planner_notes: ["Chosen by the baseline planner for explicit hum-removal requests."],
       parameters: [
         {
           name: "fundamental_hz",

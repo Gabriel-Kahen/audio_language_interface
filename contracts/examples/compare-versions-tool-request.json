@@ -145,7 +145,7 @@
     "edit_plan": {
       "schema_version": "1.0.0",
       "plan_id": "plan_01HZZ0FIRSTSLICEPLAN00000001",
-      "capability_manifest_id": "capmanifest_20260418B",
+      "capability_manifest_id": "capmanifest_20260418C",
       "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
       "version_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
       "user_request": "Clean this loop up a bit, widen it slightly, and control the peaks without crushing it.",

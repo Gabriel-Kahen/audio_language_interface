@@ -2560,7 +2560,7 @@ describe("applyEditPlan", () => {
     const plan: EditPlan = {
       schema_version: "1.0.0",
       plan_id: "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0",
-      capability_manifest_id: "capmanifest_20260418B",
+      capability_manifest_id: "capmanifest_20260418C",
       asset_id: version.asset_id,
       version_id: version.version_id,
       user_request: "Trim, soften edges, and reduce level slightly.",
@@ -2618,7 +2618,7 @@ describe("applyEditPlan", () => {
     const plan: EditPlan = {
       schema_version: "1.0.0",
       plan_id: "plan_01HZYREGIONPLAN0000000001",
-      capability_manifest_id: "capmanifest_20260418B",
+      capability_manifest_id: "capmanifest_20260418C",
       asset_id: version.asset_id,
       version_id: version.version_id,
       user_request: "Cut a little low end in the middle, then fade the whole clip.",
@@ -2677,7 +2677,7 @@ describe("applyEditPlan", () => {
     const plan: EditPlan = {
       schema_version: "1.0.0",
       plan_id: "plan_01HZY2INVALID000000000001",
-      capability_manifest_id: "capmanifest_20260418B",
+      capability_manifest_id: "capmanifest_20260418C",
       asset_id: version.asset_id,
       version_id: version.version_id,
       user_request: "Collapse to mono, then widen it.",

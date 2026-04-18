@@ -24,11 +24,15 @@ export function buildVerificationTargets(
   }
 
   if (objectives.wants_brighter) {
-    targets.push("slightly increased upper-band presence without introducing harshness");
+    targets.push("a modestly brighter high-vs-low spectral balance");
+  }
+
+  if (objectives.wants_more_air) {
+    targets.push("slightly higher upper-band energy without brittle peaks");
   }
 
   if (objectives.wants_less_muddy) {
-    targets.push("reduced low-mid buildup around 200 Hz to 400 Hz");
+    targets.push("less low-mid buildup below roughly 250 Hz");
   }
 
   if (objectives.wants_more_warmth) {
@@ -47,6 +51,20 @@ export function buildVerificationTargets(
     targets.push("lower measured noise floor without obvious denoise artifacts");
   }
 
+  if (objectives.wants_tame_sibilance) {
+    targets.push("less aggressive sibilant bursts around the upper-presence band");
+  }
+
+  if (objectives.wants_remove_clicks) {
+    targets.push("fewer short impulsive clicks without softened transients");
+  }
+
+  if (objectives.wants_remove_hum) {
+    targets.push(
+      `lower narrowband energy around ${(objectives.hum_frequency_hz ?? 60).toFixed(0)} Hz and its harmonics`,
+    );
+  }
+
   if (objectives.wants_peak_control) {
     targets.push("lower peak excursions while keeping the output ceiling near -1 dB true peak");
   }
@@ -61,6 +79,10 @@ export function buildVerificationTargets(
 
   if (objectives.wants_louder) {
     targets.push("higher output level while staying within available peak headroom");
+  }
+
+  if (objectives.wants_more_even_level) {
+    targets.push("higher integrated loudness while keeping true peak at or below -1 dBTP");
   }
 
   if (objectives.wants_quieter) {

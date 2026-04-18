@@ -70,8 +70,8 @@ describe("planAndApply", () => {
     expect(result.semanticProfile?.analysis_report_id).toBe(analysis.report_id);
     expect(result.editPlan.version_id).toBe(version.version_id);
     expect(result.editPlan.steps[0]).toMatchObject({
-      operation: "parametric_eq",
-      expected_effects: expect.arrayContaining(["slightly reduce perceived brightness"]),
+      operation: "tilt_eq",
+      expected_effects: expect.arrayContaining(["tilt the overall balance slightly darker"]),
     });
     expect(result.transformResult.outputVersion.parent_version_id).toBe(version.version_id);
     expect(result.trace.map((entry) => entry.stage)).toEqual(["semantic_profile", "plan", "apply"]);

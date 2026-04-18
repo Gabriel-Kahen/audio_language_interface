@@ -936,7 +936,7 @@ function createEditPlan(): EditPlan {
   return {
     schema_version: "1.0.0",
     plan_id: "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0",
-    capability_manifest_id: "capmanifest_20260418B",
+    capability_manifest_id: "capmanifest_20260418C",
     asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
     version_id: "ver_baseline123",
     user_request: "Make the loop a little darker and less harsh, but keep the punch.",

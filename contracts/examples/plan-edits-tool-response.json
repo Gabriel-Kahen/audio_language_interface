@@ -7,39 +7,81 @@
   "result": {
     "edit_plan": {
       "schema_version": "1.0.0",
-      "plan_id": "plan_01HZZ0FIRSTSLICEPLAN00000001",
-      "capability_manifest_id": "capmanifest_20260418B",
+      "plan_id": "plan_01HZZ0LAYER2WAVEPLAN00000001",
+      "capability_manifest_id": "capmanifest_20260418C",
       "asset_id": "asset_01HZZ0FIRSTSLICEASSET00000001",
       "version_id": "ver_01HZZ0FIRSTSLICEBASE00000001",
-      "user_request": "Clean this loop up a bit, widen it slightly, and control the peaks without crushing it.",
+      "user_request": "Make this a little louder and more even, take out the harsh ring, and add a little air.",
       "created_at": "2026-04-14T20:20:05Z",
       "goals": [
-        "reduce steady background noise conservatively",
-        "slightly increase stereo width",
-        "control peak excursions conservatively",
-        "preserve transient impact"
+        "reduce upper-mid harshness",
+        "add a little upper-band air",
+        "increase output level conservatively",
+        "normalize overall loudness conservatively"
       ],
-      "constraints": ["avoid obvious denoise artifacts", "avoid audible pumping"],
+      "constraints": [
+        "respect measured peak headroom",
+        "keep the true-peak ceiling at or below -1 dBTP"
+      ],
       "verification_targets": [
-        "lower measured noise floor",
-        "lower peak excursions while keeping the output ceiling near -1 dB true peak",
-        "small increase in stereo width",
-        "no material loss of crest factor"
+        "reduced energy in the 3 kHz to 4.5 kHz region",
+        "slightly higher upper-band energy without brittle peaks",
+        "higher output level while staying within available peak headroom",
+        "higher integrated loudness while keeping true peak at or below -1 dBTP"
       ],
-      "rationale": "A conservative cleanup, dynamics pass, and subtle width increase should improve control without changing the loop's core character.",
+      "rationale": "A small manifest-grounded notch, shelf, and loudness-normalization chain should make the source cleaner, airier, and more even without broad hidden processing.",
       "steps": [
         {
-          "step_id": "step_denoise_1",
-          "operation": "denoise",
+          "step_id": "step_notch_filter_1",
+          "operation": "notch_filter",
           "target": {
             "scope": "full_file"
           },
           "parameters": {
-            "reduction_db": 6,
-            "noise_floor_dbfs": -58
+            "frequency_hz": 3750,
+            "q": 8
           },
-          "expected_effects": ["lower steady broadband noise", "keep the main signal intact"],
-          "safety_limits": ["avoid watery artifacts", "avoid removing transient detail"]
+          "expected_effects": ["reduce a narrow harsh resonance"],
+          "safety_limits": [
+            "do not exceed 3 dB adjustment in a single EQ band",
+            "keep the edit broad and reversible rather than surgical"
+          ]
+        },
+        {
+          "step_id": "step_high_shelf_1",
+          "operation": "high_shelf",
+          "target": {
+            "scope": "full_file"
+          },
+          "parameters": {
+            "frequency_hz": 6500,
+            "gain_db": 1.13,
+            "q": 0.8
+          },
+          "expected_effects": ["add a little upper-band air"],
+          "safety_limits": [
+            "do not exceed 3 dB adjustment in a single EQ band",
+            "keep the edit broad and reversible rather than surgical"
+          ]
+        },
+        {
+          "step_id": "step_normalize_1",
+          "operation": "normalize",
+          "target": {
+            "scope": "full_file"
+          },
+          "parameters": {
+            "mode": "integrated_lufs",
+            "target_integrated_lufs": -13.8,
+            "measured_integrated_lufs": -14.8,
+            "max_true_peak_dbtp": -1,
+            "measured_true_peak_dbtp": -1.1
+          },
+          "expected_effects": ["raise and normalize overall loudness conservatively"],
+          "safety_limits": [
+            "keep the true-peak ceiling at or below -1 dBTP",
+            "treat normalization as conservative gain staging rather than loudness maximization"
+          ]
         }
       ]
     }

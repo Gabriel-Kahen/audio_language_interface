@@ -129,9 +129,21 @@ function resolvePlannerObjectives(
     );
   }
 
+  if (objectives.wants_more_even_level && objectives.wants_quieter) {
+    throw new Error(
+      "The request asks for both quieter output and loudness normalization. Please choose whether the priority is lower level or a more even overall level.",
+    );
+  }
+
   if (objectives.wants_wider && objectives.wants_narrower) {
     throw new Error(
       "The request asks for both wider and narrower stereo moves. Please choose one stereo direction.",
+    );
+  }
+
+  if (objectives.wants_more_warmth && objectives.wants_less_muddy) {
+    throw new Error(
+      "The request asks for both more warmth and less muddiness. The baseline planner does not yet combine those opposing low-band shelf directions safely in one pass.",
     );
   }
 
@@ -214,6 +226,15 @@ function resolvePlannerObjectives(
     return effectiveObjectives;
   }
 
+  if (
+    effectiveObjectives.wants_remove_clicks ||
+    effectiveObjectives.wants_remove_hum ||
+    effectiveObjectives.wants_tame_sibilance ||
+    effectiveObjectives.wants_denoise
+  ) {
+    return effectiveObjectives;
+  }
+
   if (hasHarshnessEvidence) {
     effectiveObjectives.wants_less_harsh = true;
   }
@@ -264,16 +285,19 @@ function buildGoals(objectives: ReturnType<typeof parseUserRequest>): string[] {
     goals.push("reduce upper-mid harshness");
   }
   if (objectives.wants_darker) {
-    goals.push("slightly reduce perceived brightness");
+    goals.push("tilt the overall balance slightly darker");
   }
   if (objectives.wants_brighter) {
-    goals.push("slightly increase upper-band presence");
+    goals.push("tilt the overall balance slightly brighter");
+  }
+  if (objectives.wants_more_air) {
+    goals.push("add a little upper-band air");
   }
   if (objectives.wants_less_muddy) {
-    goals.push("reduce low-mid muddiness");
+    goals.push("trim excess low-mid weight");
   }
   if (objectives.wants_more_warmth) {
-    goals.push("slightly increase warmth");
+    goals.push("add a little low-band warmth");
   }
   if (objectives.wants_remove_rumble) {
     goals.push("reduce sub-bass rumble");
@@ -283,6 +307,15 @@ function buildGoals(objectives: ReturnType<typeof parseUserRequest>): string[] {
   }
   if (objectives.wants_denoise) {
     goals.push("reduce steady background noise conservatively");
+  }
+  if (objectives.wants_tame_sibilance) {
+    goals.push("tame sibilant bursts conservatively");
+  }
+  if (objectives.wants_remove_clicks) {
+    goals.push("repair short clicks and pops conservatively");
+  }
+  if (objectives.wants_remove_hum) {
+    goals.push("reduce mains hum and harmonic buzz conservatively");
   }
   if (objectives.wants_peak_control) {
     goals.push("control peak excursions conservatively");
@@ -295,6 +328,9 @@ function buildGoals(objectives: ReturnType<typeof parseUserRequest>): string[] {
   }
   if (objectives.wants_louder) {
     goals.push("increase output level conservatively");
+  }
+  if (objectives.wants_more_even_level) {
+    goals.push("normalize overall loudness conservatively");
   }
   if (objectives.wants_quieter) {
     goals.push("reduce output level conservatively");
@@ -328,12 +364,28 @@ function buildConstraints(
     constraints.push("avoid obvious denoise artifacts or transient smearing");
   }
 
+  if (objectives.wants_tame_sibilance) {
+    constraints.push("avoid turning the full top end dull");
+  }
+
+  if (objectives.wants_remove_clicks) {
+    constraints.push("avoid blunting intentional transient attacks");
+  }
+
+  if (objectives.wants_remove_hum) {
+    constraints.push("avoid thinning wanted low-frequency body");
+  }
+
   if (objectives.wants_wider || objectives.wants_narrower) {
     constraints.push("keep width changes subtle and preserve mono compatibility");
   }
 
   if (objectives.wants_louder) {
     constraints.push("respect measured peak headroom");
+  }
+
+  if (objectives.wants_more_even_level) {
+    constraints.push("keep the true-peak ceiling at or below -1 dBTP");
   }
 
   return dedupe(constraints);
