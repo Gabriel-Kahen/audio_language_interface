@@ -1,8 +1,8 @@
 import type { AnalysisMeasurements, GoalAlignment, GoalStatus, MetricDelta } from "./types.js";
 
 /**
- * Scores free-form goal strings with simple keyword matching against measured deltas.
- * This is intentionally heuristic and should not be treated as a general natural-language evaluator.
+ * Scores free-form goal strings with conservative keyword matching against
+ * measured deltas. Unsupported wording returns `unknown` instead of guessing.
  */
 export function evaluateGoalAlignment(
   goals: string[],
@@ -39,6 +39,34 @@ function evaluateGoal(
     checks.push(classifyBrightnessReduction(metricDeltas));
   }
 
+  if (matchesInverseAirGoal(normalizedGoal) || matchesInverseWarmthGoal(normalizedGoal)) {
+    checks.push("unknown");
+  }
+
+  if (matchesAirGoal(normalizedGoal) && !matchesInverseAirGoal(normalizedGoal)) {
+    checks.push(classifyAirGoal(metricDeltas));
+  }
+
+  if (matchesWarmthGoal(normalizedGoal) && !matchesInverseWarmthGoal(normalizedGoal)) {
+    checks.push(classifyWarmthGoal(metricDeltas));
+  }
+
+  if (matchesMuddinessGoal(normalizedGoal)) {
+    checks.push(classifyMuddinessGoal(metricDeltas));
+  }
+
+  if (matchesSibilanceGoal(normalizedGoal)) {
+    checks.push(classifySibilanceReduction(metricDeltas));
+  }
+
+  if (matchesHumGoal(normalizedGoal)) {
+    checks.push(classifyHumReduction(metricDeltas));
+  }
+
+  if (matchesClickGoal(normalizedGoal)) {
+    checks.push(classifyClickReduction(baseline, candidate, metricDeltas));
+  }
+
   if (matchesAny(normalizedGoal, ["punch", "transient", "attack", "impact", "snap"])) {
     checks.push(classifyPunchPreservation(metricDeltas));
   }
@@ -49,7 +77,7 @@ function evaluateGoal(
 
   if (
     matchesCleanupPhrase(normalizedGoal) ||
-    matchesAny(normalizedGoal, ["noise", "noisy", "cleaner", "cleanup", "denoise", "hiss", "hum"])
+    matchesAny(normalizedGoal, ["noise", "noisy", "cleaner", "cleanup", "denoise", "hiss"])
   ) {
     checks.push(classifyCleanupGoal(baseline, candidate, metricDeltas));
   }
@@ -168,6 +196,187 @@ function classifyHarshnessReduction(metricDeltas: MetricDelta[]): GoalStatus {
   return "not_met";
 }
 
+function classifyAirGoal(metricDeltas: MetricDelta[]): GoalStatus {
+  const highBandDelta = getDelta(metricDeltas, "spectral_balance.high_band_db");
+  const brightnessTiltDelta = getDelta(metricDeltas, "spectral_balance.brightness_tilt_db");
+  const harshnessRatioDelta = getDelta(metricDeltas, "spectral_balance.harshness_ratio_db");
+  const centroidDelta = getDelta(metricDeltas, "spectral_balance.spectral_centroid_hz");
+
+  if (highBandDelta === undefined) {
+    return "unknown";
+  }
+
+  const tonalLift =
+    (brightnessTiltDelta !== undefined && brightnessTiltDelta >= 0.5) ||
+    (centroidDelta !== undefined && centroidDelta >= 80);
+  const harshnessSafe = harshnessRatioDelta === undefined || harshnessRatioDelta <= 0.45;
+
+  if (highBandDelta >= 0.75 && tonalLift && harshnessSafe) {
+    return "met";
+  }
+
+  if (
+    highBandDelta >= 0.3 &&
+    tonalLift &&
+    harshnessRatioDelta !== undefined &&
+    harshnessRatioDelta <= 0.7
+  ) {
+    return "mostly_met";
+  }
+
+  return "not_met";
+}
+
+function classifyWarmthGoal(metricDeltas: MetricDelta[]): GoalStatus {
+  const lowBandDelta = getDelta(metricDeltas, "spectral_balance.low_band_db");
+  const brightnessTiltDelta = getDelta(metricDeltas, "spectral_balance.brightness_tilt_db");
+  const highBandDelta = getDelta(metricDeltas, "spectral_balance.high_band_db");
+
+  if (lowBandDelta === undefined) {
+    return "unknown";
+  }
+
+  if (
+    lowBandDelta >= 0.75 &&
+    meetsOptionalUpperBound(brightnessTiltDelta, -0.4) &&
+    meetsOptionalUpperBound(highBandDelta, 0.75)
+  ) {
+    return "met";
+  }
+
+  if (
+    lowBandDelta >= 0.3 &&
+    meetsOptionalUpperBound(brightnessTiltDelta, 0.1) &&
+    meetsOptionalUpperBound(highBandDelta, 1)
+  ) {
+    return "mostly_met";
+  }
+
+  return "not_met";
+}
+
+function classifyMuddinessGoal(metricDeltas: MetricDelta[]): GoalStatus {
+  const midBandDelta = getDelta(metricDeltas, "spectral_balance.mid_band_db");
+  const brightnessTiltDelta = getDelta(metricDeltas, "spectral_balance.brightness_tilt_db");
+  const highBandDelta = getDelta(metricDeltas, "spectral_balance.high_band_db");
+
+  if (midBandDelta === undefined) {
+    return "unknown";
+  }
+
+  if (
+    midBandDelta <= -0.75 &&
+    meetsOptionalLowerBound(brightnessTiltDelta, 0.25) &&
+    meetsOptionalLowerBound(highBandDelta, -2.5)
+  ) {
+    return "met";
+  }
+
+  if (
+    midBandDelta <= -0.3 &&
+    meetsOptionalLowerBound(brightnessTiltDelta, 0) &&
+    meetsOptionalLowerBound(highBandDelta, -3)
+  ) {
+    return "mostly_met";
+  }
+
+  return "not_met";
+}
+
+function classifySibilanceReduction(metricDeltas: MetricDelta[]): GoalStatus {
+  const presenceDelta = getDelta(metricDeltas, "spectral_balance.presence_band_db");
+  const harshnessRatioDelta = getDelta(metricDeltas, "spectral_balance.harshness_ratio_db");
+  const highBandDelta = getDelta(metricDeltas, "spectral_balance.high_band_db");
+
+  if (presenceDelta === undefined || harshnessRatioDelta === undefined) {
+    return "unknown";
+  }
+
+  if (
+    presenceDelta <= -0.75 &&
+    harshnessRatioDelta <= -0.5 &&
+    meetsOptionalLowerBound(highBandDelta, -3)
+  ) {
+    return "met";
+  }
+
+  if (
+    presenceDelta <= -0.3 &&
+    harshnessRatioDelta <= -0.2 &&
+    meetsOptionalLowerBound(highBandDelta, -4)
+  ) {
+    return "mostly_met";
+  }
+
+  return "not_met";
+}
+
+function classifyHumReduction(metricDeltas: MetricDelta[]): GoalStatus {
+  const lowBandDelta = getDelta(metricDeltas, "spectral_balance.low_band_db");
+  const noiseFloorDelta = getDelta(metricDeltas, "artifacts.noise_floor_dbfs");
+  const midBandDelta = getDelta(metricDeltas, "spectral_balance.mid_band_db");
+
+  if (lowBandDelta === undefined) {
+    return "unknown";
+  }
+
+  if (
+    lowBandDelta <= -4 &&
+    meetsOptionalUpperBound(noiseFloorDelta, 0.5) &&
+    meetsOptionalLowerBound(midBandDelta, -1.25)
+  ) {
+    return "mostly_met";
+  }
+
+  if (
+    lowBandDelta <= -2 &&
+    meetsOptionalUpperBound(noiseFloorDelta, 1) &&
+    meetsOptionalLowerBound(midBandDelta, -1.5)
+  ) {
+    return "mostly_met";
+  }
+
+  return "not_met";
+}
+
+function classifyClickReduction(
+  baseline: AnalysisMeasurements,
+  candidate: AnalysisMeasurements,
+  metricDeltas: MetricDelta[],
+): GoalStatus {
+  const clippedSampleCountDelta = getDelta(metricDeltas, "artifacts.clipped_sample_count");
+  const crestFactorDelta = getDelta(metricDeltas, "dynamics.crest_factor_db");
+  const transientDensityDelta = getDelta(metricDeltas, "dynamics.transient_density_per_second");
+  const baselineClippedSampleCount = baseline.artifacts.clipped_sample_count;
+
+  if (baselineClippedSampleCount === undefined || clippedSampleCountDelta === undefined) {
+    return "unknown";
+  }
+
+  const removedMostSpikes =
+    !candidate.artifacts.clipping_detected &&
+    baselineClippedSampleCount > 0 &&
+    candidate.artifacts.clipped_sample_count !== undefined &&
+    candidate.artifacts.clipped_sample_count <= baselineClippedSampleCount * 0.2;
+  const removedSomeSpikes =
+    !candidate.artifacts.clipping_detected &&
+    baselineClippedSampleCount > 0 &&
+    clippedSampleCountDelta <= -Math.max(4, baselineClippedSampleCount * 0.5);
+  const punchMostlyIntact =
+    meetsOptionalLowerBound(crestFactorDelta, -1.5) &&
+    meetsOptionalLowerBound(transientDensityDelta, -0.2);
+
+  if (removedMostSpikes && punchMostlyIntact) {
+    return "mostly_met";
+  }
+
+  if (removedSomeSpikes && punchMostlyIntact) {
+    return "mostly_met";
+  }
+
+  return baselineClippedSampleCount > 0 ? "not_met" : "unknown";
+}
+
 function classifyPunchPreservation(metricDeltas: MetricDelta[]): GoalStatus {
   const crestFactorDelta = getDelta(metricDeltas, "dynamics.crest_factor_db");
   const transientDensityDelta = getDelta(metricDeltas, "dynamics.transient_density_per_second");
@@ -228,9 +437,53 @@ function classifyPeakControl(metricDeltas: MetricDelta[]): GoalStatus {
 
 function classifyLoudnessGoal(goal: string, metricDeltas: MetricDelta[]): GoalStatus {
   const loudnessDelta = getDelta(metricDeltas, "levels.integrated_lufs");
+  const truePeakDelta = getDelta(metricDeltas, "levels.true_peak_dbtp");
+  const headroomDelta = getDelta(metricDeltas, "levels.headroom_db");
 
   if (loudnessDelta === undefined) {
     return "unknown";
+  }
+
+  if (matchesLoudnessStabilityGoal(goal)) {
+    if (
+      Math.abs(loudnessDelta) <= 1 &&
+      meetsOptionalLowerBound(headroomDelta, -0.5) &&
+      meetsOptionalUpperBound(truePeakDelta, 0.35)
+    ) {
+      return "met";
+    }
+
+    if (
+      Math.abs(loudnessDelta) <= 2 &&
+      meetsOptionalLowerBound(headroomDelta, -1) &&
+      meetsOptionalUpperBound(truePeakDelta, 0.75)
+    ) {
+      return "mostly_met";
+    }
+
+    return "not_met";
+  }
+
+  if (matchesAny(goal, ["normalize", "normalise", "target loudness"])) {
+    if (
+      Math.abs(loudnessDelta) >= 0.3 &&
+      Math.abs(loudnessDelta) <= 3 &&
+      meetsOptionalLowerBound(headroomDelta, -0.75) &&
+      meetsOptionalUpperBound(truePeakDelta, 0.75)
+    ) {
+      return "met";
+    }
+
+    if (
+      Math.abs(loudnessDelta) >= 0.15 &&
+      Math.abs(loudnessDelta) <= 4 &&
+      meetsOptionalLowerBound(headroomDelta, -1.25) &&
+      meetsOptionalUpperBound(truePeakDelta, 1.1)
+    ) {
+      return "mostly_met";
+    }
+
+    return "not_met";
   }
 
   if (
@@ -241,13 +494,39 @@ function classifyLoudnessGoal(goal: string, metricDeltas: MetricDelta[]): GoalSt
       "lower level",
       "lower the level",
       "reduce level",
+      "reduce loudness",
     ])
   ) {
     return classifySingleMetric(loudnessDelta, -1, -0.3);
   }
 
-  if (matchesAny(goal, ["louder", "more level", "turn up", "raise level", "increase level"])) {
-    return classifySingleMetric(loudnessDelta, 1, 0.3);
+  if (
+    matchesAny(goal, [
+      "louder",
+      "more level",
+      "turn up",
+      "raise level",
+      "increase level",
+      "increase loudness",
+    ])
+  ) {
+    if (
+      loudnessDelta >= 1 &&
+      meetsOptionalLowerBound(headroomDelta, -0.5) &&
+      meetsOptionalUpperBound(truePeakDelta, 0.5)
+    ) {
+      return "met";
+    }
+
+    if (
+      loudnessDelta >= 0.3 &&
+      meetsOptionalLowerBound(headroomDelta, -1) &&
+      meetsOptionalUpperBound(truePeakDelta, 0.9)
+    ) {
+      return "mostly_met";
+    }
+
+    return "not_met";
   }
 
   return Math.abs(loudnessDelta) <= 1
@@ -289,10 +568,6 @@ function classifyCleanupGoal(
   }
 
   return "not_met";
-}
-
-function getDelta(metricDeltas: MetricDelta[], metric: string): number | undefined {
-  return metricDeltas.find((item) => item.metric === metric)?.delta;
 }
 
 function classifyStereoWidthGoal(
@@ -362,6 +637,10 @@ function classifyStereoWidthGoal(
   return "not_met";
 }
 
+function getDelta(metricDeltas: MetricDelta[], metric: string): number | undefined {
+  return metricDeltas.find((item) => item.metric === metric)?.delta;
+}
+
 function hasStereoWidthRisk(
   baseline: AnalysisMeasurements,
   candidate: AnalysisMeasurements,
@@ -407,7 +686,22 @@ function hasDenoiseArtifactRisk(
 }
 
 function matchesLoudnessGoal(value: string): boolean {
-  return matchesAny(value, ["loud", "quieter", "volume", "level"]);
+  return matchesAny(value, ["loud", "loudness", "quieter", "volume", "level", "lufs", "normaliz"]);
+}
+
+function matchesLoudnessStabilityGoal(value: string): boolean {
+  return matchesAny(value, [
+    "keep the level",
+    "keep level",
+    "level under control",
+    "keep loudness",
+    "stable loudness",
+    "loudness stable",
+    "keep the loudness",
+    "consistent loudness",
+    "consistent level",
+    "loudness stability",
+  ]);
 }
 
 function matchesStereoWidthGoal(value: string): boolean {
@@ -438,8 +732,57 @@ function matchesPeakControlPhrase(value: string): boolean {
   );
 }
 
+function matchesSibilanceGoal(value: string): boolean {
+  return matchesAny(value, [
+    "sibil",
+    "de-ess",
+    "de ess",
+    "deesser",
+    "de-esser",
+    "esses",
+    "s sounds",
+    "s-sounds",
+  ]);
+}
+
+function matchesHumGoal(value: string): boolean {
+  return matchesAny(value, ["hum", "dehum", "de-hum", "electrical buzz", "mains"]);
+}
+
+function matchesClickGoal(value: string): boolean {
+  return matchesAny(value, ["click", "clicks", "declick", "de-click", "pops", "impulsive"]);
+}
+
+function matchesWarmthGoal(value: string): boolean {
+  return matchesAny(value, ["warm", "warmth", "warmer", "fuller"]);
+}
+
+function matchesAirGoal(value: string): boolean {
+  return matchesAny(value, ["air", "airy", "top-end air", "upper-band air"]);
+}
+
+function matchesInverseWarmthGoal(value: string): boolean {
+  return (
+    /(?:less|reduce|reduced|remov(?:e|ing)|pull back|tone down)\s+(?:some\s+)?warm(?:th)?/.test(
+      value,
+    ) || value.includes("cooler")
+  );
+}
+
+function matchesInverseAirGoal(value: string): boolean {
+  return /(?:less|reduce|reduced|remov(?:e|ing)|pull back|tone down)\s+(?:some\s+)?air/.test(value);
+}
+
+function matchesMuddinessGoal(value: string): boolean {
+  return matchesAny(value, ["mud", "muddy", "muddiness", "boxy"]);
+}
+
 function meetsOptionalLowerBound(value: number | undefined, threshold: number): boolean {
   return value === undefined || value >= threshold;
+}
+
+function meetsOptionalUpperBound(value: number | undefined, threshold: number): boolean {
+  return value === undefined || value <= threshold;
 }
 
 function isAmbiguousBroadGoal(value: string): boolean {

@@ -13,6 +13,10 @@ export function deriveSemanticDeltas(
 
   pushIfPresent(semanticDeltas, describeBrightnessShift(baseline, candidate));
   pushIfPresent(semanticDeltas, describeHarshnessShift(baseline, candidate));
+  pushIfPresent(semanticDeltas, describeSibilanceShift(metricDeltas));
+  pushIfPresent(semanticDeltas, describeAirShift(metricDeltas));
+  pushIfPresent(semanticDeltas, describeWarmthShift(metricDeltas));
+  pushIfPresent(semanticDeltas, describeMuddinessShift(metricDeltas));
   pushIfPresent(semanticDeltas, describeDynamicsShift(metricDeltas));
   pushIfPresent(semanticDeltas, describeStereoShift(metricDeltas));
   pushIfPresent(semanticDeltas, describeNoiseShift(baseline, candidate, metricDeltas));
@@ -80,6 +84,162 @@ function describeHarshnessShift(
         Math.max(Math.abs(highBandDelta) / 5, Math.abs(centroidDelta) / 500),
       ),
       evidence: "upper-band energy and spectral centroid both increased",
+    };
+  }
+
+  return undefined;
+}
+
+function describeSibilanceShift(metricDeltas: MetricDelta[]): SemanticDelta | undefined {
+  const presenceDelta = getDelta(metricDeltas, "spectral_balance.presence_band_db");
+  const harshnessRatioDelta = getDelta(metricDeltas, "spectral_balance.harshness_ratio_db");
+  const highBandDelta = getDelta(metricDeltas, "spectral_balance.high_band_db");
+
+  if (presenceDelta === undefined || harshnessRatioDelta === undefined) {
+    return undefined;
+  }
+
+  if (
+    presenceDelta <= -0.75 &&
+    harshnessRatioDelta <= -0.5 &&
+    meetsOptionalLowerBound(highBandDelta, -3)
+  ) {
+    return {
+      label: "less_sibilant",
+      confidence: confidenceFromMagnitude(
+        Math.max(Math.abs(presenceDelta) / 3, Math.abs(harshnessRatioDelta) / 2),
+      ),
+      evidence:
+        "presence-band energy and harshness ratio both decreased without severe top-end loss",
+    };
+  }
+
+  if (presenceDelta >= 0.75 && harshnessRatioDelta >= 0.5) {
+    return {
+      label: "more_sibilant",
+      confidence: confidenceFromMagnitude(
+        Math.max(Math.abs(presenceDelta) / 3, Math.abs(harshnessRatioDelta) / 2),
+      ),
+      evidence: "presence-band energy and harshness ratio both increased",
+    };
+  }
+
+  return undefined;
+}
+
+function describeAirShift(metricDeltas: MetricDelta[]): SemanticDelta | undefined {
+  const highBandDelta = getDelta(metricDeltas, "spectral_balance.high_band_db");
+  const brightnessTiltDelta = getDelta(metricDeltas, "spectral_balance.brightness_tilt_db");
+  const harshnessRatioDelta = getDelta(metricDeltas, "spectral_balance.harshness_ratio_db");
+  const centroidDelta = getDelta(metricDeltas, "spectral_balance.spectral_centroid_hz");
+
+  if (highBandDelta === undefined) {
+    return undefined;
+  }
+
+  const tiltImproved = brightnessTiltDelta !== undefined ? brightnessTiltDelta >= 0.75 : false;
+  const tiltReduced = brightnessTiltDelta !== undefined ? brightnessTiltDelta <= -0.75 : false;
+  const centroidLifted = centroidDelta !== undefined ? centroidDelta >= 80 : false;
+  const centroidLowered = centroidDelta !== undefined ? centroidDelta <= -80 : false;
+  const harshnessStable = harshnessRatioDelta === undefined || harshnessRatioDelta <= 0.45;
+
+  if (highBandDelta >= 0.75 && (tiltImproved || centroidLifted) && harshnessStable) {
+    return {
+      label: "more_air",
+      confidence: confidenceFromMagnitude(
+        Math.max(
+          Math.abs(highBandDelta) / 4,
+          Math.abs(brightnessTiltDelta ?? 0) / 4,
+          Math.abs(centroidDelta ?? 0) / 500,
+        ),
+      ),
+      evidence: "high-band energy rose with a brighter tilt without a matching harshness increase",
+    };
+  }
+
+  if (highBandDelta <= -1.25 && (tiltReduced || centroidLowered)) {
+    return {
+      label: "less_air",
+      confidence: confidenceFromMagnitude(
+        Math.max(
+          Math.abs(highBandDelta) / 4,
+          Math.abs(brightnessTiltDelta ?? 0) / 4,
+          Math.abs(centroidDelta ?? 0) / 500,
+        ),
+      ),
+      evidence: "high-band energy and overall brightness tilt both decreased",
+    };
+  }
+
+  return undefined;
+}
+
+function describeWarmthShift(metricDeltas: MetricDelta[]): SemanticDelta | undefined {
+  const lowBandDelta = getDelta(metricDeltas, "spectral_balance.low_band_db");
+  const brightnessTiltDelta = getDelta(metricDeltas, "spectral_balance.brightness_tilt_db");
+  const highBandDelta = getDelta(metricDeltas, "spectral_balance.high_band_db");
+
+  if (lowBandDelta === undefined) {
+    return undefined;
+  }
+
+  if (
+    lowBandDelta >= 0.75 &&
+    (brightnessTiltDelta === undefined || brightnessTiltDelta <= -0.5) &&
+    (highBandDelta === undefined || highBandDelta <= 0.5)
+  ) {
+    return {
+      label: "warmer",
+      confidence: confidenceFromMagnitude(
+        Math.max(Math.abs(lowBandDelta) / 4, Math.abs(brightnessTiltDelta ?? 0) / 4),
+      ),
+      evidence: "low-band weight increased while overall tonal tilt moved warmer",
+    };
+  }
+
+  if (lowBandDelta <= -0.75 && (brightnessTiltDelta === undefined || brightnessTiltDelta >= 0.5)) {
+    return {
+      label: "less_warm",
+      confidence: confidenceFromMagnitude(
+        Math.max(Math.abs(lowBandDelta) / 4, Math.abs(brightnessTiltDelta ?? 0) / 4),
+      ),
+      evidence: "low-band weight decreased while overall tonal tilt moved brighter",
+    };
+  }
+
+  return undefined;
+}
+
+function describeMuddinessShift(metricDeltas: MetricDelta[]): SemanticDelta | undefined {
+  const midBandDelta = getDelta(metricDeltas, "spectral_balance.mid_band_db");
+  const brightnessTiltDelta = getDelta(metricDeltas, "spectral_balance.brightness_tilt_db");
+  const highBandDelta = getDelta(metricDeltas, "spectral_balance.high_band_db");
+
+  if (midBandDelta === undefined) {
+    return undefined;
+  }
+
+  if (
+    midBandDelta <= -0.75 &&
+    (brightnessTiltDelta === undefined || brightnessTiltDelta >= 0.25) &&
+    meetsOptionalLowerBound(highBandDelta, -2.5)
+  ) {
+    return {
+      label: "less_muddy",
+      confidence: confidenceFromMagnitude(
+        Math.max(Math.abs(midBandDelta) / 3, Math.abs(brightnessTiltDelta ?? 0) / 3),
+      ),
+      evidence: "mid-band energy decreased without a matching collapse in upper-band detail",
+    };
+  }
+
+  if (midBandDelta >= 0.75 && (brightnessTiltDelta === undefined || brightnessTiltDelta <= -0.25)) {
+    return {
+      label: "more_muddy",
+      confidence: confidenceFromMagnitude(
+        Math.max(Math.abs(midBandDelta) / 3, Math.abs(brightnessTiltDelta ?? 0) / 3),
+      ),
+      evidence: "mid-band energy increased while the overall tilt moved duller",
     };
   }
 
@@ -238,6 +398,10 @@ function hasSevereDenoiseCollateralLoss(
 
 function getDelta(metricDeltas: MetricDelta[], metric: string): number | undefined {
   return metricDeltas.find((item) => item.metric === metric)?.delta;
+}
+
+function meetsOptionalLowerBound(value: number | undefined, threshold: number): boolean {
+  return value === undefined || value >= threshold;
 }
 
 function confidenceFromMagnitude(value: number): number {

@@ -264,6 +264,97 @@ describe("compareVersions", () => {
       ]),
     );
   });
+
+  it("emits Layer 2 compare evidence for restoration and normalization side effects", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_layer2_base"),
+      candidateVersion: createVersion("ver_layer2_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_layer2_base",
+        versionId: "ver_layer2_base",
+        integratedLufs: -16,
+        truePeakDbtp: -1.8,
+        samplePeakDbfs: -1.8,
+        headroomDb: 1.8,
+        crestFactorDb: 10.2,
+        transientDensity: 1.8,
+        dynamicRangeDb: 8.4,
+        lowBandDb: -16,
+        midBandDb: -11,
+        highBandDb: -10.5,
+        spectralCentroidHz: 2400,
+        brightnessTiltDb: 5.5,
+        presenceBandDb: -10.2,
+        harshnessRatioDb: 1.1,
+        stereoWidth: 0.52,
+        stereoCorrelation: 0.48,
+        stereoBalanceDb: 0.2,
+        noiseFloorDbfs: -72,
+        clippedSampleCount: 4,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_layer2_cand",
+        versionId: "ver_layer2_cand",
+        integratedLufs: -13.8,
+        truePeakDbtp: -0.4,
+        samplePeakDbfs: -0.4,
+        headroomDb: 0.4,
+        crestFactorDb: 10.1,
+        transientDensity: 1.75,
+        dynamicRangeDb: 8.1,
+        lowBandDb: -12.8,
+        midBandDb: -10.1,
+        highBandDb: -8.9,
+        spectralCentroidHz: 2550,
+        brightnessTiltDb: 8.1,
+        presenceBandDb: -8.8,
+        harshnessRatioDb: 2.1,
+        stereoWidth: 0.51,
+        stereoCorrelation: 0.49,
+        stereoBalanceDb: 0.3,
+        noiseFloorDbfs: -70.5,
+        clippedSampleCount: 32,
+        clippingDetected: false,
+      }),
+      generatedAt: "2026-04-18T20:20:22Z",
+    });
+
+    expect(report.metric_deltas).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          metric: "spectral_balance.presence_band_db",
+          direction: "increased",
+          delta: 1.4,
+        }),
+        expect.objectContaining({
+          metric: "spectral_balance.harshness_ratio_db",
+          direction: "increased",
+          delta: 1,
+        }),
+        expect.objectContaining({
+          metric: "artifacts.clipped_sample_count",
+          direction: "increased",
+          delta: 28,
+        }),
+      ]),
+    );
+    expect(report.semantic_deltas).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: "brighter" }),
+        expect.objectContaining({ label: "more_sibilant" }),
+      ]),
+    );
+    expect(report.regressions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "loudness_headroom_loss" }),
+        expect.objectContaining({ kind: "increased_sibilance" }),
+        expect.objectContaining({ kind: "added_muddiness" }),
+        expect.objectContaining({ kind: "increased_hum_proxy" }),
+        expect.objectContaining({ kind: "increased_click_proxy" }),
+      ]),
+    );
+  });
 });
 
 describe("evaluateGoalAlignment", () => {
@@ -653,6 +744,311 @@ describe("evaluateGoalAlignment", () => {
       { goal: "control peaks without killing the punch", status: "not_met" },
     ]);
   });
+
+  it("scores Layer 2 tonal goals with evidence-backed semantics", () => {
+    const baseline = createAnalysisReport({
+      reportId: "analysis_layer2_tonal_base",
+      versionId: "ver_layer2_tonal_base",
+      integratedLufs: -15.3,
+      truePeakDbtp: -1.4,
+      samplePeakDbfs: -1.7,
+      headroomDb: 1.7,
+      crestFactorDb: 10.2,
+      transientDensity: 1.9,
+      dynamicRangeDb: 8,
+      lowBandDb: -16.1,
+      midBandDb: -11.4,
+      highBandDb: -10.6,
+      spectralCentroidHz: 2420,
+      brightnessTiltDb: 5.5,
+      presenceBandDb: -9.1,
+      harshnessRatioDb: 1,
+      stereoWidth: 0.52,
+      stereoCorrelation: 0.45,
+      stereoBalanceDb: 0.2,
+      noiseFloorDbfs: -72,
+      clippedSampleCount: 0,
+      clippingDetected: false,
+    }).measurements;
+    const candidate = createAnalysisReport({
+      reportId: "analysis_layer2_tonal_cand",
+      versionId: "ver_layer2_tonal_cand",
+      integratedLufs: -15.2,
+      truePeakDbtp: -1.5,
+      samplePeakDbfs: -1.8,
+      headroomDb: 1.8,
+      crestFactorDb: 10.1,
+      transientDensity: 1.86,
+      dynamicRangeDb: 7.9,
+      lowBandDb: -16,
+      midBandDb: -12.3,
+      highBandDb: -9.6,
+      spectralCentroidHz: 2520,
+      brightnessTiltDb: 6.4,
+      presenceBandDb: -10.1,
+      harshnessRatioDb: 0.3,
+      stereoWidth: 0.52,
+      stereoCorrelation: 0.46,
+      stereoBalanceDb: 0.2,
+      noiseFloorDbfs: -72,
+      clippedSampleCount: 0,
+      clippingDetected: false,
+    }).measurements;
+
+    const goalAlignment = evaluateGoalAlignment(
+      ["add a little air", "reduce low-mid muddiness", "reduce sibilance"],
+      baseline,
+      candidate,
+      computeAnalysisMetricDeltas(baseline, candidate),
+    );
+
+    expect(goalAlignment).toEqual([
+      { goal: "add a little air", status: "met" },
+      { goal: "reduce low-mid muddiness", status: "met" },
+      { goal: "reduce sibilance", status: "met" },
+    ]);
+  });
+
+  it("scores hum, click, and loudness-stability goals conservatively", () => {
+    const baseline = createAnalysisReport({
+      reportId: "analysis_layer2_restore_base",
+      versionId: "ver_layer2_restore_base",
+      integratedLufs: -15.8,
+      truePeakDbtp: -1.6,
+      samplePeakDbfs: -1.9,
+      headroomDb: 1.9,
+      crestFactorDb: 10.1,
+      transientDensity: 1.85,
+      dynamicRangeDb: 8,
+      lowBandDb: -13.5,
+      midBandDb: -11.2,
+      highBandDb: -10.4,
+      spectralCentroidHz: 2380,
+      brightnessTiltDb: 3.1,
+      presenceBandDb: -9.5,
+      harshnessRatioDb: 0.8,
+      stereoWidth: 0.47,
+      stereoCorrelation: 0.52,
+      stereoBalanceDb: 0.1,
+      noiseFloorDbfs: -61.5,
+      clippedSampleCount: 120,
+      clippingDetected: false,
+    }).measurements;
+    const candidate = createAnalysisReport({
+      reportId: "analysis_layer2_restore_cand",
+      versionId: "ver_layer2_restore_cand",
+      integratedLufs: -15.4,
+      truePeakDbtp: -1.4,
+      samplePeakDbfs: -1.6,
+      headroomDb: 1.6,
+      crestFactorDb: 9.9,
+      transientDensity: 1.78,
+      dynamicRangeDb: 7.8,
+      lowBandDb: -17.8,
+      midBandDb: -11.3,
+      highBandDb: -10.5,
+      spectralCentroidHz: 2370,
+      brightnessTiltDb: 2.7,
+      presenceBandDb: -9.6,
+      harshnessRatioDb: 0.7,
+      stereoWidth: 0.47,
+      stereoCorrelation: 0.53,
+      stereoBalanceDb: 0.1,
+      noiseFloorDbfs: -63,
+      clippedSampleCount: 12,
+      clippingDetected: false,
+    }).measurements;
+
+    const goalAlignment = evaluateGoalAlignment(
+      ["reduce hum", "reduce clicks", "keep loudness stable"],
+      baseline,
+      candidate,
+      computeAnalysisMetricDeltas(baseline, candidate),
+    );
+
+    expect(goalAlignment).toEqual([
+      { goal: "reduce hum", status: "mostly_met" },
+      { goal: "reduce clicks", status: "mostly_met" },
+      { goal: "keep loudness stable", status: "met" },
+    ]);
+  });
+
+  it("treats normalization goals as direction-agnostic target moves", () => {
+    const baseline = createAnalysisReport({
+      reportId: "analysis_normalize_base",
+      versionId: "ver_normalize_base",
+      integratedLufs: -11.2,
+      truePeakDbtp: -0.8,
+      samplePeakDbfs: -1.1,
+      headroomDb: 1.1,
+      crestFactorDb: 9.4,
+      transientDensity: 1.7,
+      dynamicRangeDb: 7.4,
+      lowBandDb: -14.6,
+      midBandDb: -11,
+      highBandDb: -10.2,
+      spectralCentroidHz: 2320,
+      brightnessTiltDb: 3.2,
+      presenceBandDb: -9.2,
+      harshnessRatioDb: 0.7,
+      stereoWidth: 0.45,
+      stereoCorrelation: 0.51,
+      stereoBalanceDb: 0.1,
+      noiseFloorDbfs: -68,
+      clippedSampleCount: 0,
+      clippingDetected: false,
+    }).measurements;
+    const candidate = createAnalysisReport({
+      reportId: "analysis_normalize_cand",
+      versionId: "ver_normalize_cand",
+      integratedLufs: -13,
+      truePeakDbtp: -1.1,
+      samplePeakDbfs: -1.5,
+      headroomDb: 1.5,
+      crestFactorDb: 9.5,
+      transientDensity: 1.69,
+      dynamicRangeDb: 7.3,
+      lowBandDb: -14.6,
+      midBandDb: -11.1,
+      highBandDb: -10.3,
+      spectralCentroidHz: 2310,
+      brightnessTiltDb: 3.1,
+      presenceBandDb: -9.3,
+      harshnessRatioDb: 0.7,
+      stereoWidth: 0.45,
+      stereoCorrelation: 0.52,
+      stereoBalanceDb: 0.1,
+      noiseFloorDbfs: -68,
+      clippedSampleCount: 0,
+      clippingDetected: false,
+    }).measurements;
+
+    const goalAlignment = evaluateGoalAlignment(
+      ["normalize to a quieter target loudness"],
+      baseline,
+      candidate,
+      computeAnalysisMetricDeltas(baseline, candidate),
+    );
+
+    expect(goalAlignment).toEqual([
+      { goal: "normalize to a quieter target loudness", status: "met" },
+    ]);
+  });
+
+  it("returns unknown for inverse air and warmth wording", () => {
+    const baseline = createAnalysisReport({
+      reportId: "analysis_inverse_tone_base",
+      versionId: "ver_inverse_tone_base",
+      integratedLufs: -15,
+      truePeakDbtp: -1.4,
+      crestFactorDb: 10,
+      transientDensity: 1.85,
+      dynamicRangeDb: 8,
+      lowBandDb: -15.9,
+      midBandDb: -11.4,
+      highBandDb: -10.2,
+      spectralCentroidHz: 2400,
+      brightnessTiltDb: 4.2,
+      presenceBandDb: -9.4,
+      harshnessRatioDb: 0.8,
+      stereoWidth: 0.48,
+      stereoCorrelation: 0.5,
+      noiseFloorDbfs: -70,
+      clippingDetected: false,
+    }).measurements;
+    const candidate = createAnalysisReport({
+      reportId: "analysis_inverse_tone_cand",
+      versionId: "ver_inverse_tone_cand",
+      integratedLufs: -15,
+      truePeakDbtp: -1.4,
+      crestFactorDb: 10,
+      transientDensity: 1.85,
+      dynamicRangeDb: 8,
+      lowBandDb: -16.6,
+      midBandDb: -11.4,
+      highBandDb: -11.1,
+      spectralCentroidHz: 2260,
+      brightnessTiltDb: 3.2,
+      presenceBandDb: -9.8,
+      harshnessRatioDb: 0.8,
+      stereoWidth: 0.48,
+      stereoCorrelation: 0.5,
+      noiseFloorDbfs: -70,
+      clippingDetected: false,
+    }).measurements;
+
+    const goalAlignment = evaluateGoalAlignment(
+      ["make it less warm", "remove some air"],
+      baseline,
+      candidate,
+      computeAnalysisMetricDeltas(baseline, candidate),
+    );
+
+    expect(goalAlignment).toEqual([
+      { goal: "make it less warm", status: "unknown" },
+      { goal: "remove some air", status: "unknown" },
+    ]);
+  });
+
+  it("does not double-score hum-only requests as generic cleanup", () => {
+    const baseline = createAnalysisReport({
+      reportId: "analysis_hum_only_base",
+      versionId: "ver_hum_only_base",
+      integratedLufs: -15.8,
+      truePeakDbtp: -1.6,
+      samplePeakDbfs: -1.9,
+      headroomDb: 1.9,
+      crestFactorDb: 10.1,
+      transientDensity: 1.85,
+      dynamicRangeDb: 8,
+      lowBandDb: -13.5,
+      midBandDb: -11.2,
+      highBandDb: -10.4,
+      spectralCentroidHz: 2380,
+      brightnessTiltDb: 3.1,
+      presenceBandDb: -9.5,
+      harshnessRatioDb: 0.8,
+      stereoWidth: 0.47,
+      stereoCorrelation: 0.52,
+      stereoBalanceDb: 0.1,
+      noiseFloorDbfs: -61.5,
+      clippedSampleCount: 0,
+      clippingDetected: false,
+    }).measurements;
+    const candidate = createAnalysisReport({
+      reportId: "analysis_hum_only_cand",
+      versionId: "ver_hum_only_cand",
+      integratedLufs: -15.7,
+      truePeakDbtp: -1.5,
+      samplePeakDbfs: -1.8,
+      headroomDb: 1.8,
+      crestFactorDb: 10,
+      transientDensity: 1.84,
+      dynamicRangeDb: 7.9,
+      lowBandDb: -17.9,
+      midBandDb: -11.3,
+      highBandDb: -10.4,
+      spectralCentroidHz: 2375,
+      brightnessTiltDb: 2.8,
+      presenceBandDb: -9.5,
+      harshnessRatioDb: 0.8,
+      stereoWidth: 0.47,
+      stereoCorrelation: 0.53,
+      stereoBalanceDb: 0.1,
+      noiseFloorDbfs: -61.2,
+      clippedSampleCount: 0,
+      clippingDetected: false,
+    }).measurements;
+
+    const goalAlignment = evaluateGoalAlignment(
+      ["reduce hum"],
+      baseline,
+      candidate,
+      computeAnalysisMetricDeltas(baseline, candidate),
+    );
+
+    expect(goalAlignment).toEqual([{ goal: "reduce hum", status: "mostly_met" }]);
+  });
 });
 
 describe("compareRenders", () => {
@@ -870,13 +1266,20 @@ interface AnalysisFixtureOptions {
   transientDensity: number;
   rmsShortTermDbfs?: number;
   dynamicRangeDb?: number;
+  transientCrestDb?: number;
+  punchWindowRatio?: number;
   lowBandDb: number;
   midBandDb: number;
   highBandDb: number;
   spectralCentroidHz: number;
+  brightnessTiltDb?: number;
+  presenceBandDb?: number;
+  harshnessRatioDb?: number;
   stereoWidth: number;
   stereoCorrelation: number;
+  stereoBalanceDb?: number;
   noiseFloorDbfs: number;
+  clippedSampleCount?: number;
   clippingDetected: boolean;
 }
 
@@ -913,20 +1316,39 @@ function createAnalysisReport(options: AnalysisFixtureOptions): AnalysisReport {
         ...(options.dynamicRangeDb === undefined
           ? {}
           : { dynamic_range_db: options.dynamicRangeDb }),
+        ...(options.transientCrestDb === undefined
+          ? {}
+          : { transient_crest_db: options.transientCrestDb }),
+        ...(options.punchWindowRatio === undefined
+          ? {}
+          : { punch_window_ratio: options.punchWindowRatio }),
       },
       spectral_balance: {
         low_band_db: options.lowBandDb,
         mid_band_db: options.midBandDb,
         high_band_db: options.highBandDb,
         spectral_centroid_hz: options.spectralCentroidHz,
+        ...(options.brightnessTiltDb === undefined
+          ? {}
+          : { brightness_tilt_db: options.brightnessTiltDb }),
+        ...(options.presenceBandDb === undefined
+          ? {}
+          : { presence_band_db: options.presenceBandDb }),
+        ...(options.harshnessRatioDb === undefined
+          ? {}
+          : { harshness_ratio_db: options.harshnessRatioDb }),
       },
       stereo: {
         width: options.stereoWidth,
         correlation: options.stereoCorrelation,
+        ...(options.stereoBalanceDb === undefined ? {} : { balance_db: options.stereoBalanceDb }),
       },
       artifacts: {
         clipping_detected: options.clippingDetected,
         noise_floor_dbfs: options.noiseFloorDbfs,
+        ...(options.clippedSampleCount === undefined
+          ? {}
+          : { clipped_sample_count: options.clippedSampleCount }),
       },
     },
   };

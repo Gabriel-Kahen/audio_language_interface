@@ -6,6 +6,7 @@ export { detectAnalysisRegressions, detectRenderRegressions } from "./regression
 export { buildComparisonReport } from "./report-builder.js";
 export { deriveSemanticDeltas } from "./semantic-deltas.js";
 export type {
+  AnalysisAnnotation,
   AnalysisMeasurements,
   AnalysisReport,
   AudioVersion,

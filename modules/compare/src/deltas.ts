@@ -63,6 +63,18 @@ export function computeAnalysisMetricDeltas(
     baseline.dynamics.dynamic_range_db,
     candidate.dynamics.dynamic_range_db,
   );
+  pushOptionalNumericDelta(
+    deltas,
+    "dynamics.transient_crest_db",
+    baseline.dynamics.transient_crest_db,
+    candidate.dynamics.transient_crest_db,
+  );
+  pushOptionalNumericDelta(
+    deltas,
+    "dynamics.punch_window_ratio",
+    baseline.dynamics.punch_window_ratio,
+    candidate.dynamics.punch_window_ratio,
+  );
   pushNumericDelta(
     deltas,
     "spectral_balance.low_band_db",
@@ -86,6 +98,24 @@ export function computeAnalysisMetricDeltas(
     "spectral_balance.spectral_centroid_hz",
     baseline.spectral_balance.spectral_centroid_hz,
     candidate.spectral_balance.spectral_centroid_hz,
+  );
+  pushOptionalNumericDelta(
+    deltas,
+    "spectral_balance.brightness_tilt_db",
+    baseline.spectral_balance.brightness_tilt_db,
+    candidate.spectral_balance.brightness_tilt_db,
+  );
+  pushOptionalNumericDelta(
+    deltas,
+    "spectral_balance.presence_band_db",
+    baseline.spectral_balance.presence_band_db,
+    candidate.spectral_balance.presence_band_db,
+  );
+  pushOptionalNumericDelta(
+    deltas,
+    "spectral_balance.harshness_ratio_db",
+    baseline.spectral_balance.harshness_ratio_db,
+    candidate.spectral_balance.harshness_ratio_db,
   );
   pushNumericDelta(deltas, "stereo.width", baseline.stereo.width, candidate.stereo.width);
   pushNumericDelta(
