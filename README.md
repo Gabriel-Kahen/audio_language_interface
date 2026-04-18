@@ -135,6 +135,9 @@ The current runtime can execute:
 - `tilt_eq`
 - `compressor`
 - `limiter`
+- `transient_shaper`
+- `clipper`
+- `gate`
 - `time_stretch`
 - `reverse`
 - `mono_sum`
@@ -168,7 +171,7 @@ At the moment, that includes:
 - `stereo_width`
 - `denoise`
 
-`time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility operations, the new surgical EQ operations, and the new Layer 1 effect operations are runtime-available but not yet part of the default planner surface.
+`time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility operations, the new surgical EQ operations, the transient/control operations, and the new Layer 1 effect operations are runtime-available but not yet part of the default planner surface. The transient-shaper surface is currently a compand-based, transient-biased runtime primitive rather than a full transient-designer model.
 
 ### Tool Surface
 

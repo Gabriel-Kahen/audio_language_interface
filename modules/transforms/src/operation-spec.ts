@@ -4,6 +4,11 @@ import {
   buildReverseOperation,
   buildStereoBalanceCorrectionOperation,
 } from "./operations/channel-utilities.js";
+import {
+  buildClipperOperation,
+  buildGateOperation,
+  buildTransientShaperOperation,
+} from "./operations/control.js";
 import { buildCompressorOperation, buildLimiterOperation } from "./operations/dynamics.js";
 import {
   buildBitcrushOperation,
@@ -76,6 +81,12 @@ export function buildOperation(
       return buildCompressorOperation(audio, parameters, target);
     case "limiter":
       return buildLimiterOperation(audio, parameters, target);
+    case "transient_shaper":
+      return buildTransientShaperOperation(audio, parameters, target);
+    case "clipper":
+      return buildClipperOperation(audio, parameters, target);
+    case "gate":
+      return buildGateOperation(audio, parameters, target);
     case "time_stretch":
       return buildTimeStretchOperation(audio, parameters, target);
     case "reverb":

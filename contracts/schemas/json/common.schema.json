@@ -177,6 +177,9 @@
         "tilt_eq",
         "compressor",
         "limiter",
+        "transient_shaper",
+        "clipper",
+        "gate",
         "time_stretch",
         "reverse",
         "mono_sum",
@@ -636,6 +639,88 @@
         },
         "input_gain_db": {
           "type": "number"
+        }
+      }
+    },
+    "transientShaperParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attack_amount_db", "threshold_db"],
+      "properties": {
+        "attack_amount_db": {
+          "type": "number",
+          "minimum": -12,
+          "maximum": 12
+        },
+        "threshold_db": {
+          "type": "number",
+          "minimum": -60,
+          "maximum": 0
+        },
+        "attack_ms": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "release_ms": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "clipperParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ceiling_dbfs"],
+      "properties": {
+        "ceiling_dbfs": {
+          "type": "number",
+          "minimum": -24,
+          "maximum": 0
+        },
+        "input_gain_db": {
+          "type": "number",
+          "minimum": -24,
+          "maximum": 24
+        },
+        "output_gain_db": {
+          "type": "number",
+          "minimum": -24,
+          "maximum": 24
+        },
+        "oversample_factor": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        }
+      }
+    },
+    "gateParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["threshold_db"],
+      "properties": {
+        "threshold_db": {
+          "type": "number",
+          "minimum": -80,
+          "maximum": 0
+        },
+        "range_db": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 96
+        },
+        "ratio": {
+          "type": "number",
+          "exclusiveMinimum": 1,
+          "maximum": 20
+        },
+        "attack_ms": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "release_ms": {
+          "type": "number",
+          "exclusiveMinimum": 0
         }
       }
     },

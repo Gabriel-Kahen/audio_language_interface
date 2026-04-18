@@ -7,6 +7,7 @@
   "limitations": [
     "Most operations currently support full_file targets only.",
     "time_stretch is runtime-available but not yet selected by the baseline planner.",
+    "Transient shaping, clipping, and gating are runtime-available but not yet selected by the baseline planner.",
     "Layer 1 ambience, texture, modulation, and surgical tone-shaping effects are runtime-available but not yet selected by the baseline planner."
   ],
   "operations": [
@@ -409,6 +410,174 @@
           "unit": "ms",
           "default_value": 5,
           "example_value": 5
+        }
+      ]
+    },
+    {
+      "name": "transient_shaper",
+      "category": "dynamics",
+      "summary": "Apply a compand-based, transient-biased dynamics curve with explicit threshold and timing controls.",
+      "intent_support": "runtime_only",
+      "supported_target_scopes": ["full_file"],
+      "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+      "parameters": [
+        {
+          "name": "attack_amount_db",
+          "value_type": "number",
+          "required": true,
+          "description": "Signed strength of the transient-biased shaping curve.",
+          "minimum": -12,
+          "maximum": 12,
+          "unit": "dB",
+          "example_value": 5
+        },
+        {
+          "name": "threshold_db",
+          "value_type": "number",
+          "required": true,
+          "description": "Threshold where the shaping curve begins to diverge from unity.",
+          "minimum": -60,
+          "maximum": 0,
+          "unit": "dB",
+          "example_value": -24
+        },
+        {
+          "name": "attack_ms",
+          "value_type": "number",
+          "required": false,
+          "description": "Transient detector attack time.",
+          "minimum": 0.1,
+          "maximum": 50,
+          "unit": "ms",
+          "default_value": 5,
+          "example_value": 5
+        },
+        {
+          "name": "release_ms",
+          "value_type": "number",
+          "required": false,
+          "description": "Transient detector release time.",
+          "minimum": 1,
+          "maximum": 500,
+          "unit": "ms",
+          "default_value": 80,
+          "example_value": 80
+        }
+      ]
+    },
+    {
+      "name": "clipper",
+      "category": "dynamics",
+      "summary": "Apply deterministic hard clipping with explicit ceiling and oversampling.",
+      "intent_support": "runtime_only",
+      "supported_target_scopes": ["full_file"],
+      "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+      "parameters": [
+        {
+          "name": "ceiling_dbfs",
+          "value_type": "number",
+          "required": true,
+          "description": "Peak ceiling that is normalized to the clip point before clipping and restored after.",
+          "minimum": -24,
+          "maximum": 0,
+          "unit": "dBFS",
+          "example_value": -9
+        },
+        {
+          "name": "input_gain_db",
+          "value_type": "number",
+          "required": false,
+          "description": "Optional gain applied before clipping.",
+          "minimum": -24,
+          "maximum": 24,
+          "unit": "dB",
+          "default_value": 0,
+          "example_value": 6
+        },
+        {
+          "name": "output_gain_db",
+          "value_type": "number",
+          "required": false,
+          "description": "Optional gain applied after clipping.",
+          "minimum": -24,
+          "maximum": 24,
+          "unit": "dB",
+          "default_value": 0,
+          "example_value": 0
+        },
+        {
+          "name": "oversample_factor",
+          "value_type": "integer",
+          "required": false,
+          "description": "Oversampling factor used by the clipping stage.",
+          "minimum": 1,
+          "maximum": 8,
+          "default_value": 2,
+          "example_value": 4
+        }
+      ]
+    },
+    {
+      "name": "gate",
+      "category": "dynamics",
+      "summary": "Apply downward gating to low-level content with explicit threshold and timing.",
+      "intent_support": "runtime_only",
+      "supported_target_scopes": ["full_file"],
+      "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+      "parameters": [
+        {
+          "name": "threshold_db",
+          "value_type": "number",
+          "required": true,
+          "description": "Gate threshold.",
+          "minimum": -80,
+          "maximum": 0,
+          "unit": "dB",
+          "example_value": -36
+        },
+        {
+          "name": "range_db",
+          "value_type": "number",
+          "required": false,
+          "description": "Maximum attenuation applied below threshold.",
+          "minimum": 0,
+          "maximum": 96,
+          "unit": "dB",
+          "default_value": 60,
+          "example_value": 72
+        },
+        {
+          "name": "ratio",
+          "value_type": "number",
+          "required": false,
+          "description": "Gate expansion ratio.",
+          "minimum": 1.01,
+          "maximum": 20,
+          "unit": "ratio",
+          "default_value": 8,
+          "example_value": 10
+        },
+        {
+          "name": "attack_ms",
+          "value_type": "number",
+          "required": false,
+          "description": "Gate attack time.",
+          "minimum": 0.01,
+          "maximum": 2000,
+          "unit": "ms",
+          "default_value": 5,
+          "example_value": 5
+        },
+        {
+          "name": "release_ms",
+          "value_type": "number",
+          "required": false,
+          "description": "Gate release time.",
+          "minimum": 0.01,
+          "maximum": 9000,
+          "unit": "ms",
+          "default_value": 80,
+          "example_value": 120
         }
       ]
     },

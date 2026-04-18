@@ -190,6 +190,32 @@
             }
           },
           {
+            "if": { "properties": { "operation": { "const": "transient_shaper" } } },
+            "then": {
+              "properties": {
+                "parameters": {
+                  "$ref": "./common.schema.json#/$defs/transientShaperParameters"
+                }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "operation": { "const": "clipper" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/clipperParameters" }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "operation": { "const": "gate" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/gateParameters" }
+              }
+            }
+          },
+          {
             "if": { "properties": { "operation": { "const": "time_stretch" } } },
             "then": {
               "properties": {

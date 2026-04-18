@@ -85,6 +85,9 @@ Supported but conservative areas:
 - `tilt_eq`
 - `compressor`
 - `limiter`
+- `transient_shaper`
+- `clipper`
+- `gate`
 - `time_stretch`
 - `reverse`
 - `mono_sum`
@@ -116,7 +119,7 @@ The baseline planner currently plans only against operations marked `planner_sup
 - `stereo_width`
 - `denoise`
 
-`time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility operations, the new surgical EQ operations, and the new Layer 1 effect operations are runtime-available but not yet selected by the baseline planner.
+`time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility operations, the new surgical EQ operations, the transient/control operations, and the new Layer 1 effect operations are runtime-available but not yet selected by the baseline planner. The current `transient_shaper` surface is compand-based and best suited to transient-rich material.
 
 ### Implemented Tool Surface
 
