@@ -15,7 +15,7 @@ Defines the tool envelope for executing an explicit `EditPlan` against one `Audi
   - `output_version_id`
   - `record_id`
 
-The request schema and current tool runtime support the currently implemented runtime operation set exposed by `modules/transforms` and `RuntimeCapabilityManifest`, including `trim_silence`, `pitch_shift`, `high_shelf`, `low_shelf`, `notch_filter`, `tilt_eq`, `compressor`, `limiter`, `time_stretch`, `reverse`, `mono_sum`, `channel_swap`, `stereo_balance_correction`, `stereo_width`, and `denoise`.
+The request schema and current tool runtime support the currently implemented runtime operation set exposed by `modules/transforms` and `RuntimeCapabilityManifest`, including `trim_silence`, `pitch_shift`, `high_shelf`, `low_shelf`, `notch_filter`, `tilt_eq`, `compressor`, `limiter`, `transient_shaper`, `clipper`, `gate`, `time_stretch`, `reverse`, `mono_sum`, `pan`, `channel_swap`, `channel_remap`, `stereo_balance_correction`, `mid_side_eq`, `stereo_width`, and `denoise`.
 
 ## Success response
 

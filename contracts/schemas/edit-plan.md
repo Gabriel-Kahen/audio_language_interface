@@ -65,8 +65,11 @@ The current published contract allows these operation names in `steps[].operatio
 - `time_stretch`
 - `reverse`
 - `mono_sum`
+- `pan`
 - `channel_swap`
+- `channel_remap`
 - `stereo_balance_correction`
+- `mid_side_eq`
 - `denoise`
 - `stereo_width`
 - `reverb`
@@ -98,8 +101,11 @@ In the current baseline, the capability manifest restricts these operations to `
 - `notch_filter`
 - `tilt_eq`
 - `time_stretch`
+- `pan`
 - `stereo_width`
 - `denoise`
+- `channel_remap`
+- `mid_side_eq`
 - `reverb`
 - `delay`
 - `echo`
@@ -120,8 +126,11 @@ Current expanded parameter surfaces:
 - `time_stretch`: either `stretch_ratio`, or `source_tempo_bpm` plus `target_tempo_bpm`
 - `reverse`: no parameters
 - `mono_sum`: no parameters
+- `pan`: `position`, with runtime-recorded `resolved_mode`, `left_gain`, and `right_gain`
 - `channel_swap`: no parameters
+- `channel_remap`: `output_channels` and `routes`
 - `stereo_balance_correction`: `target_channel` and `correction_db`
+- `mid_side_eq`: at least one of `mid_bands` or `side_bands`
 - `stereo_width`: `width_multiplier`
 - `denoise`: `reduction_db`, with optional `noise_floor_dbfs`
 - `high_shelf`: `frequency_hz`, `gain_db`, and `q`
@@ -158,7 +167,7 @@ Published pitch-shift surface:
 
 `pitch_shift` is currently documented as a whole-file transform that keeps duration close to the original. The runtime may record optional derived fields such as FFmpeg rate and tempo-compensation factors in the emitted `TransformRecord`.
 
-The new surgical tone-shaping operations and Layer 1 runtime effects are intentionally published as `runtime_only` capability-manifest operations in the current baseline. They are valid in the contract surface for explicit technical callers and future planner work, but they are not yet selected automatically by the baseline planner.
+The new surgical tone-shaping operations, stereo-routing operations, transient/control operations, and Layer 1 runtime effects are intentionally published as `runtime_only` capability-manifest operations in the current baseline. They are valid in the contract surface for explicit technical callers and future planner work, but they are not yet selected automatically by the baseline planner.
 
 ## Optional fields
 

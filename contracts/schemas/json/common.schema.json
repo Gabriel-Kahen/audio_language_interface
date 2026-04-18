@@ -183,10 +183,13 @@
         "time_stretch",
         "reverse",
         "mono_sum",
+        "pan",
         "channel_swap",
+        "channel_remap",
         "stereo_balance_correction",
-        "denoise",
+        "mid_side_eq",
         "stereo_width",
+        "denoise",
         "reverb",
         "delay",
         "echo",
@@ -812,9 +815,74 @@
       "type": "object",
       "additionalProperties": false
     },
+    "panParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position"],
+      "properties": {
+        "position": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "resolved_mode": {
+          "type": "string",
+          "enum": ["mono_to_stereo", "stereo_balance"]
+        },
+        "left_gain": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "right_gain": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
     "channelSwapParameters": {
       "type": "object",
       "additionalProperties": false
+    },
+    "channelRemapRoute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["output_channel", "input_channel"],
+      "properties": {
+        "output_channel": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "input_channel": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "gain": {
+          "type": "number",
+          "minimum": -4,
+          "maximum": 4
+        }
+      }
+    },
+    "channelRemapParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["output_channels", "routes"],
+      "properties": {
+        "output_channels": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "routes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "./common.schema.json#/$defs/channelRemapRoute"
+          }
+        }
+      }
     },
     "stereoBalanceCorrectionParameters": {
       "type": "object",
@@ -831,6 +899,44 @@
           "maximum": 24
         }
       }
+    },
+    "midSideEqParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mid_bands": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "./common.schema.json#/$defs/parametricEqBand"
+          }
+        },
+        "side_bands": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "./common.schema.json#/$defs/parametricEqBand"
+          }
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "mid_bands": {
+              "type": "array"
+            }
+          },
+          "required": ["mid_bands"]
+        },
+        {
+          "properties": {
+            "side_bands": {
+              "type": "array"
+            }
+          },
+          "required": ["side_bands"]
+        }
+      ]
     },
     "stereoWidthParameters": {
       "type": "object",

@@ -9,6 +9,7 @@
     "time_stretch is runtime-available but not yet selected by the baseline planner.",
     "Transient shaping, clipping, and gating are runtime-available but not yet selected by the baseline planner.",
     "Layer 1 ambience, texture, modulation, and surgical tone-shaping effects are runtime-available but not yet selected by the baseline planner."
+    "Stereo routing primitives are runtime-available but not yet selected by the baseline planner.",
   ],
   "operations": [
     {
@@ -598,6 +599,84 @@
           "maximum": 4,
           "unit": "ratio",
           "example_value": 1.1
+        }
+      ]
+    },
+    {
+      "name": "pan",
+      "category": "stereo",
+      "summary": "Pan mono material into stereo or rebalance an existing stereo file.",
+      "intent_support": "runtime_only",
+      "supported_target_scopes": ["full_file"],
+      "channel_requirements": {
+        "min_channels": 1,
+        "max_channels": 2
+      },
+      "constraints": ["Requires mono or stereo input in the current runtime."],
+      "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+      "parameters": [
+        {
+          "name": "position",
+          "value_type": "number",
+          "required": true,
+          "description": "Pan position from left -1 to right +1.",
+          "minimum": -1,
+          "maximum": 1,
+          "example_value": 0.35
+        }
+      ]
+    },
+    {
+      "name": "channel_remap",
+      "category": "stereo",
+      "summary": "Apply an explicit channel-routing matrix with per-route gain controls.",
+      "intent_support": "runtime_only",
+      "supported_target_scopes": ["full_file"],
+      "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+      "parameters": [
+        {
+          "name": "output_channels",
+          "value_type": "integer",
+          "required": true,
+          "description": "Number of output channels to render.",
+          "minimum": 1,
+          "maximum": 8,
+          "example_value": 2
+        },
+        {
+          "name": "routes",
+          "value_type": "string",
+          "required": true,
+          "description": "Non-empty array of route objects with output_channel, input_channel, and optional gain.",
+          "example_value": "array"
+        }
+      ]
+    },
+    {
+      "name": "mid_side_eq",
+      "category": "stereo",
+      "summary": "Apply explicit bell EQ bands to the mid and/or side image components.",
+      "intent_support": "runtime_only",
+      "supported_target_scopes": ["full_file"],
+      "channel_requirements": {
+        "exact_channels": 2
+      },
+      "constraints": ["Requires stereo 2-channel input."],
+      "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+      "parameters": [
+        {
+          "name": "mid_bands",
+          "value_type": "string",
+          "required": false,
+          "description": "Optional non-empty array of bell EQ bands applied to the mid channel.",
+          "example_value": "array"
+        },
+        {
+          "name": "side_bands",
+          "value_type": "string",
+          "required": false,
+          "description": "Optional non-empty array of bell EQ bands applied to the side channel.",
+          "example_value": "array"
         }
       ]
     },
