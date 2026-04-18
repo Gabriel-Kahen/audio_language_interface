@@ -17,6 +17,12 @@ export const CONTRACT_SCHEMA_VERSION = "1.0.0" as const;
 
 export type OperationName = RuntimeOperationName;
 export type TargetScope = RuntimeTargetScope;
+export type PlannerRequestClass =
+  | "supported"
+  | "supported_but_underspecified"
+  | "unsupported"
+  | "supported_runtime_only_but_not_planner_enabled";
+export type PlannerFailureClass = Exclude<PlannerRequestClass, "supported">;
 
 export type AudioVersion = CoreAudioVersion;
 export type AnalysisAnnotation = UpstreamAnalysisAnnotation;
@@ -61,6 +67,7 @@ export interface EditPlan {
 export interface ParsedEditObjectives {
   raw_request: string;
   normalized_request: string;
+  request_classification: PlannerRequestClass;
   wants_darker: boolean;
   wants_brighter: boolean;
   wants_more_air: boolean;
@@ -81,8 +88,10 @@ export interface ParsedEditObjectives {
   wants_wider: boolean;
   wants_narrower: boolean;
   preserve_punch: boolean;
-  ambiguous_requests: string[];
+  supported_but_underspecified_requests: string[];
   unsupported_requests: string[];
+  supported_runtime_only_but_not_planner_enabled_requests: string[];
+  runtime_only_operations_requested: OperationName[];
   trim_range?: {
     start_seconds: number;
     end_seconds: number;

@@ -15,7 +15,7 @@ import commonSchema from "../../../contracts/schemas/json/common.schema.json" wi
 import editPlanSchema from "../../../contracts/schemas/json/edit-plan.schema.json" with {
   type: "json",
 };
-import { parseUserRequest, planEdits } from "../src/index.js";
+import { PlanningFailure, parseUserRequest, planEdits } from "../src/index.js";
 import type { AnalysisReport, AudioVersion, SemanticProfile } from "../src/types.js";
 
 describe("parseUserRequest", () => {
@@ -69,9 +69,37 @@ describe("parseUserRequest", () => {
   it("classifies ambiguous and unsupported prompt phrases explicitly", () => {
     const parsed = parseUserRequest("Make it hit harder and remove clicks.");
 
-    expect(parsed.ambiguous_requests).toContain("hit harder");
+    expect(parsed.supported_but_underspecified_requests).toContain("hit harder");
     expect(parsed.unsupported_requests).toEqual([]);
     expect(parsed.wants_remove_clicks).toBe(true);
+    expect(parsed.request_classification).toBe("supported_but_underspecified");
+  });
+
+  it("classifies runtime-only requests separately from unsupported ones", () => {
+    const parsed = parseUserRequest("Add reverb and a little delay.");
+
+    expect(parsed.supported_runtime_only_but_not_planner_enabled_requests).toEqual([
+      "reverb",
+      "delay",
+    ]);
+    expect(parsed.runtime_only_operations_requested).toEqual(["reverb", "delay"]);
+    expect(parsed.request_classification).toBe("supported_runtime_only_but_not_planner_enabled");
+  });
+
+  it("does not treat mono-compatibility wording as a mono-sum request", () => {
+    const parsed = parseUserRequest("Widen this slightly, but keep it mono compatible.");
+
+    expect(parsed.wants_wider).toBe(true);
+    expect(parsed.supported_runtime_only_but_not_planner_enabled_requests).toEqual([]);
+    expect(parsed.request_classification).toBe("supported");
+  });
+
+  it("keeps underspecified classification ahead of runtime-only for mixed prompts", () => {
+    const parsed = parseUserRequest("Make it better and add reverb.");
+
+    expect(parsed.supported_but_underspecified_requests).toContain("make it better");
+    expect(parsed.supported_runtime_only_but_not_planner_enabled_requests).toContain("reverb");
+    expect(parsed.request_classification).toBe("supported_but_underspecified");
   });
 });
 
@@ -412,14 +440,19 @@ describe("planEdits", () => {
   });
 
   it("fails instead of inventing unsupported behavior", () => {
-    expect(() =>
+    try {
       planEdits({
         userRequest: "Make it better.",
         audioVersion: createAudioVersionFixture(),
         analysisReport: createAnalysisReportFixture(),
         semanticProfile: createSemanticProfileFixture(),
-      }),
-    ).toThrow(/ambiguous phrasing/i);
+      });
+      throw new Error("Expected planEdits to throw.");
+    } catch (error) {
+      expect(error).toBeInstanceOf(PlanningFailure);
+      expect((error as PlanningFailure).failureClass).toBe("supported_but_underspecified");
+      expect((error as Error).message).toMatch(/underspecified phrasing/i);
+    }
   });
 
   it("supports explicit click cleanup instead of rejecting it as unsupported", () => {
@@ -434,14 +467,40 @@ describe("planEdits", () => {
   });
 
   it("fails clearly for ambiguous dynamics language", () => {
-    expect(() =>
+    try {
       planEdits({
         userRequest: "Make it hit harder.",
         audioVersion: createAudioVersionFixture(),
         analysisReport: createAnalysisReportFixture(),
         semanticProfile: createSemanticProfileFixture(),
-      }),
-    ).toThrow(/ambiguous phrasing/i);
+      });
+      throw new Error("Expected planEdits to throw.");
+    } catch (error) {
+      expect(error).toBeInstanceOf(PlanningFailure);
+      expect((error as PlanningFailure).failureClass).toBe("supported_but_underspecified");
+      expect((error as Error).message).toMatch(/underspecified phrasing/i);
+    }
+  });
+
+  it("fails clearly for runtime-only requests that are not planner-enabled", () => {
+    try {
+      planEdits({
+        userRequest: "Add reverb and echo.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createAnalysisReportFixture(),
+        semanticProfile: createSemanticProfileFixture(),
+      });
+      throw new Error("Expected planEdits to throw.");
+    } catch (error) {
+      expect(error).toBeInstanceOf(PlanningFailure);
+      expect((error as PlanningFailure).failureClass).toBe(
+        "supported_runtime_only_but_not_planner_enabled",
+      );
+      expect((error as PlanningFailure).details.runtime_only_operations).toEqual([
+        "reverb",
+        "echo",
+      ]);
+    }
   });
 
   it("fails clearly for denoise requests without steady-noise evidence", () => {

@@ -30,9 +30,11 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 ## Safety posture
 
 - The baseline planner only emits operations currently implemented by `modules/transforms`.
+- Requests that are vague, contradictory, or blocked by missing evidence are classified as `supported_but_underspecified`.
 - Time-based requests are checked against the current `AudioVersion` duration before a plan is emitted.
 - Combined `fade in` and `fade out` coverage must not overlap and must stay at or below `50%` of the available duration.
 - If a request cannot be mapped to an explicit supported operation, planning fails instead of guessing.
+- Requests for runtime-available but non-planner-enabled operations such as `reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, `phaser`, `pitch_shift`, `time_stretch`, or `reverse` are classified as `supported_runtime_only_but_not_planner_enabled`.
 - Requests for declip, dereverb, and broader restoration categories outside denoise, de-ess, declick, and dehum still fail explicitly.
 - Denoise only proceeds when steady-noise evidence is present; otherwise the planner rejects the request instead of guessing.
 - Stereo-width changes only proceed for two-channel material that is not already too wide, too narrow, or stereo-ambiguous for a conservative move.

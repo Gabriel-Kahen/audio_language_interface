@@ -62,6 +62,14 @@ Returns a `report` object containing the `AnalysisReport`. The include flags onl
 
 Returns an `edit_plan` object containing the canonical `EditPlan`.
 
+If the request cannot be planned conservatively, `plan_edits` returns `invalid_arguments` with `error.details.field = "arguments.user_request"` and a planner-specific `failure_class` of:
+
+- `supported_but_underspecified`
+- `unsupported`
+- `supported_runtime_only_but_not_planner_enabled`
+
+That detail payload may also include `matched_requests`, `runtime_only_operations`, `planner_supported_operations`, `capability_manifest_id`, and `suggested_directions`.
+
 ### `apply_edit_plan`
 
 - backing module: `transforms`

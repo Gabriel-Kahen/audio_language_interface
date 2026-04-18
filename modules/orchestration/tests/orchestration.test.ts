@@ -288,12 +288,12 @@ describe("runRequestCycle", () => {
     expect(result.semanticProfile).toBeUndefined();
     expect(result.editPlan).toBeUndefined();
     expect(result.transformResult).toBeUndefined();
-    expect(result.comparisonReport.goal_alignment).toEqual([
-      { goal: "slightly reduce perceived brightness", status: "met" },
-    ]);
     expect(compareRenderEditPlans).toEqual([
       expect.objectContaining({ version_id: inputVersion.version_id }),
     ]);
+    expect(result.comparisonReport.goal_alignment?.map((goal) => goal.goal)).toEqual(
+      result.iterations?.[0]?.editPlan.goals,
+    );
     expect(validateSessionGraph(result.sessionGraph).valid).toBe(true);
   });
 

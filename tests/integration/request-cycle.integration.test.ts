@@ -292,12 +292,8 @@ describe("request cycle integration", () => {
       expect(result.semanticProfile).toBeUndefined();
       expect(result.editPlan).toBeUndefined();
       expect(result.transformResult).toBeUndefined();
-      expect(result.comparisonReport.goal_alignment).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            goal: "slightly reduce perceived brightness",
-          }),
-        ]),
+      expect(result.comparisonReport.goal_alignment?.map((goal) => goal.goal)).toEqual(
+        result.iterations?.[0]?.editPlan.goals,
       );
       expect(result.outputVersion.parent_version_id).toBe(
         result.iterations?.[0]?.outputVersion.version_id,

@@ -1,10 +1,12 @@
+import { plannerSupportedRuntimeOperations } from "@audio-language-interface/capabilities";
 import type {
   AnalysisReport,
   AudioVersion,
   SemanticProfile,
 } from "@audio-language-interface/planning";
+import { PlanningFailure } from "@audio-language-interface/planning";
 
-import { createProvenanceMismatchError } from "../errors.js";
+import { createProvenanceMismatchError, ToolInputError } from "../errors.js";
 import type { ToolDefinition, ToolRequest } from "../types.js";
 import {
   assertToolResultEditPlan,
@@ -90,17 +92,43 @@ export const planEditsTool: ToolDefinition<PlanEditsArguments, Record<string, un
   },
   validateArguments,
   async execute(args, context) {
-    const editPlan = assertToolResultEditPlan(
-      await context.runtime.planEdits({
+    let editPlanResult: Awaited<ReturnType<typeof context.runtime.planEdits>>;
+
+    try {
+      editPlanResult = await context.runtime.planEdits({
         userRequest: args.userRequest,
         audioVersion: args.audioVersion,
         analysisReport: args.analysisReport,
         semanticProfile: args.semanticProfile,
         ...(args.generatedAt === undefined ? {} : { generatedAt: args.generatedAt }),
         ...(args.constraints === undefined ? {} : { constraints: args.constraints }),
-      }),
-      "result.edit_plan",
-    );
+      });
+    } catch (error) {
+      if (error instanceof PlanningFailure) {
+        throw new ToolInputError("invalid_arguments", error.message, {
+          field: "arguments.user_request",
+          failure_class: error.details.failure_class,
+          planner_supported_operations:
+            error.details.planner_supported_operations ?? plannerSupportedRuntimeOperations,
+          ...(error.details.capability_manifest_id === undefined
+            ? {}
+            : { capability_manifest_id: error.details.capability_manifest_id }),
+          ...(error.details.matched_requests === undefined
+            ? {}
+            : { matched_requests: error.details.matched_requests }),
+          ...(error.details.runtime_only_operations === undefined
+            ? {}
+            : { runtime_only_operations: error.details.runtime_only_operations }),
+          ...(error.details.suggested_directions === undefined
+            ? {}
+            : { suggested_directions: error.details.suggested_directions }),
+        });
+      }
+
+      throw error;
+    }
+
+    const editPlan = assertToolResultEditPlan(editPlanResult, "result.edit_plan");
 
     return {
       result: {

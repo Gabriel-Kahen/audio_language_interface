@@ -1,3 +1,4 @@
+export { createPlanningFailure, PlanningFailure } from "./failures.js";
 export { parseUserRequest } from "./parse-request.js";
 export { planEdits } from "./plan-edits.js";
 export type {
@@ -11,6 +12,8 @@ export type {
   OperationName,
   ParsedEditObjectives,
   PlanEditsOptions,
+  PlannerFailureClass,
+  PlannerRequestClass,
   SemanticDescriptor,
   SemanticProfile,
   TargetScope,
