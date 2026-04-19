@@ -516,6 +516,48 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
       },
     },
     {
+      caseId: "request_cycle_louder_and_more_controlled",
+      family: "first_prompt_family",
+      prompt: "Make it louder and more controlled.",
+      description:
+        "Dedicated controlled-loudness path on the committed sustained louder-control fixture.",
+      fixtureId: "fixture_phase1_request_cycle_louder_controlled_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["compressor", "normalize"],
+          expected_operation_order: ["compressor", "normalize"],
+          required_goals: [
+            "make dynamics more controlled without over-compressing",
+            "increase output level conservatively",
+          ],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "make dynamics more controlled without over-compressing": "met",
+            "increase output level conservatively": "met",
+          },
+          verification_statuses: {
+            target_controlled_loudness_range: "met",
+            target_controlled_loudness_no_overcompression: "met",
+            target_controlled_loudness_integrated_lufs: "met",
+            target_controlled_loudness_peak_guard: "met",
+            target_controlled_loudness_no_headroom_loss: "met",
+          },
+        },
+        regressions: {
+          forbidden_regression_kinds: [
+            "peak_control_regression",
+            "loudness_headroom_loss",
+            "increased_sibilance",
+            "added_muddiness",
+          ],
+        },
+      },
+    },
+    {
       caseId: "request_cycle_clean_it_clarification",
       family: "first_prompt_family",
       prompt: "clean it",

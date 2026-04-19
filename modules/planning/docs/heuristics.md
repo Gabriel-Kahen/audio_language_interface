@@ -15,6 +15,7 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - `warmer`, `more warmth` -> `low_shelf` boost around `180 Hz`
 - `rumble`, `subsonic` -> `high_pass_filter` at `40 Hz`
 - `more controlled`, `compression`, `tighter and more controlled` -> conservative `compressor` settings with explicit threshold, ratio, attack, and release
+- `louder and more controlled`, `make it louder and more controlled` -> dedicated `compressor -> normalize` path that tightens dynamics first, then raises integrated loudness with measured staging and explicit true-peak protection
 - `control peaks`, `catch peaks`, `limiter` -> conservative `limiter` settings with explicit `ceiling_dbtp`, `release_ms`, `lookahead_ms`, and no added limiter input gain by default
 - explicit `normalize` / `normalise` requests -> `normalize` with integrated-loudness targeting and a `-1 dBTP` ceiling
 - `remove noise`, `reduce hiss`, `denoise` -> conservative `denoise` only when analysis indicates sustained noise
@@ -22,7 +23,7 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - `remove clicks`, `declick`, `remove pops` -> conservative `declick`
 - `remove 50 Hz hum`, `remove 60 Hz hum`, `dehum 50 hz`, `dehum 60 hz` -> conservative `dehum` at the explicitly requested mains frequency
 - `wider`, `widen`, `more width`, `narrower` -> conservative `stereo_width` only for already-stereo material with safe balance and correlation
-- `louder` -> conservative `gain` step limited by measured true-peak headroom to a `-1 dBTP` ceiling
+- `louder` -> conservative `gain` step limited by measured true-peak headroom to a `-1 dBTP` ceiling unless the request also explicitly asks for more control, in which case the dedicated controlled-loudness path takes precedence
 - `quieter` -> conservative negative `gain` step
 - `trim from Xs to Ys` -> `trim` time-range step with explicit start and end seconds
 - `fade in Xs`, `fade out Xs` -> `fade` step with explicit durations

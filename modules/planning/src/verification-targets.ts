@@ -11,6 +11,7 @@ export function buildVerificationTargets(
   semanticProfile: SemanticProfile,
 ): VerificationTarget[] {
   const targets: VerificationTarget[] = [];
+  const useControlledLoudnessTargets = shouldUseControlledLoudnessTargets(objectives);
   const harshnessAnnotation = analysisReport.annotations?.find(
     (annotation) => annotation.kind === "harshness",
   );
@@ -172,7 +173,54 @@ export function buildVerificationTargets(
     });
   }
 
-  if (objectives.wants_more_controlled_dynamics) {
+  if (useControlledLoudnessTargets) {
+    targets.push({
+      target_id: "target_controlled_loudness_range",
+      goal: "make dynamics more controlled without over-compressing",
+      label: "reduce dynamic range modestly before louder output staging",
+      kind: "analysis_metric",
+      comparison: "decrease_by",
+      metric: "dynamics.dynamic_range_db",
+      threshold: thresholdByIntensity(objectives.intensity, 0.25, 0.5, 0.8),
+      rationale:
+        "A louder-and-more-controlled request should tighten dynamics somewhat, but not flatten the source.",
+    });
+    targets.push({
+      target_id: "target_controlled_loudness_no_overcompression",
+      goal: "make dynamics more controlled without over-compressing",
+      label: "avoid over-compression side effects",
+      kind: "regression_guard",
+      comparison: "absent",
+      regression_kind: "over_compression",
+    });
+    targets.push({
+      target_id: "target_controlled_loudness_integrated_lufs",
+      goal: "increase output level conservatively",
+      label: "raise integrated loudness modestly",
+      kind: "analysis_metric",
+      comparison: "increase_by",
+      metric: "levels.integrated_lufs",
+      threshold: thresholdByIntensity(objectives.intensity, 0.7, 1, 1.4),
+      rationale:
+        "The coupled louder-and-controlled path should raise loudness, but less aggressively than a pure louder request.",
+    });
+    targets.push({
+      target_id: "target_controlled_loudness_peak_guard",
+      goal: "increase output level conservatively",
+      label: "avoid worsening peak control while raising loudness",
+      kind: "regression_guard",
+      comparison: "absent",
+      regression_kind: "peak_control_regression",
+    });
+    targets.push({
+      target_id: "target_controlled_loudness_no_headroom_loss",
+      goal: "increase output level conservatively",
+      label: "avoid loudness-side headroom loss",
+      kind: "regression_guard",
+      comparison: "absent",
+      regression_kind: "loudness_headroom_loss",
+    });
+  } else if (objectives.wants_more_controlled_dynamics) {
     targets.push({
       target_id: "target_control_dynamics_range",
       goal: "make dynamics more controlled without over-compressing",
@@ -396,7 +444,7 @@ export function buildVerificationTargets(
     });
   }
 
-  if (objectives.wants_louder) {
+  if (objectives.wants_louder && !useControlledLoudnessTargets) {
     targets.push({
       target_id: "target_louder_integrated_lufs",
       goal: "increase output level conservatively",
@@ -498,6 +546,16 @@ export function buildVerificationTargets(
   }
 
   return dedupeByTargetId(targets);
+}
+
+function shouldUseControlledLoudnessTargets(objectives: ParsedEditObjectives): boolean {
+  return (
+    objectives.wants_louder &&
+    objectives.wants_more_controlled_dynamics &&
+    !objectives.wants_more_even_level &&
+    !objectives.wants_peak_control &&
+    !objectives.wants_quieter
+  );
 }
 
 function thresholdByIntensity(
