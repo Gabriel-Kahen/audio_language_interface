@@ -125,7 +125,9 @@
             "created_at": { "$ref": "./common.schema.json#/$defs/isoTimestamp" },
             "goals": { "$ref": "./common.schema.json#/$defs/stringArray" },
             "constraints": { "$ref": "./common.schema.json#/$defs/stringArray" },
-            "verification_targets": { "$ref": "./common.schema.json#/$defs/stringArray" },
+            "verification_targets": {
+              "$ref": "./common.schema.json#/$defs/verificationTargetArray"
+            },
             "rationale": { "type": "string" },
             "steps": {
               "type": "array",

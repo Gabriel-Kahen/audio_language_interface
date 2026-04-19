@@ -121,6 +121,9 @@
         }
       }
     },
+    "verification_results": {
+      "$ref": "./common.schema.json#/$defs/verificationTargetResultArray"
+    },
     "summary": {
       "type": "object",
       "additionalProperties": false,

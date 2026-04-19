@@ -21,6 +21,10 @@ export type {
   RegressionWarning,
   RenderArtifact,
   SemanticDelta,
+  VerificationComparison,
+  VerificationTarget,
+  VerificationTargetKind,
+  VerificationTargetResult,
 } from "./types.js";
 export { CONTRACT_SCHEMA_VERSION } from "./types.js";
 export { assertValidComparisonReport, isValidComparisonReport } from "./utils/schema.js";

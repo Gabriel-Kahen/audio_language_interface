@@ -84,10 +84,50 @@
     }
   ],
   "verification_targets": [
-    "less low-end buildup below roughly 200 Hz",
-    "reduced energy around the harsh resonance near 3.2 kHz",
-    "slightly higher high-band energy without brittle peaks",
-    "a modestly brighter high-vs-low spectral balance"
+    {
+      "target_id": "target_reduce_low_end_weight",
+      "goal": "reduce excess low-frequency weight",
+      "label": "reduce low-end buildup below roughly 200 Hz",
+      "kind": "analysis_metric",
+      "comparison": "decrease_by",
+      "metric": "spectral_balance.low_band_db",
+      "threshold": 1.5,
+      "target": {
+        "scope": "frequency_region",
+        "bands_hz": [0, 200]
+      }
+    },
+    {
+      "target_id": "target_reduce_harsh_resonance",
+      "goal": "remove a narrow harsh resonance",
+      "label": "reduce energy around the harsh resonance near 3.2 kHz",
+      "kind": "analysis_metric",
+      "comparison": "decrease_by",
+      "metric": "spectral_balance.high_band_db",
+      "threshold": 1,
+      "target": {
+        "scope": "frequency_region",
+        "bands_hz": [3000, 3400]
+      }
+    },
+    {
+      "target_id": "target_add_air",
+      "goal": "add a little upper-band air",
+      "label": "slightly raise high-band energy",
+      "kind": "analysis_metric",
+      "comparison": "increase_by",
+      "metric": "spectral_balance.high_band_db",
+      "threshold": 0.75
+    },
+    {
+      "target_id": "target_brighter_balance",
+      "goal": "shift the overall tonal balance slightly brighter",
+      "label": "increase overall brightness tilt modestly",
+      "kind": "analysis_metric",
+      "comparison": "increase_by",
+      "metric": "spectral_balance.brightness_tilt_db",
+      "threshold": 0.8
+    }
   ],
   "rationale": "A light shelf-plus-notch chain keeps the tonal moves explicit and deterministic while making the source leaner, less harsh, and slightly brighter overall."
 }

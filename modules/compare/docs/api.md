@@ -108,6 +108,7 @@ Detects render metadata mismatches:
 Evaluates each goal string independently and returns `met`, `mostly_met`, `not_met`, or `unknown`.
 
 This helper is heuristic. It does not parse planner steps or verification targets.
+It now serves as the legacy fallback only when an `EditPlan` does not carry typed `verification_targets`.
 When one goal string contains multiple supported intents, it evaluates each matched intent and returns the most conservative status.
 
 Current supported Layer 2 goal families include:

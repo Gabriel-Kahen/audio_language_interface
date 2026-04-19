@@ -8,6 +8,7 @@ import {
   type MetricDelta,
   type RegressionWarning,
   type SemanticDelta,
+  type VerificationTargetResult,
 } from "./types.js";
 
 export interface BuildComparisonReportOptions {
@@ -20,6 +21,7 @@ export interface BuildComparisonReportOptions {
   semanticDeltas: SemanticDelta[];
   regressions: RegressionWarning[];
   goalAlignment?: GoalAlignment[];
+  verificationResults?: VerificationTargetResult[];
   comparisonId?: string;
 }
 
@@ -47,6 +49,9 @@ export function buildComparisonReport(options: BuildComparisonReportOptions): Co
     metric_deltas: options.metricDeltas,
     ...(options.semanticDeltas.length === 0 ? {} : { semantic_deltas: options.semanticDeltas }),
     ...(options.regressions.length === 0 ? {} : { regressions: options.regressions }),
+    ...(options.verificationResults === undefined || options.verificationResults.length === 0
+      ? {}
+      : { verification_results: options.verificationResults }),
     ...(options.goalAlignment === undefined || options.goalAlignment.length === 0
       ? {}
       : { goal_alignment: options.goalAlignment }),

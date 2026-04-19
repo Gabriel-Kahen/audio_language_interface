@@ -653,13 +653,18 @@ async function decideRevision(
     };
   }
 
+  const verificationResults = iteration.comparisonReport.verification_results ?? [];
+  const hasStructuredVerification = verificationResults.length > 0;
+  const hasUnmetStructuredVerification = verificationResults.some(
+    (target) => target.status === "not_met",
+  );
   const goalStatuses = iteration.comparisonReport.goal_alignment ?? [];
   const hasUnmetGoal = goalStatuses.some((goal) => goal.status === "not_met");
   const severeRegression = (iteration.comparisonReport.regressions ?? []).some(
     (regression) => regression.severity >= 0.7,
   );
 
-  if (goalStatuses.length === 0) {
+  if (!hasStructuredVerification && goalStatuses.length === 0) {
     return {
       shouldRevise: false,
       rationale:
@@ -677,7 +682,16 @@ async function decideRevision(
     };
   }
 
-  if (hasUnmetGoal) {
+  if (hasStructuredVerification && hasUnmetStructuredVerification) {
+    return {
+      shouldRevise: true,
+      rationale:
+        "Revision loop enabled, and structured verification still shows at least one requested check as not met without a severe regression, so orchestration will attempt one more explicit pass.",
+      source: "default_policy",
+    };
+  }
+
+  if (!hasStructuredVerification && hasUnmetGoal) {
     return {
       shouldRevise: true,
       rationale:
@@ -688,8 +702,9 @@ async function decideRevision(
 
   return {
     shouldRevise: false,
-    rationale:
-      "Revision loop enabled, but the first pass already met or mostly met the requested goals, so orchestration stopped after one pass.",
+    rationale: hasStructuredVerification
+      ? "Revision loop enabled, but structured verification already met or mostly met the requested checks, so orchestration stopped after one pass."
+      : "Revision loop enabled, but the first pass already met or mostly met the requested goals, so orchestration stopped after one pass.",
     source: "default_policy",
   };
 }

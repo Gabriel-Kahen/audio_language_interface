@@ -48,6 +48,7 @@
             "semantic_deltas": { "type": "array" },
             "regressions": { "type": "array" },
             "goal_alignment": { "type": "array" },
+            "verification_results": { "type": "array" },
             "summary": { "type": "object" }
           }
         }

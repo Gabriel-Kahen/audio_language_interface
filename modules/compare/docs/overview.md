@@ -11,7 +11,7 @@ The module currently focuses on:
 - deterministic metric deltas
 - a small evidence-based semantic vocabulary
 - regression warnings for a few clear failure modes
-- optional goal-alignment checks driven by `EditPlan.goals`
+- optional structured verification driven by `EditPlan.verification_targets`, with goal-level rollups for compatibility
 
 ## Public API
 
@@ -20,7 +20,7 @@ The public entrypoints are exported from `src/index.ts`.
 ### Top-level comparison entrypoints
 
 - `compareVersions(options)`
-  Compares two `AudioVersion` values using paired `AnalysisReport` inputs. This is the full comparison path and produces metric deltas, semantic deltas, regression warnings, optional goal alignment, and a summary.
+  Compares two `AudioVersion` values using paired `AnalysisReport` inputs. This is the full comparison path and produces metric deltas, semantic deltas, regression warnings, optional structured verification results, optional goal alignment, and a summary.
 - `compareRenders(options)`
   Compares two `RenderArtifact` values. If both paired analysis reports are also provided, it uses the same analysis-driven comparison path as `compareVersions`. If analysis is omitted, it performs a thin render-only comparison from render metadata and optional loudness summary values.
 
@@ -67,14 +67,14 @@ Contract references:
 1. compute numeric deltas from `measurements`
 2. derive semantic labels from those deltas and raw measurements
 3. detect analysis regressions
-4. optionally score each `EditPlan.goal`
+4. optionally evaluate planner-provided verification targets and derive goal-level alignment
 5. build and schema-validate a `ComparisonReport`
 
 ### Render comparison
 
 `compareRenders()` always computes render-level deltas from `RenderArtifact.output` and optional `loudness_summary` fields.
 
-If both `baselineAnalysis` and `candidateAnalysis` are provided, the function switches to the analysis-driven metric set for the report body and additionally derives semantic deltas, analysis regressions, and optional goal alignment.
+If both `baselineAnalysis` and `candidateAnalysis` are provided, the function switches to the analysis-driven metric set for the report body and additionally derives semantic deltas, analysis regressions, optional structured verification results, and optional goal alignment.
 
 If analysis reports are not provided, the comparison remains intentionally thin:
 
@@ -192,9 +192,18 @@ Regression warnings include:
 
 The warning set is deliberately narrow. Absence of a warning does not mean the candidate is globally safe or high quality.
 
-## Goal alignment behavior
+## Structured verification behavior
 
-Goal alignment is currently heuristic and keyword-driven. `evaluateGoalAlignment()` scans each goal string for fragments and maps it to one of a small set of checks.
+When `EditPlan.verification_targets` contains typed targets, compare evaluates those targets directly and emits:
+
+- `verification_results` with per-target status plus observed evidence
+- `goal_alignment` as a rolled-up status per requested goal
+
+If no structured targets are present, compare falls back to the older heuristic `EditPlan.goals` string-matching path so legacy plans and benchmarks keep working.
+
+## Legacy goal alignment fallback
+
+The fallback `evaluateGoalAlignment()` path is still heuristic and keyword-driven. It scans each goal string for fragments and maps it to one of a small set of checks.
 
 ### Supported goal families
 
@@ -255,7 +264,7 @@ The summary is intentionally compact and should be treated as a convenience fiel
 - `compareRenders()` rejects one-sided analysis input and rejects analysis reports or edit plans whose asset or version provenance does not match the paired renders.
 - Metric coverage is intentionally limited to the fields hard-coded in `src/deltas.ts`.
 - Semantic interpretation is intentionally limited to a fixed rule set in `src/semantic-deltas.ts`.
-- Goal alignment uses string heuristics instead of `EditPlan.steps`, `verification_targets`, or explicit planner-provided evaluation rules.
+- The preferred path is planner-emitted structured verification. String-based goal alignment remains only as a backward-compatible fallback.
 - The local TypeScript `EditPlan` type is narrower than the repository contract and currently models only the fields that `compare` consumes directly.
 - The local TypeScript `RenderArtifact.loudness_summary` type is broader than the contract and is treated as a generic numeric map, though the current implementation only reads integrated loudness and true peak.
 - The current analysis contract still lacks direct hum and click counts, so those goal families remain proxy-based rather than directly verified.
@@ -268,7 +277,8 @@ The summary is intentionally compact and should be treated as a convenience fiel
 - `src/deltas.ts`: metric delta computation
 - `src/semantic-deltas.ts`: evidence-based semantic labeling
 - `src/regressions.ts`: regression detection rules
-- `src/goal-alignment.ts`: heuristic goal checks
+- `src/goal-alignment.ts`: legacy heuristic goal checks and goal-status rollup helpers
+- `src/structured-verification.ts`: typed verification evaluation
 - `src/report-builder.ts`: `ComparisonReport` construction and summary text
 - `src/utils/schema.ts`: schema validation helpers
 - `src/index.ts`: public exports only

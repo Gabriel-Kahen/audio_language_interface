@@ -24,10 +24,47 @@
         "keep the true-peak ceiling at or below -1 dBTP"
       ],
       "verification_targets": [
-        "reduced energy in the 3 kHz to 4.5 kHz region",
-        "slightly higher upper-band energy without brittle peaks",
-        "higher output level while staying within available peak headroom",
-        "higher integrated loudness while keeping true peak at or below -1 dBTP"
+        {
+          "target_id": "target_reduce_harshness_high_band",
+          "goal": "reduce upper-mid harshness",
+          "label": "reduce high-band energy in the harshness region",
+          "kind": "analysis_metric",
+          "comparison": "decrease_by",
+          "metric": "spectral_balance.high_band_db",
+          "threshold": 1,
+          "target": {
+            "scope": "frequency_region",
+            "bands_hz": [3000, 4500]
+          }
+        },
+        {
+          "target_id": "target_more_air_high_band",
+          "goal": "add a little upper-band air",
+          "label": "raise upper-band energy slightly",
+          "kind": "analysis_metric",
+          "comparison": "increase_by",
+          "metric": "spectral_balance.high_band_db",
+          "threshold": 0.75
+        },
+        {
+          "target_id": "target_louder_integrated_lufs",
+          "goal": "increase output level conservatively",
+          "label": "increase integrated loudness",
+          "kind": "analysis_metric",
+          "comparison": "increase_by",
+          "metric": "levels.integrated_lufs",
+          "threshold": 1
+        },
+        {
+          "target_id": "target_normalize_integrated_lufs",
+          "goal": "normalize overall loudness conservatively",
+          "label": "move integrated loudness toward the requested target",
+          "kind": "analysis_metric",
+          "comparison": "within",
+          "metric": "levels.integrated_lufs",
+          "threshold": -13.8,
+          "tolerance": 0.5
+        }
       ],
       "rationale": "A small manifest-grounded notch, shelf, and loudness-normalization chain should make the source cleaner, airier, and a little louder without broad hidden processing.",
       "steps": [

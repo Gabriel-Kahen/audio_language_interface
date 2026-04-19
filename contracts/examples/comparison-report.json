@@ -40,6 +40,33 @@
       "status": "mostly_met"
     }
   ],
+  "verification_results": [
+    {
+      "target_id": "target_reduce_harshness_high_band",
+      "goal": "reduce upper-mid harshness",
+      "label": "reduce high-band energy in the harshness region",
+      "kind": "analysis_metric",
+      "comparison": "decrease_by",
+      "metric": "spectral_balance.high_band_db",
+      "threshold": 1,
+      "status": "met",
+      "observed_delta": -1.8,
+      "evidence": "Observed spectral_balance.high_band_db delta was -1.800."
+    },
+    {
+      "target_id": "target_preserve_punch_crest_factor",
+      "goal": "preserve transient impact",
+      "label": "keep crest factor close to the baseline",
+      "kind": "analysis_metric",
+      "comparison": "at_least",
+      "metric": "dynamics.crest_factor_db",
+      "threshold": 9.8,
+      "tolerance": 0.25,
+      "status": "mostly_met",
+      "observed_value": 10.1,
+      "evidence": "Observed dynamics.crest_factor_db value was 10.100."
+    }
+  ],
   "summary": {
     "plain_text": "The edited version is less harsh with only a minor reduction in transient punch."
   }

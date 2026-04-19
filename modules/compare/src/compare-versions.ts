@@ -8,6 +8,7 @@ import {
 import { detectAnalysisRegressions } from "./regressions.js";
 import { buildComparisonReport } from "./report-builder.js";
 import { deriveSemanticDeltas } from "./semantic-deltas.js";
+import { evaluateStructuredVerification } from "./structured-verification.js";
 import type { CompareVersionsOptions, ComparisonReport } from "./types.js";
 import { assertValidComparisonReport } from "./utils/schema.js";
 
@@ -44,15 +45,27 @@ export function compareVersions(options: CompareVersionsOptions): ComparisonRepo
     options.candidateAnalysis.measurements,
     metricDeltas,
   );
+  const structuredVerification =
+    options.editPlan?.verification_targets === undefined
+      ? undefined
+      : evaluateStructuredVerification(
+          options.editPlan.verification_targets,
+          options.baselineAnalysis.measurements,
+          options.candidateAnalysis.measurements,
+          metricDeltas,
+          semanticDeltas,
+          regressions,
+        );
   const goalAlignment =
-    options.editPlan === undefined
+    structuredVerification?.goalAlignment ??
+    (options.editPlan === undefined
       ? undefined
       : evaluateGoalAlignment(
           options.editPlan.goals,
           options.baselineAnalysis.measurements,
           options.candidateAnalysis.measurements,
           metricDeltas,
-        );
+        ));
 
   const report = buildComparisonReport({
     baselineRefType: "version",
@@ -64,6 +77,9 @@ export function compareVersions(options: CompareVersionsOptions): ComparisonRepo
     semanticDeltas,
     regressions,
     ...(goalAlignment === undefined ? {} : { goalAlignment }),
+    ...(structuredVerification === undefined
+      ? {}
+      : { verificationResults: structuredVerification.verificationResults }),
     ...(options.comparisonId === undefined ? {} : { comparisonId: options.comparisonId }),
   });
 

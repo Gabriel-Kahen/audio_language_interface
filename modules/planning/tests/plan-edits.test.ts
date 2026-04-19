@@ -125,7 +125,16 @@ describe("planEdits", () => {
       "preserve transient impact",
     ]);
     expect(plan.constraints).toContain("avoid reducing transient attack more than necessary");
-    expect(plan.verification_targets).toContain("reduced energy in the 3 kHz to 4.5 kHz region");
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_reduce_harshness_high_band",
+          goal: "reduce upper-mid harshness",
+          kind: "analysis_metric",
+          metric: "spectral_balance.high_band_db",
+        }),
+      ]),
+    );
     expect(validateAgainstSchema(editPlanSchema, plan)).toBe(true);
   });
 
@@ -236,8 +245,20 @@ describe("planEdits", () => {
       measured_true_peak_dbtp: -1.1,
     });
     expect(plan.goals).toContain("normalize overall loudness conservatively");
-    expect(plan.verification_targets).toContain(
-      "integrated loudness moved toward the requested target while keeping true peak at or below -1 dBTP",
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_normalize_integrated_lufs",
+          goal: "normalize overall loudness conservatively",
+          comparison: "within",
+          metric: "levels.integrated_lufs",
+        }),
+        expect.objectContaining({
+          target_id: "target_normalize_true_peak_ceiling",
+          comparison: "at_most",
+          metric: "levels.true_peak_dbtp",
+        }),
+      ]),
     );
   });
 
@@ -338,8 +359,14 @@ describe("planEdits", () => {
     });
     expect(plan.goals).toContain("make dynamics more controlled without over-compressing");
     expect(plan.constraints).toContain("avoid obvious pumping or over-compression");
-    expect(plan.verification_targets).toContain(
-      "slightly reduced dynamic range without obvious pumping",
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_control_dynamics_range",
+          goal: "make dynamics more controlled without over-compressing",
+          metric: "dynamics.dynamic_range_db",
+        }),
+      ]),
     );
   });
 
@@ -415,8 +442,14 @@ describe("planEdits", () => {
     });
     expect(plan.goals).toContain("reduce steady background noise conservatively");
     expect(plan.constraints).toContain("avoid obvious denoise artifacts or transient smearing");
-    expect(plan.verification_targets).toContain(
-      "lower measured noise floor without obvious denoise artifacts",
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_reduce_noise_floor",
+          goal: "reduce steady background noise conservatively",
+          metric: "artifacts.noise_floor_dbfs",
+        }),
+      ]),
     );
     expect(validateAgainstSchema(editPlanSchema, plan)).toBe(true);
   });
@@ -433,8 +466,14 @@ describe("planEdits", () => {
     expect(plan.steps[0]?.parameters).toEqual({ width_multiplier: 1.12 });
     expect(plan.goals).toContain("slightly increase stereo width");
     expect(plan.constraints).toContain("keep width changes subtle and preserve mono compatibility");
-    expect(plan.verification_targets).toContain(
-      "small increase in stereo width without poorer mono compatibility",
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_wider_stereo_width",
+          goal: "slightly increase stereo width",
+          metric: "stereo.width",
+        }),
+      ]),
     );
     expect(validateAgainstSchema(editPlanSchema, plan)).toBe(true);
   });

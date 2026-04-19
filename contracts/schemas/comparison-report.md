@@ -36,7 +36,8 @@ Describes measurable and semantic deltas between two audio states.
 | --- | --- | --- |
 | `semantic_deltas` | array | Qualitative delta statements grounded in metrics. |
 | `regressions` | array | Undesirable changes or warnings. |
-| `goal_alignment` | array | Optional checks against requested goals. |
+| `verification_results` | array | Optional structured verification results evaluated from `EditPlan.verification_targets`. |
+| `goal_alignment` | array | Optional goal-level rollup derived from structured verification when available, or from legacy heuristic goal scoring otherwise. |
 
 ## Initial delta item fields
 
@@ -45,6 +46,7 @@ The initial machine-readable schema defines these baseline fields:
 - `metric_deltas[]`: `metric`, `direction`, `delta`
 - `semantic_deltas[]`: `label`, `confidence`, `evidence`
 - `regressions[]`: `kind`, `severity`, `description`
+- `verification_results[]`: `target_id`, `goal`, `label`, `kind`, `comparison`, `status`, plus observed evidence fields when available
 - `goal_alignment[]`: `goal`, `status`
 
 `goal_alignment[].status` should initially use one of:

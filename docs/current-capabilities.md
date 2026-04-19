@@ -165,7 +165,7 @@ Current tool-surface caveats:
 - the baseline planner still does not choose pitch shifting, trim silence, channel utilities, or Layer 1 runtime effects automatically
 - render preview is MP3-only
 - final render export is limited to WAV and FLAC
-- compare goal alignment is heuristic and string-driven
+- compare now prefers planner-emitted structured verification targets and still keeps heuristic goal alignment only as a legacy fallback
 - the repository does not yet provide a dedicated demo CLI or application entrypoint
 - benchmark coverage is still synthetic-first and not yet tied to committed real audio fixtures or full end-to-end fixture-backed runs
 

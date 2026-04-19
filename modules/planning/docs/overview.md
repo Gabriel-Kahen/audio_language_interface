@@ -20,7 +20,7 @@ The initial implementation is a deterministic baseline planner. It uses conserva
 - `src/plan-edits.ts`: top-level planning entrypoint
 - `src/step-builders.ts`: operation-specific step creation
 - `src/safety.ts`: safety limits and policy helpers
-- `src/verification-targets.ts`: compare-facing validation goals
+- `src/verification-targets.ts`: compare-facing structured verification targets
 - `src/index.ts`: public exports only
 
 ## Dependencies
@@ -54,7 +54,7 @@ The initial implementation is a deterministic baseline planner. It uses conserva
 - records the `RuntimeCapabilityManifest` identifier used to ground the plan
 - uses the current `AudioVersion` duration to reject trim and fade requests that exceed the available file
 - rejects combined fade requests that would overlap or cover more than half of the available file duration
-- uses analysis annotations and semantic descriptors to refine frequencies and verification targets
+- uses analysis annotations and semantic descriptors to refine frequencies and emit structured verification targets
 - maps generic `cleaner` requests only when current evidence supports a conservative tonal cleanup target or the request also contains an explicit supported cleanup direction
 - maps conservative `more controlled` language to `compressor` and explicit peak-control language to `limiter`
 - supports explicit loudness-normalization, upper-air, warmth, low-mid cleanup, harsh-ring, sibilance, click-cleanup, and hum-removal requests with conservative defaults grounded in the published manifest

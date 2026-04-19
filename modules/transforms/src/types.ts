@@ -83,6 +83,31 @@ export interface EditPlanStep {
   safety_limits: string[];
 }
 
+export type VerificationTargetKind = "analysis_metric" | "semantic_delta" | "regression_guard";
+export type VerificationComparison =
+  | "increase_by"
+  | "decrease_by"
+  | "at_most"
+  | "at_least"
+  | "within"
+  | "present"
+  | "absent";
+
+export interface VerificationTarget {
+  target_id: string;
+  goal: string;
+  label: string;
+  kind: VerificationTargetKind;
+  comparison: VerificationComparison;
+  metric?: string;
+  semantic_label?: string;
+  regression_kind?: string;
+  threshold?: number;
+  tolerance?: number;
+  target?: EditTarget;
+  rationale?: string;
+}
+
 export interface EditPlan {
   schema_version: typeof CONTRACT_SCHEMA_VERSION;
   plan_id: string;
@@ -94,7 +119,7 @@ export interface EditPlan {
   steps: EditPlanStep[];
   created_at: string;
   constraints?: string[];
-  verification_targets?: string[];
+  verification_targets?: Array<string | VerificationTarget>;
   rationale?: string;
 }
 

@@ -3,6 +3,15 @@ export const CONTRACT_SCHEMA_VERSION = "1.0.0" as const;
 export type ComparisonRefType = "version" | "render";
 export type MetricDirection = "increased" | "decreased" | "unchanged";
 export type GoalStatus = "met" | "mostly_met" | "not_met" | "unknown";
+export type VerificationTargetKind = "analysis_metric" | "semantic_delta" | "regression_guard";
+export type VerificationComparison =
+  | "increase_by"
+  | "decrease_by"
+  | "at_most"
+  | "at_least"
+  | "within"
+  | "present"
+  | "absent";
 
 export interface AudioVersion {
   schema_version: typeof CONTRACT_SCHEMA_VERSION;
@@ -102,7 +111,7 @@ export interface EditPlan {
   version_id: string;
   user_request: string;
   goals: string[];
-  verification_targets?: string[];
+  verification_targets?: Array<string | VerificationTarget>;
 }
 
 export interface MetricDelta {
@@ -128,6 +137,37 @@ export interface GoalAlignment {
   status: GoalStatus;
 }
 
+export interface VerificationTarget {
+  target_id: string;
+  goal: string;
+  label: string;
+  kind: VerificationTargetKind;
+  comparison: VerificationComparison;
+  metric?: string;
+  semantic_label?: string;
+  regression_kind?: string;
+  threshold?: number;
+  tolerance?: number;
+  target?: {
+    scope: "full_file" | "time_range" | "segment" | "channel" | "frequency_region";
+    start_seconds?: number;
+    end_seconds?: number;
+    channel?: string;
+    segment_id?: string;
+    bands_hz?: [number, number];
+  };
+  rationale?: string;
+}
+
+export interface VerificationTargetResult extends VerificationTarget {
+  status: GoalStatus;
+  observed_delta?: number;
+  observed_value?: number;
+  observed_confidence?: number;
+  observed_severity?: number;
+  evidence?: string;
+}
+
 export interface ComparisonReport {
   schema_version: typeof CONTRACT_SCHEMA_VERSION;
   comparison_id: string;
@@ -144,6 +184,7 @@ export interface ComparisonReport {
   semantic_deltas?: SemanticDelta[];
   regressions?: RegressionWarning[];
   goal_alignment?: GoalAlignment[];
+  verification_results?: VerificationTargetResult[];
   summary: {
     plain_text: string;
   };

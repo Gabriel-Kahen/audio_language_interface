@@ -132,6 +132,14 @@
       "type": "string",
       "enum": ["met", "mostly_met", "not_met", "unknown"]
     },
+    "verificationTargetKind": {
+      "type": "string",
+      "enum": ["analysis_metric", "semantic_delta", "regression_guard"]
+    },
+    "verificationComparison": {
+      "type": "string",
+      "enum": ["increase_by", "decrease_by", "at_most", "at_least", "within", "present", "absent"]
+    },
     "nodeType": {
       "type": "string",
       "enum": [
@@ -298,6 +306,292 @@
           "$ref": "./common.schema.json#/$defs/frequencyRegionTarget"
         }
       ]
+    },
+    "verificationTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_id", "goal", "label", "kind", "comparison"],
+      "properties": {
+        "target_id": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "goal": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "label": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "kind": {
+          "$ref": "./common.schema.json#/$defs/verificationTargetKind"
+        },
+        "comparison": {
+          "$ref": "./common.schema.json#/$defs/verificationComparison"
+        },
+        "metric": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "semantic_label": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "regression_kind": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "threshold": {
+          "type": "number"
+        },
+        "tolerance": {
+          "type": "number",
+          "minimum": 0
+        },
+        "target": {
+          "$ref": "./common.schema.json#/$defs/editTarget"
+        },
+        "rationale": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": { "const": "analysis_metric" }
+            }
+          },
+          "then": {
+            "required": ["metric"],
+            "properties": {
+              "metric": {
+                "$ref": "./common.schema.json#/$defs/nonEmptyString"
+              }
+            },
+            "oneOf": [
+              {
+                "properties": {
+                  "comparison": {
+                    "enum": ["increase_by", "decrease_by", "at_most", "at_least"]
+                  },
+                  "threshold": {
+                    "type": "number"
+                  }
+                },
+                "required": ["threshold"]
+              },
+              {
+                "properties": {
+                  "comparison": { "const": "within" },
+                  "threshold": {
+                    "type": "number"
+                  },
+                  "tolerance": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "required": ["threshold", "tolerance"]
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": { "const": "semantic_delta" }
+            }
+          },
+          "then": {
+            "required": ["semantic_label"],
+            "properties": {
+              "semantic_label": {
+                "$ref": "./common.schema.json#/$defs/nonEmptyString"
+              },
+              "comparison": {
+                "enum": ["present", "absent"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": { "const": "regression_guard" }
+            }
+          },
+          "then": {
+            "required": ["regression_kind"],
+            "properties": {
+              "regression_kind": {
+                "$ref": "./common.schema.json#/$defs/nonEmptyString"
+              },
+              "comparison": {
+                "enum": ["present", "absent"]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "verificationTargetItem": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "./common.schema.json#/$defs/verificationTarget"
+        }
+      ]
+    },
+    "verificationTargetArray": {
+      "type": "array",
+      "items": {
+        "$ref": "./common.schema.json#/$defs/verificationTargetItem"
+      }
+    },
+    "verificationTargetResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_id", "goal", "label", "kind", "comparison", "status"],
+      "properties": {
+        "target_id": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "goal": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "label": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "kind": {
+          "$ref": "./common.schema.json#/$defs/verificationTargetKind"
+        },
+        "comparison": {
+          "$ref": "./common.schema.json#/$defs/verificationComparison"
+        },
+        "metric": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "semantic_label": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "regression_kind": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "threshold": {
+          "type": "number"
+        },
+        "tolerance": {
+          "type": "number",
+          "minimum": 0
+        },
+        "target": {
+          "$ref": "./common.schema.json#/$defs/editTarget"
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "./common.schema.json#/$defs/goalStatus"
+        },
+        "observed_delta": {
+          "type": "number"
+        },
+        "observed_value": {
+          "type": "number"
+        },
+        "observed_confidence": {
+          "$ref": "./common.schema.json#/$defs/confidence"
+        },
+        "observed_severity": {
+          "$ref": "./common.schema.json#/$defs/severity"
+        },
+        "evidence": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": { "const": "analysis_metric" }
+            }
+          },
+          "then": {
+            "required": ["metric"],
+            "properties": {
+              "metric": {
+                "$ref": "./common.schema.json#/$defs/nonEmptyString"
+              }
+            },
+            "oneOf": [
+              {
+                "properties": {
+                  "comparison": {
+                    "enum": ["increase_by", "decrease_by", "at_most", "at_least"]
+                  },
+                  "threshold": {
+                    "type": "number"
+                  }
+                },
+                "required": ["threshold"]
+              },
+              {
+                "properties": {
+                  "comparison": { "const": "within" },
+                  "threshold": {
+                    "type": "number"
+                  },
+                  "tolerance": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "required": ["threshold", "tolerance"]
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": { "const": "semantic_delta" }
+            }
+          },
+          "then": {
+            "required": ["semantic_label"],
+            "properties": {
+              "semantic_label": {
+                "$ref": "./common.schema.json#/$defs/nonEmptyString"
+              },
+              "comparison": {
+                "enum": ["present", "absent"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": { "const": "regression_guard" }
+            }
+          },
+          "then": {
+            "required": ["regression_kind"],
+            "properties": {
+              "regression_kind": {
+                "$ref": "./common.schema.json#/$defs/nonEmptyString"
+              },
+              "comparison": {
+                "enum": ["present", "absent"]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "verificationTargetResultArray": {
+      "type": "array",
+      "items": {
+        "$ref": "./common.schema.json#/$defs/verificationTargetResult"
+      }
     },
     "fullFileOrTimeRangeTarget": {
       "oneOf": [

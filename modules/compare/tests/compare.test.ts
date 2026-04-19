@@ -93,6 +93,19 @@ describe("compareVersions", () => {
       { goal: "slightly reduce perceived brightness", status: "met" },
       { goal: "preserve transient impact", status: "met" },
     ]);
+    expect(report.verification_results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_reduce_harshness_high_band",
+          status: "met",
+          observed_delta: -1.6,
+        }),
+        expect.objectContaining({
+          target_id: "target_preserve_punch_crest_factor",
+          status: "met",
+        }),
+      ]),
+    );
     expect(report.regressions).toBeUndefined();
   });
 
@@ -1367,7 +1380,36 @@ function createEditPlan(): EditPlan {
       "slightly reduce perceived brightness",
       "preserve transient impact",
     ],
-    verification_targets: ["reduced brightness", "no material loss of crest factor"],
+    verification_targets: [
+      {
+        target_id: "target_reduce_harshness_high_band",
+        goal: "reduce upper-mid harshness",
+        label: "reduce high-band energy in the harshness region",
+        kind: "analysis_metric",
+        comparison: "decrease_by",
+        metric: "spectral_balance.high_band_db",
+        threshold: 1,
+      },
+      {
+        target_id: "target_reduce_brightness_tilt",
+        goal: "slightly reduce perceived brightness",
+        label: "reduce high-band brightness modestly",
+        kind: "analysis_metric",
+        comparison: "decrease_by",
+        metric: "spectral_balance.high_band_db",
+        threshold: 0.75,
+      },
+      {
+        target_id: "target_preserve_punch_crest_factor",
+        goal: "preserve transient impact",
+        label: "keep crest factor close to the baseline",
+        kind: "analysis_metric",
+        comparison: "at_least",
+        metric: "dynamics.crest_factor_db",
+        threshold: 9.8,
+        tolerance: 0.25,
+      },
+    ],
   };
 }
 

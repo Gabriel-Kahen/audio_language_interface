@@ -102,7 +102,7 @@
               "$ref": "./common.schema.json#/$defs/stringArray"
             },
             "verification_targets": {
-              "$ref": "./common.schema.json#/$defs/stringArray"
+              "$ref": "./common.schema.json#/$defs/verificationTargetArray"
             },
             "rationale": {
               "type": "string"

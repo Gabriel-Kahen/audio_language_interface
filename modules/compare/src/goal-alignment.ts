@@ -101,7 +101,7 @@ function evaluateGoal(
   return combineGoalStatuses(checks);
 }
 
-function combineGoalStatuses(statuses: GoalStatus[]): GoalStatus {
+export function combineGoalStatuses(statuses: GoalStatus[]): GoalStatus {
   if (statuses.some((status) => status === "not_met")) {
     return "not_met";
   }

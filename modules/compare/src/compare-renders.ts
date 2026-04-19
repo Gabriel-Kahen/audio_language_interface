@@ -8,11 +8,13 @@ import {
 import { detectAnalysisRegressions, detectRenderRegressions } from "./regressions.js";
 import { buildComparisonReport } from "./report-builder.js";
 import { deriveSemanticDeltas } from "./semantic-deltas.js";
+import { evaluateStructuredVerification } from "./structured-verification.js";
 import type {
   CompareRendersOptions,
   ComparisonReport,
   GoalAlignment,
   SemanticDelta,
+  VerificationTargetResult,
 } from "./types.js";
 import { assertValidComparisonReport } from "./utils/schema.js";
 
@@ -59,6 +61,7 @@ export function compareRenders(options: CompareRendersOptions): ComparisonReport
   let metricDeltas = renderMetricDeltas;
   let semanticDeltas: SemanticDelta[] = [];
   let goalAlignment: GoalAlignment[] | undefined;
+  let verificationResults: VerificationTargetResult[] | undefined;
 
   if (options.baselineAnalysis !== undefined && options.candidateAnalysis !== undefined) {
     metricDeltas = computeAnalysisMetricDeltas(
@@ -70,15 +73,6 @@ export function compareRenders(options: CompareRendersOptions): ComparisonReport
       options.candidateAnalysis.measurements,
       metricDeltas,
     );
-    goalAlignment =
-      options.editPlan === undefined
-        ? undefined
-        : evaluateGoalAlignment(
-            options.editPlan.goals,
-            options.baselineAnalysis.measurements,
-            options.candidateAnalysis.measurements,
-            metricDeltas,
-          );
   }
 
   const analysisRegressions =
@@ -89,6 +83,32 @@ export function compareRenders(options: CompareRendersOptions): ComparisonReport
           metricDeltas,
         )
       : [];
+  const combinedRegressions = [...analysisRegressions, ...renderRegressions];
+
+  if (options.baselineAnalysis !== undefined && options.candidateAnalysis !== undefined) {
+    const structuredVerification =
+      options.editPlan?.verification_targets === undefined
+        ? undefined
+        : evaluateStructuredVerification(
+            options.editPlan.verification_targets,
+            options.baselineAnalysis.measurements,
+            options.candidateAnalysis.measurements,
+            metricDeltas,
+            semanticDeltas,
+            combinedRegressions,
+          );
+    goalAlignment =
+      structuredVerification?.goalAlignment ??
+      (options.editPlan === undefined
+        ? undefined
+        : evaluateGoalAlignment(
+            options.editPlan.goals,
+            options.baselineAnalysis.measurements,
+            options.candidateAnalysis.measurements,
+            metricDeltas,
+          ));
+    verificationResults = structuredVerification?.verificationResults;
+  }
 
   const report = buildComparisonReport({
     baselineRefType: "render",
@@ -98,8 +118,9 @@ export function compareRenders(options: CompareRendersOptions): ComparisonReport
     generatedAt: normalizeTimestamp(options.generatedAt),
     metricDeltas,
     semanticDeltas,
-    regressions: [...analysisRegressions, ...renderRegressions],
+    regressions: combinedRegressions,
     ...(goalAlignment === undefined ? {} : { goalAlignment }),
+    ...(verificationResults === undefined ? {} : { verificationResults }),
     ...(options.comparisonId === undefined ? {} : { comparisonId: options.comparisonId }),
   });
 

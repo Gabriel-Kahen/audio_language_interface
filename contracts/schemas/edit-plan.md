@@ -183,7 +183,7 @@ The surgical tone-shaping operations `high_shelf`, `low_shelf`, `notch_filter`, 
 | Field | Type | Description |
 | --- | --- | --- |
 | `constraints` | array | User or system restrictions. |
-| `verification_targets` | array | Checks for the compare module. |
+| `verification_targets` | array | Optional structured checks for the compare module. Legacy string items remain valid for older callers, but the baseline planner now emits typed verification targets. |
 | `rationale` | string | Human-readable reasoning summary. |
 
 ## Invariants

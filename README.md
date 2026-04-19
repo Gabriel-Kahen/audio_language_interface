@@ -223,7 +223,7 @@ This repo is usable today for technical experimentation and module-level integra
 - import is local-file based
 - analysis currently requires WAV files on disk
 - semantic coverage is intentionally conservative
-- compare goal alignment is still heuristic
+- compare now prefers structured verification targets, with heuristic goal alignment kept only as a backward-compatible fallback
 - there is no dedicated demo CLI or app entrypoint yet
 - the baseline planner does not yet auto-select pitch shifting, trim silence, channel utilities, or Layer 1 runtime effects
 - benchmark coverage is still light compared with the long-term goal

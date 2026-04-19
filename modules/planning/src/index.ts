@@ -17,6 +17,9 @@ export type {
   SemanticDescriptor,
   SemanticProfile,
   TargetScope,
+  VerificationComparison,
+  VerificationTarget,
+  VerificationTargetKind,
 } from "./types.js";
 export { CONTRACT_SCHEMA_VERSION } from "./types.js";
 export { assertValidEditPlan, isValidEditPlan } from "./utils/schema.js";
