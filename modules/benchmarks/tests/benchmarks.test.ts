@@ -47,6 +47,16 @@ function readFixtureManifest(): { fixtures: FixtureManifestEntry[] } {
   return readJson(FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH);
 }
 
+function getRequestCycleCase(caseId: string) {
+  const benchmarkCase = firstPromptFamilyRequestCycleSuite.find((item) => item.caseId === caseId);
+
+  if (!benchmarkCase) {
+    throw new Error(`Expected request-cycle benchmark case ${caseId} to exist.`);
+  }
+
+  return benchmarkCase;
+}
+
 function readWavMetadata(relativePath: string) {
   const buffer = readFileSync(path.join(repoRoot, relativePath));
 
@@ -144,7 +154,7 @@ describe("firstPromptFamilyFixtureCorpus", () => {
     }
   });
 
-  it("binds every request-cycle benchmark case to the committed source fixture", () => {
+  it("binds every request-cycle benchmark case to committed fixture ids", () => {
     const fixtureIds = new Set(readFixtureManifest().fixtures.map((fixture) => fixture.fixture_id));
 
     expect(firstPromptFamilyRequestCycleCorpus.corpusId).toBe(
@@ -153,11 +163,18 @@ describe("firstPromptFamilyFixtureCorpus", () => {
     expect(firstPromptFamilyRequestCycleCorpus.fixtureManifestPath).toBe(
       FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
     );
-    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(5);
+    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(9);
+    expect(firstPromptFamilyRequestCycleSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
+      expect.arrayContaining([
+        "request_cycle_tame_sibilance",
+        "request_cycle_remove_60hz_hum",
+        "request_cycle_clean_up_clicks",
+        "request_cycle_control_peaks_without_crushing",
+      ]),
+    );
 
     for (const benchmarkCase of firstPromptFamilyRequestCycleSuite) {
       expect(fixtureIds.has(benchmarkCase.fixtureId)).toBe(true);
-      expect(benchmarkCase.fixtureId).toBe(FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID);
     }
   });
 });
@@ -237,26 +254,36 @@ describe("formatBenchmarkMarkdownReport", () => {
 });
 
 describe("runRequestCycleBenchmarks", () => {
-  it("runs a fixture-backed request-cycle slice and preserves explicit failure classes", async () => {
-    const darkerLessHarsh = firstPromptFamilyRequestCycleSuite[0];
-    const cleanIt = firstPromptFamilyRequestCycleSuite[3];
-    const cleanThisSample = firstPromptFamilyRequestCycleSuite[4];
-
-    if (!darkerLessHarsh || !cleanIt || !cleanThisSample) {
-      throw new Error("Expected request-cycle benchmark fixtures to exist.");
-    }
+  it("runs a fixture-backed request-cycle slice across tonal, restoration, and control prompts", async () => {
+    const darkerLessHarsh = getRequestCycleCase("request_cycle_darker_less_harsh");
+    const tameSibilance = getRequestCycleCase("request_cycle_tame_sibilance");
+    const removeHum = getRequestCycleCase("request_cycle_remove_60hz_hum");
+    const cleanUpClicks = getRequestCycleCase("request_cycle_clean_up_clicks");
+    const controlPeaks = getRequestCycleCase("request_cycle_control_peaks_without_crushing");
+    const cleanIt = getRequestCycleCase("request_cycle_clean_it_clarification");
+    const cleanThisSample = getRequestCycleCase(
+      "request_cycle_clean_this_sample_up_a_bit_underspecified",
+    );
 
     const result = await runRequestCycleBenchmarks({
       corpusId: "request_cycle_test_subset",
       suiteId: "first_prompt_family",
       fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
       description: "Targeted request-cycle benchmark smoke suite.",
-      cases: [darkerLessHarsh, cleanIt, cleanThisSample],
+      cases: [
+        darkerLessHarsh,
+        tameSibilance,
+        removeHum,
+        cleanUpClicks,
+        controlPeaks,
+        cleanIt,
+        cleanThisSample,
+      ],
     });
 
     expect(result.suiteId).toBe("first_prompt_family");
     expect(result.corpusId).toBe("request_cycle_test_subset");
-    expect(result.caseResults).toHaveLength(3);
+    expect(result.caseResults).toHaveLength(7);
     expect(result.totalChecks).toBeGreaterThan(0);
     expect(result.totalPassedChecks).toBe(result.totalChecks);
     expect(result.overallScore).toBe(1);
@@ -268,6 +295,36 @@ describe("runRequestCycleBenchmarks", () => {
     expect(successCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation)).toEqual([
       "notch_filter",
       "tilt_eq",
+    ]);
+
+    const sibilanceCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === tameSibilance.caseId,
+    );
+    expect(sibilanceCase?.status).toBe("ok");
+    expect(
+      sibilanceCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation),
+    ).toEqual(["de_esser"]);
+
+    const humCase = result.caseResults.find((caseResult) => caseResult.caseId === removeHum.caseId);
+    expect(humCase?.status).toBe("ok");
+    expect(humCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation)).toEqual([
+      "dehum",
+    ]);
+
+    const clicksCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === cleanUpClicks.caseId,
+    );
+    expect(clicksCase?.status).toBe("ok");
+    expect(clicksCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation)).toEqual([
+      "declick",
+    ]);
+
+    const peaksCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === controlPeaks.caseId,
+    );
+    expect(peaksCase?.status).toBe("ok");
+    expect(peaksCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation)).toEqual([
+      "limiter",
     ]);
 
     const unsupportedCase = result.caseResults.find(
@@ -288,19 +345,18 @@ describe("runRequestCycleBenchmarks", () => {
 
 describe("formatBenchmarkMarkdownReport request-cycle mode", () => {
   it("renders a stable request-cycle benchmark report", async () => {
-    const darkerLessHarsh = firstPromptFamilyRequestCycleSuite[0];
-    const cleanThisSample = firstPromptFamilyRequestCycleSuite[4];
-
-    if (!darkerLessHarsh || !cleanThisSample) {
-      throw new Error("Expected request-cycle benchmark fixtures to exist.");
-    }
+    const darkerLessHarsh = getRequestCycleCase("request_cycle_darker_less_harsh");
+    const tameSibilance = getRequestCycleCase("request_cycle_tame_sibilance");
+    const cleanThisSample = getRequestCycleCase(
+      "request_cycle_clean_this_sample_up_a_bit_underspecified",
+    );
 
     const result = await runRequestCycleBenchmarks({
       corpusId: "request_cycle_report_subset",
       suiteId: "first_prompt_family",
       fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
       description: "Request-cycle report formatting smoke suite.",
-      cases: [darkerLessHarsh, cleanThisSample],
+      cases: [darkerLessHarsh, tameSibilance, cleanThisSample],
     });
 
     const markdown = formatBenchmarkMarkdownReport(result);
@@ -308,19 +364,17 @@ describe("formatBenchmarkMarkdownReport request-cycle mode", () => {
     expect(markdown).toContain("# Benchmark Report: first_prompt_family");
     expect(markdown).toContain("Benchmark mode: request-cycle");
     expect(markdown).toContain("request_cycle_darker_less_harsh");
+    expect(markdown).toContain("request_cycle_tame_sibilance");
     expect(markdown).toContain("request_cycle_clean_this_sample_up_a_bit_underspecified");
     expect(markdown).toContain("planned operations: notch_filter, tilt_eq");
+    expect(markdown).toContain("planned operations: de_esser");
     expect(markdown).toContain("failure class: supported_but_underspecified");
     expect(markdown).toContain("Fixture corpus: request_cycle_report_subset");
   }, 60_000);
 
   it("still renders request-cycle output when the first case is an expected error", async () => {
-    const cleanIt = firstPromptFamilyRequestCycleSuite[3];
-    const darkerLessHarsh = firstPromptFamilyRequestCycleSuite[0];
-
-    if (!cleanIt || !darkerLessHarsh) {
-      throw new Error("Expected request-cycle benchmark fixtures to exist.");
-    }
+    const cleanIt = getRequestCycleCase("request_cycle_clean_it_clarification");
+    const darkerLessHarsh = getRequestCycleCase("request_cycle_darker_less_harsh");
 
     const result = await runRequestCycleBenchmarks({
       corpusId: "request_cycle_error_first_subset",

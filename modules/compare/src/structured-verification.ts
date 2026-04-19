@@ -98,6 +98,21 @@ function evaluateAnalysisMetricTarget(
   }
 
   const observedValue = readMeasurement(candidate, target.metric);
+  const missingMetricHumCleared =
+    target.metric === "artifacts.hum_level_dbfs" &&
+    target.comparison === "at_most" &&
+    observedValue === undefined &&
+    candidate.artifacts.hum_detected === false;
+
+  if (missingMetricHumCleared) {
+    return {
+      ...target,
+      status: "met",
+      evidence:
+        "Candidate hum detector cleared and no direct hum level remained available, so the hum target is treated as satisfied.",
+    };
+  }
+
   const status = classifyAbsoluteMetric(
     target.comparison,
     observedValue,

@@ -117,6 +117,77 @@ describe("compareVersions", () => {
     expect(report.regressions).toBeUndefined();
   });
 
+  it("treats direct hum-level targets as met when the candidate clears hum detection", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_hum_base"),
+      candidateVersion: createVersion("ver_hum_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_hum_base",
+        versionId: "ver_hum_base",
+        integratedLufs: -18,
+        truePeakDbtp: -1.5,
+        crestFactorDb: 10.1,
+        transientDensity: 1.6,
+        dynamicRangeDb: 8.1,
+        lowBandDb: -12.4,
+        midBandDb: -11.2,
+        highBandDb: -10.4,
+        spectralCentroidHz: 2380,
+        stereoWidth: 0.51,
+        stereoCorrelation: 0.47,
+        noiseFloorDbfs: -68,
+        clippingDetected: false,
+        humDetected: true,
+        humLevelDbfs: -22.4,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_hum_cand",
+        versionId: "ver_hum_cand",
+        integratedLufs: -18,
+        truePeakDbtp: -1.6,
+        crestFactorDb: 10.1,
+        transientDensity: 1.6,
+        dynamicRangeDb: 8.1,
+        lowBandDb: -15.6,
+        midBandDb: -11.3,
+        highBandDb: -10.2,
+        spectralCentroidHz: 2400,
+        stereoWidth: 0.51,
+        stereoCorrelation: 0.47,
+        noiseFloorDbfs: -68.5,
+        clippingDetected: false,
+        humDetected: false,
+      }),
+      editPlan: {
+        ...createEditPlan(),
+        version_id: "ver_hum_base",
+        goals: ["reduce mains hum and harmonic buzz conservatively"],
+        verification_targets: [
+          {
+            target_id: "target_reduce_hum_low_band",
+            goal: "reduce mains hum and harmonic buzz conservatively",
+            label: "reduce direct hum level",
+            kind: "analysis_metric",
+            comparison: "at_most",
+            metric: "artifacts.hum_level_dbfs",
+            threshold: -28,
+          },
+        ],
+      },
+      generatedAt: "2026-04-19T20:20:22Z",
+    });
+
+    expect(report.verification_results).toEqual([
+      expect.objectContaining({
+        target_id: "target_reduce_hum_low_band",
+        status: "met",
+      }),
+    ]);
+    expect(report.goal_alignment).toEqual([
+      { goal: "reduce mains hum and harmonic buzz conservatively", status: "met" },
+    ]);
+  });
+
   it("detects clipping and loudness regressions", () => {
     const report = compareVersions({
       baselineVersion: createVersion("ver_clean123"),
@@ -1306,6 +1377,12 @@ interface AnalysisFixtureOptions {
   stereoBalanceDb?: number;
   noiseFloorDbfs: number;
   clippedSampleCount?: number;
+  humDetected?: boolean;
+  humLevelDbfs?: number;
+  humFundamentalHz?: number;
+  humHarmonicCount?: number;
+  clickDetected?: boolean;
+  clickCount?: number;
   clippingDetected: boolean;
 }
 
@@ -1372,6 +1449,16 @@ function createAnalysisReport(options: AnalysisFixtureOptions): AnalysisReport {
       artifacts: {
         clipping_detected: options.clippingDetected,
         noise_floor_dbfs: options.noiseFloorDbfs,
+        ...(options.humDetected === undefined ? {} : { hum_detected: options.humDetected }),
+        ...(options.humLevelDbfs === undefined ? {} : { hum_level_dbfs: options.humLevelDbfs }),
+        ...(options.humFundamentalHz === undefined
+          ? {}
+          : { hum_fundamental_hz: options.humFundamentalHz }),
+        ...(options.humHarmonicCount === undefined
+          ? {}
+          : { hum_harmonic_count: options.humHarmonicCount }),
+        ...(options.clickDetected === undefined ? {} : { click_detected: options.clickDetected }),
+        ...(options.clickCount === undefined ? {} : { click_count: options.clickCount }),
         ...(options.clippedSampleCount === undefined
           ? {}
           : { clipped_sample_count: options.clippedSampleCount }),

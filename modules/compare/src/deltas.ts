@@ -138,9 +138,27 @@ export function computeAnalysisMetricDeltas(
   );
   pushOptionalNumericDelta(
     deltas,
+    "artifacts.hum_level_dbfs",
+    baseline.artifacts.hum_level_dbfs,
+    candidate.artifacts.hum_level_dbfs,
+  );
+  pushOptionalNumericDelta(
+    deltas,
     "artifacts.clipped_sample_count",
     baseline.artifacts.clipped_sample_count,
     candidate.artifacts.clipped_sample_count,
+  );
+  pushOptionalNumericDelta(
+    deltas,
+    "artifacts.click_count",
+    baseline.artifacts.click_count,
+    candidate.artifacts.click_count,
+  );
+  pushOptionalNumericDelta(
+    deltas,
+    "artifacts.click_rate_per_second",
+    baseline.artifacts.click_rate_per_second,
+    candidate.artifacts.click_rate_per_second,
   );
 
   return deltas;

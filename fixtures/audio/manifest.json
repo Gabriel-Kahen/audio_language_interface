@@ -218,6 +218,159 @@
           "same duration and channel layout as source"
         ]
       }
+    },
+    {
+      "fixture_id": "fixture_phase1_request_cycle_sibilance_source",
+      "display_name": "Request-Cycle Sibilance Source",
+      "relative_path": "phase-1/request-cycle-sibilance-source.wav",
+      "availability": "committed",
+      "format": {
+        "container": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 22050,
+        "channels": 1,
+        "bit_depth": 16,
+        "duration_seconds": 0.96,
+        "file_size_bytes": 42380
+      },
+      "provenance": {
+        "source_type": "synthetic_generation",
+        "created_by": "fixtures/audio request-cycle corpus",
+        "license": "CC0-1.0",
+        "redistributable": true,
+        "checksum_sha256": "45a61f38e341bb4fab10c99194bc272cfdf8980d4fbab6c506b16a4325245034",
+        "notes": "Deterministic mono source generated from a low vocal-like tonal bed plus three short 5.2 kHz and 6.1 kHz burst regions to create explicit sibilance-control benchmark material aligned with the current de-esser band."
+      },
+      "intended_use": {
+        "prompt_family": ["tame sibilance", "de-ess this signal conservatively"],
+        "used_by": ["benchmarks"],
+        "expected_characteristics": [
+          "mono tonal bed",
+          "short high-frequency burst regions",
+          "tiny committed synthetic source"
+        ]
+      },
+      "generation_recipe": [
+        "Write a 0.96-second mono WAV at 22050 Hz with deterministic sine synthesis only.",
+        "Use a 210 Hz plus 420 Hz tonal bed and raise the 5.2 kHz to 6.1 kHz content only inside three fixed windows.",
+        "Keep the duration and PCM format stable for repeatable request-cycle benchmark inputs."
+      ]
+    },
+    {
+      "fixture_id": "fixture_phase1_request_cycle_hum_60hz_source",
+      "display_name": "Request-Cycle 60 Hz Hum Source",
+      "relative_path": "phase-1/request-cycle-hum-60hz-source.wav",
+      "availability": "committed",
+      "format": {
+        "container": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 22050,
+        "channels": 1,
+        "bit_depth": 16,
+        "duration_seconds": 0.96,
+        "file_size_bytes": 42380
+      },
+      "provenance": {
+        "source_type": "synthetic_generation",
+        "created_by": "fixtures/audio request-cycle corpus",
+        "license": "CC0-1.0",
+        "redistributable": true,
+        "checksum_sha256": "513be9b014dff88849f88e3f2d468599cc34411219983e738c856ee95aa37172",
+        "notes": "Deterministic mono source generated from a steady tonal program bed plus explicit 60 Hz, 120 Hz, and 180 Hz contamination for dehum-oriented request-cycle coverage."
+      },
+      "intended_use": {
+        "prompt_family": ["remove 60 hz hum", "dehum 60 hz conservatively"],
+        "used_by": ["benchmarks"],
+        "expected_characteristics": [
+          "steady 60 Hz hum fundamental",
+          "audible 120 Hz and 180 Hz harmonics",
+          "mono synthetic source"
+        ]
+      },
+      "generation_recipe": [
+        "Write a 0.96-second mono WAV at 22050 Hz with deterministic sine synthesis only.",
+        "Use a 440 Hz and 660 Hz program bed plus explicit 60 Hz, 120 Hz, and 180 Hz harmonic contamination.",
+        "Keep the source redistributable and small enough for committed benchmark inputs."
+      ]
+    },
+    {
+      "fixture_id": "fixture_phase1_request_cycle_clicks_source",
+      "display_name": "Request-Cycle Clicks Source",
+      "relative_path": "phase-1/request-cycle-clicks-source.wav",
+      "availability": "committed",
+      "format": {
+        "container": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 44100,
+        "channels": 1,
+        "bit_depth": 16,
+        "duration_seconds": 2,
+        "file_size_bytes": 176444
+      },
+      "provenance": {
+        "source_type": "synthetic_generation",
+        "created_by": "fixtures/audio request-cycle corpus",
+        "license": "CC0-1.0",
+        "redistributable": true,
+        "checksum_sha256": "c571a2a961f0c0731f96146ed20d3273e3b0d97f866ea041915e35d6960f35a3",
+        "notes": "Deterministic mono source generated from the same sparse-click recipe used by the analysis click-detector test fixture so the request-cycle benchmark stays aligned with the current explicit click-evidence path."
+      },
+      "intended_use": {
+        "prompt_family": ["clean up clicks", "remove pops conservatively"],
+        "used_by": ["benchmarks"],
+        "expected_characteristics": [
+          "five sparse impulsive spikes",
+          "mono tonal bed between spikes",
+          "analysis-detectable click annotations",
+          "benchmark-oriented click artifact source"
+        ]
+      },
+      "generation_recipe": [
+        "Write a 2.0-second mono WAV at 44100 Hz with deterministic sine synthesis plus sparse impulsive spikes.",
+        "Use a 330 Hz tonal bed and inject five fixed +0.78 click impulses at the same timestamps used in the analysis sparse-click test fixture.",
+        "Keep the click timestamps fixed so benchmark evidence and fixture checks stay deterministic."
+      ]
+    },
+    {
+      "fixture_id": "fixture_phase1_request_cycle_loudness_control_source",
+      "display_name": "Request-Cycle Loudness Control Source",
+      "relative_path": "phase-1/request-cycle-loudness-control-source.wav",
+      "availability": "committed",
+      "format": {
+        "container": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 22050,
+        "channels": 1,
+        "bit_depth": 16,
+        "duration_seconds": 0.96,
+        "file_size_bytes": 42380
+      },
+      "provenance": {
+        "source_type": "synthetic_generation",
+        "created_by": "fixtures/audio request-cycle corpus",
+        "license": "CC0-1.0",
+        "redistributable": true,
+        "checksum_sha256": "68be72271f59edd99152d2958c109d1e780a47f13b887aca62cd3b9589fa7ec5",
+        "notes": "Deterministic mono source generated from a quiet low tonal bed plus repeated short 1.85 kHz transient bursts with high crest so the current compressor-plus-gain planner path measurably tightens dynamics while still raising loudness conservatively."
+      },
+      "intended_use": {
+        "prompt_family": [
+          "control peak excursions conservatively",
+          "make it more controlled",
+          "raise loudness without clipping"
+        ],
+        "used_by": ["benchmarks"],
+        "expected_characteristics": [
+          "repeated high-crest bursts",
+          "strong peak-control target material",
+          "tiny committed mono source"
+        ]
+      },
+      "generation_recipe": [
+        "Write a 0.96-second mono WAV at 22050 Hz with deterministic sine synthesis only.",
+        "Use a quiet 110 Hz plus 220 Hz bed and add four short decaying 1.85 kHz bursts to create high crest and peak pressure.",
+        "Keep the stored file tiny and stable for repeated request-cycle benchmark runs."
+      ]
     }
   ]
 }

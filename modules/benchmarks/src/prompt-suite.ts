@@ -321,7 +321,7 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
   suiteId: "first_prompt_family",
   fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
   description:
-    "Real request-cycle benchmark corpus over the committed first-slice source fixture, covering current supported tonal-cleanup paths and expected clarification/failure controls.",
+    "Real request-cycle benchmark corpus over committed phase-1 fixtures, covering supported tonal cleanup, restoration, loudness/control, and explicit clarification/failure controls.",
   cases: [
     {
       caseId: "request_cycle_darker_less_harsh",
@@ -404,6 +404,113 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
           verification_statuses: {
             target_less_muddy_mid_band: "met",
             target_less_muddy_no_lost_air_regression: "met",
+          },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_tame_sibilance",
+      family: "first_prompt_family",
+      prompt: "Tame the sibilance.",
+      description: "Explicit de-essing path on the committed sibilance fixture.",
+      fixtureId: "fixture_phase1_request_cycle_sibilance_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["de_esser"],
+          expected_operation_order: ["de_esser"],
+          required_goals: ["tame sibilant bursts conservatively"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "tame sibilant bursts conservatively": "met",
+          },
+          verification_statuses: {
+            target_reduce_sibilance_presence: "met",
+            target_reduce_sibilance_harshness_ratio: "met",
+          },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_remove_60hz_hum",
+      family: "first_prompt_family",
+      prompt: "Remove 60 Hz hum.",
+      description: "Explicit dehum path on the committed 60 Hz mains-contaminated fixture.",
+      fixtureId: "fixture_phase1_request_cycle_hum_60hz_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["dehum"],
+          expected_operation_order: ["dehum"],
+          required_goals: ["reduce mains hum and harmonic buzz conservatively"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "reduce mains hum and harmonic buzz conservatively": "met",
+          },
+          verification_statuses: {
+            target_reduce_hum_low_band: "met",
+            target_reduce_hum_no_proxy_regression: "met",
+          },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_clean_up_clicks",
+      family: "first_prompt_family",
+      prompt: "Clean up clicks.",
+      description: "Explicit declick path on the committed sparse-click source fixture.",
+      fixtureId: "fixture_phase1_request_cycle_clicks_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["declick"],
+          expected_operation_order: ["declick"],
+          required_goals: ["repair short clicks and pops conservatively"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "repair short clicks and pops conservatively": "met",
+          },
+          verification_statuses: {
+            target_reduce_click_proxy: "met",
+            target_reduce_click_proxy_regression: "met",
+          },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_control_peaks_without_crushing",
+      family: "first_prompt_family",
+      prompt: "Control the peaks without crushing it.",
+      description: "Explicit limiter path with crest-factor preservation checks.",
+      fixtureId: "fixture_phase1_request_cycle_loudness_control_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["limiter"],
+          expected_operation_order: ["limiter"],
+          required_goals: ["control peak excursions conservatively", "preserve transient impact"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "control peak excursions conservatively": "met",
+            "preserve transient impact": "met",
+          },
+          verification_statuses: {
+            target_peak_control_true_peak: "met",
+            target_peak_control_no_regression: "met",
+            target_preserve_punch_crest_factor: "met",
+            target_preserve_punch_no_regression: "met",
           },
         },
       },
