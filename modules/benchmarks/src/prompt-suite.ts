@@ -5,9 +5,15 @@ import type {
   EditPlan,
 } from "@audio-language-interface/compare";
 
-import type { ComparisonBenchmarkCase, ComparisonBenchmarkCorpus } from "./types.js";
+import type {
+  ComparisonBenchmarkCase,
+  ComparisonBenchmarkCorpus,
+  RequestCycleBenchmarkCase,
+  RequestCycleBenchmarkCorpus,
+} from "./types.js";
 
 export const FIRST_PROMPT_FAMILY_CORPUS_ID = "cleanup_slice_v1";
+export const FIRST_PROMPT_FAMILY_REQUEST_CYCLE_CORPUS_ID = "cleanup_request_cycle_v1";
 export const FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH = "fixtures/audio/manifest.json";
 export const FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID = "fixture_phase1_first_slice_loop_synthetic";
 
@@ -16,7 +22,7 @@ export const firstPromptFamilyFixtureCorpus: ComparisonBenchmarkCorpus = {
   suiteId: "first_prompt_family",
   fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
   description:
-    "Current cleanup-slice benchmark corpus anchored to committed phase-1 WAV fixtures with curated compare inputs.",
+    "Current request-cycle benchmark corpus anchored to committed phase-1 WAV fixtures with four supported cases and one explicit ambiguous control.",
   cases: [
     {
       caseId: "compare_darker_less_harsh_preserve_punch",
@@ -60,13 +66,22 @@ export const firstPromptFamilyFixtureCorpus: ComparisonBenchmarkCorpus = {
           clippingDetected: false,
         },
         prompt: "make this loop darker and less harsh",
-        goals: ["make this loop darker", "make it less harsh", "keep the punch"],
+        goals: [
+          "reduce upper-mid harshness",
+          "tilt the overall balance slightly darker",
+          "preserve transient impact",
+        ],
+        verificationTargets: [
+          "reduced energy in the 3 kHz to 4.5 kHz region",
+          "slightly reduced perceived brightness without obvious dulling",
+          "no material loss of crest factor",
+        ],
       }),
       expectation: {
         goalStatuses: {
-          "make this loop darker": "met",
-          "make it less harsh": "met",
-          "keep the punch": "met",
+          "reduce upper-mid harshness": "met",
+          "tilt the overall balance slightly darker": "met",
+          "preserve transient impact": "met",
         },
         requiredSemanticLabels: ["darker", "less_harsh"],
         forbiddenRegressionKinds: ["lost_punch", "introduced_clipping"],
@@ -114,12 +129,16 @@ export const firstPromptFamilyFixtureCorpus: ComparisonBenchmarkCorpus = {
           clippingDetected: false,
         },
         prompt: "reduce brightness without losing punch",
-        goals: ["reduce brightness", "without losing punch"],
+        goals: ["tilt the overall balance slightly darker", "preserve transient impact"],
+        verificationTargets: [
+          "slightly reduced perceived brightness without obvious dulling",
+          "no material loss of crest factor",
+        ],
       }),
       expectation: {
         goalStatuses: {
-          "reduce brightness": "met",
-          "without losing punch": "met",
+          "tilt the overall balance slightly darker": "met",
+          "preserve transient impact": "met",
         },
         requiredSemanticLabels: ["darker"],
         forbiddenRegressionKinds: ["lost_punch", "introduced_clipping"],
@@ -167,11 +186,12 @@ export const firstPromptFamilyFixtureCorpus: ComparisonBenchmarkCorpus = {
           clippingDetected: false,
         },
         prompt: "clean this sample up a bit",
-        goals: ["clean this sample up a bit"],
+        goals: ["reduce steady background noise conservatively"],
+        verificationTargets: ["lower measured noise floor without obvious denoise artifacts"],
       }),
       expectation: {
         goalStatuses: {
-          "clean this sample up a bit": "met",
+          "reduce steady background noise conservatively": "met",
         },
         requiredSemanticLabels: ["cleaner"],
         forbiddenRegressionKinds: ["introduced_clipping"],
@@ -230,56 +250,64 @@ export const firstPromptFamilyFixtureCorpus: ComparisonBenchmarkCorpus = {
       },
     },
     {
-      caseId: "compare_darker_but_lost_punch_regression",
+      caseId: "compare_control_peak_excursions_conservatively",
       family: "first_prompt_family",
-      prompt: "make it darker but keep the punch",
-      description: "The tonal direction lands, but compare must flag punch loss regression.",
+      prompt: "control the peaks without crushing it",
+      description:
+        "Peak control with punch preserved on the new committed limiter-derived fixture.",
       fixtures: {
         sourceFixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
         baselineFixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
-        candidateFixtureId: "fixture_phase1_first_slice_loop_darker_lost_punch",
+        candidateFixtureId: "fixture_phase1_first_slice_loop_peak_controlled",
       },
       compareOptions: createCompareOptions({
         baselineVersionId: "ver_suite_05_base",
         candidateVersionId: "ver_suite_05_cand",
         baseline: {
-          integratedLufs: -15.1,
-          truePeakDbtp: -2.4,
-          crestFactorDb: 10.7,
-          transientDensity: 2,
-          lowBandDb: -16.2,
-          midBandDb: -11.3,
-          highBandDb: -9.5,
-          spectralCentroidHz: 2580,
-          stereoWidth: 0.59,
-          stereoCorrelation: 0.46,
-          noiseFloorDbfs: -71,
+          integratedLufs: -15.4,
+          truePeakDbtp: -1.1,
+          headroomDb: 1.1,
+          crestFactorDb: 10.2,
+          transientDensity: 1.86,
+          dynamicRangeDb: 8.2,
+          lowBandDb: -16,
+          midBandDb: -11.4,
+          highBandDb: -10.1,
+          spectralCentroidHz: 2480,
+          stereoWidth: 0.54,
+          stereoCorrelation: 0.5,
+          noiseFloorDbfs: -67.5,
           clippingDetected: false,
         },
         candidate: {
-          integratedLufs: -14.8,
-          truePeakDbtp: -1.6,
-          crestFactorDb: 9.2,
-          transientDensity: 1.75,
+          integratedLufs: -15.8,
+          truePeakDbtp: -1.7,
+          headroomDb: 1.7,
+          crestFactorDb: 10,
+          transientDensity: 1.84,
+          dynamicRangeDb: 8,
           lowBandDb: -16,
-          midBandDb: -11.4,
-          highBandDb: -10.8,
-          spectralCentroidHz: 2410,
-          stereoWidth: 0.58,
-          stereoCorrelation: 0.49,
-          noiseFloorDbfs: -71,
+          midBandDb: -11.5,
+          highBandDb: -10,
+          spectralCentroidHz: 2470,
+          stereoWidth: 0.54,
+          stereoCorrelation: 0.5,
+          noiseFloorDbfs: -67.6,
           clippingDetected: false,
         },
-        prompt: "make it darker but keep the punch",
-        goals: ["make it darker", "keep the punch"],
+        prompt: "control the peaks without crushing it",
+        goals: ["control peak excursions conservatively", "preserve transient impact"],
+        verificationTargets: [
+          "lower peak excursions while keeping the output ceiling near -1 dB true peak",
+          "no material loss of crest factor",
+        ],
       }),
       expectation: {
         goalStatuses: {
-          "make it darker": "met",
-          "keep the punch": "not_met",
+          "control peak excursions conservatively": "met",
+          "preserve transient impact": "met",
         },
-        requiredSemanticLabels: ["darker", "less_punchy"],
-        requiredRegressionKinds: ["lost_punch"],
+        forbiddenRegressionKinds: ["introduced_clipping", "lost_punch"],
       },
     },
   ],
@@ -287,6 +315,134 @@ export const firstPromptFamilyFixtureCorpus: ComparisonBenchmarkCorpus = {
 
 export const firstPromptFamilyPromptSuite: ComparisonBenchmarkCase[] =
   firstPromptFamilyFixtureCorpus.cases;
+
+export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = {
+  corpusId: FIRST_PROMPT_FAMILY_REQUEST_CYCLE_CORPUS_ID,
+  suiteId: "first_prompt_family",
+  fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
+  description:
+    "Real request-cycle benchmark corpus over the committed first-slice source fixture, covering current supported tonal-cleanup paths and expected clarification/failure controls.",
+  cases: [
+    {
+      caseId: "request_cycle_darker_less_harsh",
+      family: "first_prompt_family",
+      prompt: "make this loop darker and less harsh",
+      description: "Happy-path tonal cleanup through notch plus tilt EQ.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["notch_filter", "tilt_eq"],
+          expected_operation_order: ["notch_filter", "tilt_eq"],
+          required_goals: [
+            "reduce upper-mid harshness",
+            "tilt the overall balance slightly darker",
+          ],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "reduce upper-mid harshness": "met",
+            "tilt the overall balance slightly darker": "met",
+          },
+          verification_statuses: {
+            target_reduce_harshness_high_band: "met",
+            target_reduce_harshness_centroid: "met",
+            target_darker_brightness_tilt: "met",
+          },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_reduce_brightness_without_losing_punch",
+      family: "first_prompt_family",
+      prompt: "reduce brightness without losing punch",
+      description: "Single-step darker rebalance with punch-preservation checks.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["tilt_eq"],
+          forbidden_operations: ["notch_filter", "compressor"],
+          required_goals: ["tilt the overall balance slightly darker", "preserve transient impact"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "tilt the overall balance slightly darker": "met",
+            "preserve transient impact": "met",
+          },
+          verification_statuses: {
+            target_darker_brightness_tilt: "met",
+            target_preserve_punch_crest_factor: "met",
+            target_preserve_punch_no_regression: "met",
+          },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_less_muddy",
+      family: "first_prompt_family",
+      prompt: "make this less muddy",
+      description: "Low-shelf tonal cleanup on the supported low-mid path.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["low_shelf"],
+          forbidden_operations: ["notch_filter", "compressor", "denoise"],
+          required_goals: ["trim excess low-mid weight"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "trim excess low-mid weight": "met",
+          },
+          verification_statuses: {
+            target_less_muddy_mid_band: "met",
+            target_less_muddy_no_lost_air_regression: "met",
+          },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_clean_it_clarification",
+      family: "first_prompt_family",
+      prompt: "clean it",
+      description:
+        "Generic cleanup wording should fail explicitly as supported-but-underspecified instead of inventing a restoration path.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        error: {
+          stage: "plan",
+          failure_class: "supported_but_underspecified",
+          message_includes: "could not derive an executable plan",
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_clean_this_sample_up_a_bit_underspecified",
+      family: "first_prompt_family",
+      prompt: "clean this sample up a bit",
+      description:
+        "Cleanup wording on a non-noisy source should fail conservatively with a supported-but-underspecified planning error.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        error: {
+          stage: "plan",
+          failure_class: "supported_but_underspecified",
+          message_includes: "only supports conservative tonal cleanup",
+        },
+      },
+    },
+  ],
+};
+
+export const firstPromptFamilyRequestCycleSuite: RequestCycleBenchmarkCase[] =
+  firstPromptFamilyRequestCycleCorpus.cases;
 
 interface AnalysisValues {
   integratedLufs: number;
@@ -301,6 +457,8 @@ interface AnalysisValues {
   stereoCorrelation: number;
   noiseFloorDbfs: number;
   clippingDetected: boolean;
+  headroomDb?: number;
+  dynamicRangeDb?: number;
 }
 
 interface CreateCompareOptionsInput {
@@ -310,6 +468,7 @@ interface CreateCompareOptionsInput {
   candidate: AnalysisValues;
   prompt: string;
   goals: string[];
+  verificationTargets?: string[];
 }
 
 function createCompareOptions(input: CreateCompareOptionsInput): CompareVersionsOptions {
@@ -326,7 +485,12 @@ function createCompareOptions(input: CreateCompareOptionsInput): CompareVersions
       input.candidateVersionId,
       input.candidate,
     ),
-    editPlan: createEditPlan(input.baselineVersionId, input.prompt, input.goals),
+    editPlan: createEditPlan(
+      input.baselineVersionId,
+      input.prompt,
+      input.goals,
+      input.verificationTargets,
+    ),
     generatedAt: "2026-04-14T22:00:00Z",
   };
 }
@@ -339,8 +503,13 @@ function createVersion(versionId: string): AudioVersion {
   };
 }
 
-function createEditPlan(versionId: string, prompt: string, goals: string[]): EditPlan {
-  return {
+function createEditPlan(
+  versionId: string,
+  prompt: string,
+  goals: string[],
+  verificationTargets?: string[],
+): EditPlan {
+  const plan: EditPlan = {
     schema_version: "1.0.0",
     plan_id: `plan_${versionId}`,
     capability_manifest_id: "capmanifest_20260418C",
@@ -348,8 +517,13 @@ function createEditPlan(versionId: string, prompt: string, goals: string[]): Edi
     version_id: versionId,
     user_request: prompt,
     goals,
-    verification_targets: [],
   };
+
+  if (verificationTargets !== undefined && verificationTargets.length > 0) {
+    plan.verification_targets = verificationTargets;
+  }
+
+  return plan;
 }
 
 function createAnalysisReport(
@@ -374,10 +548,12 @@ function createAnalysisReport(
       levels: {
         integrated_lufs: values.integratedLufs,
         true_peak_dbtp: values.truePeakDbtp,
+        ...(values.headroomDb === undefined ? {} : { headroom_db: values.headroomDb }),
       },
       dynamics: {
         crest_factor_db: values.crestFactorDb,
         transient_density_per_second: values.transientDensity,
+        ...(values.dynamicRangeDb === undefined ? {} : { dynamic_range_db: values.dynamicRangeDb }),
       },
       spectral_balance: {
         low_band_db: values.lowBandDb,

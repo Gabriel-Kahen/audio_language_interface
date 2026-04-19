@@ -24,7 +24,13 @@
         "notes": "Deterministic stereo cleanup benchmark source generated from seeded noise, sine low end, and gated high-band transients."
       },
       "intended_use": {
-        "prompt_family": ["darker", "less harsh", "slightly cleaner", "preserve punch"],
+        "prompt_family": [
+          "reduce upper-mid harshness",
+          "tilt the overall balance slightly darker",
+          "reduce steady background noise conservatively",
+          "control peak excursions conservatively",
+          "preserve transient impact"
+        ],
         "used_by": ["contracts", "tests/integration", "benchmarks"],
         "expected_characteristics": [
           "bright stereo loop",
@@ -68,7 +74,11 @@
       },
       "derived_from_fixture_id": "fixture_phase1_first_slice_loop_synthetic",
       "intended_use": {
-        "prompt_family": ["darker", "less harsh", "preserve punch"],
+        "prompt_family": [
+          "reduce upper-mid harshness",
+          "tilt the overall balance slightly darker",
+          "preserve transient impact"
+        ],
         "used_by": ["benchmarks"],
         "expected_characteristics": [
           "reduced top-end brightness",
@@ -101,7 +111,7 @@
       },
       "derived_from_fixture_id": "fixture_phase1_first_slice_loop_synthetic",
       "intended_use": {
-        "prompt_family": ["reduce brightness", "preserve punch"],
+        "prompt_family": ["tilt the overall balance slightly darker", "preserve transient impact"],
         "used_by": ["benchmarks"],
         "expected_characteristics": [
           "moderate high-band reduction",
@@ -134,11 +144,44 @@
       },
       "derived_from_fixture_id": "fixture_phase1_first_slice_loop_synthetic",
       "intended_use": {
-        "prompt_family": ["clean this sample up a bit"],
+        "prompt_family": ["reduce steady background noise conservatively"],
         "used_by": ["benchmarks"],
         "expected_characteristics": [
           "lower noise-floor intent",
           "same tonal balance as source",
+          "same duration and channel layout as source"
+        ]
+      }
+    },
+    {
+      "fixture_id": "fixture_phase1_first_slice_loop_peak_controlled",
+      "display_name": "First Slice Peak-Controlled Candidate",
+      "relative_path": "phase-1/first-slice-loop-peak-controlled.wav",
+      "availability": "committed",
+      "format": {
+        "container": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 22050,
+        "channels": 2,
+        "bit_depth": 16,
+        "duration_seconds": 0.96,
+        "file_size_bytes": 84750
+      },
+      "provenance": {
+        "source_type": "deterministic_derivation",
+        "created_by": "benchmarks fixture corpus",
+        "license": "CC0-1.0",
+        "redistributable": true,
+        "checksum_sha256": "91ec8e61547ee8656e506e802f62d15a6045047f121c3437b3348e643a9ae36b",
+        "notes": "Derived from the source fixture with a mild limiter pass to represent conservative peak control without obvious punch loss."
+      },
+      "derived_from_fixture_id": "fixture_phase1_first_slice_loop_synthetic",
+      "intended_use": {
+        "prompt_family": ["control peak excursions conservatively", "preserve transient impact"],
+        "used_by": ["benchmarks"],
+        "expected_characteristics": [
+          "lower peak excursions",
+          "preserved transient impact",
           "same duration and channel layout as source"
         ]
       }
@@ -167,10 +210,10 @@
       },
       "derived_from_fixture_id": "fixture_phase1_first_slice_loop_synthetic",
       "intended_use": {
-        "prompt_family": ["darker", "keep the punch"],
+        "prompt_family": ["control peak excursions conservatively"],
         "used_by": ["benchmarks"],
         "expected_characteristics": [
-          "darker tone",
+          "intentional negative-control regression candidate",
           "reduced transient impact",
           "same duration and channel layout as source"
         ]

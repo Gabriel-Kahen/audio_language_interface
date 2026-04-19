@@ -8,11 +8,15 @@ import {
   type ComparisonBenchmarkExpectation,
   FIRST_PROMPT_FAMILY_CORPUS_ID,
   FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
+  FIRST_PROMPT_FAMILY_REQUEST_CYCLE_CORPUS_ID,
   FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
   firstPromptFamilyFixtureCorpus,
   firstPromptFamilyPromptSuite,
+  firstPromptFamilyRequestCycleCorpus,
+  firstPromptFamilyRequestCycleSuite,
   formatBenchmarkMarkdownReport,
   runComparisonBenchmarks,
+  runRequestCycleBenchmarks,
   scoreComparisonReport,
 } from "../src/index.js";
 
@@ -139,6 +143,23 @@ describe("firstPromptFamilyFixtureCorpus", () => {
       expect(benchmarkCase.fixtures.baselineFixtureId).toBe(FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID);
     }
   });
+
+  it("binds every request-cycle benchmark case to the committed source fixture", () => {
+    const fixtureIds = new Set(readFixtureManifest().fixtures.map((fixture) => fixture.fixture_id));
+
+    expect(firstPromptFamilyRequestCycleCorpus.corpusId).toBe(
+      FIRST_PROMPT_FAMILY_REQUEST_CYCLE_CORPUS_ID,
+    );
+    expect(firstPromptFamilyRequestCycleCorpus.fixtureManifestPath).toBe(
+      FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
+    );
+    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(5);
+
+    for (const benchmarkCase of firstPromptFamilyRequestCycleSuite) {
+      expect(fixtureIds.has(benchmarkCase.fixtureId)).toBe(true);
+      expect(benchmarkCase.fixtureId).toBe(FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID);
+    }
+  });
 });
 
 describe("runComparisonBenchmarks", () => {
@@ -213,4 +234,108 @@ describe("formatBenchmarkMarkdownReport", () => {
     );
     expect(markdown).toContain("Overall score: 1.000");
   });
+});
+
+describe("runRequestCycleBenchmarks", () => {
+  it("runs a fixture-backed request-cycle slice and preserves explicit failure classes", async () => {
+    const darkerLessHarsh = firstPromptFamilyRequestCycleSuite[0];
+    const cleanIt = firstPromptFamilyRequestCycleSuite[3];
+    const cleanThisSample = firstPromptFamilyRequestCycleSuite[4];
+
+    if (!darkerLessHarsh || !cleanIt || !cleanThisSample) {
+      throw new Error("Expected request-cycle benchmark fixtures to exist.");
+    }
+
+    const result = await runRequestCycleBenchmarks({
+      corpusId: "request_cycle_test_subset",
+      suiteId: "first_prompt_family",
+      fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
+      description: "Targeted request-cycle benchmark smoke suite.",
+      cases: [darkerLessHarsh, cleanIt, cleanThisSample],
+    });
+
+    expect(result.suiteId).toBe("first_prompt_family");
+    expect(result.corpusId).toBe("request_cycle_test_subset");
+    expect(result.caseResults).toHaveLength(3);
+    expect(result.totalChecks).toBeGreaterThan(0);
+    expect(result.totalPassedChecks).toBe(result.totalChecks);
+    expect(result.overallScore).toBe(1);
+
+    const successCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === darkerLessHarsh.caseId,
+    );
+    expect(successCase?.status).toBe("ok");
+    expect(successCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation)).toEqual([
+      "notch_filter",
+      "tilt_eq",
+    ]);
+
+    const unsupportedCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === cleanIt.caseId,
+    );
+    expect(unsupportedCase?.status).toBe("error");
+    expect(unsupportedCase?.error?.stage).toBe("plan");
+    expect(unsupportedCase?.error?.failureClass).toBe("supported_but_underspecified");
+
+    const underspecifiedCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === cleanThisSample.caseId,
+    );
+    expect(underspecifiedCase?.status).toBe("error");
+    expect(underspecifiedCase?.error?.stage).toBe("plan");
+    expect(underspecifiedCase?.error?.failureClass).toBe("supported_but_underspecified");
+  }, 60_000);
+});
+
+describe("formatBenchmarkMarkdownReport request-cycle mode", () => {
+  it("renders a stable request-cycle benchmark report", async () => {
+    const darkerLessHarsh = firstPromptFamilyRequestCycleSuite[0];
+    const cleanThisSample = firstPromptFamilyRequestCycleSuite[4];
+
+    if (!darkerLessHarsh || !cleanThisSample) {
+      throw new Error("Expected request-cycle benchmark fixtures to exist.");
+    }
+
+    const result = await runRequestCycleBenchmarks({
+      corpusId: "request_cycle_report_subset",
+      suiteId: "first_prompt_family",
+      fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
+      description: "Request-cycle report formatting smoke suite.",
+      cases: [darkerLessHarsh, cleanThisSample],
+    });
+
+    const markdown = formatBenchmarkMarkdownReport(result);
+
+    expect(markdown).toContain("# Benchmark Report: first_prompt_family");
+    expect(markdown).toContain("Benchmark mode: request-cycle");
+    expect(markdown).toContain("request_cycle_darker_less_harsh");
+    expect(markdown).toContain("request_cycle_clean_this_sample_up_a_bit_underspecified");
+    expect(markdown).toContain("planned operations: notch_filter, tilt_eq");
+    expect(markdown).toContain("failure class: supported_but_underspecified");
+    expect(markdown).toContain("Fixture corpus: request_cycle_report_subset");
+  }, 60_000);
+
+  it("still renders request-cycle output when the first case is an expected error", async () => {
+    const cleanIt = firstPromptFamilyRequestCycleSuite[3];
+    const darkerLessHarsh = firstPromptFamilyRequestCycleSuite[0];
+
+    if (!cleanIt || !darkerLessHarsh) {
+      throw new Error("Expected request-cycle benchmark fixtures to exist.");
+    }
+
+    const result = await runRequestCycleBenchmarks({
+      corpusId: "request_cycle_error_first_subset",
+      suiteId: "first_prompt_family",
+      fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
+      description: "Request-cycle error-first report smoke suite.",
+      cases: [cleanIt, darkerLessHarsh],
+    });
+
+    const markdown = formatBenchmarkMarkdownReport(result);
+
+    expect(markdown).toContain("Benchmark mode: request-cycle");
+    expect(markdown).toContain("request_cycle_clean_it_clarification");
+    expect(markdown).toContain("failure class: supported_but_underspecified");
+    expect(markdown).toContain("request_cycle_darker_less_harsh");
+    expect(markdown).toContain("planned operations: notch_filter, tilt_eq");
+  }, 60_000);
 });

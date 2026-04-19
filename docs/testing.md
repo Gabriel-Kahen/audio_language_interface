@@ -82,6 +82,7 @@ The current repository state includes expanded coverage around:
 - repeated request-cycle behavior
 - compare-layer regression logic and structured verification provenance
 - fixture-backed cleanup benchmark corpus integrity
+- benchmark scoring/reporting for the new request-cycle evaluation layer
 
 ## Thoroughness standard
 
@@ -96,6 +97,23 @@ For meaningful behavior changes, the expected stack is:
 5. benchmark updates when the change affects product-quality directional outcomes
 
 No single layer should be treated as sufficient by itself for current capability-expansion work.
+
+## Benchmark interpretation
+
+The benchmark layer now has two distinct uses:
+
+- compare-only benchmark cases for direct `ComparisonReport` evaluation
+- request-cycle benchmark execution plus scoring/reporting for full orchestration-cycle evaluation
+
+The request-cycle benchmark mode should be read conservatively. Its scores are useful because they separate:
+
+- planner correctness
+- outcome verification
+- regression avoidance
+
+That separation makes failures easier to diagnose, but it does not turn the benchmark into a perceptual listening test. Request-cycle outcome scoring still depends on the current compare-layer evidence, including structured verification, goal alignment, and regression warnings.
+
+The current request-cycle benchmark corpus is intentionally small. It covers stable tonal-cleanup prompts and explicit clarification/failure controls on the committed phase-1 source fixture rather than trying to benchmark the full runtime surface at once.
 
 ## Current Capability-Expansion Testing Expectations
 

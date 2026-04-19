@@ -50,7 +50,7 @@ The runtime capability surface is now also published explicitly through `Runtime
 
 ### Evaluation
 
-- `benchmarks`: fixture-backed benchmark harness for compare-driven evaluation of the current cleanup prompt family
+- `benchmarks`: fixture-backed compare benchmark harness plus a real request-cycle benchmark runner for the current cleanup prompt family
 
 ## Current Prompt And Operation Scope
 
@@ -169,7 +169,7 @@ Current tool-surface caveats:
 - compare now prefers planner-emitted structured verification targets and still keeps heuristic goal alignment only as a legacy fallback
 - hum and click analysis evidence now exists in the baseline `AnalysisReport`, but compare still uses conservative proxy-style scoring for those goal families when structured verification does not provide something stronger
 - the repository does not yet provide a dedicated demo CLI or application entrypoint
-- benchmark coverage is now fixture-backed for the current cleanup slice, but it still uses curated compare inputs rather than full analysis-driven end-to-end runs
+- benchmark coverage is fixture-backed for the current cleanup slice, but the end-to-end request-cycle corpus is still intentionally small and focused on stable tonal-cleanup prompts plus clarification/failure controls
 
 ## Practical Interpretation
 
