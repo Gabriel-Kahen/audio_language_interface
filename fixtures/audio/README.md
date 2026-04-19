@@ -27,6 +27,17 @@ Retained spare control fixture:
 
 All committed WAVs are deterministic synthetic assets generated inside the repository, intended to stay tiny and redistributable.
 
+## Next request-cycle sources
+
+Phase 1 also now includes small committed source fixtures for the next request-cycle benchmark families:
+
+- `request-cycle-sibilance-source.wav`: mono tonal bed with short high-frequency bursts for de-essing / sibilance-control prompts.
+- `request-cycle-hum-60hz-source.wav`: mono tonal bed with steady 60 Hz, 120 Hz, and 180 Hz contamination for explicit dehum prompts.
+- `request-cycle-clicks-source.wav`: mono 44.1 kHz sparse-click source aligned with the current analysis click-detector recipe for declip / declick / pop-cleanup prompts.
+- `request-cycle-loudness-control-source.wav`: mono tonal bed with repeated high-crest transient bursts for peak-control / controlled / loudness-safety prompts.
+
+These are benchmark-oriented source inputs rather than precomputed candidate outputs. They are intentionally tiny, deterministic, CC0-style synthetic assets so they can be committed and redistributed freely.
+
 ## Source of truth
 
 Use `fixtures/audio/manifest.json` as the source of truth for:

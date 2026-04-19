@@ -44,6 +44,16 @@ describe("parseUserRequest", () => {
     expect(parsed.intensity).toBe("subtle");
   });
 
+  it("parses the benchmarked loudness-and-peak-control wording variants", () => {
+    const louderAndControlled = parseUserRequest("Make it louder and more controlled.");
+    const peakControl = parseUserRequest("Control the peaks without crushing it.");
+
+    expect(louderAndControlled.wants_louder).toBe(true);
+    expect(louderAndControlled.wants_more_controlled_dynamics).toBe(true);
+    expect(peakControl.wants_peak_control).toBe(true);
+    expect(peakControl.preserve_punch).toBe(true);
+  });
+
   it("parses supported denoise and stereo-width intent phrases", () => {
     const parsed = parseUserRequest("Reduce hiss a bit and make it wider.");
 
@@ -331,7 +341,7 @@ describe("planEdits", () => {
       expect.arrayContaining([
         expect.objectContaining({
           target_id: "target_reduce_click_proxy",
-          label: "reduce click-proxy spike activity where explicit click evidence exists",
+          label: "reduce clipped-sample spike activity",
           metric: "artifacts.clipped_sample_count",
         }),
         expect.objectContaining({
@@ -402,6 +412,51 @@ describe("planEdits", () => {
       lookahead_ms: 5,
     });
     expect(plan.goals).toContain("control peak excursions conservatively");
+  });
+
+  it("maps the benchmarked loudness-and-control wording to compressor then gain", () => {
+    const analysisReport = {
+      ...createAnalysisReportFixture(),
+      measurements: {
+        ...createAnalysisReportFixture().measurements,
+        dynamics: {
+          ...createAnalysisReportFixture().measurements.dynamics,
+          dynamic_range_db: 8.8,
+        },
+        levels: {
+          ...createAnalysisReportFixture().measurements.levels,
+          true_peak_dbtp: -4,
+        },
+      },
+    } satisfies AnalysisReport;
+
+    const plan = planEdits({
+      userRequest: "Make it louder and more controlled.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport,
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["compressor", "gain"]);
+    expect(plan.goals).toEqual([
+      "make dynamics more controlled without over-compressing",
+      "increase output level conservatively",
+    ]);
+  });
+
+  it("maps the benchmarked peak-control wording to a limiter with preserve-punch checks", () => {
+    const plan = planEdits({
+      userRequest: "Control the peaks without crushing it.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["limiter"]);
+    expect(plan.goals).toEqual([
+      "control peak excursions conservatively",
+      "preserve transient impact",
+    ]);
   });
 
   it("keeps pure peak-control prompts from adding loudness-maximizing limiter gain on low-peak sources", () => {

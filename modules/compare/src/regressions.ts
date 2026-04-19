@@ -139,6 +139,7 @@ export function detectAnalysisRegressions(
   }
 
   const noiseFloorDelta = getDelta(metricDeltas, "artifacts.noise_floor_dbfs");
+  const humLevelDelta = getDelta(metricDeltas, "artifacts.hum_level_dbfs");
   const highBandDelta = getDelta(metricDeltas, "spectral_balance.high_band_db");
   const lowBandDelta = getDelta(metricDeltas, "spectral_balance.low_band_db");
   const midBandDelta = getDelta(metricDeltas, "spectral_balance.mid_band_db");
@@ -147,6 +148,7 @@ export function detectAnalysisRegressions(
   const presenceBandDelta = getDelta(metricDeltas, "spectral_balance.presence_band_db");
   const harshnessRatioDelta = getDelta(metricDeltas, "spectral_balance.harshness_ratio_db");
   const clippedSampleCountDelta = getDelta(metricDeltas, "artifacts.clipped_sample_count");
+  const clickCountDelta = getDelta(metricDeltas, "artifacts.click_count");
   if (
     noiseFloorDelta !== undefined &&
     noiseFloorDelta <= -4 &&
@@ -229,34 +231,54 @@ export function detectAnalysisRegressions(
   }
 
   if (
-    lowBandDelta !== undefined &&
-    noiseFloorDelta !== undefined &&
-    lowBandDelta >= 2 &&
-    noiseFloorDelta >= 1
+    humLevelDelta !== undefined
+      ? humLevelDelta >= 3 || (!baseline.artifacts.hum_detected && candidate.artifacts.hum_detected)
+      : lowBandDelta !== undefined &&
+        noiseFloorDelta !== undefined &&
+        lowBandDelta >= 2 &&
+        noiseFloorDelta >= 1
   ) {
     regressions.push({
       kind: "increased_hum_proxy",
-      severity: roundSeverity(Math.max(lowBandDelta / 5, noiseFloorDelta / 6)),
+      severity: roundSeverity(
+        humLevelDelta !== undefined
+          ? Math.max(
+              humLevelDelta / 6,
+              !baseline.artifacts.hum_detected && candidate.artifacts.hum_detected ? 0.8 : 0,
+            )
+          : Math.max((lowBandDelta ?? 0) / 5, (noiseFloorDelta ?? 0) / 6),
+      ),
       description:
-        "Low-band energy and estimated noise floor both rose in a pattern consistent with more low-frequency contamination; this is a proxy, not a direct hum detector.",
+        humLevelDelta !== undefined
+          ? "Detected hum level increased or a new hum detector fired, suggesting more low-frequency contamination."
+          : "Low-band energy and estimated noise floor both rose in a pattern consistent with more low-frequency contamination; this is a proxy, not a direct hum detector.",
     });
   }
 
   if (
-    clippedSampleCountDelta !== undefined &&
-    clippedSampleCountDelta >= Math.max(8, baseline.artifacts.clipped_sample_count ?? 0)
+    clickCountDelta !== undefined
+      ? clickCountDelta >= Math.max(1, baseline.artifacts.click_count ?? 0)
+      : clippedSampleCountDelta !== undefined &&
+        clippedSampleCountDelta >= Math.max(8, baseline.artifacts.clipped_sample_count ?? 0)
   ) {
     regressions.push({
       kind: "increased_click_proxy",
       severity: roundSeverity(
-        Math.max(
-          clippedSampleCountDelta /
-            Math.max((baseline.artifacts.clipped_sample_count ?? 0) + 16, 32),
-          candidate.artifacts.clipping_detected ? 0.9 : 0.5,
-        ),
+        clickCountDelta !== undefined
+          ? Math.max(
+              clickCountDelta / Math.max((baseline.artifacts.click_count ?? 0) + 2, 4),
+              candidate.artifacts.click_detected ? 0.75 : 0.45,
+            )
+          : Math.max(
+              (clippedSampleCountDelta ?? 0) /
+                Math.max((baseline.artifacts.clipped_sample_count ?? 0) + 16, 32),
+              candidate.artifacts.clipping_detected ? 0.9 : 0.5,
+            ),
       ),
       description:
-        "Clipped-sample activity increased, which can indicate more impulsive spike artifacts; this is a conservative proxy rather than a direct click count.",
+        clickCountDelta !== undefined
+          ? "Detected click activity increased, suggesting more impulsive spike artifacts."
+          : "Clipped-sample activity increased, which can indicate more impulsive spike artifacts; this is a conservative proxy rather than a direct click count.",
     });
   }
 

@@ -96,6 +96,7 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
     wants_more_controlled_dynamics: wantsMoreControlledDynamics(normalizedRequest),
     wants_peak_control: containsAny(normalizedRequest, [
       "control peaks",
+      "control the peaks",
       "catch peaks",
       "keep peaks in check",
       "limit peaks",
@@ -177,6 +178,9 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "preserve the punch",
       "without losing punch",
       "without losing the punch",
+      "without crushing it",
+      "without crushing the sound",
+      "without crushing the peaks",
       "keep the transients",
       "preserve transient",
     ]),

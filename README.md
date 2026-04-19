@@ -215,7 +215,7 @@ The current baseline is strongest on conservative cleanup and corrective-edit pr
 - `analysis` can now publish steady mains-hum evidence and sparse click evidence directly in `AnalysisReport`
 - `planning` keeps hum/click cleanup conservative and still requires explicit restoration intent rather than widening generic `clean it up` phrasing automatically
 - `compare` prefers structured verification targets when they exist and exposes `evaluation_basis` in `ComparisonReport`
-- `benchmarks` now include both curated compare cases and a small fixture-backed request-cycle corpus that executes the real orchestration path
+- `benchmarks` now include both curated compare cases and a small fixture-backed request-cycle corpus that executes the real orchestration path across tonal cleanup, restoration, and loudness/control prompts
 
 ## Best-Supported Requests Right Now
 
@@ -243,7 +243,7 @@ This repo is usable today for technical experimentation and module-level integra
 - hum and click comparison logic is still conservative and partly proxy-based even though the analysis contract now carries direct hum/click evidence
 - there is no dedicated demo CLI or app entrypoint yet
 - the baseline planner does not yet auto-select pitch shifting, trim silence, channel utilities, or Layer 1 runtime effects
-- benchmark coverage now includes a tiny committed cleanup corpus, but it is still light compared with the long-term goal
+- benchmark coverage now includes a tiny committed cleanup-and-control corpus, but it is still light compared with the long-term goal
 
 ## Repository Layout
 

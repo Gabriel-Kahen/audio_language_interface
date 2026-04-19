@@ -60,7 +60,7 @@ function evaluateGoal(
   }
 
   if (matchesHumGoal(normalizedGoal)) {
-    checks.push(classifyHumReduction(metricDeltas));
+    checks.push(classifyHumReduction(baseline, candidate, metricDeltas));
   }
 
   if (matchesClickGoal(normalizedGoal)) {
@@ -311,13 +311,39 @@ function classifySibilanceReduction(metricDeltas: MetricDelta[]): GoalStatus {
   return "not_met";
 }
 
-function classifyHumReduction(metricDeltas: MetricDelta[]): GoalStatus {
+function classifyHumReduction(
+  baseline: AnalysisMeasurements,
+  candidate: AnalysisMeasurements,
+  metricDeltas: MetricDelta[],
+): GoalStatus {
+  const humLevelDelta = getDelta(metricDeltas, "artifacts.hum_level_dbfs");
+  const baselineHumLevel = baseline.artifacts.hum_level_dbfs;
+  const candidateHumLevel = candidate.artifacts.hum_level_dbfs;
   const lowBandDelta = getDelta(metricDeltas, "spectral_balance.low_band_db");
   const noiseFloorDelta = getDelta(metricDeltas, "artifacts.noise_floor_dbfs");
   const midBandDelta = getDelta(metricDeltas, "spectral_balance.mid_band_db");
 
+  if (
+    baselineHumLevel !== undefined &&
+    candidateHumLevel !== undefined &&
+    humLevelDelta !== undefined &&
+    !candidate.artifacts.hum_detected &&
+    humLevelDelta <= -6
+  ) {
+    return "met";
+  }
+
+  if (
+    baselineHumLevel !== undefined &&
+    candidateHumLevel !== undefined &&
+    humLevelDelta !== undefined &&
+    humLevelDelta <= -3
+  ) {
+    return "mostly_met";
+  }
+
   if (lowBandDelta === undefined) {
-    return "unknown";
+    return humLevelDelta === undefined ? "unknown" : "not_met";
   }
 
   if (
@@ -345,9 +371,35 @@ function classifyClickReduction(
   metricDeltas: MetricDelta[],
 ): GoalStatus {
   const clippedSampleCountDelta = getDelta(metricDeltas, "artifacts.clipped_sample_count");
+  const clickCountDelta = getDelta(metricDeltas, "artifacts.click_count");
   const crestFactorDelta = getDelta(metricDeltas, "dynamics.crest_factor_db");
   const transientDensityDelta = getDelta(metricDeltas, "dynamics.transient_density_per_second");
   const baselineClippedSampleCount = baseline.artifacts.clipped_sample_count;
+  const baselineClickCount = baseline.artifacts.click_count;
+  const candidateClickCount = candidate.artifacts.click_count;
+
+  if (
+    baselineClickCount !== undefined &&
+    candidateClickCount !== undefined &&
+    clickCountDelta !== undefined
+  ) {
+    const removedMostClicks =
+      baselineClickCount > 0 && candidateClickCount <= baselineClickCount * 0.25;
+    const removedSomeClicks = clickCountDelta <= -Math.max(1, Math.ceil(baselineClickCount * 0.5));
+    const punchMostlyIntact =
+      meetsOptionalLowerBound(crestFactorDelta, -1.5) &&
+      meetsOptionalLowerBound(transientDensityDelta, -0.2);
+
+    if (removedMostClicks && punchMostlyIntact) {
+      return "met";
+    }
+
+    if (removedSomeClicks && punchMostlyIntact) {
+      return "mostly_met";
+    }
+
+    return baselineClickCount > 0 ? "not_met" : "unknown";
+  }
 
   if (baselineClippedSampleCount === undefined || clippedSampleCountDelta === undefined) {
     return "unknown";

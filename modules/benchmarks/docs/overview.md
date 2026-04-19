@@ -6,7 +6,7 @@ Evaluate module quality and end-to-end reliability for LLM-driven audio manipula
 
 This module is the evaluation layer over the rest of the architecture.
 
-The current implementation provides two fixture-backed benchmark modes for the current supported cleanup prompt family:
+The current implementation provides two fixture-backed benchmark modes for the current supported cleanup and control prompt family:
 
 - compare-only evaluation over curated `ComparisonReport` inputs
 - end-to-end request-cycle evaluation over the real orchestration pipeline
@@ -77,7 +77,7 @@ The benchmark cases now carry explicit fixture ids for the shared source loop an
 ## Current limitations
 
 - compare-only benchmark scoring is still centered on curated `compareVersions()` inputs for the currently supported cleanup slice
-- the request-cycle benchmark corpus is intentionally small and currently focuses on stable tonal-cleanup happy paths plus explicit clarification/failure controls
+- the request-cycle benchmark corpus is intentionally small and currently focuses on stable tonal cleanup, restoration, loudness/control, and explicit clarification/failure controls
 - request-cycle outcome scoring is only as strong as the current compare/orchestration evidence:
   - planner correctness is inferred from the emitted `EditPlan`
   - outcome verification is inferred from version/render comparison reports and their structured-verification or goal-alignment outputs
@@ -113,6 +113,11 @@ The first public request-cycle corpus currently covers:
 - `make this loop darker and less harsh`
 - `reduce brightness without losing punch`
 - `make this less muddy`
+- `tame the sibilance`
+- `remove 60 Hz hum`
+- `clean up clicks`
+- `make it louder and more controlled`
+- `control the peaks without crushing it`
 - explicit clarification/failure controls such as `clean it` and `clean this sample up a bit`
 
-Those cases were chosen because they are stable against the current source fixture and expose the main Layer 2 responsibilities without overclaiming broader planner coverage.
+Those cases were chosen because they are stable against the committed phase-1 fixtures and expose the main Layer 2 responsibilities without overclaiming broader planner coverage. The loudness/control case is intentionally benchmarked with a `mostly_met` louder goal today so the corpus preserves a real current limitation instead of pretending the full request is already solved.

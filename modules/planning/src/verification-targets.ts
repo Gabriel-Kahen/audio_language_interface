@@ -238,22 +238,33 @@ export function buildVerificationTargets(
   }
 
   if (objectives.wants_remove_clicks) {
+    const clickCount = analysisReport.measurements.artifacts.click_count ?? 0;
     const clippedSampleCount = analysisReport.measurements.artifacts.clipped_sample_count ?? 0;
 
-    if (clippedSampleCount > 0) {
+    if (hasClickEvidence && clickCount > 0) {
+      const desiredClickReduction = thresholdByIntensity(objectives.intensity, 1, 2, 4);
       targets.push({
         target_id: "target_reduce_click_proxy",
         goal: "repair short clicks and pops conservatively",
-        label: hasClickEvidence
-          ? "reduce click-proxy spike activity where explicit click evidence exists"
-          : "reduce clipped-sample spike activity",
+        label: "reduce detected click activity where explicit click evidence exists",
+        kind: "analysis_metric",
+        comparison: "at_most",
+        metric: "artifacts.click_count",
+        threshold: Math.max(0, clickCount - desiredClickReduction),
+        rationale:
+          "Explicit click evidence is present, so direct click counting is the preferred verification signal.",
+      });
+    } else if (clippedSampleCount > 0) {
+      targets.push({
+        target_id: "target_reduce_click_proxy",
+        goal: "repair short clicks and pops conservatively",
+        label: "reduce clipped-sample spike activity",
         kind: "analysis_metric",
         comparison: "decrease_by",
         metric: "artifacts.clipped_sample_count",
         threshold: thresholdByIntensity(objectives.intensity, 4, 8, 16),
-        rationale: hasClickEvidence
-          ? "Explicit click evidence is present, but direct click counting is not published yet, so clipped-sample activity is the current conservative proxy."
-          : "Direct click counting is not available yet, so clipped-sample activity is the proxy.",
+        rationale:
+          "Direct click counting is unavailable or weak, so clipped-sample activity is the current conservative proxy.",
       });
     }
 
@@ -269,16 +280,24 @@ export function buildVerificationTargets(
 
   if (objectives.wants_remove_hum) {
     const humBands = humAnnotation?.bands_hz;
+    const humLevelDbfs = analysisReport.measurements.artifacts.hum_level_dbfs;
+    const humThresholdReduction = thresholdByIntensity(objectives.intensity, 3, 6, 9);
     targets.push({
       target_id: "target_reduce_hum_low_band",
       goal: "reduce mains hum and harmonic buzz conservatively",
       label: hasHumEvidence
-        ? `reduce the hum proxy around ${objectives.hum_frequency_hz?.toFixed(0)} Hz where evidence points to mains contamination`
+        ? `reduce detected hum energy around ${objectives.hum_frequency_hz?.toFixed(0)} Hz where evidence points to mains contamination`
         : `seek a small reduction in low-frequency contamination around ${objectives.hum_frequency_hz?.toFixed(0)} Hz`,
       kind: "analysis_metric",
-      comparison: "decrease_by",
-      metric: "spectral_balance.low_band_db",
-      threshold: thresholdByIntensity(objectives.intensity, 1.5, 2.5, 4),
+      comparison: hasHumEvidence && humLevelDbfs !== undefined ? "at_most" : "decrease_by",
+      metric:
+        hasHumEvidence && humLevelDbfs !== undefined
+          ? "artifacts.hum_level_dbfs"
+          : "spectral_balance.low_band_db",
+      threshold:
+        hasHumEvidence && humLevelDbfs !== undefined
+          ? Number((humLevelDbfs - humThresholdReduction).toFixed(2))
+          : thresholdByIntensity(objectives.intensity, 1.5, 2.5, 4),
       ...(humBands !== undefined
         ? {
             target: {
@@ -298,8 +317,10 @@ export function buildVerificationTargets(
               } as const,
             }),
       rationale: hasHumEvidence
-        ? "Hum-related annotation or semantic evidence is present, but the baseline verifier still uses narrow low-band energy as the current conservative proxy until direct hum analysis is published."
-        : "The baseline verifier uses low-band energy as a conservative hum proxy until direct hum analysis exists.",
+        ? analysisReport.measurements.artifacts.hum_level_dbfs !== undefined
+          ? "Hum-related annotation or semantic evidence is present, so direct measured hum level is the preferred verification signal."
+          : "Hum-related annotation or semantic evidence is present, but low-band energy remains the fallback verification proxy when no direct hum level is available."
+        : "The baseline verifier uses low-band energy as a conservative hum proxy until direct hum evidence exists.",
     });
     targets.push({
       target_id: "target_reduce_hum_no_proxy_regression",
