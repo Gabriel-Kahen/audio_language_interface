@@ -113,7 +113,7 @@ The request-cycle benchmark mode should be read conservatively. Its scores are u
 
 That separation makes failures easier to diagnose, but it does not turn the benchmark into a perceptual listening test. Request-cycle outcome scoring still depends on the current compare-layer evidence, including structured verification, goal alignment, and regression warnings.
 
-The current request-cycle benchmark corpus is intentionally small. It covers stable tonal cleanup, restoration, and loudness/control prompts on committed phase-1 fixtures plus explicit clarification/failure controls rather than trying to benchmark the full runtime surface at once.
+The current request-cycle benchmark corpus is intentionally small. It covers stable tonal cleanup, restoration, and peak-control prompts on committed phase-1 fixtures plus explicit clarification/failure controls rather than trying to benchmark the full runtime surface at once.
 
 ## Current Capability-Expansion Testing Expectations
 

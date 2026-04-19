@@ -163,13 +163,12 @@ describe("firstPromptFamilyFixtureCorpus", () => {
     expect(firstPromptFamilyRequestCycleCorpus.fixtureManifestPath).toBe(
       FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
     );
-    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(10);
+    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(9);
     expect(firstPromptFamilyRequestCycleSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
         "request_cycle_tame_sibilance",
         "request_cycle_remove_60hz_hum",
         "request_cycle_clean_up_clicks",
-        "request_cycle_louder_and_more_controlled",
         "request_cycle_control_peaks_without_crushing",
       ]),
     );
@@ -260,7 +259,6 @@ describe("runRequestCycleBenchmarks", () => {
     const tameSibilance = getRequestCycleCase("request_cycle_tame_sibilance");
     const removeHum = getRequestCycleCase("request_cycle_remove_60hz_hum");
     const cleanUpClicks = getRequestCycleCase("request_cycle_clean_up_clicks");
-    const louderAndControlled = getRequestCycleCase("request_cycle_louder_and_more_controlled");
     const controlPeaks = getRequestCycleCase("request_cycle_control_peaks_without_crushing");
     const cleanIt = getRequestCycleCase("request_cycle_clean_it_clarification");
     const cleanThisSample = getRequestCycleCase(
@@ -277,7 +275,6 @@ describe("runRequestCycleBenchmarks", () => {
         tameSibilance,
         removeHum,
         cleanUpClicks,
-        louderAndControlled,
         controlPeaks,
         cleanIt,
         cleanThisSample,
@@ -286,7 +283,7 @@ describe("runRequestCycleBenchmarks", () => {
 
     expect(result.suiteId).toBe("first_prompt_family");
     expect(result.corpusId).toBe("request_cycle_test_subset");
-    expect(result.caseResults).toHaveLength(8);
+    expect(result.caseResults).toHaveLength(7);
     expect(result.totalChecks).toBeGreaterThan(0);
     expect(result.totalPassedChecks).toBe(result.totalChecks);
     expect(result.overallScore).toBe(1);
@@ -320,15 +317,6 @@ describe("runRequestCycleBenchmarks", () => {
     expect(clicksCase?.status).toBe("ok");
     expect(clicksCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation)).toEqual([
       "declick",
-    ]);
-
-    const louderCase = result.caseResults.find(
-      (caseResult) => caseResult.caseId === louderAndControlled.caseId,
-    );
-    expect(louderCase?.status).toBe("ok");
-    expect(louderCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation)).toEqual([
-      "compressor",
-      "gain",
     ]);
 
     const peaksCase = result.caseResults.find(

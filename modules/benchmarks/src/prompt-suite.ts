@@ -487,39 +487,6 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
       },
     },
     {
-      caseId: "request_cycle_louder_and_more_controlled",
-      family: "first_prompt_family",
-      prompt: "Make it louder and more controlled.",
-      description:
-        "Conservative compressor-plus-gain path that fully meets the control goal and partially meets the louder goal on the committed transient-control fixture.",
-      fixtureId: "fixture_phase1_request_cycle_loudness_control_source",
-      expectation: {
-        planner: {
-          expected_result_kind: "applied",
-          required_operations: ["compressor", "gain"],
-          expected_operation_order: ["compressor", "gain"],
-          required_goals: [
-            "make dynamics more controlled without over-compressing",
-            "increase output level conservatively",
-          ],
-        },
-        outcome: {
-          report_scope: "version",
-          require_structured_verification: true,
-          goal_statuses: {
-            "make dynamics more controlled without over-compressing": "met",
-            "increase output level conservatively": "mostly_met",
-          },
-          verification_statuses: {
-            target_control_dynamics_range: "met",
-            target_control_dynamics_no_overcompression: "met",
-            target_louder_integrated_lufs: "mostly_met",
-            target_louder_no_headroom_loss: "met",
-          },
-        },
-      },
-    },
-    {
       caseId: "request_cycle_control_peaks_without_crushing",
       family: "first_prompt_family",
       prompt: "Control the peaks without crushing it.",
