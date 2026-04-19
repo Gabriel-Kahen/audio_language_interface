@@ -1,8 +1,58 @@
+import type { RuntimeOperationName } from "@audio-language-interface/capabilities";
 import type {
   CompareVersionsOptions,
   ComparisonReport,
   GoalStatus,
 } from "@audio-language-interface/compare";
+import type { ImportAudioOptions } from "@audio-language-interface/io";
+import type {
+  OrchestrationDependencies,
+  RequestCycleResult,
+  RunRequestCycleOptions,
+} from "@audio-language-interface/orchestration";
+
+export interface AudioFixtureFormat {
+  container: string;
+  codec: string;
+  sample_rate_hz: number;
+  channels: number;
+  bit_depth: number;
+  duration_seconds: number;
+  file_size_bytes: number;
+}
+
+export interface AudioFixtureProvenance {
+  source_type: string;
+  created_by: string;
+  license: string;
+  redistributable: boolean;
+  checksum_sha256: string;
+  notes?: string;
+}
+
+export interface AudioFixtureIntendedUse {
+  prompt_family?: string[];
+  used_by?: string[];
+  expected_characteristics?: string[];
+}
+
+export interface AudioFixtureManifestEntry {
+  fixture_id: string;
+  display_name: string;
+  relative_path: string;
+  availability: string;
+  format: AudioFixtureFormat;
+  provenance: AudioFixtureProvenance;
+  derived_from_fixture_id?: string;
+  intended_use?: AudioFixtureIntendedUse;
+  generation_recipe?: string[];
+  contract_refs?: Record<string, string>;
+}
+
+export interface AudioFixtureManifest {
+  schema_version: string;
+  fixtures: AudioFixtureManifestEntry[];
+}
 
 export interface ComparisonBenchmarkFixtureBinding {
   sourceFixtureId: string;
@@ -61,4 +111,159 @@ export interface ComparisonBenchmarkRunResult {
   totalPassedChecks: number;
   totalChecks: number;
   overallScore: number;
+}
+
+export type RequestCycleBenchmarkCategory =
+  | "planner_correctness"
+  | "outcome_verification"
+  | "regression_avoidance";
+
+export interface RequestCycleBenchmarkPlannerExpectation {
+  expected_result_kind?: "applied" | "reverted";
+  required_operations?: RuntimeOperationName[];
+  forbidden_operations?: RuntimeOperationName[];
+  expected_operation_order?: RuntimeOperationName[];
+  required_goals?: string[];
+  require_revision?: boolean;
+}
+
+export interface RequestCycleBenchmarkOutcomeExpectation {
+  report_scope?: "version" | "render";
+  require_structured_verification?: boolean;
+  goal_statuses?: Record<string, GoalStatus>;
+  verification_statuses?: Record<string, GoalStatus>;
+  required_semantic_labels?: string[];
+  forbidden_semantic_labels?: string[];
+}
+
+export interface RequestCycleBenchmarkRegressionExpectation {
+  required_regression_kinds?: string[];
+  forbidden_regression_kinds?: string[];
+  max_severity?: number;
+}
+
+export interface RequestCycleBenchmarkErrorExpectation {
+  stage?: string;
+  failure_class?: string;
+  message_includes?: string;
+}
+
+export interface RequestCycleBenchmarkCase {
+  caseId: string;
+  family: string;
+  prompt: string;
+  description: string;
+  fixtureId: string;
+  expectation: {
+    planner?: RequestCycleBenchmarkPlannerExpectation;
+    outcome?: RequestCycleBenchmarkOutcomeExpectation;
+    regressions?: RequestCycleBenchmarkRegressionExpectation;
+    error?: RequestCycleBenchmarkErrorExpectation;
+  };
+}
+
+export interface RequestCycleBenchmarkCorpus {
+  corpusId: string;
+  suiteId: string;
+  fixtureManifestPath: string;
+  description: string;
+  cases: RequestCycleBenchmarkCase[];
+}
+
+export interface RequestCycleBenchmarkArtifacts {
+  fixtureManifestPath: string;
+  workspaceRoot: string;
+  sourceFixturePath?: string;
+  inputPath?: string;
+  fixture?: AudioFixtureManifestEntry;
+}
+
+export interface RequestCycleBenchmarkFailure {
+  name: string;
+  message: string;
+  stack?: string;
+  stage?: string;
+  attempts?: number;
+  partialResult?: Record<string, unknown>;
+  failureClass?: string;
+}
+
+export interface RequestCycleBenchmarkCheckResult extends BenchmarkCheckResult {
+  category: RequestCycleBenchmarkCategory;
+  scope: "planner" | "version_compare" | "render_compare" | "request_cycle";
+}
+
+export interface RequestCycleCategoryScore {
+  passedChecks: number;
+  totalChecks: number;
+  score: number;
+}
+
+export interface RequestCycleScoreBreakdown {
+  plannerCorrectness: RequestCycleCategoryScore;
+  outcomeVerification: RequestCycleCategoryScore;
+  regressionAvoidance: RequestCycleCategoryScore;
+}
+
+export interface RequestCycleFailureBucket {
+  category: RequestCycleBenchmarkCategory;
+  bucketId: string;
+  label: string;
+  failedChecks: number;
+}
+
+export interface RequestCycleBenchmarkCaseResult {
+  caseId: string;
+  family: string;
+  prompt: string;
+  description: string;
+  fixtureId: string;
+  startedAt: string;
+  finishedAt: string;
+  durationMs: number;
+  status: "ok" | "error";
+  artifacts: RequestCycleBenchmarkArtifacts;
+  expectation: RequestCycleBenchmarkCase["expectation"];
+  requestCycleResult?: RequestCycleResult;
+  error?: RequestCycleBenchmarkFailure;
+  passedChecks: number;
+  totalChecks: number;
+  score: number;
+  checks: RequestCycleBenchmarkCheckResult[];
+  scoreBreakdown: RequestCycleScoreBreakdown;
+  failureBuckets: RequestCycleFailureBucket[];
+}
+
+export interface RequestCycleBenchmarkRunResult {
+  suiteId: string;
+  corpusId: string;
+  fixtureManifestPath: string;
+  caseResults: RequestCycleBenchmarkCaseResult[];
+  totalCases: number;
+  succeededCases: number;
+  failedCases: number;
+  totalPassedChecks: number;
+  totalChecks: number;
+  overallScore: number;
+  totalDurationMs: number;
+}
+
+export interface RunRequestCycleBenchmarkCaseOptions {
+  dependencies?: Partial<OrchestrationDependencies>;
+  fixtureManifest?: AudioFixtureManifest;
+  fixtureManifestPath?: string;
+  analysisOptions?: RunRequestCycleOptions["analysisOptions"];
+  renderKind?: RunRequestCycleOptions["renderKind"];
+  revision?: RunRequestCycleOptions["revision"];
+  sessionId?: string;
+  branchId?: string;
+  importedAt?: string;
+  importOptions?: Omit<ImportAudioOptions, "workspaceRoot">;
+  workspaceRoot?: string;
+  preserveWorkspace?: boolean;
+}
+
+export interface RunRequestCycleBenchmarksOptions
+  extends Omit<RunRequestCycleBenchmarkCaseOptions, "fixtureManifest"> {
+  fixtureManifest?: AudioFixtureManifest;
 }

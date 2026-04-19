@@ -6,15 +6,26 @@ Evaluate module quality and end-to-end reliability for LLM-driven audio manipula
 
 This module is the evaluation layer over the rest of the architecture.
 
-The current implementation provides a first fixture-backed benchmark harness for compare-driven evaluation of the current supported cleanup prompt family.
+The current implementation provides two fixture-backed benchmark modes for the current supported cleanup prompt family:
 
-The benchmark runtime is implemented under `modules/benchmarks/src` and is currently focused on a compare-driven corpus anchored to committed WAV fixtures under `fixtures/audio/phase-1/`.
+- compare-only evaluation over curated `ComparisonReport` inputs
+- end-to-end request-cycle evaluation over the real orchestration pipeline
+
+The benchmark runtime is implemented under `modules/benchmarks/src` and is anchored to committed WAV fixtures under `fixtures/audio/phase-1/`.
 
 ## Public API surface
 
 - define benchmark datasets and prompt suites
 - run repeatable benchmark jobs
 - score and summarize benchmark results
+
+The benchmark scoring/reporting layer now supports two evaluation shapes:
+
+- compare-only benchmark cases, which score direct `ComparisonReport` expectations
+- request-cycle benchmark cases, which score a completed orchestration cycle by separating:
+  - planner correctness
+  - outcome verification
+  - regression avoidance
 
 The current implementation includes a compare-focused cleanup suite for:
 
@@ -29,7 +40,9 @@ The benchmark cases now carry explicit fixture ids for the shared source loop an
 ## Current source files
 
 - `src/prompt-suite.ts`: fixture-backed corpus metadata, prompt collections, and curated compare inputs
-- `src/run-benchmarks.ts`: benchmark execution entrypoint
+- `src/run-benchmarks.ts`: compare-only benchmark execution entrypoint
+- `src/run-request-cycle-benchmarks.ts`: end-to-end request-cycle benchmark execution entrypoint
+- `src/fixture-loader.ts`: fixture manifest loading and workspace materialization helpers
 - `src/scoring.ts`: metric aggregation and score policies
 - `src/reporting.ts`: human-readable and machine-readable reports
 - `src/types.ts`: explicit benchmark case and report shapes
@@ -39,6 +52,7 @@ The benchmark cases now carry explicit fixture ids for the shared source loop an
 
 - depends on the runtime modules being evaluated
 - currently consumes `compareVersions()` and `ComparisonReport` from `modules/compare`
+- consumes `runRequestCycle()` from `modules/orchestration` for end-to-end benchmark execution
 - consumes `fixtures/audio/manifest.json` as the benchmark corpus source of truth for committed fixture ids and provenance
 
 ## Downstream consumers
@@ -62,9 +76,13 @@ The benchmark cases now carry explicit fixture ids for the shared source loop an
 
 ## Current limitations
 
-- benchmark scoring is still centered on curated `compareVersions()` inputs for the currently supported cleanup slice
-- the committed WAV fixtures anchor corpus provenance and repeatability, but the harness does not yet run full analysis over those files
-- fixture-backed end-to-end benchmark execution remains a later step
+- compare-only benchmark scoring is still centered on curated `compareVersions()` inputs for the currently supported cleanup slice
+- the request-cycle benchmark corpus is intentionally small and currently focuses on stable tonal-cleanup happy paths plus explicit clarification/failure controls
+- request-cycle outcome scoring is only as strong as the current compare/orchestration evidence:
+  - planner correctness is inferred from the emitted `EditPlan`
+  - outcome verification is inferred from version/render comparison reports and their structured-verification or goal-alignment outputs
+  - regression avoidance is inferred from compare-layer regression warnings, not from listening tests
+- the request-cycle harness currently benchmarks a narrow, honest prompt family rather than the full runtime capability surface
 
 ## Current scoring model
 
@@ -76,4 +94,25 @@ Each benchmark case declares explicit expected outcomes:
 - required regression kinds that must appear
 - forbidden regression kinds that must stay absent
 
-Scores are simple check-pass ratios so regressions are measurable and easy to inspect in CI output.
+Compare-only scores remain simple check-pass ratios so regressions are measurable and easy to inspect in CI output.
+
+Request-cycle scores are intentionally split by responsibility boundary:
+
+- planner correctness checks whether the cycle emitted the expected result kind, operations, ordering, goals, or revision decision
+- outcome verification checks whether the completed version/render comparisons show the expected goal statuses, verification-target statuses, semantic deltas, and structured-verification presence when required
+- regression avoidance checks whether forbidden regression kinds stayed absent and whether severe regressions were avoided
+
+The request-cycle overall score is the equal-weighted average of the non-empty category scores rather than one flat check bucket. That keeps planner mistakes, verification failures, and regression failures visible as separate failure modes.
+
+Request-cycle reports also aggregate failed checks into category-specific failure buckets so maintainers can see quickly whether a run is failing because the planner chose the wrong operation, the compare layer could not verify the intended outcome, or regressions were introduced during execution.
+
+## Current request-cycle corpus
+
+The first public request-cycle corpus currently covers:
+
+- `make this loop darker and less harsh`
+- `reduce brightness without losing punch`
+- `make this less muddy`
+- explicit clarification/failure controls such as `clean it` and `clean this sample up a bit`
+
+Those cases were chosen because they are stable against the current source fixture and expose the main Layer 2 responsibilities without overclaiming broader planner coverage.

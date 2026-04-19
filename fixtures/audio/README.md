@@ -11,13 +11,19 @@ Guidelines:
 
 ## Current committed corpus
 
-Phase 1 now includes a committed cleanup-slice corpus under `fixtures/audio/phase-1/`.
+Phase 1 now includes a small committed request-cycle corpus under `fixtures/audio/phase-1/`.
+
+Benchmark-ready cases:
 
 - `first-slice-loop.wav`: bright, slightly harsh stereo loop used as the shared baseline fixture.
-- `first-slice-loop-darker-less-harsh.wav`: tonal cleanup candidate for the happy path.
-- `first-slice-loop-reduced-brightness.wav`: wording variant candidate for brightness reduction.
-- `first-slice-loop-cleaner.wav`: measurable cleanup candidate with lower noise-floor intent.
-- `first-slice-loop-darker-lost-punch.wav`: regression candidate used to confirm punch-loss detection.
+- `first-slice-loop-darker-less-harsh.wav`: supported tonal cleanup candidate for darker / less-harsh requests.
+- `first-slice-loop-reduced-brightness.wav`: supported brightness-reduction candidate with transient preservation.
+- `first-slice-loop-cleaner.wav`: supported cleanup candidate with lower noise-floor intent.
+- `first-slice-loop-peak-controlled.wav`: supported peak-control candidate with preserved punch.
+
+Retained spare control fixture:
+
+- `first-slice-loop-darker-lost-punch.wav`: deterministic regression candidate kept for future negative-control coverage.
 
 All committed WAVs are deterministic synthetic assets generated inside the repository, intended to stay tiny and redistributable.
 
@@ -34,6 +40,9 @@ Use `fixtures/audio/manifest.json` as the source of truth for:
 
 ## Current benchmark boundary
 
-The benchmark harness is now fixture-backed, but the compare-layer expectations remain curated analysis inputs for the current cleanup slice.
+The benchmark layer now uses this corpus in two ways:
 
-That means the committed WAVs anchor corpus provenance and repeatability today, while full analysis-driven benchmark execution can land later without changing fixture ids or paths.
+- compare-only cases with curated `ComparisonReport` expectations
+- end-to-end request-cycle cases that execute the real orchestration path on the shared source fixture
+
+The committed WAVs anchor provenance and repeatability, while the benchmark expectations stay intentionally conservative and can evolve without changing the fixture ids or paths.
