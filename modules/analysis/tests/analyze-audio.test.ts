@@ -202,6 +202,46 @@ function createBriefBroadbandNoiseBurstSignal(
   return [mono];
 }
 
+function createHumContaminatedSignal(
+  sampleRateHz: number,
+  durationSeconds: number,
+): Float32Array[] {
+  const frameCount = Math.round(sampleRateHz * durationSeconds);
+  const mono = new Float32Array(frameCount);
+
+  for (let index = 0; index < frameCount; index += 1) {
+    const time = index / sampleRateHz;
+    const program = 0.16 * Math.sin(2 * Math.PI * 440 * time);
+    const hum60 = 0.11 * Math.sin(2 * Math.PI * 60 * time);
+    const hum120 = 0.07 * Math.sin(2 * Math.PI * 120 * time);
+    const hum180 = 0.05 * Math.sin(2 * Math.PI * 180 * time);
+    mono[index] = program + hum60 + hum120 + hum180;
+  }
+
+  return [mono];
+}
+
+function createSparseClickSignal(sampleRateHz: number, durationSeconds: number): Float32Array[] {
+  const frameCount = Math.round(sampleRateHz * durationSeconds);
+  const mono = new Float32Array(frameCount);
+  const clickFrames = [0.2, 0.55, 0.92, 1.35, 1.7].map((timeSeconds) =>
+    Math.round(timeSeconds * sampleRateHz),
+  );
+
+  for (let index = 0; index < frameCount; index += 1) {
+    const time = index / sampleRateHz;
+    mono[index] = 0.08 * Math.sin(2 * Math.PI * 330 * time);
+  }
+
+  for (const clickFrame of clickFrames) {
+    if (clickFrame < frameCount) {
+      mono[clickFrame] = (mono[clickFrame] ?? 0) + 0.78;
+    }
+  }
+
+  return [mono];
+}
+
 function createStableWideStereoSignal(
   sampleRateHz: number,
   durationSeconds: number,
@@ -353,6 +393,10 @@ describe("analyzeAudioVersion", () => {
       );
       expect(report.measurements.stereo.width).toBeGreaterThan(0.1);
       expect(report.measurements.artifacts.clipping_detected).toBe(false);
+      expect(report.measurements.artifacts.hum_detected).toBe(false);
+      expect(report.measurements.artifacts.hum_harmonic_count).toBe(0);
+      expect(report.measurements.artifacts.click_detected).toBe(false);
+      expect(report.measurements.artifacts.click_count).toBe(0);
       expect(report.segments?.some((segment) => segment.kind === "silence")).toBe(true);
       expect(report.source_character?.pitched).toBe(true);
       expect(report.material_character?.classification).toBe("one_shot");
@@ -721,6 +765,87 @@ describe("analyzeAudioVersion", () => {
       );
 
       expect(report.annotations?.some((annotation) => annotation.kind === "noise")).toBe(false);
+    });
+  });
+
+  it("adds sustained hum annotations and explicit hum artifact fields", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 44100;
+      const durationSeconds = 2;
+      const storageRef = "storage/audio/test-hum.wav";
+      const channels = createHumContaminatedSignal(sampleRateHz, durationSeconds);
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const report = await analyzeAudioVersion(
+        createAudioVersion(storageRef, sampleRateHz, channels.length, getFrameCount(channels)),
+        {
+          workspaceRoot,
+          generatedAt: "2026-04-14T20:20:10Z",
+        },
+      );
+
+      expect(report.measurements.artifacts.hum_detected).toBe(true);
+      expect(report.measurements.artifacts.hum_fundamental_hz).toBe(60);
+      expect(report.measurements.artifacts.hum_harmonic_count).toBeGreaterThanOrEqual(3);
+      expect(report.measurements.artifacts.hum_level_dbfs).toBeGreaterThan(-35);
+      const humAnnotation = report.annotations?.find((annotation) => annotation.kind === "hum");
+      expect(humAnnotation).toBeDefined();
+      expect(humAnnotation?.bands_hz).toEqual([56, 184]);
+      expect(humAnnotation?.evidence).toContain("60");
+      expect(report.summary.plain_text).toContain("Mains hum is present");
+    });
+  });
+
+  it("adds sparse click annotations and explicit click artifact fields", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 44100;
+      const durationSeconds = 2;
+      const storageRef = "storage/audio/test-clicks.wav";
+      const channels = createSparseClickSignal(sampleRateHz, durationSeconds);
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const report = await analyzeAudioVersion(
+        createAudioVersion(storageRef, sampleRateHz, channels.length, getFrameCount(channels)),
+        {
+          workspaceRoot,
+          generatedAt: "2026-04-14T20:20:10Z",
+        },
+      );
+
+      expect(report.measurements.artifacts.click_detected).toBe(true);
+      expect(report.measurements.artifacts.click_count).toBe(5);
+      expect(report.measurements.artifacts.click_rate_per_second).toBe(2.5);
+      const clickAnnotations = report.annotations?.filter(
+        (annotation) => annotation.kind === "click",
+      );
+      expect(clickAnnotations).toHaveLength(5);
+      expect(clickAnnotations?.[0]?.evidence).toContain("impulsive spike");
+      expect(report.summary.plain_text).toContain("Click artifacts are present");
+    });
+  });
+
+  it("does not relabel ordinary transient bursts as click artifacts", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 48000;
+      const durationSeconds = 2;
+      const storageRef = "storage/audio/test-non-click-transients.wav";
+      const channels = createPunchyTransientSignal(sampleRateHz, durationSeconds);
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const report = await analyzeAudioVersion(
+        createAudioVersion(storageRef, sampleRateHz, channels.length, getFrameCount(channels)),
+        {
+          workspaceRoot,
+          generatedAt: "2026-04-14T20:20:10Z",
+        },
+      );
+
+      expect(report.measurements.artifacts.click_detected).toBe(false);
+      expect(report.measurements.artifacts.click_count).toBe(0);
+      expect(report.annotations?.some((annotation) => annotation.kind === "click")).toBe(false);
     });
   });
 

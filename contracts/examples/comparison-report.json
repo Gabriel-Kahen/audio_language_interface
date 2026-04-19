@@ -67,7 +67,12 @@
       "evidence": "Observed dynamics.crest_factor_db value was 10.100."
     }
   ],
+  "evaluation_basis": {
+    "metric_source": "analysis_reports",
+    "goal_evaluation_source": "structured_verification",
+    "authoritative_signal": "verification_results"
+  },
   "summary": {
-    "plain_text": "The edited version is less harsh with only a minor reduction in transient punch."
+    "plain_text": "Measured changes suggest less harsh. 2 of 2 structured verification checks were satisfied or mostly satisfied. No regression warnings were detected."
   }
 }

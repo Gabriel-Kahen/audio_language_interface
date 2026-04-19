@@ -156,7 +156,11 @@ describe("runRequestCycle", () => {
     expect(result.result_kind).toBe("applied");
     expect(result.editPlan?.user_request).toBe("Make it darker");
     expect(result.outputVersion.version_id).toBe("ver_output");
+    expect(result.versionComparisonReport.baseline.ref_type).toBe("version");
+    expect(result.versionComparisonReport.candidate.ref_id).toBe("ver_output");
+    expect(result.renderComparisonReport.candidate.ref_id).toBe("render_ver_output");
     expect(result.comparisonReport.candidate.ref_id).toBe("render_ver_output");
+    expect(result.comparisonReport).toEqual(result.renderComparisonReport);
     expect(validateSessionGraph(result.sessionGraph).valid).toBe(true);
     expect(result.sessionGraph.nodes.map((node) => node.node_type)).toEqual(
       expect.arrayContaining([
@@ -275,6 +279,9 @@ describe("runRequestCycle", () => {
       source: "caller",
     });
     expect(result.outputVersion.version_id).toBe("ver_output2");
+    expect(result.versionComparisonReport.baseline.ref_id).toBe("ver_output");
+    expect(result.versionComparisonReport.candidate.ref_id).toBe("ver_output2");
+    expect(result.renderComparisonReport.baseline.ref_type).toBe("render");
     expect(result.iterations?.map((iteration) => iteration.outputVersion.version_id)).toEqual([
       "ver_output",
       "ver_output2",
@@ -344,6 +351,9 @@ describe("runRequestCycle", () => {
       source: "undo",
     });
     expect(undoCycle.outputVersion.version_id).toBe(firstCycle.outputVersion.version_id);
+    expect(undoCycle.versionComparisonReport.baseline.ref_type).toBe("version");
+    expect(undoCycle.renderComparisonReport.baseline.ref_type).toBe("render");
+    expect(undoCycle.comparisonReport).toEqual(undoCycle.renderComparisonReport);
     expect(undoCycle.sessionGraph.active_refs.version_id).toBe(firstCycle.outputVersion.version_id);
     expect(validateSessionGraph(undoCycle.sessionGraph).valid).toBe(true);
   });
@@ -681,6 +691,11 @@ function createAnalysisReport(versionId: string, reportId: string): AnalysisRepo
         clipping_detected: false,
         noise_floor_dbfs: -70,
         clipped_sample_count: 0,
+        hum_detected: false,
+        hum_harmonic_count: 0,
+        click_detected: false,
+        click_count: 0,
+        click_rate_per_second: 0,
       },
     },
   };
@@ -781,6 +796,11 @@ function createComparisonReport(
             status: "met" as const,
           })),
         }),
+    evaluation_basis: {
+      metric_source: refType === "version" ? "analysis_reports" : "render_artifacts",
+      goal_evaluation_source: editPlan === undefined ? "none" : "heuristic_goal_alignment",
+      authoritative_signal: editPlan === undefined ? "metric_deltas" : "goal_alignment",
+    },
     summary: {
       plain_text: "candidate is darker",
     },

@@ -12,6 +12,7 @@ The module currently focuses on:
 - a small evidence-based semantic vocabulary
 - regression warnings for a few clear failure modes
 - optional structured verification driven by `EditPlan.verification_targets`, with goal-level rollups for compatibility
+- explicit `evaluation_basis` metadata so downstream callers can see whether quality evaluation came from structured verification, heuristic goal scoring, or raw deltas alone
 
 ## Public API
 
@@ -68,7 +69,8 @@ Contract references:
 2. derive semantic labels from those deltas and raw measurements
 3. detect analysis regressions
 4. optionally evaluate planner-provided verification targets and derive goal-level alignment
-5. build and schema-validate a `ComparisonReport`
+5. attach `evaluation_basis` metadata describing the authoritative quality signal
+6. build and schema-validate a `ComparisonReport`
 
 ### Render comparison
 
@@ -198,6 +200,7 @@ When `EditPlan.verification_targets` contains typed targets, compare evaluates t
 
 - `verification_results` with per-target status plus observed evidence
 - `goal_alignment` as a rolled-up status per requested goal
+- `evaluation_basis` to show whether metrics came from `analysis_reports` or `render_artifacts`, and whether `verification_results`, `goal_alignment`, or raw `metric_deltas` should be treated as authoritative
 
 If no structured targets are present, compare falls back to the older heuristic `EditPlan.goals` string-matching path so legacy plans and benchmarks keep working.
 
@@ -250,7 +253,7 @@ The fallback `evaluateGoalAlignment()` path is still heuristic and keyword-drive
 `buildComparisonReport()` generates a plain-text summary by combining:
 
 - up to two semantic labels when present
-- a count of satisfied or mostly satisfied goals when goal alignment exists
+- a count of satisfied or mostly satisfied structured verification checks when they exist, otherwise a goal-level count
 - a list of regression warning kinds, or an explicit no-regressions sentence
 
 The summary is intentionally compact and should be treated as a convenience field, not as the canonical machine-readable source of truth.

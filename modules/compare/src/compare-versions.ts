@@ -73,6 +73,7 @@ export function compareVersions(options: CompareVersionsOptions): ComparisonRepo
     candidateRefType: "version",
     candidateRefId: options.candidateVersion.version_id,
     generatedAt: normalizeTimestamp(options.generatedAt),
+    metricSource: "analysis_reports",
     metricDeltas,
     semanticDeltas,
     regressions,

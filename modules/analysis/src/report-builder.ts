@@ -79,9 +79,7 @@ function buildPlainTextSummary(
     (measurements.dynamics.transient_crest_db ?? 0) >= 10
       ? "with strong transient impact"
       : "with restrained transient activity";
-  const artifacts = measurements.artifacts.clipping_detected
-    ? "Clipping is present."
-    : "No clipping was detected.";
+  const artifacts = describeArtifacts(measurements.artifacts);
 
   return `${capitalize(brightness)} ${stereo} ${sourceCharacter.primary_class.replace(/_/g, " ")} ${dynamics}. ${artifacts}`;
 }
@@ -144,4 +142,49 @@ function estimateSummaryConfidence(
 
 function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function describeArtifacts(measurements: AnalysisMeasurements["artifacts"]): string {
+  const present: string[] = [];
+
+  if (measurements.clipping_detected) {
+    present.push("clipping");
+  }
+  if (measurements.hum_detected) {
+    present.push("mains hum");
+  }
+  if (measurements.click_detected) {
+    present.push("click artifacts");
+  }
+
+  if (present.length === 0) {
+    return "No clipping, hum, or click artifacts were detected.";
+  }
+
+  if (present.length === 1) {
+    switch (present[0]) {
+      case "clipping":
+        return "Clipping is present.";
+      case "mains hum":
+        return "Mains hum is present.";
+      case "click artifacts":
+        return "Click artifacts are present.";
+      default:
+        break;
+    }
+  }
+
+  return `${capitalize(joinWithAnd(present))} are present.`;
+}
+
+function joinWithAnd(values: string[]): string {
+  if (values.length <= 1) {
+    return values[0] ?? "";
+  }
+
+  if (values.length === 2) {
+    return `${values[0]} and ${values[1]}`;
+  }
+
+  return `${values.slice(0, -1).join(", ")}, and ${values[values.length - 1]}`;
 }

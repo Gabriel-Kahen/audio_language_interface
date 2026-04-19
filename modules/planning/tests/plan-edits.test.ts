@@ -303,8 +303,8 @@ describe("planEdits", () => {
     const plan = planEdits({
       userRequest: "Tame the sibilance, remove clicks, and remove 60 Hz hum.",
       audioVersion: createAudioVersionFixture(),
-      analysisReport: createAnalysisReportFixture(),
-      semanticProfile: createSemanticProfileFixture(),
+      analysisReport: createRestorationAnalysisReportFixture({ clipped_sample_count: 14 }),
+      semanticProfile: createRestorationSemanticProfileFixture(),
     });
 
     expect(plan.steps.map((step) => step.operation)).toEqual(["declick", "dehum", "de_esser"]);
@@ -327,6 +327,22 @@ describe("planEdits", () => {
       max_reduction: 0.45,
       frequency_hz: 5500,
     });
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_reduce_click_proxy",
+          label: "reduce click-proxy spike activity where explicit click evidence exists",
+          metric: "artifacts.clipped_sample_count",
+        }),
+        expect.objectContaining({
+          target_id: "target_reduce_hum_low_band",
+          target: {
+            scope: "frequency_region",
+            bands_hz: [60, 180],
+          },
+        }),
+      ]),
+    );
   });
 
   it("requires an explicit mains frequency for dehum requests", () => {
@@ -503,6 +519,39 @@ describe("planEdits", () => {
     });
 
     expect(plan.steps.map((step) => step.operation)).toEqual(["declick"]);
+  });
+
+  it("does not emit a positive click proxy target when clipped-sample evidence is unavailable", () => {
+    const plan = planEdits({
+      userRequest: "Remove clicks.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createRestorationAnalysisReportFixture({ clipped_sample_count: 0 }),
+      semanticProfile: createRestorationSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["declick"]);
+    expect(plan.verification_targets).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ target_id: "target_reduce_click_proxy" })]),
+    );
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_reduce_click_proxy_regression",
+          regression_kind: "increased_click_proxy",
+        }),
+      ]),
+    );
+  });
+
+  it("does not auto-trigger hum or click restoration from generic cleanup wording", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Clean this sample up a bit.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createRestorationAnalysisReportFixture({ clipped_sample_count: 12 }),
+        semanticProfile: createRestorationSemanticProfileFixture(),
+      }),
+    ).toThrow(/only supports conservative tonal cleanup/i);
   });
 
   it("fails clearly for ambiguous dynamics language", () => {
@@ -761,6 +810,58 @@ function createWideSemanticProfileFixture(): SemanticProfile {
         confidence: 0.78,
         evidence_refs: ["analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:measurements.stereo"],
         rationale: "Side energy is already materially present.",
+      },
+    ],
+  };
+}
+
+function createRestorationAnalysisReportFixture(options?: {
+  clipped_sample_count?: number;
+}): AnalysisReport {
+  return {
+    ...createAnalysisReportFixture(),
+    measurements: {
+      ...createAnalysisReportFixture().measurements,
+      artifacts: {
+        ...createAnalysisReportFixture().measurements.artifacts,
+        clipped_sample_count: options?.clipped_sample_count ?? 0,
+      },
+    },
+    annotations: [
+      {
+        kind: "hum",
+        start_seconds: 0,
+        end_seconds: 4,
+        bands_hz: [60, 180],
+        severity: 0.58,
+        evidence: "steady mains-related energy persists near 60 Hz with harmonics",
+      },
+      {
+        kind: "click",
+        start_seconds: 1.2,
+        end_seconds: 1.23,
+        severity: 0.54,
+        evidence: "short impulsive pop around 1.22 seconds",
+      },
+    ],
+  };
+}
+
+function createRestorationSemanticProfileFixture(): SemanticProfile {
+  return {
+    ...createNeutralSemanticProfileFixture(),
+    descriptors: [
+      {
+        label: "hum_present",
+        confidence: 0.78,
+        evidence_refs: ["analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:annotations[0]"],
+        rationale: "Steady hum evidence is present.",
+      },
+      {
+        label: "clicks_present",
+        confidence: 0.74,
+        evidence_refs: ["analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:annotations[1]"],
+        rationale: "Short click evidence is present.",
       },
     ],
   };

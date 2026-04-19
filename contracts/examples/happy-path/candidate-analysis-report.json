@@ -33,7 +33,13 @@
     },
     "artifacts": {
       "clipping_detected": false,
-      "noise_floor_dbfs": -74
+      "noise_floor_dbfs": -74,
+      "clipped_sample_count": 0,
+      "hum_detected": false,
+      "hum_harmonic_count": 0,
+      "click_detected": false,
+      "click_count": 0,
+      "click_rate_per_second": 0
     }
   },
   "annotations": [

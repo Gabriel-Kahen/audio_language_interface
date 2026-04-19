@@ -3,43 +3,177 @@
   "fixtures": [
     {
       "fixture_id": "fixture_phase1_first_slice_loop_synthetic",
-      "display_name": "First Slice Tonal Cleanup Loop",
+      "display_name": "First Slice Bright Cleanup Loop",
       "relative_path": "phase-1/first-slice-loop.wav",
-      "availability": "manifest_only",
+      "availability": "committed",
       "format": {
         "container": "wav",
         "codec": "pcm_s16le",
-        "sample_rate_hz": 44100,
+        "sample_rate_hz": 22050,
         "channels": 2,
         "bit_depth": 16,
-        "duration_seconds": 4.0
+        "duration_seconds": 0.96,
+        "file_size_bytes": 84750
       },
       "provenance": {
-        "source_type": "synthetic_generation_plan",
-        "created_by": "repository fixture scaffold",
-        "license": "CC0-1.0-intended",
+        "source_type": "synthetic_generation",
+        "created_by": "benchmarks fixture corpus",
+        "license": "CC0-1.0",
         "redistributable": true,
-        "notes": "Binary audio is not checked in yet. This fixture is reserved for a tiny synthetic drum-loop style WAV generated inside the repository or acquired under a permissive license with equivalent properties."
+        "checksum_sha256": "f4d93d56a04e113910efbf73b78c3a29eaf0883bf7aedb1f7804ea600ab0a6bf",
+        "notes": "Deterministic stereo cleanup benchmark source generated from seeded noise, sine low end, and gated high-band transients."
       },
       "intended_use": {
         "prompt_family": ["darker", "less harsh", "slightly cleaner", "preserve punch"],
         "used_by": ["contracts", "tests/integration", "benchmarks"],
         "expected_characteristics": [
-          "moderately bright stereo loop",
-          "persistent 3-4.5 kHz harshness region",
+          "bright stereo loop",
+          "persistent upper-mid harshness region",
           "clear transient attacks",
-          "short enough for fast integration runs"
+          "sub-100 KB committed fixture"
         ]
       },
-      "acquisition_or_generation_plan": [
-        "Generate a 4-second stereo WAV fixture under 100 KB if feasible using deterministic repository tooling.",
-        "If synthesis is not ready, replace with a small redistributable CC0 or equivalent licensed WAV and update provenance fields in the same change.",
-        "Keep the stored relative path stable so integration artifacts do not drift."
+      "generation_recipe": [
+        "Create a 0.96-second stereo WAV at 22050 Hz with deterministic lavfi synthesis.",
+        "Use seeded white noise for bright texture, a low sine bed for body, and pulsed upper-band content for transient sharpness.",
+        "Keep the stored relative path stable so benchmark and integration fixture references do not drift."
       ],
       "contract_refs": {
         "happy_path_workflow": "contracts/examples/happy-path/workflow.json",
         "load_audio_request": "contracts/examples/load-audio-tool-request.json",
         "load_audio_response": "contracts/examples/load-audio-tool-response.json"
+      }
+    },
+    {
+      "fixture_id": "fixture_phase1_first_slice_loop_darker_less_harsh",
+      "display_name": "First Slice Darker Less Harsh Candidate",
+      "relative_path": "phase-1/first-slice-loop-darker-less-harsh.wav",
+      "availability": "committed",
+      "format": {
+        "container": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 22050,
+        "channels": 2,
+        "bit_depth": 16,
+        "duration_seconds": 0.96,
+        "file_size_bytes": 84750
+      },
+      "provenance": {
+        "source_type": "deterministic_derivation",
+        "created_by": "benchmarks fixture corpus",
+        "license": "CC0-1.0",
+        "redistributable": true,
+        "checksum_sha256": "e6420acaf4116959c7ff650e1e3e15883d25e53b4581985eca5a8eb5e21abdcd",
+        "notes": "Derived from the source fixture with a low-pass rolloff and harshness cut to represent the supported happy-path tonal cleanup."
+      },
+      "derived_from_fixture_id": "fixture_phase1_first_slice_loop_synthetic",
+      "intended_use": {
+        "prompt_family": ["darker", "less harsh", "preserve punch"],
+        "used_by": ["benchmarks"],
+        "expected_characteristics": [
+          "reduced top-end brightness",
+          "lower perceived harshness",
+          "transients mostly preserved"
+        ]
+      }
+    },
+    {
+      "fixture_id": "fixture_phase1_first_slice_loop_reduced_brightness",
+      "display_name": "First Slice Reduced Brightness Candidate",
+      "relative_path": "phase-1/first-slice-loop-reduced-brightness.wav",
+      "availability": "committed",
+      "format": {
+        "container": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 22050,
+        "channels": 2,
+        "bit_depth": 16,
+        "duration_seconds": 0.96,
+        "file_size_bytes": 84750
+      },
+      "provenance": {
+        "source_type": "deterministic_derivation",
+        "created_by": "benchmarks fixture corpus",
+        "license": "CC0-1.0",
+        "redistributable": true,
+        "checksum_sha256": "170b19e94f2cf605dd46bad3277db43ea4b6dee765b5062b2b3cf7044c758966",
+        "notes": "Derived from the source fixture with a milder top-end reduction to cover brightness-reduction wording variants."
+      },
+      "derived_from_fixture_id": "fixture_phase1_first_slice_loop_synthetic",
+      "intended_use": {
+        "prompt_family": ["reduce brightness", "preserve punch"],
+        "used_by": ["benchmarks"],
+        "expected_characteristics": [
+          "moderate high-band reduction",
+          "transients preserved",
+          "same duration and channel layout as source"
+        ]
+      }
+    },
+    {
+      "fixture_id": "fixture_phase1_first_slice_loop_cleaner",
+      "display_name": "First Slice Cleaner Candidate",
+      "relative_path": "phase-1/first-slice-loop-cleaner.wav",
+      "availability": "committed",
+      "format": {
+        "container": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 22050,
+        "channels": 2,
+        "bit_depth": 16,
+        "duration_seconds": 0.96,
+        "file_size_bytes": 84750
+      },
+      "provenance": {
+        "source_type": "deterministic_derivation",
+        "created_by": "benchmarks fixture corpus",
+        "license": "CC0-1.0",
+        "redistributable": true,
+        "checksum_sha256": "615b943422c69514c3e19519a65ca3b89edd2dcde5baa712bd634a6bf29ceac5",
+        "notes": "Derived from the source fixture with deterministic denoise-oriented filtering for measurable cleanup coverage."
+      },
+      "derived_from_fixture_id": "fixture_phase1_first_slice_loop_synthetic",
+      "intended_use": {
+        "prompt_family": ["clean this sample up a bit"],
+        "used_by": ["benchmarks"],
+        "expected_characteristics": [
+          "lower noise-floor intent",
+          "same tonal balance as source",
+          "same duration and channel layout as source"
+        ]
+      }
+    },
+    {
+      "fixture_id": "fixture_phase1_first_slice_loop_darker_lost_punch",
+      "display_name": "First Slice Darker Lost Punch Regression Candidate",
+      "relative_path": "phase-1/first-slice-loop-darker-lost-punch.wav",
+      "availability": "committed",
+      "format": {
+        "container": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 22050,
+        "channels": 2,
+        "bit_depth": 16,
+        "duration_seconds": 0.96,
+        "file_size_bytes": 84750
+      },
+      "provenance": {
+        "source_type": "deterministic_derivation",
+        "created_by": "benchmarks fixture corpus",
+        "license": "CC0-1.0",
+        "redistributable": true,
+        "checksum_sha256": "e868a8be1c31ab09f2deffa7aaaab06a12994d0764913509cb21f4654a058eb4",
+        "notes": "Derived from the source fixture with darker EQ plus heavy dynamics control to represent the intentional lost-punch regression case."
+      },
+      "derived_from_fixture_id": "fixture_phase1_first_slice_loop_synthetic",
+      "intended_use": {
+        "prompt_family": ["darker", "keep the punch"],
+        "used_by": ["benchmarks"],
+        "expected_characteristics": [
+          "darker tone",
+          "reduced transient impact",
+          "same duration and channel layout as source"
+        ]
       }
     }
   ]

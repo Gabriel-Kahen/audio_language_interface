@@ -27,30 +27,7 @@
       "required": ["comparison_report"],
       "properties": {
         "comparison_report": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "schema_version",
-            "comparison_id",
-            "baseline",
-            "candidate",
-            "generated_at",
-            "metric_deltas",
-            "summary"
-          ],
-          "properties": {
-            "schema_version": { "$ref": "./common.schema.json#/$defs/schemaVersion" },
-            "comparison_id": { "$ref": "./common.schema.json#/$defs/comparisonId" },
-            "baseline": { "type": "object" },
-            "candidate": { "type": "object" },
-            "generated_at": { "$ref": "./common.schema.json#/$defs/isoTimestamp" },
-            "metric_deltas": { "type": "array" },
-            "semantic_deltas": { "type": "array" },
-            "regressions": { "type": "array" },
-            "goal_alignment": { "type": "array" },
-            "verification_results": { "type": "array" },
-            "summary": { "type": "object" }
-          }
+          "$ref": "./comparison-report.schema.json"
         }
       }
     }

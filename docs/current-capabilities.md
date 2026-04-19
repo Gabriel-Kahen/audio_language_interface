@@ -167,7 +167,7 @@ Current tool-surface caveats:
 - final render export is limited to WAV and FLAC
 - compare now prefers planner-emitted structured verification targets and still keeps heuristic goal alignment only as a legacy fallback
 - the repository does not yet provide a dedicated demo CLI or application entrypoint
-- benchmark coverage is still synthetic-first and not yet tied to committed real audio fixtures or full end-to-end fixture-backed runs
+- benchmark coverage is now fixture-backed for the current cleanup slice, but it still uses curated compare inputs rather than full analysis-driven end-to-end runs
 
 ## Practical Interpretation
 

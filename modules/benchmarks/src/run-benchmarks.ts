@@ -1,22 +1,35 @@
 import { compareVersions } from "@audio-language-interface/compare";
 
-import { firstPromptFamilyPromptSuite } from "./prompt-suite.js";
+import {
+  FIRST_PROMPT_FAMILY_CORPUS_ID,
+  firstPromptFamilyFixtureCorpus,
+  firstPromptFamilyPromptSuite,
+} from "./prompt-suite.js";
 import { scoreComparisonBenchmarkCase } from "./scoring.js";
 import type {
   ComparisonBenchmarkCase,
   ComparisonBenchmarkCaseResult,
+  ComparisonBenchmarkCorpus,
   ComparisonBenchmarkRunResult,
 } from "./types.js";
 
 export function runComparisonBenchmarks(
-  benchmarkCases: ComparisonBenchmarkCase[] = firstPromptFamilyPromptSuite,
+  benchmarkInput:
+    | ComparisonBenchmarkCorpus
+    | ComparisonBenchmarkCase[] = firstPromptFamilyFixtureCorpus,
 ): ComparisonBenchmarkRunResult {
+  const benchmarkCases = Array.isArray(benchmarkInput) ? benchmarkInput : benchmarkInput.cases;
   const caseResults = benchmarkCases.map(runComparisonBenchmarkCase);
   const totalPassedChecks = caseResults.reduce((sum, item) => sum + item.passedChecks, 0);
   const totalChecks = caseResults.reduce((sum, item) => sum + item.totalChecks, 0);
 
   return {
-    suiteId: "first_prompt_family",
+    suiteId: Array.isArray(benchmarkInput)
+      ? (firstPromptFamilyPromptSuite[0]?.family ?? "first_prompt_family")
+      : benchmarkInput.suiteId,
+    corpusId: Array.isArray(benchmarkInput)
+      ? FIRST_PROMPT_FAMILY_CORPUS_ID
+      : benchmarkInput.corpusId,
     caseResults,
     totalPassedChecks,
     totalChecks,

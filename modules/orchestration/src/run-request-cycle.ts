@@ -241,11 +241,12 @@ export async function runRequestCycle(
     : undefined;
   const outputVersion = finalIteration.outputVersion;
   const outputAnalysis = finalIteration.outputAnalysis;
+  const versionComparisonReport = finalIteration.comparisonReport;
   const cycleEditPlan = iterations[0]?.editPlan;
 
   let baselineRender: RequestCycleResult["baselineRender"] | undefined;
   let candidateRender: RequestCycleResult["candidateRender"] | undefined;
-  let comparisonReport: RequestCycleResult["comparisonReport"] | undefined;
+  let renderComparisonReport: RequestCycleResult["renderComparisonReport"] | undefined;
 
   try {
     const renderCompareResult = await renderAndCompare({
@@ -265,7 +266,7 @@ export async function runRequestCycle(
 
     baselineRender = renderCompareResult.baselineRender;
     candidateRender = renderCompareResult.candidateRender;
-    comparisonReport = renderCompareResult.comparisonReport;
+    renderComparisonReport = renderCompareResult.comparisonReport;
   } catch (error) {
     if (!(error instanceof OrchestrationStageError)) {
       throw error;
@@ -293,6 +294,7 @@ export async function runRequestCycle(
       ...(transformResult === undefined ? {} : { transformResult }),
       outputVersion,
       outputAnalysis,
+      versionComparisonReport,
       iterations,
       ...(revision === undefined ? {} : { revision }),
       sessionGraph,
@@ -300,9 +302,13 @@ export async function runRequestCycle(
     });
   }
 
+  if (!baselineRender || !candidateRender || !renderComparisonReport) {
+    throw new Error("Render comparison did not produce the expected artifacts and report.");
+  }
+
   sessionGraph = options.dependencies.recordRenderArtifact(sessionGraph, baselineRender);
   sessionGraph = options.dependencies.recordRenderArtifact(sessionGraph, candidateRender);
-  sessionGraph = options.dependencies.recordComparisonReport(sessionGraph, comparisonReport);
+  sessionGraph = options.dependencies.recordComparisonReport(sessionGraph, renderComparisonReport);
 
   return {
     result_kind: "applied",
@@ -317,9 +323,11 @@ export async function runRequestCycle(
     outputVersion,
     ...(transformResult === undefined ? {} : { transformResult }),
     outputAnalysis,
+    versionComparisonReport,
     baselineRender,
     candidateRender,
-    comparisonReport,
+    renderComparisonReport,
+    comparisonReport: renderComparisonReport,
     sessionGraph,
     trace,
   };
@@ -416,9 +424,37 @@ async function runRevertRequestCycle(input: {
   });
   sessionGraph = input.options.dependencies.recordAnalysisReport(sessionGraph, outputAnalysis);
 
+  const versionComparisonReport = await executeWithFailurePolicy({
+    stage: "compare",
+    operation: () =>
+      Promise.resolve(
+        input.options.dependencies.compareVersions({
+          baselineVersion: input.inputVersion,
+          candidateVersion: targetVersion,
+          baselineAnalysis: input.inputAnalysis,
+          candidateAnalysis: outputAnalysis,
+        }),
+      ),
+    failurePolicy: input.options.failurePolicy,
+    getPartialResult: () => ({
+      asset: input.asset,
+      inputVersion: input.inputVersion,
+      inputAnalysis: input.inputAnalysis,
+      outputVersion: targetVersion,
+      outputAnalysis,
+      sessionGraph,
+      followUpResolution: input.followUp,
+    }),
+    trace: input.trace,
+  });
+  sessionGraph = input.options.dependencies.recordComparisonReport(
+    sessionGraph,
+    versionComparisonReport,
+  );
+
   let baselineRender: RequestCycleResult["baselineRender"] | undefined;
   let candidateRender: RequestCycleResult["candidateRender"] | undefined;
-  let comparisonReport: RequestCycleResult["comparisonReport"] | undefined;
+  let renderComparisonReport: RequestCycleResult["renderComparisonReport"] | undefined;
 
   try {
     const renderCompareResult = await renderAndCompare({
@@ -435,7 +471,7 @@ async function runRevertRequestCycle(input: {
 
     baselineRender = renderCompareResult.baselineRender;
     candidateRender = renderCompareResult.candidateRender;
-    comparisonReport = renderCompareResult.comparisonReport;
+    renderComparisonReport = renderCompareResult.comparisonReport;
   } catch (error) {
     if (!(error instanceof OrchestrationStageError)) {
       throw error;
@@ -463,15 +499,23 @@ async function runRevertRequestCycle(input: {
       inputAnalysis: input.inputAnalysis,
       outputVersion: targetVersion,
       outputAnalysis,
+      versionComparisonReport,
       sessionGraph,
       followUpResolution: input.followUp,
       ...error.partialResult,
     });
   }
 
+  if (!baselineRender || !candidateRender || !renderComparisonReport) {
+    throw new Error("Render comparison did not produce the expected artifacts and report.");
+  }
+
   sessionGraph = input.options.dependencies.recordRenderArtifact(sessionGraph, baselineRender);
   sessionGraph = input.options.dependencies.recordRenderArtifact(sessionGraph, candidateRender);
-  sessionGraph = input.options.dependencies.recordComparisonReport(sessionGraph, comparisonReport);
+  sessionGraph = input.options.dependencies.recordComparisonReport(
+    sessionGraph,
+    renderComparisonReport,
+  );
 
   return {
     result_kind: "reverted",
@@ -481,9 +525,11 @@ async function runRevertRequestCycle(input: {
     followUpResolution: input.followUp,
     outputVersion: targetVersion,
     outputAnalysis,
+    versionComparisonReport,
     baselineRender,
     candidateRender,
-    comparisonReport,
+    renderComparisonReport,
+    comparisonReport: renderComparisonReport,
     sessionGraph,
     trace: input.trace,
   };

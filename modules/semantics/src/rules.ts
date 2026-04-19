@@ -548,12 +548,22 @@ function addRestorationDescriptors(
   unresolvedTerms: Set<string>,
 ): void {
   const annotations = report.annotations ?? [];
+  const reportDurationSeconds = estimateReportDurationSeconds(report);
   const humAnnotation = findStrongestAnnotationByKinds(annotations, [
     "hum",
     "hum_tone",
     "mains_hum",
   ]);
   const humSeverity = humAnnotation?.annotation.severity ?? 0;
+  const humDurationSeconds = humAnnotation
+    ? annotationDurationSeconds(humAnnotation.annotation)
+    : 0;
+  const humCoverageRatio =
+    reportDurationSeconds > 0 ? humDurationSeconds / reportDurationSeconds : 0;
+  const humBands = humAnnotation?.annotation.bands_hz;
+  const humLooksLowFrequency = humBands === undefined || (humBands[0] <= 180 && humBands[1] <= 400);
+  const humLooksSustained =
+    humDurationSeconds >= Math.min(0.2, Math.max(0.05, reportDurationSeconds * 0.2));
   const clickAnnotation = findStrongestAnnotationByKinds(annotations, [
     "click",
     "clicks",
@@ -563,21 +573,25 @@ function addRestorationDescriptors(
     "pops",
   ]);
   const clickSeverity = clickAnnotation?.annotation.severity ?? 0;
+  const clickDurationSeconds = clickAnnotation
+    ? annotationDurationSeconds(clickAnnotation.annotation)
+    : 0;
+  const clickLooksImpulsive = clickDurationSeconds <= 0.15;
 
-  if (humAnnotation && humSeverity >= 0.4) {
+  if (humAnnotation && humSeverity >= 0.4 && humLooksLowFrequency && humLooksSustained) {
     descriptors.push({
       label: "hum_present",
-      confidence: clamp(0.6 + humSeverity * 0.24),
+      confidence: clamp(0.58 + humSeverity * 0.22 + Math.min(humCoverageRatio / 0.4, 0.08)),
       evidence_refs: [annotationEvidenceRef(report, humAnnotation.index)],
       rationale: humAnnotation.annotation.evidence?.length
         ? `A steady low-frequency hum annotation is present: ${humAnnotation.annotation.evidence}.`
         : "A steady low-frequency hum annotation is present.",
     });
-  } else if (humSeverity >= 0.2) {
+  } else if (humSeverity >= 0.2 || (humAnnotation && humDurationSeconds > 0)) {
     unresolvedTerms.add("hum_present");
   }
 
-  if (clickAnnotation && clickSeverity >= 0.38) {
+  if (clickAnnotation && clickSeverity >= 0.38 && clickLooksImpulsive) {
     descriptors.push({
       label: "clicks_present",
       confidence: clamp(0.58 + clickSeverity * 0.26),
@@ -586,7 +600,7 @@ function addRestorationDescriptors(
         ? `A short impulsive click annotation is present: ${clickAnnotation.annotation.evidence}.`
         : "A short impulsive click annotation is present.",
     });
-  } else if (clickSeverity >= 0.2) {
+  } else if (clickSeverity >= 0.2 || (clickAnnotation && clickDurationSeconds > 0.15)) {
     unresolvedTerms.add("clicks_present");
   }
 }
@@ -674,11 +688,11 @@ function findAnnotations(
 function sumAnnotationCoverageSeconds(
   annotations: Array<{ annotation: AnalysisAnnotation; index: number }>,
 ): number {
-  return annotations.reduce(
-    (total, item) =>
-      total + Math.max(0, item.annotation.end_seconds - item.annotation.start_seconds),
-    0,
-  );
+  return annotations.reduce((total, item) => total + annotationDurationSeconds(item.annotation), 0);
+}
+
+function annotationDurationSeconds(annotation: AnalysisAnnotation): number {
+  return Math.max(0, annotation.end_seconds - annotation.start_seconds);
 }
 
 function estimateReportDurationSeconds(report: AnalysisReport): number {

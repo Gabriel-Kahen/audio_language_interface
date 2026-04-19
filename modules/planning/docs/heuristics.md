@@ -36,7 +36,9 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - If a request cannot be mapped to an explicit supported operation, planning fails instead of guessing.
 - Requests for runtime-available but non-planner-enabled operations such as `reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, `phaser`, `pitch_shift`, `time_stretch`, or `reverse` are classified as `supported_runtime_only_but_not_planner_enabled`.
 - Requests for declip, dereverb, and broader restoration categories outside denoise, de-ess, declick, and dehum still fail explicitly.
+- Generic cleanup wording does not automatically turn hum or click evidence into restoration steps; hum and click cleanup still require explicit supported intent.
 - Denoise only proceeds when steady-noise evidence is present; otherwise the planner rejects the request instead of guessing.
+- Hum and click verification stay conservative: the planner prefers evidence-backed targeting when annotations or semantics support it and only uses coarse runtime-era proxies where they are still the best published option.
 - Stereo-width changes only proceed for two-channel material that is not already too wide, too narrow, or stereo-ambiguous for a conservative move.
 - Tonal moves are intentionally small: `1.5 dB`, `2 dB`, or `3 dB` style shelves and tilts, with notch cuts kept surgical and narrow.
 - `preserve punch` keeps compressor settings conservative by using a slower attack and tighter safety constraints.
