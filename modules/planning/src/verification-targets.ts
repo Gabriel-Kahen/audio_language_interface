@@ -8,12 +8,31 @@ import type {
 export function buildVerificationTargets(
   objectives: ParsedEditObjectives,
   analysisReport: AnalysisReport,
-  _semanticProfile: SemanticProfile,
+  semanticProfile: SemanticProfile,
 ): VerificationTarget[] {
   const targets: VerificationTarget[] = [];
   const harshnessAnnotation = analysisReport.annotations?.find(
     (annotation) => annotation.kind === "harshness",
   );
+  const humAnnotation = findStrongestAnnotationByKinds(analysisReport, [
+    "hum",
+    "hum_tone",
+    "mains_hum",
+  ]);
+  const clickAnnotation = findStrongestAnnotationByKinds(analysisReport, [
+    "click",
+    "clicks",
+    "click_pop",
+    "impulse_click",
+    "pop",
+    "pops",
+  ]);
+  const hasHumEvidence =
+    hasSemanticDescriptor(semanticProfile, "hum_present", 0.6) ||
+    (humAnnotation?.severity ?? 0) >= 0.4;
+  const hasClickEvidence =
+    hasSemanticDescriptor(semanticProfile, "clicks_present", 0.6) ||
+    (clickAnnotation?.severity ?? 0) >= 0.38;
 
   if (objectives.wants_less_harsh) {
     targets.push({
@@ -219,17 +238,25 @@ export function buildVerificationTargets(
   }
 
   if (objectives.wants_remove_clicks) {
-    targets.push({
-      target_id: "target_reduce_click_proxy",
-      goal: "repair short clicks and pops conservatively",
-      label: "reduce clipped-sample spike activity",
-      kind: "analysis_metric",
-      comparison: "decrease_by",
-      metric: "artifacts.clipped_sample_count",
-      threshold: thresholdByIntensity(objectives.intensity, 4, 8, 16),
-      rationale:
-        "Direct click counting is not available yet, so clipped-sample activity is the proxy.",
-    });
+    const clippedSampleCount = analysisReport.measurements.artifacts.clipped_sample_count ?? 0;
+
+    if (clippedSampleCount > 0) {
+      targets.push({
+        target_id: "target_reduce_click_proxy",
+        goal: "repair short clicks and pops conservatively",
+        label: hasClickEvidence
+          ? "reduce click-proxy spike activity where explicit click evidence exists"
+          : "reduce clipped-sample spike activity",
+        kind: "analysis_metric",
+        comparison: "decrease_by",
+        metric: "artifacts.clipped_sample_count",
+        threshold: thresholdByIntensity(objectives.intensity, 4, 8, 16),
+        rationale: hasClickEvidence
+          ? "Explicit click evidence is present, but direct click counting is not published yet, so clipped-sample activity is the current conservative proxy."
+          : "Direct click counting is not available yet, so clipped-sample activity is the proxy.",
+      });
+    }
+
     targets.push({
       target_id: "target_reduce_click_proxy_regression",
       goal: "repair short clicks and pops conservatively",
@@ -241,27 +268,38 @@ export function buildVerificationTargets(
   }
 
   if (objectives.wants_remove_hum) {
+    const humBands = humAnnotation?.bands_hz;
     targets.push({
       target_id: "target_reduce_hum_low_band",
       goal: "reduce mains hum and harmonic buzz conservatively",
-      label: `reduce low-frequency contamination around ${objectives.hum_frequency_hz?.toFixed(0)} Hz`,
+      label: hasHumEvidence
+        ? `reduce the hum proxy around ${objectives.hum_frequency_hz?.toFixed(0)} Hz where evidence points to mains contamination`
+        : `seek a small reduction in low-frequency contamination around ${objectives.hum_frequency_hz?.toFixed(0)} Hz`,
       kind: "analysis_metric",
       comparison: "decrease_by",
       metric: "spectral_balance.low_band_db",
       threshold: thresholdByIntensity(objectives.intensity, 1.5, 2.5, 4),
-      ...(objectives.hum_frequency_hz === undefined
-        ? {}
-        : {
+      ...(humBands !== undefined
+        ? {
             target: {
               scope: "frequency_region",
-              bands_hz: [
-                Math.max(0, objectives.hum_frequency_hz - 5),
-                objectives.hum_frequency_hz + 5,
-              ],
+              bands_hz: humBands,
             } as const,
-          }),
-      rationale:
-        "The baseline verifier uses low-band energy as a conservative hum proxy until direct hum analysis exists.",
+          }
+        : objectives.hum_frequency_hz === undefined
+          ? {}
+          : {
+              target: {
+                scope: "frequency_region",
+                bands_hz: [
+                  Math.max(0, objectives.hum_frequency_hz - 5),
+                  objectives.hum_frequency_hz + 5,
+                ],
+              } as const,
+            }),
+      rationale: hasHumEvidence
+        ? "Hum-related annotation or semantic evidence is present, but the baseline verifier still uses narrow low-band energy as the current conservative proxy until direct hum analysis is published."
+        : "The baseline verifier uses low-band energy as a conservative hum proxy until direct hum analysis exists.",
     });
     targets.push({
       target_id: "target_reduce_hum_no_proxy_regression",
@@ -460,4 +498,25 @@ function thresholdByIntensity(
 
 function dedupeByTargetId(values: VerificationTarget[]): VerificationTarget[] {
   return [...new Map(values.map((value) => [value.target_id, value])).values()];
+}
+
+function hasSemanticDescriptor(
+  profile: SemanticProfile,
+  label: string,
+  minimumConfidence: number,
+): boolean {
+  return profile.descriptors.some(
+    (descriptor) => descriptor.label === label && descriptor.confidence >= minimumConfidence,
+  );
+}
+
+function findStrongestAnnotationByKinds(
+  report: AnalysisReport,
+  kinds: string[],
+): NonNullable<AnalysisReport["annotations"]>[number] | undefined {
+  const normalizedKinds = new Set(kinds);
+
+  return (report.annotations ?? [])
+    .filter((annotation) => normalizedKinds.has(annotation.kind))
+    .sort((left, right) => right.severity - left.severity)[0];
 }

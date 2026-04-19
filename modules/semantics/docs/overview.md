@@ -81,12 +81,14 @@ The currently assigned descriptor family includes:
 - `clipped`
 - `noisy`
 
-The semantic taxonomy also reserves restoration descriptors such as `hum_present` and `clicks_present`, but the current baseline analysis pipeline does not emit those annotation kinds yet. They are only assigned when an upstream `AnalysisReport` already carries explicit hum/click annotations.
+The semantic taxonomy includes restoration descriptors such as `hum_present` and `clicks_present`, and the current baseline analysis pipeline can now emit the matching `hum` and `click` annotations. Those labels are still assigned only when the incoming `AnalysisReport` carries strong enough explicit hum/click evidence.
 
 ## Current limitations
 
 - Descriptor assignment is rule-based and only grounded in currently implemented analysis measurements and annotations.
-- Terms like `hum_present`, `clicks_present`, and strongly explicit `sibilant` still require matching annotations from upstream analysis. The current baseline analyzer does not emit hum/click annotations yet, so those restoration labels are forward-compatible semantic support rather than baseline end-to-end output today.
+- Terms like `hum_present`, `clicks_present`, and strongly explicit `sibilant` still require matching annotations from upstream analysis. The baseline analyzer now emits hum/click annotations for the current cleanup slice, but the mapper still refuses to infer those labels from broad aggregate measurements alone.
+- `hum_present` is only assigned when the annotation also looks sustained and low-frequency enough to justify a hum descriptor rather than a generic tone event.
+- `clicks_present` is only assigned when the annotation still looks short and impulse-like instead of becoming a broader burst region.
 - `warm` and `muddy` are intentionally separated. The module only assigns `warm` when low-band weight is present without the stronger low-mid masking that would justify `muddy`.
 - `controlled` is intentionally conservative. It is only assigned when dynamic range, crest factor, transient density, and sample-domain short-term RMS spread all cluster inside a restrained range without clipping.
 - `loud`, `quiet`, and `level_unstable` are based on measured level and dynamics fields only. They are not mastering-value judgments and are intentionally anchored to explicit thresholds in the same sample-domain or loudness-domain measurements, rather than cross-domain offsets.

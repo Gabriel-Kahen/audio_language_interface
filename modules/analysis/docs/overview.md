@@ -89,7 +89,7 @@ The emitted `AnalysisReport` always includes these measurement families:
 
 It may also include:
 
-- `annotations` for clipping, localized brightness, localized harshness, transient-impact hotspots, sustained noise-like regions, and localized stereo-width or width-ambiguity evidence
+- `annotations` for clipping, localized brightness, localized harshness, transient-impact hotspots, sustained noise-like regions, steady mains-hum regions, sparse click events, and localized stereo-width or width-ambiguity evidence
 - `segments` describing `silence`, `active`, or a synthetic full-file `loop` segment
 - `source_character` for a coarse baseline class such as `drum_loop`, `tonal_phrase`, `ambience`, or `mixed_program`
 - `material_character` for conservative `one_shot`, `loop`, or `unknown` classification with explicit confidence and evidence
@@ -129,6 +129,10 @@ This baseline is intentionally simple and should be treated as a reproducible he
 - `stereo.balance_db` is left RMS dBFS minus right RMS dBFS.
 - `artifacts.noise_floor_dbfs` is the 10th-percentile fixed-window RMS estimate, not a separated noise-only model.
 - `noise` annotations require sustained low-level windows with elevated zero-crossing activity and low crest factor. They are intended as denoise-oriented evidence, not as a source-separation claim.
+- `artifacts.hum_detected`, `artifacts.hum_fundamental_hz`, `artifacts.hum_harmonic_count`, and `artifacts.hum_level_dbfs` summarize steady 50 Hz or 60 Hz line-noise evidence from harmonic projections against nearby off-tone probes.
+- `hum` annotations localize sustained steady mains-hum evidence and include the resolved harmonic span in `bands_hz`.
+- `artifacts.click_detected`, `artifacts.click_count`, and `artifacts.click_rate_per_second` summarize sparse impulsive click evidence derived from very short baseline-relative spikes.
+- `click` annotations localize short impulsive events and are intentionally conservative so ordinary musical transients are not relabeled as restoration defects by default.
 - `stereo_width` and `stereo_ambiguity` annotations localize width-related evidence or conflict. They inspect only the first two channels, ignore very quiet windows, and should be treated as phase-risk heuristics rather than a full stereo imaging model.
 - Summary wording only calls material `wide stereo` when sustained `stereo_width` evidence supports it. Ambiguous or weakly supported spread is described more cautiously.
 - `artifacts.clipping_detected` flags frames where any channel reaches absolute amplitude `>= 0.999`, and `clipped_sample_count` counts the total clipped channel samples at that threshold.
@@ -196,7 +200,9 @@ See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, an
 - Loop-boundary suggestions only score adjacent repeated regions. They are intentionally conservative and may return no suggestions when repetition support is weak, drifted, or only approximate.
 - Boundary candidates are transient-anchored plus file edges. Material whose loop starts or ends far away from onsets may be missed.
 - Suggestions can remain ambiguous when both a shorter cycle and a longer composite phrase repeat cleanly. In that case the module returns multiple candidates and marks the preferred one cautiously in its rationale instead of claiming a single ground truth.
-- Noise annotations are broadband-floor heuristics and can miss tonal hum, sparse clicks, or noise that only appears under louder foreground material.
+- Noise annotations are broadband-floor heuristics and remain distinct from the dedicated hum/click detectors.
+- Hum detection is limited to steady 50 Hz or 60 Hz mains-style patterns with resolved harmonics. It can miss drifting buzz, non-mains tonal contamination, or hum masked by stronger low-frequency program material.
+- Click detection is tuned for very short impulsive spikes and can miss slower pops, crackle beds, or smeared edit glitches.
 - Stereo-width annotations are local side-versus-mid heuristics gated to active windows, so brief or very low-level spread may remain intentionally unannotated. They do not model perceptual spaciousness or all phase artifacts.
 - Segment detection is energy-threshold based and only emits `active`, `silence`, or a synthetic full-length `loop` segment.
 - Source classification is a coarse heuristic and not a trained classifier.
@@ -223,6 +229,8 @@ Current coverage in `modules/analysis/tests/analyze-audio.test.ts` validates:
 - localized harshness annotations and presence-band evidence
 - transient-impact annotations and punch-window metrics
 - sustained noise annotations tied to elevated broadband floor evidence
+- steady hum annotations plus file-level hum artifact fields
+- sparse click annotations plus file-level click artifact fields
 - localized stereo-width and stereo-ambiguity annotations
 - conservative material classification for `one_shot`, `loop`, and `unknown`
 - transient-map event detection with stable onset timestamps

@@ -56,9 +56,11 @@ The initial implementation is a deterministic baseline planner. It uses conserva
 - rejects combined fade requests that would overlap or cover more than half of the available file duration
 - uses analysis annotations and semantic descriptors to refine frequencies and emit structured verification targets
 - maps generic `cleaner` requests only when current evidence supports a conservative tonal cleanup target or the request also contains an explicit supported cleanup direction
+- does not auto-promote generic cleanup wording into hum or click restoration; those restoration steps still require explicit supported intent
 - maps conservative `more controlled` language to `compressor` and explicit peak-control language to `limiter`
 - supports explicit loudness-normalization, upper-air, warmth, low-mid cleanup, harsh-ring, sibilance, click-cleanup, and hum-removal requests with conservative defaults grounded in the published manifest
 - supports explicit denoise requests only when analysis indicates steady noise
+- prefers annotation-backed or semantic-backed restoration verification when that evidence exists, and only falls back to coarse click or hum proxies when the current compare surface leaves no stronger option
 - supports explicit stereo-width requests only for already-stereo material when the current image is safe to adjust conservatively
 - fails instead of guessing when the request cannot be mapped to an explicit supported operation
 - classifies planner refusals explicitly as `supported_but_underspecified`, `unsupported`, or `supported_runtime_only_but_not_planner_enabled` so adapters can ask for clarification without pretending the runtime or planner can do more than they actually can

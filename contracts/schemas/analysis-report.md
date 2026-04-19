@@ -55,6 +55,16 @@ The initial machine-readable schema requires at least these fields inside the re
 - `artifacts.clipping_detected`
 - `artifacts.noise_floor_dbfs`
 
+The baseline analyzer also publishes explicit restoration-oriented artifact fields when available:
+
+- `artifacts.hum_detected`
+- `artifacts.hum_fundamental_hz`
+- `artifacts.hum_harmonic_count`
+- `artifacts.hum_level_dbfs`
+- `artifacts.click_detected`
+- `artifacts.click_count`
+- `artifacts.click_rate_per_second`
+
 Additional fields may be added without breaking this baseline.
 
 ## Optional fields
@@ -71,6 +81,7 @@ Additional fields may be added without breaking this baseline.
 
 - `measurements` must be machine-readable and not only free text.
 - Every annotation must include a `kind`, time range, and severity.
+- Hum and click findings should be carried as explicit `annotations[*].kind` values rather than only implied through summary text.
 - Findings must describe current state, not requested state.
 
 ## Example

@@ -65,8 +65,10 @@ The returned result includes:
 - optional `revision` describing whether orchestration chose one additional revision pass and why
 - optional semantic profile
 - edit plan and transform result for applied cycles
+- `versionComparisonReport` as the primary version-to-version quality signal for the completed cycle
 - baseline and candidate render artifacts
-- comparison report
+- `renderComparisonReport` for the final render-to-render comparison
+- `comparisonReport` as a backward-compatible alias of `renderComparisonReport`
 - updated `SessionGraph`
 - stage-level workflow trace entries
 
@@ -135,7 +137,8 @@ Callers may override that decision through `options.revision.shouldRevise(...)`.
 Important comparison behavior:
 
 - each explicit pass records its own version-level `compare` stage and `ComparisonReport`
-- the final render comparison still compares the original input against the final output
+- `runRequestCycle()` exposes the completed cycle's final version-level quality signal at `result.versionComparisonReport`
+- the final render comparison still compares the original input against the final output and is returned separately as `result.renderComparisonReport`
 - only pass-level stages carry `trace[].pass`; the final render comparison does not
 
 For revert-style execution, callers must provide `dependencies.getAudioVersionById({ asset, sessionGraph, versionId })`.

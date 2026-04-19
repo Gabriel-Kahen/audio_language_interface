@@ -3,6 +3,13 @@ export const ANALYZER_NAME = "default-analysis";
 export const ANALYZER_VERSION = "0.1.3";
 
 export const SEGMENT_WINDOW_SECONDS = 0.05;
+export const HUM_CANDIDATE_FUNDAMENTALS_HZ = [50, 60] as const;
+export const HUM_MAX_HARMONICS = 5;
+export const HUM_MIN_PROMINENCE_DB = 3;
+export const HUM_MIN_DURATION_SECONDS = 0.15;
+export const CLICK_BASELINE_RADIUS_SECONDS = 0.0005;
+export const CLICK_EVENT_FUSION_SECONDS = 0.0025;
+export const CLICK_MAX_EVENT_DURATION_SECONDS = 0.004;
 export const SPECTRUM_WINDOW_SIZE = 512;
 export const SPECTRUM_MAX_FRAMES = 256;
 export const TRANSIENT_WINDOW_SECONDS = 0.02;

@@ -5,6 +5,11 @@ import * as Ajv2020Module from "ajv/dist/2020.js";
 import * as addFormatsModule from "ajv-formats";
 import { describe, expect, it } from "vitest";
 
+import {
+  firstPromptFamilyFixtureCorpus,
+  firstPromptFamilyPromptSuite,
+} from "../../modules/benchmarks/src/index.js";
+
 type Ajv2020Constructor = typeof import("ajv/dist/2020.js").default;
 type AddFormats = typeof import("ajv-formats").default;
 
@@ -50,11 +55,24 @@ describe("phase 1 happy-path contract setup", () => {
     };
 
     expect(integrationSetup.fixture_manifest_path).toBe("fixtures/audio/manifest.json");
+    expect(firstPromptFamilyFixtureCorpus.fixtureManifestPath).toBe(
+      integrationSetup.fixture_manifest_path,
+    );
     expect(workflow.fixture_id).toBe(integrationSetup.fixture_id);
     expect(workflow.prompt).toBe(integrationSetup.expected_prompt);
     expect(
       fixtureManifest.fixtures.some(
         (fixture) => fixture.fixture_id === integrationSetup.fixture_id,
+      ),
+    ).toBe(true);
+    expect(
+      firstPromptFamilyPromptSuite.every(
+        (benchmarkCase) => benchmarkCase.fixtures.sourceFixtureId === integrationSetup.fixture_id,
+      ),
+    ).toBe(true);
+    expect(
+      firstPromptFamilyPromptSuite.some(
+        (benchmarkCase) => benchmarkCase.prompt === "make this loop darker and less harsh",
       ),
     ).toBe(true);
 

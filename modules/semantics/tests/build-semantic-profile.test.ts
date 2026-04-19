@@ -5,6 +5,19 @@ import { describe, expect, it } from "vitest";
 
 import { buildSemanticProfile, isValidSemanticProfile } from "../src/index.js";
 
+type ReportOverrides = Omit<Partial<AnalysisReport>, "measurements"> & {
+  measurements?: Omit<
+    Partial<AnalysisReport["measurements"]>,
+    "levels" | "dynamics" | "spectral_balance" | "stereo" | "artifacts"
+  > & {
+    levels?: Partial<AnalysisReport["measurements"]["levels"]>;
+    dynamics?: Partial<AnalysisReport["measurements"]["dynamics"]>;
+    spectral_balance?: Partial<AnalysisReport["measurements"]["spectral_balance"]>;
+    stereo?: Partial<AnalysisReport["measurements"]["stereo"]>;
+    artifacts?: Partial<AnalysisReport["measurements"]["artifacts"]>;
+  };
+};
+
 function loadExampleReport(): AnalysisReport {
   const fileUrl = new URL("../../../contracts/examples/analysis-report.json", import.meta.url);
   return JSON.parse(readFileSync(fileUrl, "utf8")) as AnalysisReport;
@@ -49,7 +62,7 @@ function createSpectralBalance(
   };
 }
 
-function createReport(overrides: Partial<AnalysisReport> = {}): AnalysisReport {
+function createReport(overrides: ReportOverrides = {}): AnalysisReport {
   return {
     ...loadExampleReport(),
     ...overrides,
@@ -555,6 +568,37 @@ describe("buildSemanticProfile", () => {
             end_seconds: 2.04,
             severity: 0.22,
             evidence: "possible short click-like burst near 2.02 seconds",
+          }),
+        ],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).not.toEqual(
+      expect.arrayContaining(["hum_present", "clicks_present"]),
+    );
+    expect(profile.unresolved_terms).toEqual(
+      expect.arrayContaining(["hum_present", "clicks_present"]),
+    );
+  });
+
+  it("keeps restoration labels unresolved when the annotation shape is not consistent with hum or clicks", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        annotations: [
+          createAnnotation({
+            kind: "hum",
+            start_seconds: 0,
+            end_seconds: 0.04,
+            bands_hz: [420, 900],
+            severity: 0.66,
+            evidence: "brief mid-band tone that does not stay in the mains region",
+          }),
+          createAnnotation({
+            kind: "click",
+            start_seconds: 1.5,
+            end_seconds: 1.9,
+            severity: 0.58,
+            evidence: "longer burst that is not clearly impulse-like",
           }),
         ],
       }),

@@ -18,6 +18,7 @@ export function scoreComparisonBenchmarkCase(
   return {
     caseId: benchmarkCase.caseId,
     prompt: benchmarkCase.prompt,
+    fixtures: benchmarkCase.fixtures,
     report,
     passedChecks,
     totalChecks,

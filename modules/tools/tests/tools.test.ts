@@ -99,10 +99,17 @@ function buildAnalysis(reportId: string, versionId: string): Record<string, unkn
       stereo: {
         width: 0.7,
         correlation: 0.1,
+        balance_db: 0,
       },
       artifacts: {
         clipping_detected: false,
         noise_floor_dbfs: -60,
+        clipped_sample_count: 0,
+        hum_detected: false,
+        hum_harmonic_count: 0,
+        click_detected: false,
+        click_count: 0,
+        click_rate_per_second: 0,
       },
     },
   };

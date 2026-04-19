@@ -106,6 +106,14 @@ describe("compareVersions", () => {
         }),
       ]),
     );
+    expect(report.evaluation_basis).toEqual({
+      metric_source: "analysis_reports",
+      goal_evaluation_source: "structured_verification",
+      authoritative_signal: "verification_results",
+    });
+    expect(report.summary.plain_text).toContain(
+      "structured verification checks were satisfied or mostly satisfied.",
+    );
     expect(report.regressions).toBeUndefined();
   });
 
@@ -1102,6 +1110,11 @@ describe("compareRenders", () => {
       delta: 3.1,
     });
     expect(report.semantic_deltas).toBeUndefined();
+    expect(report.evaluation_basis).toEqual({
+      metric_source: "render_artifacts",
+      goal_evaluation_source: "none",
+      authoritative_signal: "metric_deltas",
+    });
     expect(report.regressions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ kind: "render_duration_mismatch" }),

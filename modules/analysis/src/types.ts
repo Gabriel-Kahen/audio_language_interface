@@ -149,6 +149,13 @@ export interface AnalysisMeasurements {
     clipping_detected: boolean;
     noise_floor_dbfs: number;
     clipped_sample_count: number;
+    hum_detected: boolean;
+    hum_fundamental_hz?: number;
+    hum_harmonic_count: number;
+    hum_level_dbfs?: number;
+    click_detected: boolean;
+    click_count: number;
+    click_rate_per_second: number;
   };
 }
 

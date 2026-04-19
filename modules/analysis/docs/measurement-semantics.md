@@ -207,6 +207,13 @@ Important limitations:
 - If clipping is found, one annotation is emitted from the first clipped frame to the last clipped frame.
 - Clipping severity is `clamp(clippedFrames / max(frameCount * 0.01, 1), 0, 1)`.
 - `noise_floor_dbfs` is estimated as the 10th-percentile fixed-window RMS dBFS value.
+- `hum_detected` is true when the artifact analyzer finds a sustained 50 Hz or 60 Hz harmonic line pattern.
+- `hum_fundamental_hz`, when present, is the strongest resolved 50 Hz or 60 Hz base frequency.
+- `hum_harmonic_count`, when present, counts the resolved supported harmonics for the strongest sustained region.
+- `hum_level_dbfs`, when present, is the strongest resolved harmonic-stack RMS level for that sustained region.
+- `click_detected` is true when one or more sparse impulsive click events are found.
+- `click_count` counts merged click events across all analyzed channels.
+- `click_rate_per_second` is `click_count / duration_seconds`.
 
 ### Noise annotation
 
@@ -222,6 +229,31 @@ Important limitations:
 - Noise evidence strings now include duration and how far the region rises above the estimated file-level floor so downstream modules can distinguish sustained floor evidence from a barely raised bed.
 - Important limitation: this is still a heuristic low-level broadband detector. It does not separate noise from foreground content and should not be treated as a calibrated SNR estimate.
 
+### Hum annotation
+
+- The detector first scores the full file for steady harmonic line energy at `50 Hz` and `60 Hz` candidate fundamentals.
+- Up to `5` harmonics are probed for each candidate, capped by Nyquist.
+- Each harmonic is compared against nearby off-tone probes before it counts as supported.
+- A file qualifies as `hum` only when the best candidate:
+  - resolves at least `2` harmonics including the fundamental itself
+  - reaches at least `8 dB` average harmonic prominence over the nearby off-tone probes
+  - keeps the resolved harmonic stack at or above roughly `-48 dBFS`
+- After that full-file pass, the detector verifies that the same candidate stays present across overlapping `0.2` second coverage windows. At least `60%` of those windows must support the same hum pattern.
+- The emitted annotation spans the first through last supporting coverage window and uses `bands_hz` to cover the resolved harmonic span from the fundamental through the highest supported harmonic.
+- Important limitation: this is a mains-hum detector, not a general tonal-noise classifier. It is conservative about non-50/60 Hz contamination and about hum masked by stronger foreground bass.
+
+### Click annotation
+
+- Click detection runs per channel before events are merged across channels.
+- Each sample is compared against a very short local baseline built from surrounding samples outside the spike itself.
+- A sample only qualifies as a click candidate when:
+  - the residual above the local baseline is at least `0.16` full-scale amplitude or `9x` the local RMS
+  - the raw sample magnitude is at least `0.14` full-scale amplitude or `4x` the local RMS
+  - immediately adjacent samples stay far below that residual, so the event remains much narrower than an ordinary transient burst
+- Nearby candidates are fused across at most `0.0025` seconds, and events longer than `0.004` seconds are discarded.
+- Each merged event becomes one `click` annotation whose severity scales with the peak residual amplitude above the local baseline.
+- Important limitation: this path is tuned for sparse impulsive clicks and conservative false-positive avoidance. It can miss longer pops, crackle beds, or broader edit glitches.
+
 Threshold summary for downstream modules:
 
 - silence threshold: `-50 dBFS` window RMS
@@ -234,6 +266,8 @@ Threshold summary for downstream modules:
 - brightness annotation threshold: severity `> 0.2` with local centroid `>= 2200 Hz`
 - harshness annotation threshold: severity `> 0.2` with local centroid `>= 1800 Hz`
 - noise annotation threshold: severity `>= 0.25`, crest `<= 6 dB`, zero-crossing ratio `>= 0.12`, and RMS near the estimated floor
+- hum annotation threshold: at least `2` supported harmonics including the fundamental, average prominence `>= 8 dB`, level `>= -48 dBFS`, and support in at least `60%` of `0.2` second coverage windows
+- click annotation threshold: residual `>= 0.16` full-scale amplitude or `9x` local RMS, with event duration `<= 0.004` seconds
 - tempo search window: `60 BPM` to `200 BPM` by default
 - tempo confidence floor for emitting a BPM: `0.35`
 - pitch active-window threshold: RMS `>= -42 dBFS`
@@ -311,7 +345,10 @@ The summary is generated from measurement heuristics only.
   - `with strong transient impact` when transient density is at least `1.5` or `transient_crest_db >= 10`
   - otherwise `with restrained transient activity`
 - clipping sentence:
-  - `Clipping is present.` or `No clipping was detected.`
+  - `Clipping is present.` when clipping alone is detected
+  - `Mains hum is present.` or `Click artifacts are present.` when those artifacts appear alone
+  - otherwise a combined plural sentence naming whichever of clipping, mains hum, and click artifacts are present
+  - `No clipping, hum, or click artifacts were detected.` when none of those artifact families are present
 
 ## Summary confidence
 

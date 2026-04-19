@@ -3,6 +3,12 @@ export const CONTRACT_SCHEMA_VERSION = "1.0.0" as const;
 export type ComparisonRefType = "version" | "render";
 export type MetricDirection = "increased" | "decreased" | "unchanged";
 export type GoalStatus = "met" | "mostly_met" | "not_met" | "unknown";
+export type ComparisonMetricSource = "analysis_reports" | "render_artifacts";
+export type GoalEvaluationSource = "structured_verification" | "heuristic_goal_alignment" | "none";
+export type ComparisonAuthoritativeSignal =
+  | "verification_results"
+  | "goal_alignment"
+  | "metric_deltas";
 export type VerificationTargetKind = "analysis_metric" | "semantic_delta" | "regression_guard";
 export type VerificationComparison =
   | "increase_by"
@@ -168,6 +174,12 @@ export interface VerificationTargetResult extends VerificationTarget {
   evidence?: string;
 }
 
+export interface ComparisonEvaluationBasis {
+  metric_source: ComparisonMetricSource;
+  goal_evaluation_source: GoalEvaluationSource;
+  authoritative_signal: ComparisonAuthoritativeSignal;
+}
+
 export interface ComparisonReport {
   schema_version: typeof CONTRACT_SCHEMA_VERSION;
   comparison_id: string;
@@ -185,6 +197,7 @@ export interface ComparisonReport {
   regressions?: RegressionWarning[];
   goal_alignment?: GoalAlignment[];
   verification_results?: VerificationTargetResult[];
+  evaluation_basis?: ComparisonEvaluationBasis;
   summary: {
     plain_text: string;
   };

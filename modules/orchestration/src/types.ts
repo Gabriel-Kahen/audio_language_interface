@@ -267,8 +267,10 @@ export interface RequestCycleResult {
   outputVersion: AudioVersion;
   transformResult?: ApplyTransformsResult;
   outputAnalysis: AnalysisReport;
+  versionComparisonReport: ComparisonReport;
   baselineRender: RenderArtifact;
   candidateRender: RenderArtifact;
+  renderComparisonReport: ComparisonReport;
   comparisonReport: ComparisonReport;
   sessionGraph: SessionGraph;
   trace: WorkflowTraceEntry[];

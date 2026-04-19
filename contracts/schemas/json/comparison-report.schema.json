@@ -124,6 +124,25 @@
     "verification_results": {
       "$ref": "./common.schema.json#/$defs/verificationTargetResultArray"
     },
+    "evaluation_basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric_source", "goal_evaluation_source", "authoritative_signal"],
+      "properties": {
+        "metric_source": {
+          "type": "string",
+          "enum": ["analysis_reports", "render_artifacts"]
+        },
+        "goal_evaluation_source": {
+          "type": "string",
+          "enum": ["structured_verification", "heuristic_goal_alignment", "none"]
+        },
+        "authoritative_signal": {
+          "type": "string",
+          "enum": ["verification_results", "goal_alignment", "metric_deltas"]
+        }
+      }
+    },
     "summary": {
       "type": "object",
       "additionalProperties": false,

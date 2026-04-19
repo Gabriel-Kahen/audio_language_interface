@@ -33,10 +33,10 @@ The runtime capability surface is now also published explicitly through `Runtime
 ### Audio Runtime
 
 - `io`: local file import, metadata inspection, optional WAV normalization, source-ref validation
-- `analysis`: deterministic baseline analysis for workspace-local WAV files
+- `analysis`: deterministic baseline analysis for workspace-local WAV files, including explicit hum/click artifact detection for the current cleanup slice
 - `transforms`: deterministic FFmpeg-backed execution for the current runtime operation set
 - `render`: preview MP3 rendering plus WAV and FLAC export rendering
-- `compare`: metric deltas, small semantic delta vocabulary, regression warnings, and goal checks
+- `compare`: metric deltas, small semantic delta vocabulary, regression warnings, structured verification, and `evaluation_basis` metadata
 
 ### Intent Layer
 
@@ -50,7 +50,7 @@ The runtime capability surface is now also published explicitly through `Runtime
 
 ### Evaluation
 
-- `benchmarks`: first benchmark harness for compare-driven evaluation of the initial prompt family
+- `benchmarks`: fixture-backed benchmark harness for compare-driven evaluation of the current cleanup prompt family
 
 ## Current Prompt And Operation Scope
 
@@ -152,6 +152,7 @@ Current tool-surface caveats:
 
 - `apply_edit_plan` supports the published runtime capability surface, including first-cohort `time_range` execution for selected duration-preserving Layer 1 operations, while still validating explicit runtime prerequisites such as stereo-only processing where applicable
 - `plan_edits` only chooses operations marked as `planner_supported` in the runtime capability manifest
+- `compare_versions` returns `evaluation_basis` so callers can see whether structured verification or fallback goal alignment is authoritative
 - explicit technical callers can still submit runtime-only Layer 1 effect steps when they stay inside the published contract surface
 
 ## Important Current Limitations
@@ -166,8 +167,9 @@ Current tool-surface caveats:
 - render preview is MP3-only
 - final render export is limited to WAV and FLAC
 - compare now prefers planner-emitted structured verification targets and still keeps heuristic goal alignment only as a legacy fallback
+- hum and click analysis evidence now exists in the baseline `AnalysisReport`, but compare still uses conservative proxy-style scoring for those goal families when structured verification does not provide something stronger
 - the repository does not yet provide a dedicated demo CLI or application entrypoint
-- benchmark coverage is still synthetic-first and not yet tied to committed real audio fixtures or full end-to-end fixture-backed runs
+- benchmark coverage is now fixture-backed for the current cleanup slice, but it still uses curated compare inputs rather than full analysis-driven end-to-end runs
 
 ## Practical Interpretation
 

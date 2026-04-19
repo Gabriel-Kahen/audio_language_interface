@@ -122,13 +122,43 @@
         },
         "artifacts": {
           "type": "object",
-          "required": ["clipping_detected", "noise_floor_dbfs"],
+          "required": ["clipping_detected", "noise_floor_dbfs", "hum_detected", "click_detected"],
           "properties": {
             "clipping_detected": {
               "type": "boolean"
             },
             "noise_floor_dbfs": {
               "type": "number"
+            },
+            "clipped_sample_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "hum_detected": {
+              "type": "boolean"
+            },
+            "hum_fundamental_hz": {
+              "type": "number",
+              "minimum": 40,
+              "maximum": 70
+            },
+            "hum_harmonic_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "hum_level_dbfs": {
+              "type": "number"
+            },
+            "click_detected": {
+              "type": "boolean"
+            },
+            "click_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "click_rate_per_second": {
+              "type": "number",
+              "minimum": 0
             }
           },
           "additionalProperties": true

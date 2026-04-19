@@ -28,8 +28,8 @@ The table below describes the semantic contract surface. A few labels are forwar
 | `level_unstable` | `measurements.levels` plus `measurements.dynamics` | Dynamic range and sample-domain short-term RMS spread suggest unstable overall level. |
 | `clipped` | `measurements.artifacts` | Clipping was directly detected. |
 | `noisy` | `annotations[*].kind == noise` plus `measurements.artifacts` | Sustained broadband-like floor evidence covers a meaningful region and the estimated floor is elevated. |
-| `hum_present` | explicit `annotations[*]` from upstream analysis | A steady hum-like artifact is explicitly annotated strongly enough to support a restoration term. The current baseline analyzer does not emit this annotation yet. |
-| `clicks_present` | explicit `annotations[*]` from upstream analysis | Short impulsive click/pop artifacts are explicitly annotated strongly enough to support a restoration term. The current baseline analyzer does not emit this annotation yet. |
+| `hum_present` | explicit low-frequency, sustained `annotations[*]` from upstream analysis | A steady hum-like artifact is explicitly annotated strongly enough, for long enough, and low enough in frequency to support a restoration term. The current baseline analyzer can now emit this annotation when the mains-hum detector is confident enough. |
+| `clicks_present` | explicit short, impulsive `annotations[*]` from upstream analysis | Short impulsive click/pop artifacts are explicitly annotated strongly enough and briefly enough to support a restoration term. The current baseline analyzer can now emit this annotation when the click detector finds sparse impulse-like defects. |
 
 ## Conservative behavior
 
@@ -39,7 +39,9 @@ The table below describes the semantic contract surface. A few labels are forwar
 - `warm` is intentionally narrower than generic bass-heavy. If low-mid masking is too strong, the module prefers `muddy` and leaves `warm` unresolved.
 - `airy` requires elevated top-end extension without stronger sibilance or harshness evidence that would make the descriptor misleading.
 - `sibilant`, `hum_present`, and `clicks_present` stay unresolved unless upstream analysis emits explicit supporting annotations. The semantics layer does not invent those restoration descriptors from broad aggregate measurements.
-- The current baseline analyzer does not yet emit `hum_present` or `clicks_present` source annotations, so those labels are contract-level forward support rather than baseline end-to-end coverage today.
+- `hum_present` additionally requires the annotation to look like sustained low-frequency contamination instead of a brief or misplaced tone.
+- `clicks_present` additionally requires the annotation to remain impulse-like instead of stretching into a broader event region.
+- The current baseline analyzer can emit `hum` and `click` source annotations now, but the semantic mapper still keeps those restoration labels narrow and evidence-first.
 - `slightly_harsh` requires both a harshness annotation and enough upper-mid excess to keep the label tied to measurable evidence.
 - `wide` also requires width evidence to stay materially positive and not conflict with localized width-ambiguity or major left-right imbalance.
 - When explicit `stereo_ambiguity` evidence is present, `wide` remains unresolved rather than being dropped silently, even if the aggregate correlation is too risky for assignment.

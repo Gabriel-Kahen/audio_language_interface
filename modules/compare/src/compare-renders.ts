@@ -116,6 +116,10 @@ export function compareRenders(options: CompareRendersOptions): ComparisonReport
     candidateRefType: "render",
     candidateRefId: options.candidateRender.render_id,
     generatedAt: normalizeTimestamp(options.generatedAt),
+    metricSource:
+      options.baselineAnalysis !== undefined && options.candidateAnalysis !== undefined
+        ? "analysis_reports"
+        : "render_artifacts",
     metricDeltas,
     semanticDeltas,
     regressions: combinedRegressions,

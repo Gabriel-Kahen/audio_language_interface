@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 
 import {
   CONTRACT_SCHEMA_VERSION,
+  type ComparisonEvaluationBasis,
+  type ComparisonMetricSource,
   type ComparisonRefType,
   type ComparisonReport,
   type GoalAlignment,
@@ -17,6 +19,7 @@ export interface BuildComparisonReportOptions {
   candidateRefType: ComparisonRefType;
   candidateRefId: string;
   generatedAt: string;
+  metricSource: ComparisonMetricSource;
   metricDeltas: MetricDelta[];
   semanticDeltas: SemanticDelta[];
   regressions: RegressionWarning[];
@@ -46,6 +49,7 @@ export function buildComparisonReport(options: BuildComparisonReportOptions): Co
       ref_id: options.candidateRefId,
     },
     generated_at: options.generatedAt,
+    evaluation_basis: createEvaluationBasis(options),
     metric_deltas: options.metricDeltas,
     ...(options.semanticDeltas.length === 0 ? {} : { semantic_deltas: options.semanticDeltas }),
     ...(options.regressions.length === 0 ? {} : { regressions: options.regressions }),
@@ -56,7 +60,12 @@ export function buildComparisonReport(options: BuildComparisonReportOptions): Co
       ? {}
       : { goal_alignment: options.goalAlignment }),
     summary: {
-      plain_text: buildSummary(options.semanticDeltas, options.regressions, options.goalAlignment),
+      plain_text: buildSummary(
+        options.semanticDeltas,
+        options.regressions,
+        options.goalAlignment,
+        options.verificationResults,
+      ),
     },
   };
 
@@ -88,6 +97,7 @@ function buildSummary(
   semanticDeltas: SemanticDelta[],
   regressions: RegressionWarning[],
   goalAlignment: GoalAlignment[] | undefined,
+  verificationResults: VerificationTargetResult[] | undefined,
 ): string {
   const clauses: string[] = [];
 
@@ -102,7 +112,14 @@ function buildSummary(
     clauses.push("Measured changes were computed without a strong qualitative shift.");
   }
 
-  if (goalAlignment !== undefined && goalAlignment.length > 0) {
+  if (verificationResults !== undefined && verificationResults.length > 0) {
+    const metCount = verificationResults.filter(
+      (item) => item.status === "met" || item.status === "mostly_met",
+    ).length;
+    clauses.push(
+      `${metCount} of ${verificationResults.length} structured verification checks were satisfied or mostly satisfied.`,
+    );
+  } else if (goalAlignment !== undefined && goalAlignment.length > 0) {
     const metCount = goalAlignment.filter(
       (item) => item.status === "met" || item.status === "mostly_met",
     ).length;
@@ -120,4 +137,33 @@ function buildSummary(
   }
 
   return clauses.join(" ");
+}
+
+function createEvaluationBasis(
+  options: Pick<
+    BuildComparisonReportOptions,
+    "metricSource" | "goalAlignment" | "verificationResults"
+  >,
+): ComparisonEvaluationBasis {
+  if (options.verificationResults !== undefined && options.verificationResults.length > 0) {
+    return {
+      metric_source: options.metricSource,
+      goal_evaluation_source: "structured_verification",
+      authoritative_signal: "verification_results",
+    };
+  }
+
+  if (options.goalAlignment !== undefined && options.goalAlignment.length > 0) {
+    return {
+      metric_source: options.metricSource,
+      goal_evaluation_source: "heuristic_goal_alignment",
+      authoritative_signal: "goal_alignment",
+    };
+  }
+
+  return {
+    metric_source: options.metricSource,
+    goal_evaluation_source: "none",
+    authoritative_signal: "metric_deltas",
+  };
 }

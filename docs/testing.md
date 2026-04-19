@@ -70,15 +70,18 @@ pnpm exec biome check modules/transforms
 - `modules/<name>/tests`: unit and module-local behavior
 - `tests/integration`: cross-module workflows
 - `contracts/examples`: contract examples validated by schema checks
+- `fixtures/audio/phase-1`: committed tiny WAV corpus used by cleanup benchmark coverage and fixture-integrity checks
 
 The current repository state includes expanded coverage around:
 
+- analysis-backed cleanup evidence (`hum`, `click`, and the corresponding `AnalysisReport` artifact fields)
 - dynamics and control transforms (`compressor`, `limiter`, `transient_shaper`, `clipper`, `gate`)
 - stereo and routing behavior (`stereo_width`, `pan`, `channel_swap`, `channel_remap`, `mid_side_eq`)
 - restoration behavior (`denoise`, `de_esser`, `declick`, `dehum`)
 - measurement-aware normalization and target-scope execution behavior
 - repeated request-cycle behavior
-- compare-layer regression logic
+- compare-layer regression logic and structured verification provenance
+- fixture-backed cleanup benchmark corpus integrity
 
 ## Thoroughness standard
 

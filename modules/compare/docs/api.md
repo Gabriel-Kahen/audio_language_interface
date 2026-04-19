@@ -23,7 +23,8 @@ Behavior:
 - requires paired analysis reports
 - computes analysis-backed metric deltas
 - derives semantic deltas and analysis regressions
-- optionally evaluates `editPlan.goals`
+- optionally evaluates typed `editPlan.verification_targets`, with heuristic `editPlan.goals` as a legacy fallback only
+- emits `evaluation_basis` so downstream callers can see which quality field is authoritative
 - schema-validates the final report before returning it
 
 Use this when the comparison target is an `AudioVersion` and analysis reports already exist.
@@ -50,6 +51,7 @@ Behavior:
 - always computes render-level deltas and render regressions
 - upgrades to analysis-backed comparison only when both analysis reports are present
 - only evaluates goals when an `editPlan` and both analysis reports are present
+- emits `evaluation_basis` so downstream callers can distinguish render-metadata-only comparison from analysis-backed quality evaluation
 - schema-validates the final report before returning it
 
 Use this when the comparison target is a rendered preview/export and only render metadata may be available.
@@ -126,6 +128,7 @@ Current supported Layer 2 goal families include:
 Constructs a schema-shaped `ComparisonReport`, adds a summary string, and generates a `comparison_id` when one is not supplied.
 
 Generated ids are derived from baseline and candidate reference type/id pairs.
+The builder also emits `evaluation_basis` and treats `verification_results` as the authoritative summary source whenever structured verification exists.
 
 ## Validation helpers
 

@@ -4,6 +4,8 @@ export function formatBenchmarkMarkdownReport(result: ComparisonBenchmarkRunResu
   const lines = [
     `# Benchmark Report: ${result.suiteId}`,
     "",
+    `Fixture corpus: ${result.corpusId}`,
+    "",
     `Overall score: ${result.overallScore.toFixed(3)} (${result.totalPassedChecks}/${result.totalChecks} checks passed)`,
     "",
     "## Cases",
@@ -20,6 +22,7 @@ function formatCase(caseResult: ComparisonBenchmarkCaseResult): string[] {
   return [
     `- ${caseResult.caseId}: ${caseResult.score.toFixed(3)} (${caseResult.passedChecks}/${caseResult.totalChecks})`,
     `  prompt: ${caseResult.prompt}`,
+    `  fixtures: ${caseResult.fixtures.baselineFixtureId} -> ${caseResult.fixtures.candidateFixtureId}`,
     `  summary: ${caseResult.report.summary.plain_text}`,
     ...caseResult.checks.map(
       (check) =>
