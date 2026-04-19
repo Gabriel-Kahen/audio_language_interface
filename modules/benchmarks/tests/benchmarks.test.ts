@@ -313,4 +313,29 @@ describe("formatBenchmarkMarkdownReport request-cycle mode", () => {
     expect(markdown).toContain("failure class: supported_but_underspecified");
     expect(markdown).toContain("Fixture corpus: request_cycle_report_subset");
   }, 60_000);
+
+  it("still renders request-cycle output when the first case is an expected error", async () => {
+    const cleanIt = firstPromptFamilyRequestCycleSuite[3];
+    const darkerLessHarsh = firstPromptFamilyRequestCycleSuite[0];
+
+    if (!cleanIt || !darkerLessHarsh) {
+      throw new Error("Expected request-cycle benchmark fixtures to exist.");
+    }
+
+    const result = await runRequestCycleBenchmarks({
+      corpusId: "request_cycle_error_first_subset",
+      suiteId: "first_prompt_family",
+      fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
+      description: "Request-cycle error-first report smoke suite.",
+      cases: [cleanIt, darkerLessHarsh],
+    });
+
+    const markdown = formatBenchmarkMarkdownReport(result);
+
+    expect(markdown).toContain("Benchmark mode: request-cycle");
+    expect(markdown).toContain("request_cycle_clean_it_clarification");
+    expect(markdown).toContain("failure class: supported_but_underspecified");
+    expect(markdown).toContain("request_cycle_darker_less_harsh");
+    expect(markdown).toContain("planned operations: notch_filter, tilt_eq");
+  }, 60_000);
 });

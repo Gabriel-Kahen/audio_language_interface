@@ -293,7 +293,7 @@ function isRequestCycleBenchmarkRunResult(
   return (
     firstCase !== undefined &&
     typeof firstCase === "object" &&
-    "requestCycleResult" in firstCase &&
-    "scoreBreakdown" in firstCase
+    "scoreBreakdown" in firstCase &&
+    "failureBuckets" in firstCase
   );
 }
