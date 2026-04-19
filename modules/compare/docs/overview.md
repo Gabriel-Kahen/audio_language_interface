@@ -270,7 +270,7 @@ The summary is intentionally compact and should be treated as a convenience fiel
 - The preferred path is planner-emitted structured verification. String-based goal alignment remains only as a backward-compatible fallback.
 - The local TypeScript `EditPlan` type is narrower than the repository contract and currently models only the fields that `compare` consumes directly.
 - The local TypeScript `RenderArtifact.loudness_summary` type is broader than the contract and is treated as a generic numeric map, though the current implementation only reads integrated loudness and true peak.
-- The current analysis contract still lacks direct hum and click counts, so those goal families remain proxy-based rather than directly verified.
+- The current analysis contract now includes direct hum and click fields, but the compare layer still treats those goal families conservatively and mostly proxy-style until dedicated hum/click verification logic lands.
 - Comparison IDs are deterministic only when baseline and candidate references are the same; changing timestamps, metrics, or goal inputs does not change the generated ID.
 
 ## Source layout

@@ -50,6 +50,13 @@ Today, the repository supports a real single-file editing loop:
 
 That loop is exposed both through modules and through a thin tool surface.
 
+The current cleanup slice is now analysis-backed instead of purely prompt-driven:
+
+- `analysis` emits explicit `hum` and `click` annotations plus file-level artifact fields such as `hum_detected`, `hum_fundamental_hz`, `click_detected`, and `click_count`
+- `semantics` can assign `hum_present` and `clicks_present` when that evidence is strong enough
+- `compare` reports `evaluation_basis` so downstream callers can see whether structured verification, heuristic goal alignment, or raw deltas are driving quality interpretation
+- `benchmarks` includes a tiny committed fixture-backed cleanup corpus under [fixtures/audio/phase-1](/Users/gabrielkahen/code/audio_language_interface/fixtures/audio/phase-1)
+
 ## Architecture
 
 The repo is organized into five groups.
@@ -201,6 +208,15 @@ Published tool entrypoints:
 
 The tool layer is intentionally small. It exists to expose stable contracts and capability discovery to external callers, not to replace the underlying module boundaries.
 
+## Cleanup Evidence And Evaluation
+
+The current baseline is strongest on conservative cleanup and corrective-edit prompts when they are backed by explicit evidence:
+
+- `analysis` can now publish steady mains-hum evidence and sparse click evidence directly in `AnalysisReport`
+- `planning` keeps hum/click cleanup conservative and still requires explicit restoration intent rather than widening generic `clean it up` phrasing automatically
+- `compare` prefers structured verification targets when they exist and exposes `evaluation_basis` in `ComparisonReport`
+- `benchmarks` now include a small fixture-backed cleanup corpus, though the benchmark harness still runs curated compare inputs rather than the full end-to-end request cycle
+
 ## Best-Supported Requests Right Now
 
 The current system is strongest on conservative editing requests such as:
@@ -224,9 +240,10 @@ This repo is usable today for technical experimentation and module-level integra
 - analysis currently requires WAV files on disk
 - semantic coverage is intentionally conservative
 - compare now prefers structured verification targets, with heuristic goal alignment kept only as a backward-compatible fallback
+- hum and click comparison logic is still conservative and partly proxy-based even though the analysis contract now carries direct hum/click evidence
 - there is no dedicated demo CLI or app entrypoint yet
 - the baseline planner does not yet auto-select pitch shifting, trim silence, channel utilities, or Layer 1 runtime effects
-- benchmark coverage is still light compared with the long-term goal
+- benchmark coverage now includes a tiny committed cleanup corpus, but it is still light compared with the long-term goal
 
 ## Repository Layout
 

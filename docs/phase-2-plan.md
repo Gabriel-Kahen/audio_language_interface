@@ -16,8 +16,10 @@ The repository already includes:
 - first-cohort `time_range` targeting for duration-preserving, channel-stable operations
 - measurement-aware `normalize` execution with peak and integrated-loudness modes
 - restoration primitives such as `de_esser`, `declick`, and `dehum`
+- baseline analysis-side hum and click evidence in `AnalysisReport`, including explicit annotations and file-level artifact fields
 - adapter-layer tool discovery through `describe_runtime_capabilities`
 - schema-aligned `EditPlan` and `TransformRecord` artifacts that record `capability_manifest_id`
+- fixture-backed cleanup benchmark coverage anchored to committed phase-1 WAV fixtures, even though the benchmark harness is still compare-driven rather than full request-cycle execution
 
 That means Phase 2 should focus on reliability, verification quality, and honest planner coverage rather than on adding features for their own sake.
 
