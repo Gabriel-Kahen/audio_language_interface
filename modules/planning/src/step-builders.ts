@@ -39,6 +39,7 @@ interface StepBuildContext {
 
 export function buildPlannedSteps(context: StepBuildContext): EditPlanStep[] {
   const steps: EditPlanStep[] = [];
+  const useControlledLoudnessPath = shouldUseControlledLoudnessPath(context.objectives);
 
   const trimStep = buildTrimStep(context.objectives, context.audioVersion);
   if (trimStep) {
@@ -77,32 +78,46 @@ export function buildPlannedSteps(context: StepBuildContext): EditPlanStep[] {
 
   steps.push(...buildTonalSteps(context));
 
-  const compressorStep = buildCompressorStep(context.objectives);
-  if (compressorStep) {
-    steps.push(compressorStep);
-  }
+  if (useControlledLoudnessPath) {
+    steps.push(...buildControlledLoudnessSteps(context.objectives, context.analysisReport));
+  } else {
+    const compressorStep = buildCompressorStep(context.objectives);
+    if (compressorStep) {
+      steps.push(compressorStep);
+    }
 
-  const limiterStep = buildLimiterStep(context.objectives, context.analysisReport);
-  if (limiterStep) {
-    steps.push(limiterStep);
-  }
+    const limiterStep = buildLimiterStep(context.objectives, context.analysisReport);
+    if (limiterStep) {
+      steps.push(limiterStep);
+    }
 
-  const stereoWidthStep = buildStereoWidthStep(context.objectives);
-  if (stereoWidthStep) {
-    steps.push(stereoWidthStep);
-  }
+    const stereoWidthStep = buildStereoWidthStep(context.objectives);
+    if (stereoWidthStep) {
+      steps.push(stereoWidthStep);
+    }
 
-  const normalizeStep = buildNormalizeStep(context.objectives, context.analysisReport);
-  if (normalizeStep) {
-    steps.push(normalizeStep);
-  }
+    const normalizeStep = buildNormalizeStep(context.objectives, context.analysisReport);
+    if (normalizeStep) {
+      steps.push(normalizeStep);
+    }
 
-  const gainStep = buildGainStep(context.objectives, context.analysisReport);
-  if (gainStep) {
-    steps.push(gainStep);
+    const gainStep = buildGainStep(context.objectives, context.analysisReport);
+    if (gainStep) {
+      steps.push(gainStep);
+    }
   }
 
   return steps;
+}
+
+function shouldUseControlledLoudnessPath(objectives: ParsedEditObjectives): boolean {
+  return (
+    objectives.wants_louder &&
+    objectives.wants_more_controlled_dynamics &&
+    !objectives.wants_more_even_level &&
+    !objectives.wants_peak_control &&
+    !objectives.wants_quieter
+  );
 }
 
 function buildTrimStep(
@@ -482,6 +497,81 @@ function buildNormalizeStep(
     ],
     safety_limits: buildNormalizeSafetyLimits(),
   };
+}
+
+function buildControlledLoudnessSteps(
+  objectives: ParsedEditObjectives,
+  analysisReport: AnalysisReport,
+): EditPlanStep[] {
+  const loudnessLiftLufs = resolveControlledLoudnessLiftLufs(objectives);
+  const targetIntegratedLufs =
+    analysisReport.measurements.levels.integrated_lufs + loudnessLiftLufs;
+  const maxTruePeakDbtp =
+    objectives.intensity === "subtle" ? -1.6 : objectives.intensity === "strong" ? -1.2 : -1.4;
+  const compressorParameters =
+    objectives.intensity === "subtle"
+      ? {
+          threshold_db: -17,
+          ratio: 1.45,
+          attack_ms: 32,
+          release_ms: 125,
+          knee_db: 4,
+          makeup_gain_db: 0,
+        }
+      : objectives.intensity === "strong"
+        ? {
+            threshold_db: -21,
+            ratio: 1.85,
+            attack_ms: 20,
+            release_ms: 145,
+            knee_db: 5,
+            makeup_gain_db: 0,
+          }
+        : {
+            threshold_db: -19,
+            ratio: 1.6,
+            attack_ms: 28,
+            release_ms: 135,
+            knee_db: 4,
+            makeup_gain_db: 0,
+          };
+
+  return [
+    {
+      ...assertPlannerStepSupport("compressor", "full_file"),
+      step_id: "step_compressor_1",
+      operation: "compressor",
+      target: { scope: "full_file" },
+      parameters: compressorParameters,
+      expected_effects: ["gently tighten dynamic swings before conservative loudness staging"],
+      safety_limits: buildCompressorSafetyLimits(),
+    },
+    {
+      ...assertPlannerStepSupport("normalize", "full_file"),
+      step_id: "step_normalize_1",
+      operation: "normalize",
+      target: { scope: "full_file" },
+      parameters: {
+        mode: "integrated_lufs",
+        target_integrated_lufs: Number(targetIntegratedLufs.toFixed(1)),
+        max_true_peak_dbtp: maxTruePeakDbtp,
+      },
+      expected_effects: ["raise loudness conservatively while keeping peak behavior controlled"],
+      safety_limits: buildNormalizeSafetyLimits(),
+    },
+  ];
+}
+
+function resolveControlledLoudnessLiftLufs(objectives: ParsedEditObjectives): number {
+  if (objectives.intensity === "subtle") {
+    return 0.8;
+  }
+
+  if (objectives.intensity === "strong") {
+    return 1.5;
+  }
+
+  return 1.1;
 }
 
 function buildCompressorStep(objectives: ParsedEditObjectives): EditPlanStep | undefined {

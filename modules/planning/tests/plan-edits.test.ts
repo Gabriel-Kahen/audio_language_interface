@@ -414,7 +414,7 @@ describe("planEdits", () => {
     expect(plan.goals).toContain("control peak excursions conservatively");
   });
 
-  it("maps the benchmarked loudness-and-control wording to compressor then gain", () => {
+  it("maps the benchmarked loudness-and-control wording to the dedicated controlled-loudness path", () => {
     const analysisReport = {
       ...createAnalysisReportFixture(),
       measurements: {
@@ -437,11 +437,48 @@ describe("planEdits", () => {
       semanticProfile: createSemanticProfileFixture(),
     });
 
-    expect(plan.steps.map((step) => step.operation)).toEqual(["compressor", "gain"]);
+    expect(plan.steps.map((step) => step.operation)).toEqual(["compressor", "normalize"]);
+    expect(plan.steps[0]?.parameters).toEqual({
+      threshold_db: -19,
+      ratio: 1.6,
+      attack_ms: 28,
+      release_ms: 135,
+      knee_db: 4,
+      makeup_gain_db: 0,
+    });
+    expect(plan.steps[1]?.parameters).toEqual({
+      mode: "integrated_lufs",
+      target_integrated_lufs: -13.7,
+      max_true_peak_dbtp: -1.4,
+    });
     expect(plan.goals).toEqual([
       "make dynamics more controlled without over-compressing",
       "increase output level conservatively",
     ]);
+    expect(plan.constraints).toEqual(
+      expect.arrayContaining([
+        "avoid obvious pumping or over-compression",
+        "prefer measured loudness staging over raw post-compression gain boosts",
+        "respect measured peak headroom",
+      ]),
+    );
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_controlled_loudness_range",
+          metric: "dynamics.dynamic_range_db",
+        }),
+        expect.objectContaining({
+          target_id: "target_controlled_loudness_integrated_lufs",
+          metric: "levels.integrated_lufs",
+          threshold: 1,
+        }),
+        expect.objectContaining({
+          target_id: "target_controlled_loudness_peak_guard",
+          regression_kind: "peak_control_regression",
+        }),
+      ]),
+    );
   });
 
   it("maps the benchmarked peak-control wording to a limiter with preserve-punch checks", () => {

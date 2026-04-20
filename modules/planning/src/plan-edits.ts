@@ -393,6 +393,15 @@ function buildConstraints(
     constraints.push("avoid obvious pumping or over-compression");
   }
 
+  if (
+    objectives.wants_louder &&
+    objectives.wants_more_controlled_dynamics &&
+    !objectives.wants_more_even_level &&
+    !objectives.wants_peak_control
+  ) {
+    constraints.push("prefer measured loudness staging over raw post-compression gain boosts");
+  }
+
   if (objectives.wants_peak_control) {
     constraints.push("keep output ceiling conservative and avoid audible limiting artifacts");
   }

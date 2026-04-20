@@ -34,7 +34,8 @@ Phase 1 also now includes small committed source fixtures for the next request-c
 - `request-cycle-sibilance-source.wav`: mono tonal bed with short high-frequency bursts for de-essing / sibilance-control prompts.
 - `request-cycle-hum-60hz-source.wav`: mono tonal bed with steady 60 Hz, 120 Hz, and 180 Hz contamination for explicit dehum prompts.
 - `request-cycle-clicks-source.wav`: mono 44.1 kHz sparse-click source aligned with the current analysis click-detector recipe for declip / declick / pop-cleanup prompts.
-- `request-cycle-loudness-control-source.wav`: mono tonal bed with repeated high-crest transient bursts for peak-control / controlled / loudness-safety prompts.
+- `request-cycle-loudness-control-source.wav`: mono transient-heavy source reserved for pure peak-control prompts such as `control the peaks without crushing it`.
+- `request-cycle-louder-controlled-source.wav`: mono sustained harmonic source for `make it louder and more controlled` request-cycle benchmarks.
 
 These are benchmark-oriented source inputs rather than precomputed candidate outputs. They are intentionally tiny, deterministic, CC0-style synthetic assets so they can be committed and redistributed freely.
 

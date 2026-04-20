@@ -214,17 +214,13 @@ export function detectAnalysisRegressions(
   if (
     midBandDelta !== undefined &&
     midBandDelta >= 0.75 &&
-    ((brightnessTiltDelta !== undefined && brightnessTiltDelta <= -0.5) ||
-      (lowBandDelta !== undefined && lowBandDelta >= 0.5))
+    brightnessTiltDelta !== undefined &&
+    brightnessTiltDelta <= -0.5
   ) {
     regressions.push({
       kind: "added_muddiness",
       severity: roundSeverity(
-        Math.max(
-          Math.abs(midBandDelta) / 3,
-          Math.abs(Math.min(brightnessTiltDelta ?? 0, 0)) / 3,
-          Math.abs(Math.max(lowBandDelta ?? 0, 0)) / 3,
-        ),
+        Math.max(Math.abs(midBandDelta) / 3, Math.abs(Math.min(brightnessTiltDelta ?? 0, 0)) / 3),
       ),
       description: "Mid-band buildup increased in a way that suggests added muddiness or masking.",
     });

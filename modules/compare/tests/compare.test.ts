@@ -441,10 +441,72 @@ describe("compareVersions", () => {
       expect.arrayContaining([
         expect.objectContaining({ kind: "loudness_headroom_loss" }),
         expect.objectContaining({ kind: "increased_sibilance" }),
-        expect.objectContaining({ kind: "added_muddiness" }),
         expect.objectContaining({ kind: "increased_hum_proxy" }),
         expect.objectContaining({ kind: "increased_click_proxy" }),
       ]),
+    );
+    expect(report.regressions).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: "added_muddiness" })]),
+    );
+  });
+
+  it("does not label a broad louder-control lift as muddiness without a duller tilt", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_louder_control_base"),
+      candidateVersion: createVersion("ver_louder_control_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_louder_control_base",
+        versionId: "ver_louder_control_base",
+        integratedLufs: -11.1,
+        truePeakDbtp: -2.0,
+        samplePeakDbfs: -2.1,
+        headroomDb: 2.1,
+        crestFactorDb: 11.4,
+        transientDensity: 2.2,
+        dynamicRangeDb: 8.6,
+        lowBandDb: -12.2,
+        midBandDb: -11.7,
+        highBandDb: -10.3,
+        spectralCentroidHz: 2100,
+        brightnessTiltDb: 3.4,
+        presenceBandDb: -8.5,
+        harshnessRatioDb: 1.6,
+        stereoWidth: 0.12,
+        stereoCorrelation: 0.98,
+        stereoBalanceDb: 0,
+        noiseFloorDbfs: -74,
+        clippedSampleCount: 0,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_louder_control_cand",
+        versionId: "ver_louder_control_cand",
+        integratedLufs: -10,
+        truePeakDbtp: -1.4,
+        samplePeakDbfs: -1.5,
+        headroomDb: 1.5,
+        crestFactorDb: 10.5,
+        transientDensity: 2.25,
+        dynamicRangeDb: 7.6,
+        lowBandDb: -11.0,
+        midBandDb: -10.55,
+        highBandDb: -9.25,
+        spectralCentroidHz: 2125,
+        brightnessTiltDb: 3.45,
+        presenceBandDb: -7.3,
+        harshnessRatioDb: 1.65,
+        stereoWidth: 0.12,
+        stereoCorrelation: 0.98,
+        stereoBalanceDb: 0,
+        noiseFloorDbfs: -73,
+        clippedSampleCount: 0,
+        clippingDetected: false,
+      }),
+      generatedAt: "2026-04-19T22:00:00Z",
+    });
+
+    expect(report.regressions).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: "added_muddiness" })]),
     );
   });
 });

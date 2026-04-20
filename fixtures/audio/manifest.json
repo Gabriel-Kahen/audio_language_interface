@@ -351,13 +351,13 @@
         "license": "CC0-1.0",
         "redistributable": true,
         "checksum_sha256": "68be72271f59edd99152d2958c109d1e780a47f13b887aca62cd3b9589fa7ec5",
-        "notes": "Deterministic mono source generated from a quiet low tonal bed plus repeated short 1.85 kHz transient bursts with high crest so the current compressor-plus-gain planner path measurably tightens dynamics while still raising loudness conservatively."
+        "notes": "Deterministic mono source generated from a quiet low tonal bed plus repeated short 1.85 kHz transient bursts with high crest. It is intentionally retained as transient-heavy peak-control material and is no longer treated as the benchmark source for louder-and-controlled request-cycle prompts."
       },
       "intended_use": {
         "prompt_family": [
           "control peak excursions conservatively",
-          "make it more controlled",
-          "raise loudness without clipping"
+          "keep peaks in check",
+          "make it more controlled"
         ],
         "used_by": ["benchmarks"],
         "expected_characteristics": [
@@ -370,6 +370,47 @@
         "Write a 0.96-second mono WAV at 22050 Hz with deterministic sine synthesis only.",
         "Use a quiet 110 Hz plus 220 Hz bed and add four short decaying 1.85 kHz bursts to create high crest and peak pressure.",
         "Keep the stored file tiny and stable for repeated request-cycle benchmark runs."
+      ]
+    },
+    {
+      "fixture_id": "fixture_phase1_request_cycle_louder_controlled_source",
+      "display_name": "Request-Cycle Louder Controlled Source",
+      "relative_path": "phase-1/request-cycle-louder-controlled-source.wav",
+      "availability": "committed",
+      "format": {
+        "container": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 44100,
+        "channels": 1,
+        "bit_depth": 16,
+        "duration_seconds": 1.8,
+        "file_size_bytes": 158804
+      },
+      "provenance": {
+        "source_type": "synthetic_generation",
+        "created_by": "fixtures/audio request-cycle corpus",
+        "license": "CC0-1.0",
+        "redistributable": true,
+        "checksum_sha256": "e4c9302da303fb90ca097e4b2bcb29652ec69490fe8ddeec5fc7a44be5af9f7a",
+        "notes": "Deterministic mono source generated from a sustained harmonic bed with moderate low-mid accents so the dedicated compressor-plus-normalize planner path can raise loudness by about 1 LUFS while preserving peak safety and avoiding transient-only benchmark bias."
+      },
+      "intended_use": {
+        "prompt_family": [
+          "make it louder and more controlled",
+          "raise loudness conservatively",
+          "tighten dynamics slightly"
+        ],
+        "used_by": ["benchmarks"],
+        "expected_characteristics": [
+          "sustained harmonic body between accents",
+          "moderate crest factor instead of sparse spike dominance",
+          "benchmark-oriented louder-and-controlled source"
+        ]
+      },
+      "generation_recipe": [
+        "Write a 1.8-second mono WAV at 44100 Hz with deterministic sine synthesis only.",
+        "Use a sustained low-mid harmonic bed plus gentle upper partials so louder-control requests exercise broadband program material instead of isolated transient spikes.",
+        "Add four moderate low-mid accent bursts and keep the final peak below full scale so the controlled-loudness planner path has measurable headroom to work with."
       ]
     }
   ]

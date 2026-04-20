@@ -93,7 +93,7 @@ Detects a small set of analysis-side failure modes:
 - worsened peak control from higher peaks or lower sample headroom
 - increased sibilance from presence/harshness growth
 - lost air from upper-band loss
-- added muddiness from mid-band buildup
+- added muddiness from mid-band buildup paired with a duller brightness tilt
 - proxy-pattern increases in hum-like low-frequency contamination
 - proxy-pattern increases in click-like clipped spikes
 

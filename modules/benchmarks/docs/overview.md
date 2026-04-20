@@ -117,6 +117,7 @@ The first public request-cycle corpus currently covers:
 - `remove 60 Hz hum`
 - `clean up clicks`
 - `control the peaks without crushing it`
+- `make it louder and more controlled`
 - explicit clarification/failure controls such as `clean it` and `clean this sample up a bit`
 
-Those cases were chosen because they are stable against the committed phase-1 fixtures and expose the main Layer 2 responsibilities without overclaiming broader planner coverage. The louder-and-more-controlled wording is still covered by parser/planner tests, but it is not in the public request-cycle corpus yet because the current end-to-end result still carries measurable regressions on the committed transient-control fixture.
+Those cases were chosen because they are stable against the committed phase-1 fixtures and expose the main Layer 2 responsibilities without overclaiming broader planner coverage. The louder-and-more-controlled case now uses a dedicated sustained source fixture rather than the older transient-heavy peak-control fixture, so the public corpus can benchmark the current `compressor -> normalize` path honestly without pretending the transient-control source was the right benchmark for that request family.
