@@ -180,6 +180,8 @@ The current regression warning kinds are:
 - `increased_hum_proxy`
 - `increased_click_proxy`
 
+`added_muddiness` is intentionally conservative: the current detector only fires when mid-band buildup is paired with a duller brightness tilt, so broad louder/control lifts are not mislabeled as muddier purely because multiple bands rose together.
+
 ### Render regressions
 
 - `render_duration_mismatch`
