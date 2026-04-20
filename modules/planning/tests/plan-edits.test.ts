@@ -340,12 +340,12 @@ describe("planEdits", () => {
     expect(plan.verification_targets).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          target_id: "target_reduce_click_proxy",
-          label: "reduce clipped-sample spike activity",
+          target_id: "target_reduce_click_activity",
+          label: "reduce clipped-sample spike activity when direct click evidence is unavailable",
           metric: "artifacts.clipped_sample_count",
         }),
         expect.objectContaining({
-          target_id: "target_reduce_hum_low_band",
+          target_id: "target_reduce_hum_activity",
           target: {
             scope: "frequency_region",
             bands_hz: [60, 180],
@@ -623,12 +623,14 @@ describe("planEdits", () => {
 
     expect(plan.steps.map((step) => step.operation)).toEqual(["declick"]);
     expect(plan.verification_targets).not.toEqual(
-      expect.arrayContaining([expect.objectContaining({ target_id: "target_reduce_click_proxy" })]),
+      expect.arrayContaining([
+        expect.objectContaining({ target_id: "target_reduce_click_activity" }),
+      ]),
     );
     expect(plan.verification_targets).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          target_id: "target_reduce_click_proxy_regression",
+          target_id: "target_reduce_click_no_regression",
           regression_kind: "increased_click_proxy",
         }),
       ]),

@@ -292,7 +292,7 @@ export function buildVerificationTargets(
     if (hasClickEvidence && clickCount > 0) {
       const desiredClickReduction = thresholdByIntensity(objectives.intensity, 1, 2, 4);
       targets.push({
-        target_id: "target_reduce_click_proxy",
+        target_id: "target_reduce_click_activity",
         goal: "repair short clicks and pops conservatively",
         label: "reduce detected click activity where explicit click evidence exists",
         kind: "analysis_metric",
@@ -304,9 +304,9 @@ export function buildVerificationTargets(
       });
     } else if (clippedSampleCount > 0) {
       targets.push({
-        target_id: "target_reduce_click_proxy",
+        target_id: "target_reduce_click_activity",
         goal: "repair short clicks and pops conservatively",
-        label: "reduce clipped-sample spike activity",
+        label: "reduce clipped-sample spike activity when direct click evidence is unavailable",
         kind: "analysis_metric",
         comparison: "decrease_by",
         metric: "artifacts.clipped_sample_count",
@@ -317,7 +317,7 @@ export function buildVerificationTargets(
     }
 
     targets.push({
-      target_id: "target_reduce_click_proxy_regression",
+      target_id: "target_reduce_click_no_regression",
       goal: "repair short clicks and pops conservatively",
       label: "avoid increasing impulsive spike artifacts",
       kind: "regression_guard",
@@ -331,10 +331,10 @@ export function buildVerificationTargets(
     const humLevelDbfs = analysisReport.measurements.artifacts.hum_level_dbfs;
     const humThresholdReduction = thresholdByIntensity(objectives.intensity, 3, 6, 9);
     targets.push({
-      target_id: "target_reduce_hum_low_band",
+      target_id: "target_reduce_hum_activity",
       goal: "reduce mains hum and harmonic buzz conservatively",
       label: hasHumEvidence
-        ? `reduce detected hum energy around ${objectives.hum_frequency_hz?.toFixed(0)} Hz where evidence points to mains contamination`
+        ? `reduce detected hum activity around ${objectives.hum_frequency_hz?.toFixed(0)} Hz where evidence points to mains contamination`
         : `seek a small reduction in low-frequency contamination around ${objectives.hum_frequency_hz?.toFixed(0)} Hz`,
       kind: "analysis_metric",
       comparison: hasHumEvidence && humLevelDbfs !== undefined ? "at_most" : "decrease_by",
@@ -371,9 +371,9 @@ export function buildVerificationTargets(
         : "The baseline verifier uses low-band energy as a conservative hum proxy until direct hum evidence exists.",
     });
     targets.push({
-      target_id: "target_reduce_hum_no_proxy_regression",
+      target_id: "target_reduce_hum_no_regression",
       goal: "reduce mains hum and harmonic buzz conservatively",
-      label: "avoid increasing the hum proxy while cleaning",
+      label: "avoid increasing hum-like contamination while cleaning",
       kind: "regression_guard",
       comparison: "absent",
       regression_kind: "increased_hum_proxy",

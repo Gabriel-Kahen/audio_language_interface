@@ -240,7 +240,7 @@ This repo is usable today for technical experimentation and module-level integra
 - analysis currently requires WAV files on disk
 - semantic coverage is intentionally conservative
 - compare now prefers structured verification targets, with heuristic goal alignment kept only as a backward-compatible fallback
-- hum and click comparison logic is still conservative and partly proxy-based even though the analysis contract now carries direct hum/click evidence
+- hum and click comparison now prefers direct `AnalysisReport.artifacts` evidence when it exists, with low-band or clipped-sample proxies kept only as conservative fallbacks
 - there is no dedicated demo CLI or app entrypoint yet
 - the baseline planner does not yet auto-select pitch shifting, trim silence, channel utilities, or Layer 1 runtime effects
 - benchmark coverage now includes a tiny committed cleanup-and-control corpus, but it is still light compared with the long-term goal

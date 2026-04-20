@@ -31,6 +31,7 @@ The strongest supported prompt family today is conservative tonal shaping, loudn
 - `remove 50 Hz hum` or `remove 60 Hz hum`
 - `clean up clicks`
 - `more controlled`
+- `make it louder and more controlled`
 - `control peaks`
 
 See `docs/current-capabilities.md` for the exact implementation boundary.
@@ -115,5 +116,5 @@ If a behavior is not implemented yet, document it as a limitation rather than im
 - analysis is WAV-only today
 - semantic descriptor coverage is intentionally small
 - not every runtime operation is baseline-planner-supported
-- benchmarks exist, but they are still synthetic-first and not yet backed by committed real audio fixtures
+- benchmarks now include committed fixture-backed compare and request-cycle coverage for the current cleanup and control slice, but the corpus is still intentionally small
 - there is no dedicated demo CLI or app entrypoint yet

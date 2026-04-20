@@ -103,6 +103,12 @@ function evaluateAnalysisMetricTarget(
     target.comparison === "at_most" &&
     observedValue === undefined &&
     candidate.artifacts.hum_detected === false;
+  const missingMetricClickCleared =
+    (target.metric === "artifacts.click_count" ||
+      target.metric === "artifacts.click_rate_per_second") &&
+    target.comparison === "at_most" &&
+    observedValue === undefined &&
+    candidate.artifacts.click_detected === false;
 
   if (missingMetricHumCleared) {
     return {
@@ -110,6 +116,15 @@ function evaluateAnalysisMetricTarget(
       status: "met",
       evidence:
         "Candidate hum detector cleared and no direct hum level remained available, so the hum target is treated as satisfied.",
+    };
+  }
+
+  if (missingMetricClickCleared) {
+    return {
+      ...target,
+      status: "met",
+      evidence:
+        "Candidate click detector cleared and no direct click activity remained available, so the click target is treated as satisfied.",
     };
   }
 

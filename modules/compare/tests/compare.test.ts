@@ -164,7 +164,7 @@ describe("compareVersions", () => {
         goals: ["reduce mains hum and harmonic buzz conservatively"],
         verification_targets: [
           {
-            target_id: "target_reduce_hum_low_band",
+            target_id: "target_reduce_hum_activity",
             goal: "reduce mains hum and harmonic buzz conservatively",
             label: "reduce direct hum level",
             kind: "analysis_metric",
@@ -179,12 +179,153 @@ describe("compareVersions", () => {
 
     expect(report.verification_results).toEqual([
       expect.objectContaining({
-        target_id: "target_reduce_hum_low_band",
+        target_id: "target_reduce_hum_activity",
         status: "met",
       }),
     ]);
     expect(report.goal_alignment).toEqual([
       { goal: "reduce mains hum and harmonic buzz conservatively", status: "met" },
+    ]);
+  });
+
+  it("treats direct click-activity targets as met when the candidate clears click detection", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_click_base"),
+      candidateVersion: createVersion("ver_click_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_click_base",
+        versionId: "ver_click_base",
+        integratedLufs: -18,
+        truePeakDbtp: -1.5,
+        crestFactorDb: 10.1,
+        transientDensity: 1.6,
+        dynamicRangeDb: 8.1,
+        lowBandDb: -12.4,
+        midBandDb: -11.2,
+        highBandDb: -10.4,
+        spectralCentroidHz: 2380,
+        stereoWidth: 0.51,
+        stereoCorrelation: 0.47,
+        noiseFloorDbfs: -68,
+        clippingDetected: false,
+        clickDetected: true,
+        clickCount: 6,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_click_cand",
+        versionId: "ver_click_cand",
+        integratedLufs: -18,
+        truePeakDbtp: -1.6,
+        crestFactorDb: 10.1,
+        transientDensity: 1.6,
+        dynamicRangeDb: 8.1,
+        lowBandDb: -12.6,
+        midBandDb: -11.3,
+        highBandDb: -10.2,
+        spectralCentroidHz: 2400,
+        stereoWidth: 0.51,
+        stereoCorrelation: 0.47,
+        noiseFloorDbfs: -68.5,
+        clippingDetected: false,
+        clickDetected: false,
+      }),
+      editPlan: {
+        ...createEditPlan(),
+        version_id: "ver_click_base",
+        goals: ["repair short clicks and pops conservatively"],
+        verification_targets: [
+          {
+            target_id: "target_reduce_click_activity",
+            goal: "repair short clicks and pops conservatively",
+            label: "reduce direct click activity",
+            kind: "analysis_metric",
+            comparison: "at_most",
+            metric: "artifacts.click_count",
+            threshold: 0,
+          },
+        ],
+      },
+      generatedAt: "2026-04-20T02:20:22Z",
+    });
+
+    expect(report.verification_results).toEqual([
+      expect.objectContaining({
+        target_id: "target_reduce_click_activity",
+        status: "met",
+      }),
+    ]);
+    expect(report.goal_alignment).toEqual([
+      { goal: "repair short clicks and pops conservatively", status: "met" },
+    ]);
+  });
+
+  it("scores hum and click reduction goals from direct artifact evidence first", () => {
+    const baseline = createAnalysisReport({
+      reportId: "analysis_restore_direct_base",
+      versionId: "ver_restore_direct_base",
+      integratedLufs: -15.8,
+      truePeakDbtp: -1.6,
+      samplePeakDbfs: -1.9,
+      headroomDb: 1.9,
+      crestFactorDb: 10.1,
+      transientDensity: 1.85,
+      dynamicRangeDb: 8,
+      lowBandDb: -13.5,
+      midBandDb: -11.2,
+      highBandDb: -10.4,
+      spectralCentroidHz: 2380,
+      brightnessTiltDb: 3.1,
+      presenceBandDb: -9.5,
+      harshnessRatioDb: 0.8,
+      stereoWidth: 0.47,
+      stereoCorrelation: 0.52,
+      stereoBalanceDb: 0.1,
+      noiseFloorDbfs: -61.5,
+      clippedSampleCount: 120,
+      clippingDetected: false,
+      humDetected: true,
+      humLevelDbfs: -20.5,
+      clickDetected: true,
+      clickCount: 12,
+    }).measurements;
+    const candidate = createAnalysisReport({
+      reportId: "analysis_restore_direct_cand",
+      versionId: "ver_restore_direct_cand",
+      integratedLufs: -15.5,
+      truePeakDbtp: -1.5,
+      samplePeakDbfs: -1.8,
+      headroomDb: 1.8,
+      crestFactorDb: 9.9,
+      transientDensity: 1.78,
+      dynamicRangeDb: 7.8,
+      lowBandDb: -16.2,
+      midBandDb: -11.3,
+      highBandDb: -10.5,
+      spectralCentroidHz: 2370,
+      brightnessTiltDb: 2.9,
+      presenceBandDb: -9.6,
+      harshnessRatioDb: 0.7,
+      stereoWidth: 0.47,
+      stereoCorrelation: 0.53,
+      stereoBalanceDb: 0.1,
+      noiseFloorDbfs: -63,
+      clippedSampleCount: 12,
+      clippingDetected: false,
+      humDetected: false,
+      clickDetected: false,
+      clickCount: 0,
+    }).measurements;
+
+    const goalAlignment = evaluateGoalAlignment(
+      ["reduce hum", "reduce clicks"],
+      baseline,
+      candidate,
+      computeAnalysisMetricDeltas(baseline, candidate),
+    );
+
+    expect(goalAlignment).toEqual([
+      { goal: "reduce hum", status: "met" },
+      { goal: "reduce clicks", status: "met" },
     ]);
   });
 

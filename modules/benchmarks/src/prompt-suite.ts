@@ -454,8 +454,8 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
             "reduce mains hum and harmonic buzz conservatively": "met",
           },
           verification_statuses: {
-            target_reduce_hum_low_band: "met",
-            target_reduce_hum_no_proxy_regression: "met",
+            target_reduce_hum_activity: "met",
+            target_reduce_hum_no_regression: "met",
           },
         },
       },
@@ -480,8 +480,8 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
             "repair short clicks and pops conservatively": "met",
           },
           verification_statuses: {
-            target_reduce_click_proxy: "met",
-            target_reduce_click_proxy_regression: "met",
+            target_reduce_click_activity: "met",
+            target_reduce_click_no_regression: "met",
           },
         },
       },

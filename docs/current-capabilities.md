@@ -167,7 +167,7 @@ Current tool-surface caveats:
 - render preview is MP3-only
 - final render export is limited to WAV and FLAC
 - compare now prefers planner-emitted structured verification targets and still keeps heuristic goal alignment only as a legacy fallback
-- hum and click analysis evidence now exists in the baseline `AnalysisReport`, but compare still uses conservative proxy-style scoring for those goal families when structured verification does not provide something stronger
+- hum and click analysis evidence now exists in the baseline `AnalysisReport`, and compare now prefers those direct artifact fields before falling back to conservative low-band or clipped-sample proxies
 - the repository does not yet provide a dedicated demo CLI or application entrypoint
 - benchmark coverage is fixture-backed for the current cleanup slice, and the end-to-end request-cycle corpus remains intentionally small and focused on stable tonal cleanup, restoration, peak-control, and dedicated louder-and-controlled prompts plus clarification/failure controls
 

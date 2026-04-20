@@ -60,7 +60,7 @@ The initial implementation is a deterministic baseline planner. It uses conserva
 - maps conservative `more controlled` language to `compressor`, maps explicit louder-and-controlled language to a measured `compressor -> normalize` path, and maps explicit peak-control language to `limiter`
 - supports explicit loudness-normalization, upper-air, warmth, low-mid cleanup, harsh-ring, sibilance, click-cleanup, and hum-removal requests with conservative defaults grounded in the published manifest
 - supports explicit denoise requests only when analysis indicates steady noise
-- prefers annotation-backed or semantic-backed restoration verification when that evidence exists, and only falls back to coarse click or hum proxies when the current compare surface leaves no stronger option
+- prefers annotation-backed or semantic-backed restoration verification when that evidence exists, and now routes hum/click verification through direct artifact measurements before falling back to coarse low-band or clipped-sample proxies
 - supports explicit stereo-width requests only for already-stereo material when the current image is safe to adjust conservatively
 - fails instead of guessing when the request cannot be mapped to an explicit supported operation
 - classifies planner refusals explicitly as `supported_but_underspecified`, `unsupported`, or `supported_runtime_only_but_not_planner_enabled` so adapters can ask for clarification without pretending the runtime or planner can do more than they actually can
