@@ -13,7 +13,7 @@ This repo is not:
 
 It is an audio-editing runtime and planning stack for model-driven workflows.
 
-License: `MIT`. See [LICENSE](/Users/gabrielkahen/code/audio_language_interface/LICENSE).
+License: `MIT`. See [LICENSE](LICENSE).
 
 ## Why This Exists
 
@@ -55,7 +55,7 @@ The current cleanup slice is now analysis-backed instead of purely prompt-driven
 - `analysis` emits explicit `hum` and `click` annotations plus file-level artifact fields such as `hum_detected`, `hum_fundamental_hz`, `click_detected`, and `click_count`
 - `semantics` can assign `hum_present` and `clicks_present` when that evidence is strong enough
 - `compare` reports `evaluation_basis` so downstream callers can see whether structured verification, heuristic goal alignment, or raw deltas are driving quality interpretation
-- `benchmarks` includes a tiny committed fixture-backed cleanup corpus under [fixtures/audio/phase-1](/Users/gabrielkahen/code/audio_language_interface/fixtures/audio/phase-1)
+- `benchmarks` includes a tiny committed fixture-backed cleanup corpus under [fixtures/audio/phase-1](fixtures/audio/phase-1)
 
 ## Architecture
 
@@ -100,7 +100,7 @@ This layer exposes stable integration surfaces over the runtime and intent modul
 
 This layer owns prompt suites, scoring harnesses, and repeatable evaluation workflows.
 
-For the full dependency and boundary rules, see [docs/architecture.md](/Users/gabrielkahen/code/audio_language_interface/docs/architecture.md).
+For the full dependency and boundary rules, see [docs/architecture.md](docs/architecture.md).
 
 ## Core Contracts
 
@@ -119,7 +119,7 @@ The repository converges on a small set of canonical artifacts:
 - `ToolResponse`
 - `RuntimeCapabilityManifest`
 
-These are published under [contracts/schemas](/Users/gabrielkahen/code/audio_language_interface/contracts/schemas) with matching examples under [contracts/examples](/Users/gabrielkahen/code/audio_language_interface/contracts/examples).
+These are published under [contracts/schemas](contracts/schemas) with matching examples under [contracts/examples](contracts/examples).
 
 ## Current Capability Surface
 
@@ -277,7 +277,7 @@ This repo is usable today for technical experimentation and module-level integra
 
 ## Getting Started
 
-1. Install the prerequisites in [docs/system-dependencies.md](/Users/gabrielkahen/code/audio_language_interface/docs/system-dependencies.md).
+1. Install the prerequisites in [docs/system-dependencies.md](docs/system-dependencies.md).
 2. Run `pnpm install`.
 3. Run the validation loop:
 
@@ -298,21 +298,21 @@ pnpm run ci
 
 For contributors and agents, use this order:
 
-1. [AGENTS.md](/Users/gabrielkahen/code/audio_language_interface/AGENTS.md)
-2. [docs/architecture.md](/Users/gabrielkahen/code/audio_language_interface/docs/architecture.md)
-3. [docs/implementation-plan.md](/Users/gabrielkahen/code/audio_language_interface/docs/implementation-plan.md)
-4. [docs/current-capabilities.md](/Users/gabrielkahen/code/audio_language_interface/docs/current-capabilities.md)
-5. [docs/contributor-guide.md](/Users/gabrielkahen/code/audio_language_interface/docs/contributor-guide.md)
-6. [docs/repository-map.md](/Users/gabrielkahen/code/audio_language_interface/docs/repository-map.md)
+1. [AGENTS.md](AGENTS.md)
+2. [docs/architecture.md](docs/architecture.md)
+3. [docs/implementation-plan.md](docs/implementation-plan.md)
+4. [docs/current-capabilities.md](docs/current-capabilities.md)
+5. [docs/contributor-guide.md](docs/contributor-guide.md)
+6. [docs/repository-map.md](docs/repository-map.md)
 7. the target module's `agents.md`
 8. the target module's `docs/overview.md`
 9. the relevant contracts under `contracts/schemas/`
 
 ## Practical Entry Points
 
-- [modules/capabilities/src/index.ts](/Users/gabrielkahen/code/audio_language_interface/modules/capabilities/src/index.ts) for runtime capability metadata
-- [modules/tools/src/index.ts](/Users/gabrielkahen/code/audio_language_interface/modules/tools/src/index.ts) for stable tool execution
-- [modules/orchestration/src/index.ts](/Users/gabrielkahen/code/audio_language_interface/modules/orchestration/src/index.ts) for thin composed workflows
+- [modules/capabilities/src/index.ts](modules/capabilities/src/index.ts) for runtime capability metadata
+- [modules/tools/src/index.ts](modules/tools/src/index.ts) for stable tool execution
+- [modules/orchestration/src/index.ts](modules/orchestration/src/index.ts) for thin composed workflows
 
 ## Status
 
