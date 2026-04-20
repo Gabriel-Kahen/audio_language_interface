@@ -115,6 +115,8 @@ That separation makes failures easier to diagnose, but it does not turn the benc
 
 The current request-cycle benchmark corpus is intentionally small. It covers stable tonal cleanup, restoration, peak-control, and dedicated louder-and-controlled prompts on committed phase-1 fixtures plus explicit clarification/failure controls rather than trying to benchmark the full runtime surface at once.
 
+For hum and click cleanup prompts, benchmark outcome checks should prefer direct `AnalysisReport.artifacts` signals such as `hum_detected`, `hum_level_dbfs`, `click_detected`, and `click_count`. Low-band, noise-floor, and clipped-sample checks remain conservative fallback coverage rather than the primary success signal.
+
 ## Current Capability-Expansion Testing Expectations
 
 Current capability-expansion work should be held to a stricter test standard than the initial Phase 1 slice.

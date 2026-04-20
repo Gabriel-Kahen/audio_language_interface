@@ -106,6 +106,8 @@ The request-cycle overall score is the equal-weighted average of the non-empty c
 
 Request-cycle reports also aggregate failed checks into category-specific failure buckets so maintainers can see quickly whether a run is failing because the planner chose the wrong operation, the compare layer could not verify the intended outcome, or regressions were introduced during execution.
 
+For hum and click cleanup cases, outcome verification should anchor on direct `AnalysisReport.artifacts` evidence first: `hum_detected` / `hum_level_dbfs` for dehum-style checks and `click_detected` / `click_count` for declick-style checks. Low-band, noise-floor, and clipped-sample checks remain fallback coverage for analyses that do not expose those direct artifact fields.
+
 ## Current request-cycle corpus
 
 The first public request-cycle corpus currently covers:

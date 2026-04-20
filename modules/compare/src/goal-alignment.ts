@@ -316,30 +316,49 @@ function classifyHumReduction(
   candidate: AnalysisMeasurements,
   metricDeltas: MetricDelta[],
 ): GoalStatus {
+  const baselineHumDetected = baseline.artifacts.hum_detected === true;
+  const candidateHumDetected = candidate.artifacts.hum_detected === true;
   const humLevelDelta = getDelta(metricDeltas, "artifacts.hum_level_dbfs");
   const baselineHumLevel = baseline.artifacts.hum_level_dbfs;
   const candidateHumLevel = candidate.artifacts.hum_level_dbfs;
   const lowBandDelta = getDelta(metricDeltas, "spectral_balance.low_band_db");
   const noiseFloorDelta = getDelta(metricDeltas, "artifacts.noise_floor_dbfs");
   const midBandDelta = getDelta(metricDeltas, "spectral_balance.mid_band_db");
+  const hasDirectHumEvidence =
+    baselineHumDetected ||
+    candidateHumDetected ||
+    baselineHumLevel !== undefined ||
+    candidateHumLevel !== undefined ||
+    humLevelDelta !== undefined;
 
-  if (
-    baselineHumLevel !== undefined &&
-    candidateHumLevel !== undefined &&
-    humLevelDelta !== undefined &&
-    !candidate.artifacts.hum_detected &&
-    humLevelDelta <= -6
-  ) {
-    return "met";
-  }
+  if (hasDirectHumEvidence) {
+    if (
+      baselineHumDetected &&
+      !candidateHumDetected &&
+      (humLevelDelta === undefined || humLevelDelta <= -3)
+    ) {
+      return "met";
+    }
 
-  if (
-    baselineHumLevel !== undefined &&
-    candidateHumLevel !== undefined &&
-    humLevelDelta !== undefined &&
-    humLevelDelta <= -3
-  ) {
-    return "mostly_met";
+    if (
+      baselineHumLevel !== undefined &&
+      candidateHumLevel !== undefined &&
+      humLevelDelta !== undefined &&
+      humLevelDelta <= -6
+    ) {
+      return "met";
+    }
+
+    if (
+      baselineHumLevel !== undefined &&
+      candidateHumLevel !== undefined &&
+      humLevelDelta !== undefined &&
+      humLevelDelta <= -3
+    ) {
+      return "mostly_met";
+    }
+
+    return baselineHumDetected || baselineHumLevel !== undefined ? "not_met" : "unknown";
   }
 
   if (lowBandDelta === undefined) {
@@ -372,25 +391,39 @@ function classifyClickReduction(
 ): GoalStatus {
   const clippedSampleCountDelta = getDelta(metricDeltas, "artifacts.clipped_sample_count");
   const clickCountDelta = getDelta(metricDeltas, "artifacts.click_count");
+  const clickRateDelta = getDelta(metricDeltas, "artifacts.click_rate_per_second");
   const crestFactorDelta = getDelta(metricDeltas, "dynamics.crest_factor_db");
   const transientDensityDelta = getDelta(metricDeltas, "dynamics.transient_density_per_second");
   const baselineClippedSampleCount = baseline.artifacts.clipped_sample_count;
   const baselineClickCount = baseline.artifacts.click_count;
   const candidateClickCount = candidate.artifacts.click_count;
+  const hasDirectClickEvidence =
+    baseline.artifacts.click_detected === true ||
+    candidate.artifacts.click_detected === true ||
+    baselineClickCount !== undefined ||
+    candidateClickCount !== undefined ||
+    clickCountDelta !== undefined ||
+    clickRateDelta !== undefined;
 
   if (
+    hasDirectClickEvidence &&
     baselineClickCount !== undefined &&
-    candidateClickCount !== undefined &&
-    clickCountDelta !== undefined
+    candidateClickCount !== undefined
   ) {
     const removedMostClicks =
       baselineClickCount > 0 && candidateClickCount <= baselineClickCount * 0.25;
-    const removedSomeClicks = clickCountDelta <= -Math.max(1, Math.ceil(baselineClickCount * 0.5));
+    const removedSomeClicks =
+      clickCountDelta !== undefined &&
+      clickCountDelta <= -Math.max(1, Math.ceil(baselineClickCount * 0.5));
     const punchMostlyIntact =
       meetsOptionalLowerBound(crestFactorDelta, -1.5) &&
       meetsOptionalLowerBound(transientDensityDelta, -0.2);
+    const clickDetectorCleared =
+      baseline.artifacts.click_detected === true &&
+      candidate.artifacts.click_detected === false &&
+      candidateClickCount === 0;
 
-    if (removedMostClicks && punchMostlyIntact) {
+    if ((removedMostClicks || clickDetectorCleared) && punchMostlyIntact) {
       return "met";
     }
 
@@ -398,7 +431,7 @@ function classifyClickReduction(
       return "mostly_met";
     }
 
-    return baselineClickCount > 0 ? "not_met" : "unknown";
+    return baselineClickCount > 0 || baseline.artifacts.click_detected ? "not_met" : "unknown";
   }
 
   if (baselineClippedSampleCount === undefined || clippedSampleCountDelta === undefined) {

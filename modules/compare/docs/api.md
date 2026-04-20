@@ -117,8 +117,8 @@ Current supported Layer 2 goal families include:
 
 - loudness increase, decrease, and stability
 - sibilance reduction
-- hum reduction via conservative low-band/noise-floor proxies
-- click reduction via conservative clipped-sample proxies
+- hum reduction via direct `hum_detected` / `hum_level_dbfs` evidence first, with low-band and noise-floor movement as fallback
+- click reduction via direct `click_detected` / `click_count` evidence first, with clipped-sample movement as fallback
 - warmth increase
 - air increase
 - muddiness reduction

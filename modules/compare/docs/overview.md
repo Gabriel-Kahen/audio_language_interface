@@ -248,7 +248,7 @@ The fallback `evaluateGoalAlignment()` path is still heuristic and keyword-drive
 - Punch-related goals are still treated as preservation checks, but they now also use `dynamic_range_db` when present instead of relying only on crest factor and transient density.
 - Cleanup-related goals still anchor on measurable noise-floor reduction or clipping removal, but they now reject large top-end or punch losses that suggest denoise artifacts.
 - Sibilance checks require `presence_band_db` and `harshness_ratio_db`; without those fields, they return `unknown`.
-- Hum and click checks are intentionally conservative proxies. `hum` uses low-band plus noise-floor movement, and `click` uses clipped-sample movement when available. Neither is a direct hum or click detector.
+- Hum and click checks are now direct-evidence-first. `hum` prefers `hum_detected` and `hum_level_dbfs`, and `click` prefers `click_detected`, `click_count`, and `click_rate_per_second`. Low-band, noise-floor, and clipped-sample movement remain only as conservative fallback signals when those direct artifact fields are unavailable.
 
 ## Summary generation
 
@@ -272,7 +272,7 @@ The summary is intentionally compact and should be treated as a convenience fiel
 - The preferred path is planner-emitted structured verification. String-based goal alignment remains only as a backward-compatible fallback.
 - The local TypeScript `EditPlan` type is narrower than the repository contract and currently models only the fields that `compare` consumes directly.
 - The local TypeScript `RenderArtifact.loudness_summary` type is broader than the contract and is treated as a generic numeric map, though the current implementation only reads integrated loudness and true peak.
-- The current analysis contract now includes direct hum and click fields, but the compare layer still treats those goal families conservatively and mostly proxy-style until dedicated hum/click verification logic lands.
+- The current analysis contract includes direct hum and click fields, and compare now treats those artifact fields as the preferred signal for hum/click verification. Proxy-style fallback remains only for older or weaker analyses that do not carry those artifact measurements.
 - Comparison IDs are deterministic only when baseline and candidate references are the same; changing timestamps, metrics, or goal inputs does not change the generated ID.
 
 ## Source layout
