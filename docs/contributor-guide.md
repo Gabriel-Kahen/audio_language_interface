@@ -116,5 +116,5 @@ If a behavior is not implemented yet, document it as a limitation rather than im
 - analysis is WAV-only today
 - semantic descriptor coverage is intentionally small
 - not every runtime operation is baseline-planner-supported
-- benchmarks now include committed fixture-backed compare and request-cycle coverage for the current cleanup and control slice, but the corpus is still intentionally small
+- benchmarks now include committed fixture-backed compare and request-cycle coverage for the current cleanup and control slice, including compare-only hum/click isolation cases that validate direct-evidence and fallback scoring separately, but the corpus is still intentionally small
 - there is no dedicated demo CLI or app entrypoint yet

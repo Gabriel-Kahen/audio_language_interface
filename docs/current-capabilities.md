@@ -169,7 +169,7 @@ Current tool-surface caveats:
 - compare now prefers planner-emitted structured verification targets and still keeps heuristic goal alignment only as a legacy fallback
 - hum and click analysis evidence now exists in the baseline `AnalysisReport`, and compare now prefers those direct artifact fields before falling back to conservative low-band or clipped-sample proxies
 - the repository does not yet provide a dedicated demo CLI or application entrypoint
-- benchmark coverage is fixture-backed for the current cleanup slice, and the end-to-end request-cycle corpus remains intentionally small and focused on stable tonal cleanup, restoration, peak-control, and dedicated louder-and-controlled prompts plus clarification/failure controls
+- benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, restoration, peak-control, and dedicated louder-and-controlled prompts plus clarification/failure controls
 
 ## Practical Interpretation
 

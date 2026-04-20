@@ -57,6 +57,16 @@ function getRequestCycleCase(caseId: string) {
   return benchmarkCase;
 }
 
+function getCompareCase(caseId: string) {
+  const benchmarkCase = firstPromptFamilyPromptSuite.find((item) => item.caseId === caseId);
+
+  if (!benchmarkCase) {
+    throw new Error(`Expected compare benchmark case ${caseId} to exist.`);
+  }
+
+  return benchmarkCase;
+}
+
 function readWavMetadata(relativePath: string) {
   const buffer = readFileSync(path.join(repoRoot, relativePath));
 
@@ -143,14 +153,13 @@ describe("firstPromptFamilyFixtureCorpus", () => {
   it("binds every benchmark case to committed fixture ids", () => {
     const fixtureIds = new Set(readFixtureManifest().fixtures.map((fixture) => fixture.fixture_id));
 
-    expect(firstPromptFamilyPromptSuite).toHaveLength(5);
+    expect(firstPromptFamilyPromptSuite).toHaveLength(9);
 
     for (const benchmarkCase of firstPromptFamilyPromptSuite) {
       expect(fixtureIds.has(benchmarkCase.fixtures.sourceFixtureId)).toBe(true);
       expect(fixtureIds.has(benchmarkCase.fixtures.baselineFixtureId)).toBe(true);
       expect(fixtureIds.has(benchmarkCase.fixtures.candidateFixtureId)).toBe(true);
-      expect(benchmarkCase.fixtures.sourceFixtureId).toBe(FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID);
-      expect(benchmarkCase.fixtures.baselineFixtureId).toBe(FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID);
+      expect(benchmarkCase.fixtures.baselineFixtureId).toBe(benchmarkCase.fixtures.sourceFixtureId);
     }
   });
 
@@ -190,6 +199,43 @@ describe("runComparisonBenchmarks", () => {
     expect(result.totalChecks).toBeGreaterThan(0);
     expect(result.totalPassedChecks).toBe(result.totalChecks);
     expect(result.overallScore).toBe(1);
+  });
+
+  it("covers direct and fallback hum/click compare cases in isolation", () => {
+    const directHum = getCompareCase("compare_reduce_hum_direct_evidence");
+    const fallbackHum = getCompareCase("compare_reduce_hum_fallback_proxy");
+    const directClicks = getCompareCase("compare_reduce_clicks_direct_evidence");
+    const fallbackClicks = getCompareCase("compare_reduce_clicks_fallback_proxy");
+
+    const result = runComparisonBenchmarks([directHum, fallbackHum, directClicks, fallbackClicks]);
+
+    expect(result.caseResults).toHaveLength(4);
+
+    const directHumCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === directHum.caseId,
+    );
+    expect(directHumCase?.report.goal_alignment).toEqual([{ goal: "reduce hum", status: "met" }]);
+
+    const fallbackHumCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === fallbackHum.caseId,
+    );
+    expect(fallbackHumCase?.report.goal_alignment).toEqual([
+      { goal: "reduce hum", status: "mostly_met" },
+    ]);
+
+    const directClickCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === directClicks.caseId,
+    );
+    expect(directClickCase?.report.goal_alignment).toEqual([
+      { goal: "reduce clicks", status: "met" },
+    ]);
+
+    const fallbackClickCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === fallbackClicks.caseId,
+    );
+    expect(fallbackClickCase?.report.goal_alignment).toEqual([
+      { goal: "reduce clicks", status: "mostly_met" },
+    ]);
   });
 });
 

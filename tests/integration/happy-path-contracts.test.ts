@@ -66,7 +66,7 @@ describe("phase 1 happy-path contract setup", () => {
       ),
     ).toBe(true);
     expect(
-      firstPromptFamilyPromptSuite.every(
+      firstPromptFamilyPromptSuite.some(
         (benchmarkCase) => benchmarkCase.fixtures.sourceFixtureId === integrationSetup.fixture_id,
       ),
     ).toBe(true);

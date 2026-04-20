@@ -33,6 +33,8 @@ The current implementation includes a compare-focused cleanup suite for:
 - `less harsh`
 - `clean this sample up a bit`
 - `reduce brightness without losing punch`
+- `reduce hum` with both direct-evidence and fallback compare cases
+- `reduce clicks` with both direct-evidence and fallback compare cases
 - ambiguous cleanup wording such as `clean it`
 
 The benchmark cases now carry explicit fixture ids for the shared source loop and each candidate audio variant used by the cleanup corpus.
@@ -76,7 +78,7 @@ The benchmark cases now carry explicit fixture ids for the shared source loop an
 
 ## Current limitations
 
-- compare-only benchmark scoring is still centered on curated `compareVersions()` inputs for the currently supported cleanup slice
+- compare-only benchmark scoring is still centered on curated `compareVersions()` inputs for the currently supported cleanup and restoration slice
 - the request-cycle benchmark corpus is intentionally small and currently focuses on stable tonal cleanup, restoration, peak control, and explicit clarification/failure controls
 - request-cycle outcome scoring is only as strong as the current compare/orchestration evidence:
   - planner correctness is inferred from the emitted `EditPlan`

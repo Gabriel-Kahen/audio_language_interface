@@ -22,7 +22,7 @@ export const firstPromptFamilyFixtureCorpus: ComparisonBenchmarkCorpus = {
   suiteId: "first_prompt_family",
   fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
   description:
-    "Current request-cycle benchmark corpus anchored to committed phase-1 WAV fixtures with four supported cases and one explicit ambiguous control.",
+    "Current compare benchmark corpus anchored to committed phase-1 WAV fixtures across tonal, restoration, and control checks plus one explicit ambiguous control.",
   cases: [
     {
       caseId: "compare_darker_less_harsh_preserve_punch",
@@ -308,6 +308,225 @@ export const firstPromptFamilyFixtureCorpus: ComparisonBenchmarkCorpus = {
           "preserve transient impact": "met",
         },
         forbiddenRegressionKinds: ["introduced_clipping", "lost_punch"],
+      },
+    },
+    {
+      caseId: "compare_reduce_hum_direct_evidence",
+      family: "first_prompt_family",
+      prompt: "reduce hum",
+      description: "Hum cleanup scored from direct hum detector evidence.",
+      fixtures: {
+        sourceFixtureId: "fixture_phase1_request_cycle_hum_60hz_source",
+        baselineFixtureId: "fixture_phase1_request_cycle_hum_60hz_source",
+        candidateFixtureId: "fixture_phase1_request_cycle_hum_60hz_source",
+      },
+      compareOptions: createCompareOptions({
+        baselineVersionId: "ver_suite_06_base",
+        candidateVersionId: "ver_suite_06_cand",
+        baseline: {
+          integratedLufs: -16.1,
+          truePeakDbtp: -1.8,
+          crestFactorDb: 9.8,
+          transientDensity: 1.72,
+          lowBandDb: -12.8,
+          midBandDb: -11.4,
+          highBandDb: -10.6,
+          spectralCentroidHz: 2320,
+          stereoWidth: 0.49,
+          stereoCorrelation: 0.51,
+          noiseFloorDbfs: -60.8,
+          clippingDetected: false,
+          humDetected: true,
+          humLevelDbfs: -21.5,
+          humFundamentalHz: 60,
+          humHarmonicCount: 3,
+        },
+        candidate: {
+          integratedLufs: -16.1,
+          truePeakDbtp: -1.9,
+          crestFactorDb: 9.8,
+          transientDensity: 1.71,
+          lowBandDb: -15.8,
+          midBandDb: -11.5,
+          highBandDb: -10.6,
+          spectralCentroidHz: 2310,
+          stereoWidth: 0.49,
+          stereoCorrelation: 0.51,
+          noiseFloorDbfs: -62.4,
+          clippingDetected: false,
+          humDetected: false,
+        },
+        prompt: "reduce hum",
+        goals: ["reduce hum"],
+      }),
+      expectation: {
+        goalStatuses: {
+          "reduce hum": "met",
+        },
+        forbiddenRegressionKinds: ["introduced_clipping", "increased_hum_proxy"],
+      },
+    },
+    {
+      caseId: "compare_reduce_hum_fallback_proxy",
+      family: "first_prompt_family",
+      prompt: "reduce hum",
+      description: "Hum cleanup fallback when direct hum artifact fields are unavailable.",
+      fixtures: {
+        sourceFixtureId: "fixture_phase1_request_cycle_hum_60hz_source",
+        baselineFixtureId: "fixture_phase1_request_cycle_hum_60hz_source",
+        candidateFixtureId: "fixture_phase1_request_cycle_hum_60hz_source",
+      },
+      compareOptions: createCompareOptions({
+        baselineVersionId: "ver_suite_07_base",
+        candidateVersionId: "ver_suite_07_cand",
+        baseline: {
+          integratedLufs: -16,
+          truePeakDbtp: -1.9,
+          crestFactorDb: 9.7,
+          transientDensity: 1.7,
+          lowBandDb: -13.4,
+          midBandDb: -11.2,
+          highBandDb: -10.6,
+          spectralCentroidHz: 2310,
+          stereoWidth: 0.48,
+          stereoCorrelation: 0.52,
+          noiseFloorDbfs: -61.2,
+          clippingDetected: false,
+        },
+        candidate: {
+          integratedLufs: -16.1,
+          truePeakDbtp: -2,
+          crestFactorDb: 9.7,
+          transientDensity: 1.7,
+          lowBandDb: -17.9,
+          midBandDb: -11.4,
+          highBandDb: -10.7,
+          spectralCentroidHz: 2300,
+          stereoWidth: 0.48,
+          stereoCorrelation: 0.52,
+          noiseFloorDbfs: -63.1,
+          clippingDetected: false,
+        },
+        prompt: "reduce hum",
+        goals: ["reduce hum"],
+      }),
+      expectation: {
+        goalStatuses: {
+          "reduce hum": "mostly_met",
+        },
+        forbiddenRegressionKinds: ["introduced_clipping", "increased_hum_proxy"],
+      },
+    },
+    {
+      caseId: "compare_reduce_clicks_direct_evidence",
+      family: "first_prompt_family",
+      prompt: "reduce clicks",
+      description: "Click cleanup scored from direct click detector evidence.",
+      fixtures: {
+        sourceFixtureId: "fixture_phase1_request_cycle_clicks_source",
+        baselineFixtureId: "fixture_phase1_request_cycle_clicks_source",
+        candidateFixtureId: "fixture_phase1_request_cycle_clicks_source",
+      },
+      compareOptions: createCompareOptions({
+        baselineVersionId: "ver_suite_08_base",
+        candidateVersionId: "ver_suite_08_cand",
+        baseline: {
+          integratedLufs: -16.2,
+          truePeakDbtp: -1.7,
+          crestFactorDb: 10.3,
+          transientDensity: 1.94,
+          lowBandDb: -15.8,
+          midBandDb: -11.8,
+          highBandDb: -10.5,
+          spectralCentroidHz: 2410,
+          stereoWidth: 0.5,
+          stereoCorrelation: 0.5,
+          noiseFloorDbfs: -63.3,
+          clippingDetected: false,
+          clippedSampleCount: 96,
+          clickDetected: true,
+          clickCount: 10,
+          clickRatePerSecond: 5.5,
+        },
+        candidate: {
+          integratedLufs: -16.3,
+          truePeakDbtp: -1.8,
+          crestFactorDb: 10.1,
+          transientDensity: 1.87,
+          lowBandDb: -15.9,
+          midBandDb: -11.8,
+          highBandDb: -10.6,
+          spectralCentroidHz: 2400,
+          stereoWidth: 0.5,
+          stereoCorrelation: 0.5,
+          noiseFloorDbfs: -63.5,
+          clippingDetected: false,
+          clippedSampleCount: 8,
+          clickDetected: false,
+          clickCount: 0,
+          clickRatePerSecond: 0,
+        },
+        prompt: "reduce clicks",
+        goals: ["reduce clicks"],
+      }),
+      expectation: {
+        goalStatuses: {
+          "reduce clicks": "met",
+        },
+        forbiddenRegressionKinds: ["introduced_clipping", "increased_click_proxy", "lost_punch"],
+      },
+    },
+    {
+      caseId: "compare_reduce_clicks_fallback_proxy",
+      family: "first_prompt_family",
+      prompt: "reduce clicks",
+      description: "Click cleanup fallback when direct click detector evidence is unavailable.",
+      fixtures: {
+        sourceFixtureId: "fixture_phase1_request_cycle_clicks_source",
+        baselineFixtureId: "fixture_phase1_request_cycle_clicks_source",
+        candidateFixtureId: "fixture_phase1_request_cycle_clicks_source",
+      },
+      compareOptions: createCompareOptions({
+        baselineVersionId: "ver_suite_09_base",
+        candidateVersionId: "ver_suite_09_cand",
+        baseline: {
+          integratedLufs: -16.2,
+          truePeakDbtp: -1.8,
+          crestFactorDb: 10.2,
+          transientDensity: 1.92,
+          lowBandDb: -15.8,
+          midBandDb: -11.7,
+          highBandDb: -10.5,
+          spectralCentroidHz: 2410,
+          stereoWidth: 0.5,
+          stereoCorrelation: 0.5,
+          noiseFloorDbfs: -63.2,
+          clippingDetected: false,
+          clippedSampleCount: 96,
+        },
+        candidate: {
+          integratedLufs: -16.3,
+          truePeakDbtp: -1.9,
+          crestFactorDb: 10.1,
+          transientDensity: 1.86,
+          lowBandDb: -15.9,
+          midBandDb: -11.8,
+          highBandDb: -10.6,
+          spectralCentroidHz: 2400,
+          stereoWidth: 0.5,
+          stereoCorrelation: 0.5,
+          noiseFloorDbfs: -63.4,
+          clippingDetected: false,
+          clippedSampleCount: 10,
+        },
+        prompt: "reduce clicks",
+        goals: ["reduce clicks"],
+      }),
+      expectation: {
+        goalStatuses: {
+          "reduce clicks": "mostly_met",
+        },
+        forbiddenRegressionKinds: ["introduced_clipping", "increased_click_proxy", "lost_punch"],
       },
     },
   ],
@@ -608,6 +827,14 @@ interface AnalysisValues {
   clippingDetected: boolean;
   headroomDb?: number;
   dynamicRangeDb?: number;
+  clippedSampleCount?: number;
+  humDetected?: boolean;
+  humLevelDbfs?: number;
+  humFundamentalHz?: number;
+  humHarmonicCount?: number;
+  clickDetected?: boolean;
+  clickCount?: number;
+  clickRatePerSecond?: number;
 }
 
 interface CreateCompareOptionsInput {
@@ -717,6 +944,22 @@ function createAnalysisReport(
       artifacts: {
         clipping_detected: values.clippingDetected,
         noise_floor_dbfs: values.noiseFloorDbfs,
+        ...(values.clippedSampleCount === undefined
+          ? {}
+          : { clipped_sample_count: values.clippedSampleCount }),
+        ...(values.humDetected === undefined ? {} : { hum_detected: values.humDetected }),
+        ...(values.humLevelDbfs === undefined ? {} : { hum_level_dbfs: values.humLevelDbfs }),
+        ...(values.humFundamentalHz === undefined
+          ? {}
+          : { hum_fundamental_hz: values.humFundamentalHz }),
+        ...(values.humHarmonicCount === undefined
+          ? {}
+          : { hum_harmonic_count: values.humHarmonicCount }),
+        ...(values.clickDetected === undefined ? {} : { click_detected: values.clickDetected }),
+        ...(values.clickCount === undefined ? {} : { click_count: values.clickCount }),
+        ...(values.clickRatePerSecond === undefined
+          ? {}
+          : { click_rate_per_second: values.clickRatePerSecond }),
       },
     },
   };

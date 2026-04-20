@@ -117,6 +117,8 @@ The current request-cycle benchmark corpus is intentionally small. It covers sta
 
 For hum and click cleanup prompts, benchmark outcome checks should prefer direct `AnalysisReport.artifacts` signals such as `hum_detected`, `hum_level_dbfs`, `click_detected`, and `click_count`. Low-band, noise-floor, and clipped-sample checks remain conservative fallback coverage rather than the primary success signal.
 
+The compare-only corpus now also includes isolated hum and click cases for both direct-artifact and fallback scoring paths. Use those cases when you need to debug compare behavior without involving planning or orchestration.
+
 ## Current Capability-Expansion Testing Expectations
 
 Current capability-expansion work should be held to a stricter test standard than the initial Phase 1 slice.
