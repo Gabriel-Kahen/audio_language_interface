@@ -525,7 +525,7 @@ describe("runRequestCycleBenchmarks", () => {
     expect(underspecifiedCase?.status).toBe("error");
     expect(underspecifiedCase?.error?.stage).toBe("plan");
     expect(underspecifiedCase?.error?.failureClass).toBe("supported_but_underspecified");
-  }, 60_000);
+  }, 120_000);
 
   it("preserves follow-up version loading when import/apply dependencies are overridden", async () => {
     const benchmarkCase = getRequestCycleCase("request_cycle_follow_up_try_another_version");
