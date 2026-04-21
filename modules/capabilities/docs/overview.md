@@ -14,6 +14,8 @@ This module is the formal bridge between the `Audio Runtime` and the `Intent Lay
 - `assertValidRuntimeCapabilityManifest(manifest)`
 - `isValidRuntimeCapabilityManifest(manifest)`
 
+See `docs/api.md` for the current manifest snapshot behavior, lookup guarantees, and validation surface.
+
 ## Dependencies
 
 - `contracts/schemas/runtime-capability-manifest.md`

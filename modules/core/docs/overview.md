@@ -44,6 +44,8 @@ The package exports five groups of functionality from `src/index.ts`:
 - `isOk(result)` and `isErr(result)` narrow `Result<TValue, TError>`.
 - `ValidationError`, `ValidationIssue`, and `ValidationResult<T>` standardize validator output.
 
+See `docs/api.md` for the exact runtime invariants, helper behavior, and exported shared primitives.
+
 ## Data Model Invariants
 
 The implementation currently enforces these invariants at runtime:

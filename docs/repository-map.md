@@ -56,10 +56,11 @@ The `modules/` directory is intentionally layered:
 - adapters: `tools`, `orchestration`
 - evaluation: `benchmarks`
 
-Each module directory has four responsibilities:
+Each module directory has five documentation and implementation responsibilities:
 
 - `agents.md`: ownership, scope, and module boundary rules.
 - `docs/overview.md`: public surface, dependencies, and test expectations.
+- `docs/api.md`: current exported behavior, guarantees, and implementation-facing limits.
 - `src/`: implementation area for the module.
 - `tests/`: unit tests owned by the module.
 

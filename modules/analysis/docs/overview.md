@@ -19,6 +19,8 @@ This module is currently a deterministic baseline analyzer for materialized WAV 
 - `assertValidAnalysisReport(report)` and `isValidAnalysisReport(report)` for contract checks
 - exported contract-aligned types from `src/types.ts`
 
+See `docs/api.md` for the concrete callable behavior, validation helpers, and current assumptions behind each exported entrypoint.
+
 ## Entry point
 
 Import from the published package name:

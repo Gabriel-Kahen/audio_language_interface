@@ -14,6 +14,8 @@ The current implementation is a conservative, rule-based mapper from `AnalysisRe
 - `assertValidSemanticProfile(profile)` and `isValidSemanticProfile(profile)` for contract checks
 - exported descriptor taxonomy constants from `src/descriptor-taxonomy.ts`
 
+See `docs/api.md` for the concrete profile-building behavior, validation helpers, and taxonomy exports.
+
 ## Implemented source files
 
 - `src/build-semantic-profile.ts`: top-level semantic entrypoint

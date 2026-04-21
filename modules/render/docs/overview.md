@@ -15,6 +15,8 @@ This module is part of the audio runtime layer.
 - `resolveRenderOutputPath(options)`: resolve and validate a workspace-local output path
 - `assembleRenderArtifact(options)`: construct a contract-aligned `RenderArtifact`
 
+See `docs/api.md` for the detailed render behavior, metadata validation rules, and current error surface.
+
 ## Suggested initial source files
 
 - `src/render-preview.ts`: fast preview rendering

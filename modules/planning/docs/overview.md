@@ -14,6 +14,8 @@ The initial implementation is a deterministic baseline planner. It uses conserva
 - `planEdits({ userRequest, audioVersion, analysisReport, semanticProfile, ... }) => EditPlan`
 - `assertValidEditPlan(plan)` and `isValidEditPlan(plan)` for contract checks
 
+See `docs/api.md` for the current failure surface, planner entrypoint behavior, and exported helper types.
+
 ## Suggested initial source files
 
 - `src/parse-request.ts`: request normalization into planner-friendly intent

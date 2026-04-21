@@ -27,6 +27,8 @@ The benchmark scoring/reporting layer now supports two evaluation shapes:
   - outcome verification
   - regression avoidance
 
+See `docs/api.md` for the exported benchmark runners, fixture helpers, scoring helpers, and report-formatting behavior.
+
 The request-cycle benchmark runner can now exercise either:
 
 - the orchestration module surface directly
