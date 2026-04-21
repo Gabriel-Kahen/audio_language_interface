@@ -81,6 +81,7 @@ The current repository state includes expanded coverage around:
 - conservative timing behavior (`trim_silence`, `time_stretch`, `pitch_shift`)
 - measurement-aware normalization and target-scope execution behavior
 - repeated request-cycle behavior, including alternate-version branching and revert-style follow-ups
+- tool-surface request-cycle execution, including explicit `SessionGraph` and `available_versions` handling for follow-up requests
 - compare-layer regression logic and structured verification provenance
 - fixture-backed cleanup benchmark corpus integrity
 - benchmark scoring/reporting for the new request-cycle evaluation layer

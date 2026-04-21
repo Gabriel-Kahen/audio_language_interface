@@ -150,12 +150,14 @@ The baseline planner now supports a conservative timing-edit slice for explicit 
 - `apply_edit_plan`
 - `render_preview`
 - `compare_versions`
+- `run_request_cycle`
 
 Current tool-surface caveats:
 
 - `apply_edit_plan` supports the published runtime capability surface, including first-cohort `time_range` execution for selected duration-preserving Layer 1 operations, while still validating explicit runtime prerequisites such as stereo-only processing where applicable
 - `plan_edits` only chooses operations marked as `planner_supported` in the runtime capability manifest
 - `compare_versions` returns `evaluation_basis` so callers can see whether structured verification or fallback goal alignment is authoritative
+- `run_request_cycle` exposes the full orchestration editing loop, including session-aware follow-up behavior, while still requiring callers to provide explicit `session_graph` and `available_versions` inputs for historical execution
 - explicit technical callers can still submit runtime-only Layer 1 effect steps when they stay inside the published contract surface
 
 ## Important Current Limitations
@@ -165,7 +167,7 @@ Current tool-surface caveats:
 - analysis reads the whole file into memory
 - semantic descriptor coverage is intentionally small and conservative
 - planning fails on unsupported requests instead of trying to generalize broadly
-- iterative orchestration now supports `more`, `less`, `undo`, `revert to previous version`, and `try another version` follow-up behavior; revert-style and alternate-version flows still rely on explicit version materialization through orchestration dependencies for safe historical execution
+- iterative editing now supports `more`, `less`, `undo`, `revert to previous version`, and `try another version` through both orchestration and the published `run_request_cycle` tool; those follow-up flows still require explicit historical version materialization rather than hidden adapter-managed state
 - the baseline planner still does not choose channel utilities, broader stereo routing, or Layer 1 runtime effects automatically
 - render preview is MP3-only
 - final render export is limited to WAV and FLAC

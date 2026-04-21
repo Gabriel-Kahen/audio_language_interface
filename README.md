@@ -60,6 +60,12 @@ On top of the one-shot loop, orchestration now supports early iterative follow-u
 
 Those follow-ups stay explicit: orchestration resolves them against recorded session history and version provenance instead of inventing hidden state.
 
+The published tool surface now also exposes a first-class orchestration entrypoint for explicit request-cycle execution:
+
+- `run_request_cycle` supports both initial import-driven runs and session-aware follow-up requests
+- follow-up calls stay explicit at the adapter boundary by requiring the caller to provide the current `SessionGraph`
+- revert-style and alternate-version flows also require any needed historical `AudioVersion` artifacts to be materialized explicitly instead of being resolved from hidden tool-layer state
+
 The current cleanup slice is now analysis-backed instead of purely prompt-driven:
 
 - `analysis` emits explicit `hum` and `click` annotations plus file-level artifact fields such as `hum_detected`, `hum_fundamental_hz`, `click_detected`, and `click_count`
@@ -218,6 +224,7 @@ Published tool entrypoints:
 - `apply_edit_plan`
 - `render_preview`
 - `compare_versions`
+- `run_request_cycle`
 
 The tool layer is intentionally small. It exists to expose stable contracts and capability discovery to external callers, not to replace the underlying module boundaries.
 

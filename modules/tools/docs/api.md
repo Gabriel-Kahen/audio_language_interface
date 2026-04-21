@@ -123,6 +123,62 @@ Returns the preview `artifact` and normalized FFmpeg `command`. Artifact warning
 
 Returns a `comparison_report`.
 
+### `run_request_cycle`
+
+- backing module: `orchestration`
+- required arguments:
+  - `user_request`
+  - `input`
+- optional arguments:
+  - `render_kind`
+  - `revision`
+
+`arguments.input` supports two explicit shapes:
+
+- import input:
+  - `kind = "import"`
+  - required: `input_path`
+  - optional: `import_options`
+- existing input:
+  - `kind = "existing"`
+  - required:
+    - `asset`
+    - `audio_version`
+    - `session_graph`
+  - optional:
+    - `available_versions`
+
+Returns the completed request-cycle artifact set:
+
+- `result_kind`
+- `asset`
+- `input_version`
+- `input_analysis`
+- `follow_up_resolution`
+- optional `semantic_profile`
+- optional `edit_plan`
+- `output_version`
+- optional `transform_record`
+- optional `commands`
+- `output_analysis`
+- `version_comparison_report`
+- `baseline_render`
+- `candidate_render`
+- `render_comparison_report`
+- `session_graph`
+- optional `revision`
+- optional `iterations`
+- `trace`
+
+Important follow-up behavior:
+
+- `run_request_cycle` exposes session-aware follow-up requests through the published tool surface, including `more`, `less`, `undo`, `revert to previous version`, and `try another version`
+- the tool remains explicit and stateless: it does not maintain hidden session state or resolve historical versions by id
+- callers using `input.kind = "existing"` must provide the current `session_graph`
+- revert-style and alternate-version flows must also provide any required historical `AudioVersion` artifacts in `arguments.input.available_versions`
+
+If orchestration cannot resolve a follow-up safely because required historical versions were not provided, the tool returns `invalid_arguments`, typically pointing at `arguments.input.available_versions`.
+
 ## Validation behavior
 
 - `validateToolRequestEnvelope` validates only the shared `ToolRequest` contract.

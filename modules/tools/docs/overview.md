@@ -26,6 +26,7 @@ The current implementation provides a registry-backed execution layer with schem
 - `apply_edit_plan` -> `modules/transforms`
 - `render_preview` -> `modules/render`
 - `compare_versions` -> `modules/compare`
+- `run_request_cycle` -> `modules/orchestration`
 
 `apply_edit_plan` exposes the currently implemented runtime operation set declared by the published capability manifest.
 
@@ -45,6 +46,7 @@ The current implementation provides a registry-backed execution layer with schem
 - `src/handlers/apply-edit-plan.ts`: transform-facing tool handler
 - `src/handlers/render-preview.ts`: render-facing tool handler
 - `src/handlers/compare-versions.ts`: compare-facing tool handler
+- `src/handlers/run-request-cycle.ts`: orchestration-facing request-cycle handler
 - `src/index.ts`: public exports only
 
 ## Dependencies
@@ -82,5 +84,6 @@ See `docs/api.md` for the concrete callable tool surface and payload conventions
 - `apply_edit_plan` stays schema-aligned with the published `EditPlan` contract and forwards supported runtime operations directly to `modules/transforms`.
 - `apply_edit_plan` preflights published target-scope support from the runtime capability manifest and still validates runtime prerequisites such as stereo-only processing where applicable.
 - `apply_edit_plan` can defer peak or loudness probing for `normalize` until runtime execution while still requiring the rest of the step to stay inside the published contract surface.
-- The tool layer does not maintain session state or resolve artifacts by id.
+- `run_request_cycle` exposes orchestration-backed iterative follow-up behavior without introducing hidden tool-layer session state.
+- The tool layer still does not maintain session state or resolve artifacts by id. Session-aware follow-up calls must provide an explicit `SessionGraph` plus any materialized `available_versions` needed for historical lookups.
 - Tool-specific argument validation happens inside handlers rather than through one centralized schema per tool.

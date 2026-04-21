@@ -1,0 +1,219 @@
+{
+  "schema_version": "1.0.0",
+  "request_id": "toolreq_01J0RUNREQUESTCYCLE00000001",
+  "tool_name": "run_request_cycle",
+  "requested_at": "2026-04-21T18:00:00Z",
+  "session_id": "session_01HZX8J7J2V3M4N5P6Q7R8S9T0",
+  "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+  "version_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
+  "caller": "agent-a-follow-up-cycle",
+  "arguments": {
+    "user_request": "Undo.",
+    "render_kind": "preview",
+    "revision": {
+      "enabled": false
+    },
+    "input": {
+      "kind": "existing",
+      "asset": {
+        "schema_version": "1.0.0",
+        "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+        "display_name": "snare_loop.wav",
+        "source": {
+          "kind": "file",
+          "uri": "fixtures/audio/snare_loop.wav",
+          "imported_at": "2026-04-14T20:20:00Z",
+          "checksum_sha256": "b6d3b14f8bcb44288d8d0276ef5ab6f05a275fdb12c889fcd4a3e6158d2f3e88"
+        },
+        "media": {
+          "container_format": "wav",
+          "codec": "pcm_s16le",
+          "sample_rate_hz": 44100,
+          "channels": 2,
+          "bit_depth": 16,
+          "channel_layout": "stereo",
+          "duration_seconds": 4
+        },
+        "tags": ["drum", "loop"]
+      },
+      "audio_version": {
+        "schema_version": "1.0.0",
+        "version_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
+        "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+        "parent_version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+        "lineage": {
+          "created_at": "2026-04-14T20:20:18Z",
+          "created_by": "modules/transforms",
+          "reason": "applied edit plan"
+        },
+        "audio": {
+          "storage_ref": "storage/audio/ver_01HZX8G7J2V3M4N5P6Q7R8S9T0.wav",
+          "sample_rate_hz": 44100,
+          "channels": 2,
+          "duration_seconds": 4,
+          "frame_count": 176400,
+          "channel_layout": "stereo"
+        },
+        "state": {
+          "is_original": false,
+          "is_preview": false
+        }
+      },
+      "session_graph": {
+        "schema_version": "1.0.0",
+        "session_id": "session_01HZX8J7J2V3M4N5P6Q7R8S9T0",
+        "created_at": "2026-04-14T20:20:00Z",
+        "updated_at": "2026-04-14T20:20:22Z",
+        "nodes": [
+          {
+            "node_id": "node_asset_1",
+            "node_type": "audio_asset",
+            "ref_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+            "created_at": "2026-04-14T20:20:00Z"
+          },
+          {
+            "node_id": "node_version_1",
+            "node_type": "audio_version",
+            "ref_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+            "created_at": "2026-04-14T20:20:05Z"
+          },
+          {
+            "node_id": "node_plan_1",
+            "node_type": "edit_plan",
+            "ref_id": "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0",
+            "created_at": "2026-04-14T20:20:15Z"
+          },
+          {
+            "node_id": "node_transform_1",
+            "node_type": "transform_record",
+            "ref_id": "transform_01HZX8F7J2V3M4N5P6Q7R8S9T0",
+            "created_at": "2026-04-14T20:20:18Z"
+          },
+          {
+            "node_id": "node_version_2",
+            "node_type": "audio_version",
+            "ref_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
+            "created_at": "2026-04-14T20:20:18Z"
+          }
+        ],
+        "edges": [
+          {
+            "from_node_id": "node_asset_1",
+            "to_node_id": "node_version_1",
+            "relation": "has_version"
+          },
+          {
+            "from_node_id": "node_version_1",
+            "to_node_id": "node_plan_1",
+            "relation": "planned_from"
+          },
+          {
+            "from_node_id": "node_plan_1",
+            "to_node_id": "node_transform_1",
+            "relation": "executed_as"
+          },
+          {
+            "from_node_id": "node_transform_1",
+            "to_node_id": "node_version_2",
+            "relation": "produced"
+          }
+        ],
+        "active_refs": {
+          "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+          "version_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0"
+        },
+        "metadata": {
+          "branches": [],
+          "snapshots": [],
+          "active_ref_history": [
+            {
+              "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+              "version_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
+              "changed_at": "2026-04-14T20:20:22Z",
+              "reason": "record_audio_version"
+            }
+          ],
+          "active_ref_history_index": 0,
+          "plan_requests": {
+            "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0": "Make this loop a little darker and less harsh, but keep the punch."
+          },
+          "provenance": {
+            "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0": {
+              "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0"
+            },
+            "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0": {
+              "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+              "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0"
+            },
+            "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0": {
+              "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+              "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+              "plan_id": "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0"
+            },
+            "transform_01HZX8F7J2V3M4N5P6Q7R8S9T0": {
+              "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+              "input_version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+              "output_version_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
+              "plan_id": "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0"
+            },
+            "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0": {
+              "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+              "version_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
+              "parent_version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+              "plan_id": "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0",
+              "transform_record_id": "transform_01HZX8F7J2V3M4N5P6Q7R8S9T0"
+            }
+          },
+          "label": "snare darkening session"
+        }
+      },
+      "available_versions": [
+        {
+          "schema_version": "1.0.0",
+          "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+          "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+          "lineage": {
+            "created_at": "2026-04-14T20:20:05Z",
+            "created_by": "modules/io",
+            "reason": "initial import"
+          },
+          "audio": {
+            "storage_ref": "storage/audio/ver_01HZX8B7J2V3M4N5P6Q7R8S9T0.wav",
+            "sample_rate_hz": 44100,
+            "channels": 2,
+            "duration_seconds": 4,
+            "frame_count": 176400,
+            "channel_layout": "stereo"
+          },
+          "state": {
+            "is_original": true,
+            "is_preview": false
+          }
+        },
+        {
+          "schema_version": "1.0.0",
+          "version_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
+          "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+          "parent_version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+          "lineage": {
+            "created_at": "2026-04-14T20:20:18Z",
+            "created_by": "modules/transforms",
+            "reason": "applied edit plan"
+          },
+          "audio": {
+            "storage_ref": "storage/audio/ver_01HZX8G7J2V3M4N5P6Q7R8S9T0.wav",
+            "sample_rate_hz": 44100,
+            "channels": 2,
+            "duration_seconds": 4,
+            "frame_count": 176400,
+            "channel_layout": "stereo"
+          },
+          "state": {
+            "is_original": false,
+            "is_preview": false
+          }
+        }
+      ]
+    }
+  }
+}

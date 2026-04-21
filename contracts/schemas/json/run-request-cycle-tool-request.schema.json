@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/run-request-cycle-tool-request.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "tool_name", "arguments", "requested_at"],
+  "properties": {
+    "schema_version": { "$ref": "./common.schema.json#/$defs/schemaVersion" },
+    "request_id": { "$ref": "./common.schema.json#/$defs/requestId" },
+    "tool_name": { "const": "run_request_cycle" },
+    "requested_at": { "$ref": "./common.schema.json#/$defs/isoTimestamp" },
+    "session_id": { "$ref": "./common.schema.json#/$defs/sessionId" },
+    "asset_id": { "$ref": "./common.schema.json#/$defs/assetId" },
+    "version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+    "caller": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+    "arguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["user_request", "input"],
+      "properties": {
+        "user_request": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+        "render_kind": { "$ref": "./common.schema.json#/$defs/renderKind" },
+        "revision": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" }
+          }
+        },
+        "input": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "input_path"],
+              "properties": {
+                "kind": { "const": "import" },
+                "input_path": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                "import_options": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "output_directory": {
+                      "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                    },
+                    "normalization_target": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["container_format", "codec", "sample_rate_hz", "channels"],
+                      "properties": {
+                        "container_format": {
+                          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                        },
+                        "codec": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                        "sample_rate_hz": { "type": "integer", "minimum": 1 },
+                        "channels": { "type": "integer", "minimum": 1 }
+                      }
+                    },
+                    "tags": { "$ref": "./common.schema.json#/$defs/stringArray" },
+                    "notes": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                    "imported_at": { "$ref": "./common.schema.json#/$defs/isoTimestamp" }
+                  }
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "asset", "audio_version", "session_graph"],
+              "properties": {
+                "kind": { "const": "existing" },
+                "asset": { "$ref": "./audio-asset.schema.json" },
+                "audio_version": { "$ref": "./audio-version.schema.json" },
+                "session_graph": { "$ref": "./session-graph.schema.json" },
+                "available_versions": {
+                  "type": "array",
+                  "items": { "$ref": "./audio-version.schema.json" }
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

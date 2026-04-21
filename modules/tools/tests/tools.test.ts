@@ -304,6 +304,11 @@ describe("tools module", () => {
       }),
       expect.objectContaining({ name: "render_preview" }),
       expect.objectContaining({ name: "compare_versions" }),
+      expect.objectContaining({
+        name: "run_request_cycle",
+        backing_module: "orchestration",
+        required_arguments: ["user_request", "input"],
+      }),
     ]);
   });
 
@@ -331,6 +336,7 @@ describe("tools module", () => {
             "apply_edit_plan",
             "render_preview",
             "compare_versions",
+            "run_request_cycle",
           ],
         },
       },

@@ -9,6 +9,6 @@ Each example should:
 - include field-level comments in adjacent documentation when the format allows it,
 - and be updated whenever the contract changes.
 
-Tool-specific success-path examples for the implemented tool set live at the top level beside the canonical artifact examples.
+Tool-specific success-path examples for the implemented tool set live at the top level beside the canonical artifact examples, including orchestration-backed tools such as `run_request_cycle`.
 
 Cross-step example workflow scaffolding lives under `contracts/examples/happy-path/`.

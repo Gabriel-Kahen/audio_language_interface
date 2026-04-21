@@ -27,6 +27,13 @@ The benchmark scoring/reporting layer now supports two evaluation shapes:
   - outcome verification
   - regression avoidance
 
+The request-cycle benchmark runner can now exercise either:
+
+- the orchestration module surface directly
+- the published `run_request_cycle` tool surface
+
+That keeps follow-up editing coverage honest at both the workflow-composition layer and the external adapter boundary.
+
 The current implementation includes a compare-focused cleanup suite for:
 
 - `darker`
@@ -55,6 +62,7 @@ The benchmark cases now carry explicit fixture ids for the shared source loop an
 - depends on the runtime modules being evaluated
 - currently consumes `compareVersions()` and `ComparisonReport` from `modules/compare`
 - consumes `runRequestCycle()` from `modules/orchestration` for end-to-end benchmark execution
+- consumes `executeToolRequest()` from `modules/tools` when request-cycle benchmarks target the published tool surface
 - consumes `fixtures/audio/manifest.json` as the benchmark corpus source of truth for committed fixture ids and provenance
 
 ## Downstream consumers
@@ -80,6 +88,7 @@ The benchmark cases now carry explicit fixture ids for the shared source loop an
 
 - compare-only benchmark scoring is still centered on curated `compareVersions()` inputs for the currently supported cleanup and restoration slice
 - the request-cycle benchmark corpus is intentionally small and currently focuses on stable tonal cleanup, restoration, timing edits, iterative follow-up flows, peak control, and explicit clarification/failure controls
+- tool-surface request-cycle benchmarks still keep session state explicit by materializing `SessionGraph` and `available_versions` inside the benchmark harness rather than relying on hidden adapter persistence
 - request-cycle outcome scoring is only as strong as the current compare/orchestration evidence:
   - planner correctness is inferred from the emitted `EditPlan`
   - outcome verification is inferred from version/render comparison reports and their structured-verification or goal-alignment outputs

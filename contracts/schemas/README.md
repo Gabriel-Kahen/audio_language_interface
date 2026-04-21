@@ -50,6 +50,7 @@ All three should change together when the contract changes.
 - `describe-runtime-capabilities-tool`
 - `render-preview-tool`
 - `compare-versions-tool`
+- `run-request-cycle-tool`
 
 ## Machine-Readable Schemas
 

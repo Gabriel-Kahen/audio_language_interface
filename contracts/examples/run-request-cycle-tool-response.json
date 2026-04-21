@@ -1,0 +1,494 @@
+{
+  "schema_version": "1.0.0",
+  "request_id": "toolreq_01J0RUNREQUESTCYCLE00000001",
+  "tool_name": "run_request_cycle",
+  "status": "ok",
+  "completed_at": "2026-04-21T18:00:06Z",
+  "result": {
+    "result_kind": "reverted",
+    "asset": {
+      "schema_version": "1.0.0",
+      "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+      "display_name": "snare_loop.wav",
+      "source": {
+        "kind": "file",
+        "uri": "fixtures/audio/snare_loop.wav",
+        "imported_at": "2026-04-14T20:20:00Z",
+        "checksum_sha256": "b6d3b14f8bcb44288d8d0276ef5ab6f05a275fdb12c889fcd4a3e6158d2f3e88"
+      },
+      "media": {
+        "container_format": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 44100,
+        "channels": 2,
+        "bit_depth": 16,
+        "channel_layout": "stereo",
+        "duration_seconds": 4
+      },
+      "tags": ["drum", "loop"]
+    },
+    "input_version": {
+      "schema_version": "1.0.0",
+      "version_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
+      "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+      "parent_version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+      "lineage": {
+        "created_at": "2026-04-14T20:20:18Z",
+        "created_by": "modules/transforms",
+        "reason": "applied edit plan"
+      },
+      "audio": {
+        "storage_ref": "storage/audio/ver_01HZX8G7J2V3M4N5P6Q7R8S9T0.wav",
+        "sample_rate_hz": 44100,
+        "channels": 2,
+        "duration_seconds": 4,
+        "frame_count": 176400,
+        "channel_layout": "stereo"
+      },
+      "state": {
+        "is_original": false,
+        "is_preview": false
+      }
+    },
+    "input_analysis": {
+      "schema_version": "1.0.0",
+      "report_id": "analysis_01J0RUNREQUESTCYCLEINPUT0001",
+      "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+      "version_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
+      "generated_at": "2026-04-21T18:00:01Z",
+      "analyzer": {
+        "name": "default-analysis",
+        "version": "0.1.3"
+      },
+      "summary": {
+        "plain_text": "Moderately bright stereo drum loop with slightly reduced upper-mid harshness.",
+        "confidence": 0.83
+      },
+      "measurements": {
+        "levels": {
+          "integrated_lufs": -15.1,
+          "true_peak_dbtp": -1.2
+        },
+        "dynamics": {
+          "crest_factor_db": 10.1,
+          "transient_density_per_second": 2
+        },
+        "spectral_balance": {
+          "low_band_db": -16.5,
+          "mid_band_db": -11.4,
+          "high_band_db": -11.3,
+          "spectral_centroid_hz": 2420
+        },
+        "stereo": {
+          "width": 0.61,
+          "correlation": 0.43
+        },
+        "artifacts": {
+          "clipping_detected": false,
+          "noise_floor_dbfs": -72,
+          "clipped_sample_count": 0,
+          "hum_detected": false,
+          "hum_harmonic_count": 0,
+          "click_detected": false,
+          "click_count": 0,
+          "click_rate_per_second": 0
+        }
+      },
+      "annotations": [],
+      "segments": [
+        {
+          "kind": "loop",
+          "start_seconds": 0,
+          "end_seconds": 4
+        }
+      ],
+      "source_character": {
+        "primary_class": "drum_loop",
+        "pitched": false,
+        "confidence": 0.92
+      }
+    },
+    "follow_up_resolution": {
+      "kind": "revert",
+      "target_version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+      "source": "undo"
+    },
+    "output_version": {
+      "schema_version": "1.0.0",
+      "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+      "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+      "lineage": {
+        "created_at": "2026-04-14T20:20:05Z",
+        "created_by": "modules/io",
+        "reason": "initial import"
+      },
+      "audio": {
+        "storage_ref": "storage/audio/ver_01HZX8B7J2V3M4N5P6Q7R8S9T0.wav",
+        "sample_rate_hz": 44100,
+        "channels": 2,
+        "duration_seconds": 4,
+        "frame_count": 176400,
+        "channel_layout": "stereo"
+      },
+      "state": {
+        "is_original": true,
+        "is_preview": false
+      }
+    },
+    "output_analysis": {
+      "schema_version": "1.0.0",
+      "report_id": "analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0",
+      "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+      "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+      "generated_at": "2026-04-14T20:20:10Z",
+      "analyzer": {
+        "name": "default-analysis",
+        "version": "0.1.3"
+      },
+      "summary": {
+        "plain_text": "Moderately bright stereo drum loop with strong transient attacks and a mild upper-mid harshness region around 3.5 kHz.",
+        "confidence": 0.85
+      },
+      "measurements": {
+        "levels": {
+          "integrated_lufs": -14.8,
+          "true_peak_dbtp": -1.1
+        },
+        "dynamics": {
+          "crest_factor_db": 10.3,
+          "transient_density_per_second": 2
+        },
+        "spectral_balance": {
+          "low_band_db": -16.4,
+          "mid_band_db": -11.2,
+          "high_band_db": -9.8,
+          "spectral_centroid_hz": 2650
+        },
+        "stereo": {
+          "width": 0.62,
+          "correlation": 0.41
+        },
+        "artifacts": {
+          "clipping_detected": false,
+          "noise_floor_dbfs": -72,
+          "clipped_sample_count": 0,
+          "hum_detected": false,
+          "hum_harmonic_count": 0,
+          "click_detected": false,
+          "click_count": 0,
+          "click_rate_per_second": 0
+        }
+      },
+      "annotations": [
+        {
+          "kind": "harshness",
+          "start_seconds": 0,
+          "end_seconds": 4,
+          "bands_hz": [3000, 4500],
+          "severity": 0.48,
+          "evidence": "persistent upper-mid energy ridge"
+        }
+      ],
+      "segments": [
+        {
+          "kind": "loop",
+          "start_seconds": 0,
+          "end_seconds": 4
+        }
+      ],
+      "source_character": {
+        "primary_class": "drum_loop",
+        "pitched": false,
+        "confidence": 0.93
+      }
+    },
+    "version_comparison_report": {
+      "schema_version": "1.0.0",
+      "comparison_id": "compare_01HZX8I7J2V3M4N5P6Q7R8S9T0",
+      "baseline": {
+        "ref_type": "version",
+        "ref_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0"
+      },
+      "candidate": {
+        "ref_type": "version",
+        "ref_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0"
+      },
+      "generated_at": "2026-04-21T18:00:05Z",
+      "metric_deltas": [
+        {
+          "metric": "spectral_balance.high_band_db",
+          "direction": "increased",
+          "delta": 1.5
+        }
+      ],
+      "semantic_deltas": [
+        {
+          "label": "less_dark",
+          "confidence": 0.71,
+          "evidence": "reverting restored the brighter baseline spectral balance"
+        }
+      ],
+      "regressions": [],
+      "goal_alignment": [
+        {
+          "goal": "undo the most recent edit",
+          "status": "met"
+        }
+      ],
+      "evaluation_basis": {
+        "metric_source": "analysis_reports",
+        "goal_evaluation_source": "heuristic_goal_alignment",
+        "authoritative_signal": "goal_alignment"
+      },
+      "summary": {
+        "plain_text": "The cycle reverted to the previously active version without introducing new regression warnings."
+      }
+    },
+    "baseline_render": {
+      "schema_version": "1.0.0",
+      "render_id": "render_01J0RUNREQUESTCYCLEBASELINE0001",
+      "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+      "version_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
+      "kind": "preview",
+      "created_at": "2026-04-21T18:00:05Z",
+      "output": {
+        "path": "renders/render_01J0RUNREQUESTCYCLEBASELINE0001.mp3",
+        "format": "mp3",
+        "codec": "mp3",
+        "sample_rate_hz": 44100,
+        "channels": 2,
+        "duration_seconds": 4,
+        "file_size_bytes": 48211
+      },
+      "loudness_summary": {
+        "integrated_lufs": -15.1,
+        "true_peak_dbtp": -1.2
+      },
+      "warnings": []
+    },
+    "candidate_render": {
+      "schema_version": "1.0.0",
+      "render_id": "render_01J0RUNREQUESTCYCLECANDIDATE001",
+      "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+      "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+      "kind": "preview",
+      "created_at": "2026-04-21T18:00:06Z",
+      "output": {
+        "path": "renders/render_01J0RUNREQUESTCYCLECANDIDATE001.mp3",
+        "format": "mp3",
+        "codec": "mp3",
+        "sample_rate_hz": 44100,
+        "channels": 2,
+        "duration_seconds": 4,
+        "file_size_bytes": 48410
+      },
+      "loudness_summary": {
+        "integrated_lufs": -14.8,
+        "true_peak_dbtp": -1.1
+      },
+      "warnings": []
+    },
+    "render_comparison_report": {
+      "schema_version": "1.0.0",
+      "comparison_id": "compare_01J0RUNREQUESTCYCLERENDER0001",
+      "baseline": {
+        "ref_type": "render",
+        "ref_id": "render_01J0RUNREQUESTCYCLEBASELINE0001"
+      },
+      "candidate": {
+        "ref_type": "render",
+        "ref_id": "render_01J0RUNREQUESTCYCLECANDIDATE001"
+      },
+      "generated_at": "2026-04-21T18:00:06Z",
+      "metric_deltas": [
+        {
+          "metric": "spectral_balance.high_band_db",
+          "direction": "increased",
+          "delta": 1.5
+        }
+      ],
+      "semantic_deltas": [
+        {
+          "label": "less_dark",
+          "confidence": 0.71,
+          "evidence": "reverting restored the brighter baseline spectral balance"
+        }
+      ],
+      "regressions": [],
+      "goal_alignment": [
+        {
+          "goal": "undo the most recent edit",
+          "status": "met"
+        }
+      ],
+      "evaluation_basis": {
+        "metric_source": "render_artifacts",
+        "goal_evaluation_source": "heuristic_goal_alignment",
+        "authoritative_signal": "goal_alignment"
+      },
+      "summary": {
+        "plain_text": "The render comparison confirms the session returned to the previously active version."
+      }
+    },
+    "session_graph": {
+      "schema_version": "1.0.0",
+      "session_id": "session_01HZX8J7J2V3M4N5P6Q7R8S9T0",
+      "created_at": "2026-04-14T20:20:00Z",
+      "updated_at": "2026-04-21T18:00:06Z",
+      "nodes": [
+        {
+          "node_id": "node_asset_1",
+          "node_type": "audio_asset",
+          "ref_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+          "created_at": "2026-04-14T20:20:00Z"
+        },
+        {
+          "node_id": "node_version_1",
+          "node_type": "audio_version",
+          "ref_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+          "created_at": "2026-04-14T20:20:05Z"
+        },
+        {
+          "node_id": "node_plan_1",
+          "node_type": "edit_plan",
+          "ref_id": "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0",
+          "created_at": "2026-04-14T20:20:15Z"
+        },
+        {
+          "node_id": "node_transform_1",
+          "node_type": "transform_record",
+          "ref_id": "transform_01HZX8F7J2V3M4N5P6Q7R8S9T0",
+          "created_at": "2026-04-14T20:20:18Z"
+        },
+        {
+          "node_id": "node_version_2",
+          "node_type": "audio_version",
+          "ref_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
+          "created_at": "2026-04-14T20:20:18Z"
+        }
+      ],
+      "edges": [
+        {
+          "from_node_id": "node_asset_1",
+          "to_node_id": "node_version_1",
+          "relation": "has_version"
+        },
+        {
+          "from_node_id": "node_version_1",
+          "to_node_id": "node_plan_1",
+          "relation": "planned_from"
+        },
+        {
+          "from_node_id": "node_plan_1",
+          "to_node_id": "node_transform_1",
+          "relation": "executed_as"
+        },
+        {
+          "from_node_id": "node_transform_1",
+          "to_node_id": "node_version_2",
+          "relation": "produced"
+        }
+      ],
+      "active_refs": {
+        "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+        "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0"
+      },
+      "metadata": {
+        "branches": [],
+        "snapshots": [],
+        "active_ref_history": [
+          {
+            "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+            "version_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
+            "changed_at": "2026-04-14T20:20:22Z",
+            "reason": "record_audio_version"
+          },
+          {
+            "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+            "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+            "changed_at": "2026-04-21T18:00:06Z",
+            "reason": "revert_to_version"
+          }
+        ],
+        "active_ref_history_index": 1,
+        "plan_requests": {
+          "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0": "Make this loop a little darker and less harsh, but keep the punch."
+        },
+        "provenance": {
+          "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0": {
+            "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0"
+          },
+          "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0": {
+            "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+            "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0"
+          },
+          "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0": {
+            "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+            "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+            "plan_id": "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0"
+          },
+          "transform_01HZX8F7J2V3M4N5P6Q7R8S9T0": {
+            "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+            "input_version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+            "output_version_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
+            "plan_id": "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0"
+          },
+          "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0": {
+            "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+            "version_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
+            "parent_version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+            "plan_id": "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0",
+            "transform_record_id": "transform_01HZX8F7J2V3M4N5P6Q7R8S9T0"
+          }
+        },
+        "label": "snare darkening session"
+      }
+    },
+    "trace": [
+      {
+        "stage": "resolve_follow_up",
+        "status": "ok",
+        "started_at": "2026-04-21T18:00:00Z",
+        "completed_at": "2026-04-21T18:00:00Z",
+        "attempts": 1
+      },
+      {
+        "stage": "load_revert_target",
+        "status": "ok",
+        "started_at": "2026-04-21T18:00:00Z",
+        "completed_at": "2026-04-21T18:00:01Z",
+        "attempts": 1
+      },
+      {
+        "stage": "analyze_output",
+        "status": "ok",
+        "started_at": "2026-04-21T18:00:01Z",
+        "completed_at": "2026-04-21T18:00:02Z",
+        "attempts": 1
+      },
+      {
+        "stage": "render_baseline",
+        "status": "ok",
+        "started_at": "2026-04-21T18:00:02Z",
+        "completed_at": "2026-04-21T18:00:03Z",
+        "attempts": 1
+      },
+      {
+        "stage": "render_candidate",
+        "status": "ok",
+        "started_at": "2026-04-21T18:00:03Z",
+        "completed_at": "2026-04-21T18:00:04Z",
+        "attempts": 1
+      },
+      {
+        "stage": "compare",
+        "status": "ok",
+        "started_at": "2026-04-21T18:00:05Z",
+        "completed_at": "2026-04-21T18:00:06Z",
+        "attempts": 1,
+        "message": "render comparison"
+      }
+    ]
+  },
+  "warnings": []
+}

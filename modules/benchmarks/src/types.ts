@@ -11,6 +11,7 @@ import type {
   RequestCycleResult,
   RunRequestCycleOptions,
 } from "@audio-language-interface/orchestration";
+import type { ExecuteToolRequestOptions } from "@audio-language-interface/tools";
 
 export interface AudioFixtureFormat {
   container: string;
@@ -118,6 +119,8 @@ export type RequestCycleBenchmarkCategory =
   | "planner_correctness"
   | "outcome_verification"
   | "regression_avoidance";
+
+export type RequestCycleBenchmarkExecutionSurface = "orchestration" | "tool";
 
 export interface RequestCycleBenchmarkPlannerExpectation {
   expected_result_kind?: "applied" | "reverted";
@@ -227,6 +230,7 @@ export interface RequestCycleBenchmarkCaseResult {
   startedAt: string;
   finishedAt: string;
   durationMs: number;
+  executionSurface: RequestCycleBenchmarkExecutionSurface;
   status: "ok" | "error";
   artifacts: RequestCycleBenchmarkArtifacts;
   expectation: RequestCycleBenchmarkCase["expectation"];
@@ -257,6 +261,7 @@ export interface RequestCycleBenchmarkRunResult {
 
 export interface RunRequestCycleBenchmarkCaseOptions {
   dependencies?: Partial<OrchestrationDependencies>;
+  toolRuntime?: ExecuteToolRequestOptions["runtime"];
   fixtureManifest?: AudioFixtureManifest;
   fixtureManifestPath?: string;
   analysisOptions?: RunRequestCycleOptions["analysisOptions"];
@@ -264,6 +269,7 @@ export interface RunRequestCycleBenchmarkCaseOptions {
   revision?: RunRequestCycleOptions["revision"];
   sessionId?: string;
   branchId?: string;
+  executionSurface?: RequestCycleBenchmarkExecutionSurface;
   importedAt?: string;
   importOptions?: Omit<ImportAudioOptions, "workspaceRoot">;
   workspaceRoot?: string;

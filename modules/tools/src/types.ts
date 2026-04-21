@@ -52,7 +52,8 @@ export interface ToolDescriptor {
     | "planning"
     | "transforms"
     | "render"
-    | "compare";
+    | "compare"
+    | "orchestration";
   required_arguments: readonly string[];
   optional_arguments: readonly string[];
   error_codes: readonly ToolErrorCode[];

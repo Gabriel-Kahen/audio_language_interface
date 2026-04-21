@@ -7,6 +7,7 @@ import {
   assertValidComparisonReport,
   type ComparisonReport,
 } from "@audio-language-interface/compare";
+import { assertValidSessionGraph, type SessionGraph } from "@audio-language-interface/history";
 import {
   type AudioAsset,
   type AudioVersion,
@@ -35,6 +36,9 @@ import renderArtifactSchema from "../../../contracts/schemas/json/render-artifac
   type: "json",
 };
 import runtimeCapabilityManifestSchema from "../../../contracts/schemas/json/runtime-capability-manifest.schema.json" with {
+  type: "json",
+};
+import sessionGraphSchema from "../../../contracts/schemas/json/session-graph.schema.json" with {
   type: "json",
 };
 import toolRequestSchema from "../../../contracts/schemas/json/tool-request.schema.json" with {
@@ -79,6 +83,7 @@ const renderArtifactValidator = ajv.compile<RenderArtifact>(renderArtifactSchema
 const runtimeCapabilityManifestValidator = ajv.compile<RuntimeCapabilityManifest>(
   runtimeCapabilityManifestSchema,
 );
+const sessionGraphValidator = ajv.compile<SessionGraph>(sessionGraphSchema);
 const transformRecordValidator = ajv.compile<TransformRecord>(transformRecordSchema);
 
 function formatAjvErrors(errors: ErrorObject[] | null | undefined): Record<string, unknown>[] {
@@ -258,6 +263,16 @@ export function expectStringArray(value: unknown, fieldName: string): string[] {
   );
 }
 
+export function expectArray(value: unknown, fieldName: string): unknown[] {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  throw new ToolInputError("invalid_arguments", `${fieldName} must be an array.`, {
+    field: fieldName,
+  });
+}
+
 export function expectOptionalStringArray(value: unknown, fieldName: string): string[] | undefined {
   if (value === undefined) {
     return undefined;
@@ -274,6 +289,32 @@ export function expectAudioVersion(value: unknown, fieldName: string): AudioVers
     return record as unknown as AudioVersion;
   } catch (error) {
     invalidContractValue(fieldName, "AudioVersion", {
+      reason: toErrorMessage(error),
+    });
+  }
+}
+
+export function expectAudioAsset(value: unknown, fieldName: string): AudioAsset {
+  const record = expectRecord(value, fieldName);
+
+  try {
+    assertValidAudioAsset(record as unknown as AudioAsset);
+    return record as unknown as AudioAsset;
+  } catch (error) {
+    invalidContractValue(fieldName, "AudioAsset", {
+      reason: toErrorMessage(error),
+    });
+  }
+}
+
+export function expectSessionGraph(value: unknown, fieldName: string): SessionGraph {
+  const record = expectRecord(value, fieldName);
+
+  try {
+    assertValidSessionGraph(record as unknown as SessionGraph);
+    return assertSchemaValidatedOutput(record, fieldName, "SessionGraph", sessionGraphValidator);
+  } catch (error) {
+    invalidContractValue(fieldName, "SessionGraph", {
       reason: toErrorMessage(error),
     });
   }
@@ -347,6 +388,20 @@ export function assertToolResultRuntimeCapabilityManifest(
   }
 }
 
+export function assertToolResultSemanticProfile(
+  value: unknown,
+  fieldName: string,
+): SemanticProfile {
+  try {
+    assertValidSemanticProfile(value as SemanticProfile);
+    return value as SemanticProfile;
+  } catch (error) {
+    invalidToolResultValue(fieldName, "SemanticProfile", {
+      reason: toErrorMessage(error),
+    });
+  }
+}
+
 export function assertToolResultAudioAsset(value: unknown, fieldName: string): AudioAsset {
   try {
     assertValidAudioAsset(value);
@@ -402,4 +457,15 @@ export function assertToolResultTransformRecord(
   fieldName: string,
 ): TransformRecord {
   return assertSchemaValidatedOutput(value, fieldName, "TransformRecord", transformRecordValidator);
+}
+
+export function assertToolResultSessionGraph(value: unknown, fieldName: string): SessionGraph {
+  try {
+    assertValidSessionGraph(value as SessionGraph);
+    return assertSchemaValidatedOutput(value, fieldName, "SessionGraph", sessionGraphValidator);
+  } catch (error) {
+    invalidToolResultValue(fieldName, "SessionGraph", {
+      reason: toErrorMessage(error),
+    });
+  }
 }

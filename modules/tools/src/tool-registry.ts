@@ -5,6 +5,7 @@ import { describeRuntimeCapabilitiesTool } from "./handlers/describe-runtime-cap
 import { loadAudioTool } from "./handlers/load-audio.js";
 import { planEditsTool } from "./handlers/plan-edits.js";
 import { renderPreviewTool } from "./handlers/render-preview.js";
+import { runRequestCycleTool } from "./handlers/run-request-cycle.js";
 import type { AnyToolDefinition, ToolDescriptor, ToolRegistry } from "./types.js";
 
 const DEFAULT_DEFINITIONS = [
@@ -15,6 +16,7 @@ const DEFAULT_DEFINITIONS = [
   applyEditPlanTool,
   renderPreviewTool,
   compareVersionsTool,
+  runRequestCycleTool,
 ] as const satisfies readonly AnyToolDefinition[];
 
 export function createToolRegistry(

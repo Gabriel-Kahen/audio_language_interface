@@ -520,6 +520,32 @@ describe("runRequestCycleBenchmarks", () => {
     });
     expect(result.score).toBe(1);
   }, 60_000);
+
+  it("can execute iterative follow-up benchmarks through the run_request_cycle tool surface", async () => {
+    const followUpMore = getRequestCycleCase("request_cycle_follow_up_more");
+    const tryAnother = getRequestCycleCase("request_cycle_follow_up_try_another_version");
+    const followUpUndo = getRequestCycleCase("request_cycle_follow_up_undo");
+
+    const result = await runRequestCycleBenchmarks(
+      {
+        corpusId: "request_cycle_tool_surface_subset",
+        suiteId: "first_prompt_family",
+        fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
+        description: "Tool-surface request-cycle benchmark smoke suite.",
+        cases: [followUpMore, tryAnother, followUpUndo],
+      },
+      {
+        executionSurface: "tool",
+      },
+    );
+
+    expect(result.caseResults).toHaveLength(3);
+    expect(result.totalPassedChecks).toBe(result.totalChecks);
+    expect(result.overallScore).toBe(1);
+    expect(result.caseResults.every((caseResult) => caseResult.executionSurface === "tool")).toBe(
+      true,
+    );
+  }, 60_000);
 });
 
 describe("formatBenchmarkMarkdownReport request-cycle mode", () => {
