@@ -1,3 +1,4 @@
+import type { CompareMeasurementContext } from "./deltas.js";
 import type { AnalysisMeasurements, GoalAlignment, GoalStatus, MetricDelta } from "./types.js";
 
 /**
@@ -6,8 +7,8 @@ import type { AnalysisMeasurements, GoalAlignment, GoalStatus, MetricDelta } fro
  */
 export function evaluateGoalAlignment(
   goals: string[],
-  baseline: AnalysisMeasurements,
-  candidate: AnalysisMeasurements,
+  baseline: CompareMeasurementContext,
+  candidate: CompareMeasurementContext,
   metricDeltas: MetricDelta[],
 ): GoalAlignment[] {
   return goals.map((goal) => ({
@@ -18,8 +19,8 @@ export function evaluateGoalAlignment(
 
 function evaluateGoal(
   goal: string,
-  baseline: AnalysisMeasurements,
-  candidate: AnalysisMeasurements,
+  baseline: CompareMeasurementContext,
+  candidate: CompareMeasurementContext,
   metricDeltas: MetricDelta[],
 ): GoalStatus {
   const normalizedGoal = goal.toLowerCase();
@@ -88,6 +89,28 @@ function evaluateGoal(
 
   if (matchesPeakControlPhrase(normalizedGoal)) {
     checks.push(classifyPeakControl(metricDeltas));
+  }
+
+  if (matchesAny(normalizedGoal, ["trim silence", "remove silence", "boundary silence"])) {
+    checks.push(classifyTrimSilenceGoal(metricDeltas));
+  }
+
+  if (matchesAny(normalizedGoal, ["shorten the clip", "speed up", "faster", "shorter"])) {
+    checks.push(classifyDurationDirection(metricDeltas, "shorter"));
+  }
+
+  if (matchesAny(normalizedGoal, ["lengthen the clip", "slow down", "slower", "longer"])) {
+    checks.push(classifyDurationDirection(metricDeltas, "longer"));
+  }
+
+  if (matchesAny(normalizedGoal, ["raise the pitch", "pitch up", "higher pitch", "transpose up"])) {
+    checks.push(classifyPitchDirection(metricDeltas, "up"));
+  }
+
+  if (
+    matchesAny(normalizedGoal, ["lower the pitch", "pitch down", "lower pitch", "transpose down"])
+  ) {
+    checks.push(classifyPitchDirection(metricDeltas, "down"));
   }
 
   if (matchesLoudnessGoal(normalizedGoal)) {
@@ -514,6 +537,94 @@ function classifyPeakControl(metricDeltas: MetricDelta[]): GoalStatus {
   }
 
   if (peakStable && mostlyPreservedPunch) {
+    return "mostly_met";
+  }
+
+  return "not_met";
+}
+
+function classifyTrimSilenceGoal(metricDeltas: MetricDelta[]): GoalStatus {
+  const leadingDelta = getDelta(metricDeltas, "derived.leading_silence_seconds");
+  const trailingDelta = getDelta(metricDeltas, "derived.trailing_silence_seconds");
+  const durationDelta = getDelta(metricDeltas, "derived.duration_seconds");
+
+  if (leadingDelta === undefined && trailingDelta === undefined) {
+    return "unknown";
+  }
+
+  const edgeTrimMet =
+    (leadingDelta === undefined || leadingDelta <= -0.03) &&
+    (trailingDelta === undefined || trailingDelta <= -0.03);
+  const edgeTrimMostlyMet =
+    (leadingDelta === undefined || leadingDelta <= -0.01) &&
+    (trailingDelta === undefined || trailingDelta <= -0.01);
+
+  if (edgeTrimMet && (durationDelta === undefined || durationDelta <= -0.03)) {
+    return "met";
+  }
+
+  if (edgeTrimMostlyMet) {
+    return "mostly_met";
+  }
+
+  return "not_met";
+}
+
+function classifyDurationDirection(
+  metricDeltas: MetricDelta[],
+  direction: "shorter" | "longer",
+): GoalStatus {
+  const durationDelta = getDelta(metricDeltas, "derived.duration_seconds");
+  if (durationDelta === undefined) {
+    return "unknown";
+  }
+
+  if (direction === "shorter") {
+    if (durationDelta <= -0.08) {
+      return "met";
+    }
+
+    if (durationDelta <= -0.03) {
+      return "mostly_met";
+    }
+
+    return "not_met";
+  }
+
+  if (durationDelta >= 0.08) {
+    return "met";
+  }
+
+  if (durationDelta >= 0.03) {
+    return "mostly_met";
+  }
+
+  return "not_met";
+}
+
+function classifyPitchDirection(metricDeltas: MetricDelta[], direction: "up" | "down"): GoalStatus {
+  const pitchDelta = getDelta(metricDeltas, "derived.pitch_center_hz");
+  if (pitchDelta === undefined) {
+    return "unknown";
+  }
+
+  if (direction === "up") {
+    if (pitchDelta >= 20) {
+      return "met";
+    }
+
+    if (pitchDelta >= 8) {
+      return "mostly_met";
+    }
+
+    return "not_met";
+  }
+
+  if (pitchDelta <= -20) {
+    return "met";
+  }
+
+  if (pitchDelta <= -8) {
     return "mostly_met";
   }
 

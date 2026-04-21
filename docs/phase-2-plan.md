@@ -19,7 +19,7 @@ The repository already includes:
 - baseline analysis-side hum and click evidence in `AnalysisReport`, including explicit annotations and file-level artifact fields
 - adapter-layer tool discovery through `describe_runtime_capabilities`
 - schema-aligned `EditPlan` and `TransformRecord` artifacts that record `capability_manifest_id`
-- fixture-backed cleanup benchmark coverage anchored to committed phase-1 WAV fixtures, even though the benchmark harness is still compare-driven rather than full request-cycle execution
+- fixture-backed compare and request-cycle benchmark coverage anchored to committed phase-1 WAV fixtures, including the current cleanup, control, and timing-edit slices
 
 That means Phase 2 should focus on reliability, verification quality, and honest planner coverage rather than on adding features for their own sake.
 
@@ -46,7 +46,6 @@ The goal is a stronger editing loop, not a broader but less reliable feature mat
 
 ### Explicitly Deferred
 
-- `pitch_shift`
 - multi-file workflows
 - streaming or byte-buffer import as a new primary input mode
 - broad generative or music-creation behavior
@@ -62,6 +61,8 @@ At the end of this Phase 2 pass, the system should be materially better at reque
 - `make this a little tighter and more controlled`
 - `widen this slightly without making it phasey`
 - `speed this up a little without changing the pitch`
+- `trim the silence at the beginning and end`
+- `pitch up by 2 semitones`
 
 The system should still reject or clarify requests outside the supported scope instead of guessing.
 

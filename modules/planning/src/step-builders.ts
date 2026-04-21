@@ -17,8 +17,11 @@ import {
   buildGainSafetyLimits,
   buildLimiterSafetyLimits,
   buildNormalizeSafetyLimits,
+  buildPitchShiftSafetyLimits,
   buildStereoWidthSafetyLimits,
+  buildTimeStretchSafetyLimits,
   buildTrimSafetyLimits,
+  buildTrimSilenceSafetyLimits,
   resolveEqGainDb,
   resolveGainStepDb,
 } from "./safety.js";
@@ -44,6 +47,21 @@ export function buildPlannedSteps(context: StepBuildContext): EditPlanStep[] {
   const trimStep = buildTrimStep(context.objectives, context.audioVersion);
   if (trimStep) {
     steps.push(trimStep);
+  }
+
+  const trimSilenceStep = buildTrimSilenceStep(context.objectives, context.analysisReport);
+  if (trimSilenceStep) {
+    steps.push(trimSilenceStep);
+  }
+
+  const timeStretchStep = buildTimeStretchStep(context.objectives);
+  if (timeStretchStep) {
+    steps.push(timeStretchStep);
+  }
+
+  const pitchShiftStep = buildPitchShiftStep(context.objectives);
+  if (pitchShiftStep) {
+    steps.push(pitchShiftStep);
   }
 
   const fadeStep = buildFadeStep(context.objectives, context.audioVersion);
@@ -199,6 +217,101 @@ function buildFadeStep(
     parameters,
     expected_effects: expectedEffects,
     safety_limits: buildFadeSafetyLimits(),
+  };
+}
+
+function buildTrimSilenceStep(
+  objectives: ParsedEditObjectives,
+  analysisReport: AnalysisReport,
+): EditPlanStep | undefined {
+  if (!objectives.wants_trim_silence) {
+    return undefined;
+  }
+
+  const thresholdDbfs = Number(
+    Math.max(
+      -70,
+      Math.min(-30, analysisReport.measurements.artifacts.noise_floor_dbfs + 10),
+    ).toFixed(1),
+  );
+
+  return {
+    ...assertPlannerStepSupport("trim_silence", "full_file"),
+    step_id: "step_trim_silence_1",
+    operation: "trim_silence",
+    target: { scope: "full_file" },
+    parameters: {
+      threshold_dbfs: thresholdDbfs,
+      trim_leading: objectives.trim_leading_silence,
+      trim_trailing: objectives.trim_trailing_silence,
+      window_seconds: 0.02,
+    },
+    expected_effects: [
+      objectives.trim_leading_silence && objectives.trim_trailing_silence
+        ? "remove silence from both file boundaries"
+        : objectives.trim_leading_silence
+          ? "remove silence from the start of the file"
+          : "remove silence from the end of the file",
+    ],
+    safety_limits: buildTrimSilenceSafetyLimits(),
+  };
+}
+
+function buildTimeStretchStep(objectives: ParsedEditObjectives): EditPlanStep | undefined {
+  if (!objectives.wants_speed_up && !objectives.wants_slow_down) {
+    return undefined;
+  }
+
+  const stretchRatio =
+    objectives.stretch_ratio ??
+    (objectives.wants_speed_up
+      ? objectives.intensity === "subtle"
+        ? 0.92
+        : objectives.intensity === "strong"
+          ? 0.75
+          : 0.85
+      : objectives.intensity === "subtle"
+        ? 1.08
+        : objectives.intensity === "strong"
+          ? 1.25
+          : 1.15);
+
+  return {
+    ...assertPlannerStepSupport("time_stretch", "full_file"),
+    step_id: "step_time_stretch_1",
+    operation: "time_stretch",
+    target: { scope: "full_file" },
+    parameters: {
+      stretch_ratio: Number(stretchRatio.toFixed(6)),
+    },
+    expected_effects: [
+      objectives.wants_speed_up
+        ? "shorten the clip duration while preserving pitch"
+        : "lengthen the clip duration while preserving pitch",
+    ],
+    safety_limits: buildTimeStretchSafetyLimits(),
+  };
+}
+
+function buildPitchShiftStep(objectives: ParsedEditObjectives): EditPlanStep | undefined {
+  if (!objectives.wants_pitch_shift || objectives.pitch_shift_semitones === undefined) {
+    return undefined;
+  }
+
+  return {
+    ...assertPlannerStepSupport("pitch_shift", "full_file"),
+    step_id: "step_pitch_shift_1",
+    operation: "pitch_shift",
+    target: { scope: "full_file" },
+    parameters: {
+      semitones: objectives.pitch_shift_semitones,
+    },
+    expected_effects: [
+      `${objectives.pitch_shift_semitones > 0 ? "raise" : "lower"} pitch by ${Math.abs(
+        objectives.pitch_shift_semitones,
+      )} semitones while keeping duration close to the original`,
+    ],
+    safety_limits: buildPitchShiftSafetyLimits(),
   };
 }
 

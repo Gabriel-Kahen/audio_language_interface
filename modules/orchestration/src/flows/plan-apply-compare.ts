@@ -59,6 +59,7 @@ export async function planApplyComparePass(options: {
           candidateVersion: planResult.outputVersion,
           baselineAnalysis: options.analysisReport,
           candidateAnalysis: outputAnalysis,
+          workspaceRoot: options.workspaceRoot,
           editPlan: planResult.editPlan,
         }),
       ),

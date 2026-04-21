@@ -42,6 +42,7 @@ export async function planAndApply(options: PlanAndApplyOptions): Promise<PlanAn
           audioVersion: options.version,
           analysisReport: options.analysisReport,
           semanticProfile,
+          workspaceRoot: options.workspaceRoot,
         }),
       ),
     failurePolicy: options.failurePolicy,

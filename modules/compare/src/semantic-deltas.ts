@@ -1,12 +1,13 @@
-import type { AnalysisMeasurements, MetricDelta, SemanticDelta } from "./types.js";
+import type { CompareMeasurementContext } from "./deltas.js";
+import type { MetricDelta, SemanticDelta } from "./types.js";
 
 /**
  * Derives a small evidence-based semantic vocabulary from measured before/after deltas.
  * Missing thresholds simply produce no label rather than a weaker guess.
  */
 export function deriveSemanticDeltas(
-  baseline: AnalysisMeasurements,
-  candidate: AnalysisMeasurements,
+  baseline: CompareMeasurementContext,
+  candidate: CompareMeasurementContext,
   metricDeltas: MetricDelta[],
 ): SemanticDelta[] {
   const semanticDeltas: SemanticDelta[] = [];
@@ -20,13 +21,15 @@ export function deriveSemanticDeltas(
   pushIfPresent(semanticDeltas, describeDynamicsShift(metricDeltas));
   pushIfPresent(semanticDeltas, describeStereoShift(metricDeltas));
   pushIfPresent(semanticDeltas, describeNoiseShift(baseline, candidate, metricDeltas));
+  pushIfPresent(semanticDeltas, describeDurationShift(metricDeltas));
+  pushIfPresent(semanticDeltas, describePitchShift(metricDeltas));
 
   return semanticDeltas;
 }
 
 function describeBrightnessShift(
-  baseline: AnalysisMeasurements,
-  candidate: AnalysisMeasurements,
+  baseline: CompareMeasurementContext,
+  candidate: CompareMeasurementContext,
 ): SemanticDelta | undefined {
   const centroidDelta =
     candidate.spectral_balance.spectral_centroid_hz -
@@ -58,8 +61,8 @@ function describeBrightnessShift(
 }
 
 function describeHarshnessShift(
-  baseline: AnalysisMeasurements,
-  candidate: AnalysisMeasurements,
+  baseline: CompareMeasurementContext,
+  candidate: CompareMeasurementContext,
 ): SemanticDelta | undefined {
   const highBandDelta =
     candidate.spectral_balance.high_band_db - baseline.spectral_balance.high_band_db;
@@ -333,8 +336,8 @@ function describeStereoShift(metricDeltas: MetricDelta[]): SemanticDelta | undef
 }
 
 function describeNoiseShift(
-  baseline: AnalysisMeasurements,
-  candidate: AnalysisMeasurements,
+  baseline: CompareMeasurementContext,
+  candidate: CompareMeasurementContext,
   metricDeltas: MetricDelta[],
 ): SemanticDelta | undefined {
   const noiseFloorDelta = getDelta(metricDeltas, "artifacts.noise_floor_dbfs");
@@ -380,8 +383,8 @@ function hasPhaseRisk(correlationDelta: number | undefined): boolean {
 }
 
 function hasSevereDenoiseCollateralLoss(
-  baseline: AnalysisMeasurements,
-  candidate: AnalysisMeasurements,
+  baseline: CompareMeasurementContext,
+  candidate: CompareMeasurementContext,
   highBandDelta: number | undefined,
   centroidDelta: number | undefined,
   crestFactorDelta: number | undefined,
@@ -398,6 +401,56 @@ function hasSevereDenoiseCollateralLoss(
 
 function getDelta(metricDeltas: MetricDelta[], metric: string): number | undefined {
   return metricDeltas.find((item) => item.metric === metric)?.delta;
+}
+
+function describeDurationShift(metricDeltas: MetricDelta[]): SemanticDelta | undefined {
+  const durationDelta = getDelta(metricDeltas, "derived.duration_seconds");
+  if (durationDelta === undefined) {
+    return undefined;
+  }
+
+  if (durationDelta <= -0.08) {
+    return {
+      label: "shorter",
+      confidence: confidenceFromMagnitude(Math.abs(durationDelta) / 0.6),
+      evidence: "derived version duration decreased",
+    };
+  }
+
+  if (durationDelta >= 0.08) {
+    return {
+      label: "longer",
+      confidence: confidenceFromMagnitude(Math.abs(durationDelta) / 0.6),
+      evidence: "derived version duration increased",
+    };
+  }
+
+  return undefined;
+}
+
+function describePitchShift(metricDeltas: MetricDelta[]): SemanticDelta | undefined {
+  const pitchDelta = getDelta(metricDeltas, "derived.pitch_center_hz");
+  if (pitchDelta === undefined) {
+    return undefined;
+  }
+
+  if (pitchDelta <= -12) {
+    return {
+      label: "lower_pitch",
+      confidence: confidenceFromMagnitude(Math.abs(pitchDelta) / 120),
+      evidence: "derived pitch center moved downward",
+    };
+  }
+
+  if (pitchDelta >= 12) {
+    return {
+      label: "higher_pitch",
+      confidence: confidenceFromMagnitude(Math.abs(pitchDelta) / 120),
+      evidence: "derived pitch center moved upward",
+    };
+  }
+
+  return undefined;
 }
 
 function meetsOptionalLowerBound(value: number | undefined, threshold: number): boolean {

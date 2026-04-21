@@ -119,8 +119,10 @@ The baseline planner currently plans only against operations marked `planner_sup
 
 - `gain`
 - `trim`
+- `trim_silence`
 - `fade`
 - `normalize`
+- `pitch_shift`
 - `parametric_eq`
 - `high_pass_filter`
 - `low_pass_filter`
@@ -130,13 +132,14 @@ The baseline planner currently plans only against operations marked `planner_sup
 - `tilt_eq`
 - `compressor`
 - `limiter`
+- `time_stretch`
 - `stereo_width`
 - `denoise`
 - `de_esser`
 - `declick`
 - `dehum`
 
-`time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility and stereo-routing operations, the transient/control operations, and the new Layer 1 effect operations are runtime-available but not yet selected by the baseline planner. The current `transient_shaper` surface is compand-based and best suited to transient-rich material.
+The baseline planner now supports a conservative timing-edit slice for explicit boundary-silence trimming, pitch-preserving time stretching, and semitone pitch shifting on material that reads as pitched. The channel-utility and stereo-routing operations, the broader transient/control operations, and the new Layer 1 effect operations remain runtime-available without being baseline-planner-selected. The current `transient_shaper` surface is compand-based and best suited to transient-rich material.
 
 ### Implemented Tool Surface
 
@@ -163,13 +166,13 @@ Current tool-surface caveats:
 - semantic descriptor coverage is intentionally small and conservative
 - planning fails on unsupported requests instead of trying to generalize broadly
 - iterative orchestration supports early `more`, `less`, and `undo` follow-up behavior, but still relies on explicit version materialization through orchestration dependencies for safe revert execution
-- the baseline planner still does not choose pitch shifting, trim silence, channel utilities, or Layer 1 runtime effects automatically
+- the baseline planner still does not choose channel utilities, broader stereo routing, or Layer 1 runtime effects automatically
 - render preview is MP3-only
 - final render export is limited to WAV and FLAC
 - compare now prefers planner-emitted structured verification targets and still keeps heuristic goal alignment only as a legacy fallback
 - hum and click analysis evidence now exists in the baseline `AnalysisReport`, and compare now prefers those direct artifact fields before falling back to conservative low-band or clipped-sample proxies
 - the repository does not yet provide a dedicated demo CLI or application entrypoint
-- benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, restoration, peak-control, and dedicated louder-and-controlled prompts plus clarification/failure controls
+- benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, restoration, timing edits, peak-control, and dedicated louder-and-controlled prompts plus clarification/failure controls
 
 ## Practical Interpretation
 

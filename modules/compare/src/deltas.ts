@@ -1,11 +1,26 @@
-import type { AnalysisMeasurements, MetricDelta, RenderArtifact } from "./types.js";
+import type {
+  AnalysisMeasurements,
+  AnalysisReport,
+  AudioVersion,
+  MetricDelta,
+  RenderArtifact,
+} from "./types.js";
 
 const UNCHANGED_EPSILON = 1e-6;
 
+export type CompareMeasurementContext = AnalysisMeasurements & {
+  derived?: {
+    duration_seconds?: number;
+    leading_silence_seconds?: number;
+    trailing_silence_seconds?: number;
+    pitch_center_hz?: number;
+  };
+};
+
 /** Computes ordered numeric deltas from the measurement fields compare currently understands. */
 export function computeAnalysisMetricDeltas(
-  baseline: AnalysisMeasurements,
-  candidate: AnalysisMeasurements,
+  baseline: CompareMeasurementContext,
+  candidate: CompareMeasurementContext,
 ): MetricDelta[] {
   const deltas: MetricDelta[] = [];
 
@@ -160,8 +175,55 @@ export function computeAnalysisMetricDeltas(
     baseline.artifacts.click_rate_per_second,
     candidate.artifacts.click_rate_per_second,
   );
+  pushOptionalNumericDelta(
+    deltas,
+    "derived.duration_seconds",
+    baseline.derived?.duration_seconds,
+    candidate.derived?.duration_seconds,
+  );
+  pushOptionalNumericDelta(
+    deltas,
+    "derived.leading_silence_seconds",
+    baseline.derived?.leading_silence_seconds,
+    candidate.derived?.leading_silence_seconds,
+  );
+  pushOptionalNumericDelta(
+    deltas,
+    "derived.trailing_silence_seconds",
+    baseline.derived?.trailing_silence_seconds,
+    candidate.derived?.trailing_silence_seconds,
+  );
+  pushOptionalNumericDelta(
+    deltas,
+    "derived.pitch_center_hz",
+    baseline.derived?.pitch_center_hz,
+    candidate.derived?.pitch_center_hz,
+  );
 
   return deltas;
+}
+
+export function createMeasurementContext(input: {
+  version: AudioVersion;
+  analysis: AnalysisReport;
+  pitchCenterHz?: number;
+}): CompareMeasurementContext {
+  const leadingSilenceSeconds = getLeadingSilenceSeconds(input.analysis.segments);
+  const trailingSilenceSeconds = getTrailingSilenceSeconds(input.analysis.segments);
+
+  return {
+    ...input.analysis.measurements,
+    derived: {
+      duration_seconds: input.version.audio.duration_seconds,
+      ...(leadingSilenceSeconds === undefined
+        ? {}
+        : { leading_silence_seconds: leadingSilenceSeconds }),
+      ...(trailingSilenceSeconds === undefined
+        ? {}
+        : { trailing_silence_seconds: trailingSilenceSeconds }),
+      ...(input.pitchCenterHz === undefined ? {} : { pitch_center_hz: input.pitchCenterHz }),
+    },
+  };
 }
 
 export function computeRenderMetricDeltas(
@@ -237,4 +299,58 @@ function pushNumericDelta(
 
 function roundDelta(value: number): number {
   return Math.round(value * 1000) / 1000;
+}
+
+function getLeadingSilenceSeconds(
+  segments:
+    | Array<{
+        kind: string;
+        start_seconds: number;
+        end_seconds: number;
+      }>
+    | undefined,
+): number | undefined {
+  if (segments !== undefined && segments.length > 0) {
+    const firstSegment = segments[0];
+    if (firstSegment?.kind === "active" || firstSegment?.kind === "loop") {
+      return 0;
+    }
+  }
+
+  const segment = segments?.find((candidate) => candidate.kind === "silence");
+  if (!segment || segment.start_seconds > 0.02) {
+    return undefined;
+  }
+
+  return roundDelta(Math.max(0, segment.end_seconds - segment.start_seconds));
+}
+
+function getTrailingSilenceSeconds(
+  segments:
+    | Array<{
+        kind: string;
+        start_seconds: number;
+        end_seconds: number;
+      }>
+    | undefined,
+): number | undefined {
+  const allSegments = segments ?? [];
+  const trailingSegment = allSegments.at(-1);
+  if (trailingSegment?.kind === "active" || trailingSegment?.kind === "loop") {
+    return 0;
+  }
+
+  const segment = [...allSegments].reverse().find((candidate) => candidate.kind === "silence");
+  if (!segment) {
+    return undefined;
+  }
+
+  const activeSegment = [...allSegments]
+    .reverse()
+    .find((candidate) => candidate.kind === "active" || candidate.kind === "loop");
+  if (!activeSegment || segment.start_seconds < activeSegment.end_seconds - 0.02) {
+    return undefined;
+  }
+
+  return roundDelta(Math.max(0, segment.end_seconds - segment.start_seconds));
 }

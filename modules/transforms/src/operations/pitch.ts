@@ -40,6 +40,7 @@ export function buildPitchShiftOperation(
       atempo_factors: atempoFactors,
     },
     nextAudio: { ...audio },
+    requiresOutputProbe: true,
   };
 }
 

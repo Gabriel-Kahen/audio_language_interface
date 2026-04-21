@@ -412,6 +412,89 @@
         "Use a sustained low-mid harmonic bed plus gentle upper partials so louder-control requests exercise broadband program material instead of isolated transient spikes.",
         "Add four moderate low-mid accent bursts and keep the final peak below full scale so the controlled-loudness planner path has measurable headroom to work with."
       ]
+    },
+    {
+      "fixture_id": "fixture_phase1_request_cycle_trim_silence_source",
+      "display_name": "Request-Cycle Trim-Silence Source",
+      "relative_path": "phase-1/request-cycle-trim-silence-source.wav",
+      "availability": "committed",
+      "format": {
+        "container": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 22050,
+        "channels": 1,
+        "bit_depth": 16,
+        "duration_seconds": 1.04,
+        "file_size_bytes": 45908
+      },
+      "provenance": {
+        "source_type": "synthetic_generation",
+        "created_by": "fixtures/audio request-cycle corpus",
+        "license": "CC0-1.0",
+        "redistributable": true,
+        "checksum_sha256": "5605cb27a3c2b4eaa26e9239817a24779faf4f6b19cf86f6e79009d91267544a",
+        "notes": "Deterministic mono source with explicit leading and trailing silence around a voiced tonal center for trim-silence request-cycle benchmarks."
+      },
+      "intended_use": {
+        "prompt_family": [
+          "trim the silence at the beginning and end",
+          "remove boundary silence conservatively"
+        ],
+        "used_by": ["benchmarks"],
+        "expected_characteristics": [
+          "explicit leading silence",
+          "explicit trailing silence",
+          "pitched active core",
+          "tiny committed synthetic source"
+        ]
+      },
+      "generation_recipe": [
+        "Write a 1.04-second mono WAV at 22050 Hz with deterministic sine synthesis.",
+        "Keep about 140 ms of leading silence and 180 ms of trailing silence around one voiced active region.",
+        "Keep the file tiny and fully redistributable so it can anchor request-cycle timing benchmarks."
+      ]
+    },
+    {
+      "fixture_id": "fixture_phase1_request_cycle_pitched_timing_source",
+      "display_name": "Request-Cycle Pitched Timing Source",
+      "relative_path": "phase-1/request-cycle-pitched-timing-source.wav",
+      "availability": "committed",
+      "format": {
+        "container": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 22050,
+        "channels": 1,
+        "bit_depth": 16,
+        "duration_seconds": 0.96,
+        "file_size_bytes": 42380
+      },
+      "provenance": {
+        "source_type": "synthetic_generation",
+        "created_by": "fixtures/audio request-cycle corpus",
+        "license": "CC0-1.0",
+        "redistributable": true,
+        "checksum_sha256": "d08a6db3bbab9b8eb92940231f53e86205369804d1c24fc2ae959557a0a4cd64",
+        "notes": "Deterministic mono pitched source with a stable 220 Hz harmonic center for time-stretch and pitch-shift request-cycle benchmarks."
+      },
+      "intended_use": {
+        "prompt_family": [
+          "speed up while preserving pitch",
+          "slow down while preserving pitch",
+          "pitch up by semitones"
+        ],
+        "used_by": ["benchmarks"],
+        "expected_characteristics": [
+          "stable voiced pitch center",
+          "small harmonic tone bed",
+          "duration-preserving pitch-shift benchmark source",
+          "tiny committed synthetic source"
+        ]
+      },
+      "generation_recipe": [
+        "Write a 0.96-second mono WAV at 22050 Hz with deterministic harmonic sine synthesis around 220 Hz.",
+        "Keep the pitch center stable enough for the baseline estimator while allowing mild amplitude motion.",
+        "Use the same source for both time-stretch and pitch-shift request-cycle cases to keep comparisons grounded."
+      ]
     }
   ]
 }

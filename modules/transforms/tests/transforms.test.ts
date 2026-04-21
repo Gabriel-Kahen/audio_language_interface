@@ -1821,8 +1821,10 @@ describe("applyOperation", () => {
         status: "applied",
       },
     ]);
-    expect(result.outputVersion.audio.duration_seconds).toBe(1.333333);
-    expect(result.outputVersion.audio.frame_count).toBe(58800);
+    expect(result.outputVersion.audio.duration_seconds).toBeCloseTo(probed.durationSeconds, 6);
+    expect(result.outputVersion.audio.frame_count).toBe(
+      Math.round(probed.durationSeconds * probed.sampleRateHz),
+    );
     expect(probed.sampleRateHz).toBe(result.outputVersion.audio.sample_rate_hz);
     expect(probed.channels).toBe(result.outputVersion.audio.channels);
     expect(probed.durationSeconds).toBeGreaterThan(1.3);

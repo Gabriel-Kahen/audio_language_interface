@@ -1,5 +1,7 @@
+import type { PitchCenterEstimate } from "@audio-language-interface/analysis";
 import type {
   AnalysisReport,
+  AudioVersion,
   ParsedEditObjectives,
   SemanticProfile,
   VerificationTarget,
@@ -9,6 +11,8 @@ export function buildVerificationTargets(
   objectives: ParsedEditObjectives,
   analysisReport: AnalysisReport,
   semanticProfile: SemanticProfile,
+  pitchEstimate: PitchCenterEstimate | undefined,
+  audioVersion: AudioVersion,
 ): VerificationTarget[] {
   const targets: VerificationTarget[] = [];
   const useControlledLoudnessTargets = shouldUseControlledLoudnessTargets(objectives);
@@ -34,6 +38,137 @@ export function buildVerificationTargets(
   const hasClickEvidence =
     hasSemanticDescriptor(semanticProfile, "clicks_present", 0.6) ||
     (clickAnnotation?.severity ?? 0) >= 0.38;
+  const leadingSilenceSeconds = getLeadingSilenceSeconds(analysisReport);
+  const trailingSilenceSeconds = getTrailingSilenceSeconds(analysisReport);
+
+  if (objectives.wants_trim_silence) {
+    if (objectives.trim_leading_silence) {
+      targets.push({
+        target_id: "target_trim_leading_silence",
+        goal: "trim leading and trailing boundary silence conservatively",
+        label: "reduce leading boundary silence to a small residual window",
+        kind: "analysis_metric",
+        comparison: "at_most",
+        metric: "derived.leading_silence_seconds",
+        threshold: 0.02,
+        tolerance: 0.015,
+        rationale:
+          "Silence trimming should leave little or no measurable silence at the start of the file.",
+      });
+    }
+
+    if (objectives.trim_trailing_silence) {
+      targets.push({
+        target_id: "target_trim_trailing_silence",
+        goal: "trim leading and trailing boundary silence conservatively",
+        label: "reduce trailing boundary silence to a small residual window",
+        kind: "analysis_metric",
+        comparison: "at_most",
+        metric: "derived.trailing_silence_seconds",
+        threshold: 0.02,
+        tolerance: 0.015,
+        rationale:
+          "Silence trimming should leave little or no measurable silence at the end of the file.",
+      });
+    }
+
+    const trimmedBoundarySilence = leadingSilenceSeconds + trailingSilenceSeconds;
+    if (trimmedBoundarySilence > 0.03) {
+      targets.push({
+        target_id: "target_trim_silence_duration_reduction",
+        goal: "trim leading and trailing boundary silence conservatively",
+        label: "reduce overall duration when measurable boundary silence exists",
+        kind: "analysis_metric",
+        comparison: "decrease_by",
+        metric: "derived.duration_seconds",
+        threshold: Number(Math.min(trimmedBoundarySilence * 0.5, 0.3).toFixed(3)),
+        rationale:
+          "When explicit edge silence is present, trimming it should shorten the file measurably without forcing an aggressive reduction target.",
+      });
+    }
+  }
+
+  if (objectives.wants_speed_up || objectives.wants_slow_down) {
+    const stretchRatio = objectives.stretch_ratio ?? 1;
+    const expectedDurationSeconds = Number(
+      (audioVersion.audio.duration_seconds * stretchRatio).toFixed(3),
+    );
+
+    targets.push({
+      target_id: "target_time_stretch_duration",
+      goal: objectives.wants_speed_up
+        ? "shorten the clip duration while preserving pitch"
+        : "lengthen the clip duration while preserving pitch",
+      label: objectives.wants_speed_up
+        ? "shorten clip duration by the requested stretch ratio"
+        : "lengthen clip duration by the requested stretch ratio",
+      kind: "analysis_metric",
+      comparison: "within",
+      metric: "derived.duration_seconds",
+      threshold: expectedDurationSeconds,
+      tolerance: 0.02,
+      rationale:
+        "Time stretching should move duration toward the requested ratio within a small timing tolerance.",
+    });
+
+    if (pitchEstimate?.frequency_hz !== undefined) {
+      targets.push({
+        target_id: "target_time_stretch_pitch_preservation",
+        goal: objectives.wants_speed_up
+          ? "shorten the clip duration while preserving pitch"
+          : "lengthen the clip duration while preserving pitch",
+        label: "preserve the source pitch center while changing duration",
+        kind: "analysis_metric",
+        comparison: "within",
+        metric: "derived.pitch_center_hz",
+        threshold: Number(pitchEstimate.frequency_hz.toFixed(2)),
+        tolerance: Number(Math.max(6, pitchEstimate.frequency_hz * 0.03).toFixed(2)),
+        rationale:
+          "Pitch-preserving time stretch should keep a stable pitch center close to the baseline estimate on pitched material.",
+      });
+    }
+  }
+
+  if (objectives.wants_pitch_shift && objectives.pitch_shift_semitones !== undefined) {
+    const targetPitchHz =
+      pitchEstimate?.frequency_hz === undefined
+        ? undefined
+        : Number(
+            (pitchEstimate.frequency_hz * 2 ** (objectives.pitch_shift_semitones / 12)).toFixed(2),
+          );
+
+    if (targetPitchHz !== undefined) {
+      targets.push({
+        target_id: "target_pitch_shift_center",
+        goal: `${objectives.pitch_shift_semitones > 0 ? "raise" : "lower"} the pitch by ${Math.abs(
+          objectives.pitch_shift_semitones,
+        )} semitones`,
+        label: "move the pitch center toward the requested semitone shift",
+        kind: "analysis_metric",
+        comparison: "within",
+        metric: "derived.pitch_center_hz",
+        threshold: targetPitchHz,
+        tolerance: Number(Math.max(8, targetPitchHz * 0.04).toFixed(2)),
+        rationale:
+          "Pitch-shift verification should anchor on the baseline pitch-center estimate when stable voiced evidence exists.",
+      });
+    }
+
+    targets.push({
+      target_id: "target_pitch_shift_duration_guard",
+      goal: `${objectives.pitch_shift_semitones > 0 ? "raise" : "lower"} the pitch by ${Math.abs(
+        objectives.pitch_shift_semitones,
+      )} semitones`,
+      label: "keep duration close to the original after pitch shifting",
+      kind: "analysis_metric",
+      comparison: "within",
+      metric: "derived.duration_seconds",
+      threshold: Number(audioVersion.audio.duration_seconds.toFixed(3)),
+      tolerance: 0.02,
+      rationale:
+        "The baseline pitch-shift path is intended to preserve duration closely while moving pitch.",
+    });
+  }
 
   if (objectives.wants_less_harsh) {
     targets.push({
@@ -546,6 +681,32 @@ export function buildVerificationTargets(
   }
 
   return dedupeByTargetId(targets);
+}
+
+function getLeadingSilenceSeconds(analysisReport: AnalysisReport): number {
+  const segment = analysisReport.segments?.find((candidate) => candidate.kind === "silence");
+  if (!segment || segment.start_seconds > 0.02) {
+    return 0;
+  }
+
+  return Number(Math.max(0, segment.end_seconds - segment.start_seconds).toFixed(3));
+}
+
+function getTrailingSilenceSeconds(analysisReport: AnalysisReport): number {
+  const segments = analysisReport.segments ?? [];
+  const segment = [...segments].reverse().find((candidate) => candidate.kind === "silence");
+  if (!segment) {
+    return 0;
+  }
+
+  const activeSegment = [...segments]
+    .reverse()
+    .find((candidate) => candidate.kind === "active" || candidate.kind === "loop");
+  if (!activeSegment || segment.start_seconds < activeSegment.end_seconds - 0.02) {
+    return 0;
+  }
+
+  return Number(Math.max(0, segment.end_seconds - segment.start_seconds).toFixed(3));
 }
 
 function shouldUseControlledLoudnessTargets(objectives: ParsedEditObjectives): boolean {

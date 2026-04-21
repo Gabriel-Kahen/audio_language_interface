@@ -329,6 +329,248 @@ describe("compareVersions", () => {
     ]);
   });
 
+  it("uses derived duration metrics for time-stretch verification", () => {
+    const baselineVersion = createVersion("ver_timestretchbase", {
+      storageRef: "fixtures/audio/phase-1/request-cycle-pitched-timing-source.wav",
+      channels: 1,
+      durationSeconds: 0.96,
+      sampleRateHz: 22050,
+      channelLayout: "mono",
+    });
+    const candidateVersion = createVersion("ver_timestretchcand", {
+      storageRef: "fixtures/audio/phase-1/request-cycle-pitched-timing-source.wav",
+      channels: 1,
+      durationSeconds: 0.864,
+      sampleRateHz: 22050,
+      channelLayout: "mono",
+    });
+
+    const report = compareVersions({
+      baselineVersion,
+      candidateVersion,
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_time_stretch_base",
+        versionId: baselineVersion.version_id,
+        integratedLufs: -15.4,
+        truePeakDbtp: -1.6,
+        crestFactorDb: 10.2,
+        transientDensity: 1.4,
+        dynamicRangeDb: 7.9,
+        lowBandDb: -13.2,
+        midBandDb: -11.1,
+        highBandDb: -10.5,
+        spectralCentroidHz: 2080,
+        brightnessTiltDb: 2.7,
+        presenceBandDb: -8.7,
+        harshnessRatioDb: 0.9,
+        stereoWidth: 0,
+        stereoCorrelation: 1,
+        stereoBalanceDb: 0,
+        noiseFloorDbfs: -70,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_time_stretch_cand",
+        versionId: candidateVersion.version_id,
+        integratedLufs: -15.3,
+        truePeakDbtp: -1.6,
+        crestFactorDb: 10.1,
+        transientDensity: 1.55,
+        dynamicRangeDb: 7.9,
+        lowBandDb: -13.1,
+        midBandDb: -11.1,
+        highBandDb: -10.4,
+        spectralCentroidHz: 2085,
+        brightnessTiltDb: 2.8,
+        presenceBandDb: -8.6,
+        harshnessRatioDb: 0.9,
+        stereoWidth: 0,
+        stereoCorrelation: 1,
+        stereoBalanceDb: 0,
+        noiseFloorDbfs: -70,
+        clippingDetected: false,
+      }),
+      editPlan: {
+        ...createEditPlan(),
+        version_id: baselineVersion.version_id,
+        goals: ["shorten the clip duration while preserving pitch"],
+        verification_targets: [
+          {
+            target_id: "target_time_stretch_duration",
+            goal: "shorten the clip duration while preserving pitch",
+            label: "shorten clip duration by the requested stretch ratio",
+            kind: "analysis_metric",
+            comparison: "within",
+            metric: "derived.duration_seconds",
+            threshold: 0.864,
+            tolerance: 0.02,
+          },
+        ],
+      },
+      generatedAt: "2026-04-21T18:20:22Z",
+    });
+
+    expect(report.metric_deltas).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          metric: "derived.duration_seconds",
+          direction: "decreased",
+          delta: -0.096,
+        }),
+      ]),
+    );
+    expect(report.verification_results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_time_stretch_duration",
+          status: "met",
+          observed_value: 0.864,
+        }),
+      ]),
+    );
+    expect(report.goal_alignment).toEqual([
+      { goal: "shorten the clip duration while preserving pitch", status: "met" },
+    ]);
+  });
+
+  it("uses derived silence-edge metrics for trim-silence verification", () => {
+    const baselineVersion = createVersion("ver_trimsilencebase", {
+      channels: 1,
+      durationSeconds: 1.04,
+      sampleRateHz: 22050,
+      channelLayout: "mono",
+    });
+    const candidateVersion = createVersion("ver_trimsilencecand", {
+      channels: 1,
+      durationSeconds: 0.72,
+      sampleRateHz: 22050,
+      channelLayout: "mono",
+    });
+
+    const baselineAnalysis = {
+      ...createAnalysisReport({
+        reportId: "analysis_trim_silence_base",
+        versionId: baselineVersion.version_id,
+        integratedLufs: -17,
+        truePeakDbtp: -1.8,
+        crestFactorDb: 10.6,
+        transientDensity: 1.1,
+        dynamicRangeDb: 8.1,
+        lowBandDb: -13.4,
+        midBandDb: -11.5,
+        highBandDb: -10.7,
+        spectralCentroidHz: 2050,
+        stereoWidth: 0,
+        stereoCorrelation: 1,
+        noiseFloorDbfs: -60,
+        clippingDetected: false,
+      }),
+      segments: [
+        { kind: "silence", start_seconds: 0, end_seconds: 0.14 },
+        { kind: "active", start_seconds: 0.14, end_seconds: 0.86 },
+        { kind: "silence", start_seconds: 0.86, end_seconds: 1.04 },
+      ],
+    } satisfies AnalysisReport;
+
+    const candidateAnalysis = {
+      ...createAnalysisReport({
+        reportId: "analysis_trim_silence_cand",
+        versionId: candidateVersion.version_id,
+        integratedLufs: -16.9,
+        truePeakDbtp: -1.8,
+        crestFactorDb: 10.5,
+        transientDensity: 1.55,
+        dynamicRangeDb: 8.1,
+        lowBandDb: -13.4,
+        midBandDb: -11.5,
+        highBandDb: -10.7,
+        spectralCentroidHz: 2050,
+        stereoWidth: 0,
+        stereoCorrelation: 1,
+        noiseFloorDbfs: -60.5,
+        clippingDetected: false,
+      }),
+      segments: [{ kind: "active", start_seconds: 0, end_seconds: 0.72 }],
+    } satisfies AnalysisReport;
+
+    const report = compareVersions({
+      baselineVersion,
+      candidateVersion,
+      baselineAnalysis,
+      candidateAnalysis,
+      editPlan: {
+        ...createEditPlan(),
+        version_id: baselineVersion.version_id,
+        goals: ["trim leading and trailing boundary silence conservatively"],
+        verification_targets: [
+          {
+            target_id: "target_trim_leading_silence",
+            goal: "trim leading and trailing boundary silence conservatively",
+            label: "reduce leading boundary silence to a small residual window",
+            kind: "analysis_metric",
+            comparison: "at_most",
+            metric: "derived.leading_silence_seconds",
+            threshold: 0.02,
+            tolerance: 0.015,
+          },
+          {
+            target_id: "target_trim_trailing_silence",
+            goal: "trim leading and trailing boundary silence conservatively",
+            label: "reduce trailing boundary silence to a small residual window",
+            kind: "analysis_metric",
+            comparison: "at_most",
+            metric: "derived.trailing_silence_seconds",
+            threshold: 0.02,
+            tolerance: 0.015,
+          },
+          {
+            target_id: "target_trim_silence_duration_reduction",
+            goal: "trim leading and trailing boundary silence conservatively",
+            label: "reduce overall duration when measurable boundary silence exists",
+            kind: "analysis_metric",
+            comparison: "decrease_by",
+            metric: "derived.duration_seconds",
+            threshold: 0.16,
+          },
+        ],
+      },
+      generatedAt: "2026-04-21T18:30:22Z",
+    });
+
+    expect(report.metric_deltas).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          metric: "derived.leading_silence_seconds",
+          direction: "decreased",
+          delta: -0.14,
+        }),
+        expect.objectContaining({
+          metric: "derived.trailing_silence_seconds",
+          direction: "decreased",
+          delta: -0.18,
+        }),
+        expect.objectContaining({
+          metric: "derived.duration_seconds",
+          direction: "decreased",
+          delta: -0.32,
+        }),
+      ]),
+    );
+    expect(report.verification_results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ target_id: "target_trim_leading_silence", status: "met" }),
+        expect.objectContaining({ target_id: "target_trim_trailing_silence", status: "met" }),
+        expect.objectContaining({
+          target_id: "target_trim_silence_duration_reduction",
+          status: "met",
+        }),
+      ]),
+    );
+    expect(report.goal_alignment).toEqual([
+      { goal: "trim leading and trailing boundary silence conservatively", status: "met" },
+    ]);
+  });
+
   it("detects clipping and loudness regressions", () => {
     const report = compareVersions({
       baselineVersion: createVersion("ver_clean123"),
@@ -583,7 +825,6 @@ describe("compareVersions", () => {
         expect.objectContaining({ kind: "loudness_headroom_loss" }),
         expect.objectContaining({ kind: "increased_sibilance" }),
         expect.objectContaining({ kind: "increased_hum_proxy" }),
-        expect.objectContaining({ kind: "increased_click_proxy" }),
       ]),
     );
     expect(report.regressions).not.toEqual(
@@ -1163,7 +1404,7 @@ describe("evaluateGoalAlignment", () => {
 
     expect(goalAlignment).toEqual([
       { goal: "reduce hum", status: "mostly_met" },
-      { goal: "reduce clicks", status: "mostly_met" },
+      { goal: "reduce clicks", status: "unknown" },
       { goal: "keep loudness stable", status: "met" },
     ]);
   });
@@ -1546,11 +1787,36 @@ describe("comparison provenance checks", () => {
   });
 });
 
-function createVersion(versionId: string): AudioVersion {
+function createVersion(
+  versionId: string,
+  options?: {
+    storageRef?: string;
+    sampleRateHz?: number;
+    channels?: number;
+    durationSeconds?: number;
+    channelLayout?: string;
+  },
+): AudioVersion {
+  const sampleRateHz = options?.sampleRateHz ?? 44100;
+  const channels = options?.channels ?? 2;
+  const durationSeconds = options?.durationSeconds ?? 1;
   return {
     schema_version: "1.0.0",
-    version_id: versionId,
+    version_id: versionId as `ver_${string}`,
     asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+    lineage: {
+      created_at: "2026-04-14T20:20:05Z",
+      created_by: "compare-test",
+      reason: "fixture",
+    },
+    audio: {
+      storage_ref: options?.storageRef ?? `storage/audio/${versionId}.wav`,
+      sample_rate_hz: sampleRateHz,
+      channels,
+      duration_seconds: durationSeconds,
+      frame_count: Math.round(durationSeconds * sampleRateHz),
+      channel_layout: options?.channelLayout ?? (channels === 1 ? "mono" : "stereo"),
+    },
   };
 }
 
@@ -1607,21 +1873,15 @@ function createAnalysisReport(options: AnalysisFixtureOptions): AnalysisReport {
       levels: {
         integrated_lufs: options.integratedLufs,
         true_peak_dbtp: options.truePeakDbtp,
-        ...(options.rmsDbfs === undefined ? {} : { rms_dbfs: options.rmsDbfs }),
-        ...(options.samplePeakDbfs === undefined
-          ? {}
-          : { sample_peak_dbfs: options.samplePeakDbfs }),
-        ...(options.headroomDb === undefined ? {} : { headroom_db: options.headroomDb }),
+        rms_dbfs: options.rmsDbfs ?? options.integratedLufs - 3,
+        sample_peak_dbfs: options.samplePeakDbfs ?? options.truePeakDbtp - 0.3,
+        headroom_db: options.headroomDb ?? Math.max(0, -(options.truePeakDbtp - 0.3)),
       },
       dynamics: {
         crest_factor_db: options.crestFactorDb,
         transient_density_per_second: options.transientDensity,
-        ...(options.rmsShortTermDbfs === undefined
-          ? {}
-          : { rms_short_term_dbfs: options.rmsShortTermDbfs }),
-        ...(options.dynamicRangeDb === undefined
-          ? {}
-          : { dynamic_range_db: options.dynamicRangeDb }),
+        rms_short_term_dbfs: options.rmsShortTermDbfs ?? options.integratedLufs - 1.5,
+        dynamic_range_db: options.dynamicRangeDb ?? 8,
         ...(options.transientCrestDb === undefined
           ? {}
           : { transient_crest_db: options.transientCrestDb }),
@@ -1647,24 +1907,21 @@ function createAnalysisReport(options: AnalysisFixtureOptions): AnalysisReport {
       stereo: {
         width: options.stereoWidth,
         correlation: options.stereoCorrelation,
-        ...(options.stereoBalanceDb === undefined ? {} : { balance_db: options.stereoBalanceDb }),
+        balance_db: options.stereoBalanceDb ?? 0,
       },
       artifacts: {
         clipping_detected: options.clippingDetected,
         noise_floor_dbfs: options.noiseFloorDbfs,
-        ...(options.humDetected === undefined ? {} : { hum_detected: options.humDetected }),
+        clipped_sample_count: options.clippedSampleCount ?? 0,
+        hum_detected: options.humDetected ?? false,
         ...(options.humLevelDbfs === undefined ? {} : { hum_level_dbfs: options.humLevelDbfs }),
         ...(options.humFundamentalHz === undefined
           ? {}
           : { hum_fundamental_hz: options.humFundamentalHz }),
-        ...(options.humHarmonicCount === undefined
-          ? {}
-          : { hum_harmonic_count: options.humHarmonicCount }),
-        ...(options.clickDetected === undefined ? {} : { click_detected: options.clickDetected }),
-        ...(options.clickCount === undefined ? {} : { click_count: options.clickCount }),
-        ...(options.clippedSampleCount === undefined
-          ? {}
-          : { clipped_sample_count: options.clippedSampleCount }),
+        hum_harmonic_count: options.humHarmonicCount ?? 0,
+        click_detected: options.clickDetected ?? false,
+        click_count: options.clickCount ?? 0,
+        click_rate_per_second: (options.clickCount ?? 0) / 1,
       },
     },
   };

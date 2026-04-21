@@ -48,7 +48,7 @@ The initial implementation is a deterministic baseline planner. It uses conserva
 
 ## Baseline behavior
 
-- only emits operations currently marked `planner_supported` in the runtime capability manifest: trim, fade, gain, normalize, filtering, `parametric_eq`, surgical shelf/notch/tilt EQ, conservative compression, peak limiting, conservative restoration, and conservative stereo-width adjustment
+- only emits operations currently marked `planner_supported` in the runtime capability manifest: trim, `trim_silence`, fade, gain, normalize, `pitch_shift`, `time_stretch`, filtering, `parametric_eq`, surgical shelf/notch/tilt EQ, conservative compression, peak limiting, conservative restoration, and conservative stereo-width adjustment
 - prefers small explicit steps with published parameter shapes over hidden macro behavior
 - validates inbound `AudioVersion`, `AnalysisReport`, and `SemanticProfile` contracts before planning
 - records the `RuntimeCapabilityManifest` identifier used to ground the plan
@@ -58,6 +58,7 @@ The initial implementation is a deterministic baseline planner. It uses conserva
 - maps generic `cleaner` requests only when current evidence supports a conservative tonal cleanup target or the request also contains an explicit supported cleanup direction
 - does not auto-promote generic cleanup wording into hum or click restoration; those restoration steps still require explicit supported intent
 - maps conservative `more controlled` language to `compressor`, maps explicit louder-and-controlled language to a measured `compressor -> normalize` path, and maps explicit peak-control language to `limiter`
+- maps explicit boundary-silence requests to `trim_silence`, explicit speed-up or slow-down requests to conservative `time_stretch`, and explicit semitone pitch requests to conservative `pitch_shift` only when the source reads as pitched
 - supports explicit loudness-normalization, upper-air, warmth, low-mid cleanup, harsh-ring, sibilance, click-cleanup, and hum-removal requests with conservative defaults grounded in the published manifest
 - supports explicit denoise requests only when analysis indicates steady noise
 - prefers annotation-backed or semantic-backed restoration verification when that evidence exists, and now routes hum/click verification through direct artifact measurements before falling back to coarse low-band or clipped-sample proxies

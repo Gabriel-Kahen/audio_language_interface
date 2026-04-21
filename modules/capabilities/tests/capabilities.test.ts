@@ -154,6 +154,9 @@ describe("capabilities module", () => {
 
   it("marks the Layer 2 planner wave operations as planner-supported", () => {
     expect(getRuntimeOperationCapability("normalize").intent_support).toBe("planner_supported");
+    expect(getRuntimeOperationCapability("trim_silence").intent_support).toBe("planner_supported");
+    expect(getRuntimeOperationCapability("pitch_shift").intent_support).toBe("planner_supported");
+    expect(getRuntimeOperationCapability("time_stretch").intent_support).toBe("planner_supported");
     expect(getRuntimeOperationCapability("high_shelf").intent_support).toBe("planner_supported");
     expect(getRuntimeOperationCapability("low_shelf").intent_support).toBe("planner_supported");
     expect(getRuntimeOperationCapability("notch_filter").intent_support).toBe("planner_supported");

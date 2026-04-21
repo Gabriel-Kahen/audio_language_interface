@@ -1,6 +1,6 @@
+import type { CompareMeasurementContext } from "./deltas.js";
 import { combineGoalStatuses } from "./goal-alignment.js";
 import type {
-  AnalysisMeasurements,
   GoalAlignment,
   GoalStatus,
   MetricDelta,
@@ -17,8 +17,8 @@ export interface StructuredVerificationEvaluation {
 
 export function evaluateStructuredVerification(
   verificationTargets: Array<string | VerificationTarget>,
-  baseline: AnalysisMeasurements,
-  candidate: AnalysisMeasurements,
+  baseline: CompareMeasurementContext,
+  candidate: CompareMeasurementContext,
   metricDeltas: MetricDelta[],
   semanticDeltas: SemanticDelta[],
   regressions: RegressionWarning[],
@@ -48,8 +48,8 @@ export function evaluateStructuredVerification(
 
 function evaluateVerificationTarget(
   target: VerificationTarget,
-  _baseline: AnalysisMeasurements,
-  candidate: AnalysisMeasurements,
+  _baseline: CompareMeasurementContext,
+  candidate: CompareMeasurementContext,
   metricDeltas: MetricDelta[],
   semanticDeltas: SemanticDelta[],
   regressions: RegressionWarning[],
@@ -66,7 +66,7 @@ function evaluateVerificationTarget(
 
 function evaluateAnalysisMetricTarget(
   target: VerificationTarget,
-  candidate: AnalysisMeasurements,
+  candidate: CompareMeasurementContext,
   metricDeltas: MetricDelta[],
 ): VerificationTargetResult {
   if (target.metric === undefined) {
@@ -357,7 +357,7 @@ function deriveGoalAlignment(results: VerificationTargetResult[]): GoalAlignment
 }
 
 function readMeasurement(
-  measurements: AnalysisMeasurements,
+  measurements: CompareMeasurementContext,
   metricPath: string,
 ): number | undefined {
   const value = metricPath.split(".").reduce<unknown>((current, segment) => {

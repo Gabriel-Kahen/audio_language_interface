@@ -36,6 +36,8 @@ Phase 1 also now includes small committed source fixtures for the next request-c
 - `request-cycle-clicks-source.wav`: mono 44.1 kHz sparse-click source aligned with the current analysis click-detector recipe for declip / declick / pop-cleanup prompts.
 - `request-cycle-loudness-control-source.wav`: mono transient-heavy source reserved for pure peak-control prompts such as `control the peaks without crushing it`.
 - `request-cycle-louder-controlled-source.wav`: mono sustained harmonic source for `make it louder and more controlled` request-cycle benchmarks.
+- `request-cycle-trim-silence-source.wav`: mono source with explicit leading and trailing silence around one voiced region for boundary-silence trimming benchmarks.
+- `request-cycle-pitched-timing-source.wav`: mono pitched source with a stable harmonic center for time-stretch and pitch-shift request-cycle benchmarks.
 
 These are benchmark-oriented source inputs rather than precomputed candidate outputs. They are intentionally tiny, deterministic, CC0-style synthetic assets so they can be committed and redistributed freely.
 

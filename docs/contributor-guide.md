@@ -30,6 +30,9 @@ The strongest supported prompt family today is conservative tonal shaping, loudn
 - `tame sibilance`
 - `remove 50 Hz hum` or `remove 60 Hz hum`
 - `clean up clicks`
+- `trim the silence at the beginning and end`
+- `speed up by 10%`
+- `pitch up by 2 semitones`
 - `more controlled`
 - `make it louder and more controlled`
 - `control peaks`

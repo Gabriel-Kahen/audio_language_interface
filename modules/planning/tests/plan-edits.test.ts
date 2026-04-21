@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import Ajv2020Import from "ajv/dist/2020.js";
 import addFormatsImport from "ajv-formats";
 import { describe, expect, it } from "vitest";
@@ -74,6 +76,22 @@ describe("parseUserRequest", () => {
     expect(parsed.wants_remove_hum).toBe(true);
     expect(parsed.wants_remove_clicks).toBe(true);
     expect(parsed.intensity).toBe("subtle");
+  });
+
+  it("parses supported timing-edit phrases conservatively", () => {
+    const trimSilence = parseUserRequest("Trim the silence at the beginning and end.");
+    const speedUp = parseUserRequest("Speed up by 10%.");
+    const pitchUp = parseUserRequest("Pitch up by 2 semitones.");
+
+    expect(trimSilence.wants_trim_silence).toBe(true);
+    expect(trimSilence.trim_leading_silence).toBe(true);
+    expect(trimSilence.trim_trailing_silence).toBe(true);
+
+    expect(speedUp.wants_speed_up).toBe(true);
+    expect(speedUp.stretch_ratio).toBe(0.9);
+
+    expect(pitchUp.wants_pitch_shift).toBe(true);
+    expect(pitchUp.pitch_shift_semitones).toBe(2);
   });
 
   it("classifies ambiguous and unsupported prompt phrases explicitly", () => {
@@ -586,6 +604,102 @@ describe("planEdits", () => {
     expect(validateAgainstSchema(editPlanSchema, plan)).toBe(true);
   });
 
+  it("maps explicit silence-trim prompts to trim_silence with boundary verification", () => {
+    const plan = planEdits({
+      userRequest: "Trim the silence at the beginning and end.",
+      audioVersion: createTrimSilenceAudioVersionFixture(),
+      analysisReport: createTrimSilenceAnalysisReportFixture(),
+      semanticProfile: createVersionScopedNeutralSemanticProfile("ver_trimSilenceFixture"),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["trim_silence"]);
+    expect(plan.steps[0]?.parameters).toEqual({
+      threshold_dbfs: -50,
+      trim_leading: true,
+      trim_trailing: true,
+      window_seconds: 0.02,
+    });
+    expect(plan.goals).toContain("trim leading and trailing boundary silence conservatively");
+    expect(plan.constraints).toContain(
+      "remove only boundary silence and avoid cutting into clearly active material",
+    );
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_trim_leading_silence",
+          metric: "derived.leading_silence_seconds",
+        }),
+        expect.objectContaining({
+          target_id: "target_trim_trailing_silence",
+          metric: "derived.trailing_silence_seconds",
+        }),
+        expect.objectContaining({
+          target_id: "target_trim_silence_duration_reduction",
+          metric: "derived.duration_seconds",
+        }),
+      ]),
+    );
+    expect(validateAgainstSchema(editPlanSchema, plan)).toBe(true);
+  });
+
+  it("maps conservative speed-up prompts to time_stretch with duration and pitch checks", () => {
+    const plan = planEdits({
+      userRequest: "Speed up by 10%.",
+      workspaceRoot: repoRoot,
+      audioVersion: createPitchedAudioVersionFixture(),
+      analysisReport: createPitchedAnalysisReportFixture(),
+      semanticProfile: createVersionScopedNeutralSemanticProfile("ver_pitchedTimingFixture"),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["time_stretch"]);
+    expect(plan.steps[0]?.parameters).toEqual({ stretch_ratio: 0.9 });
+    expect(plan.goals).toContain("shorten the clip duration while preserving pitch");
+    expect(plan.constraints).toContain("preserve pitch while changing duration");
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_time_stretch_duration",
+          metric: "derived.duration_seconds",
+          threshold: 0.864,
+        }),
+        expect.objectContaining({
+          target_id: "target_time_stretch_pitch_preservation",
+          metric: "derived.pitch_center_hz",
+        }),
+      ]),
+    );
+    expect(validateAgainstSchema(editPlanSchema, plan)).toBe(true);
+  });
+
+  it("maps explicit pitch-up prompts to pitch_shift with semitone-grounded verification", () => {
+    const plan = planEdits({
+      userRequest: "Pitch up by 2 semitones.",
+      workspaceRoot: repoRoot,
+      audioVersion: createPitchedAudioVersionFixture(),
+      analysisReport: createPitchedAnalysisReportFixture(),
+      semanticProfile: createVersionScopedNeutralSemanticProfile("ver_pitchedTimingFixture"),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["pitch_shift"]);
+    expect(plan.steps[0]?.parameters).toEqual({ semitones: 2 });
+    expect(plan.goals).toContain("raise the pitch by 2 semitones");
+    expect(plan.constraints).toContain("keep duration close to the original after pitch shifting");
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_pitch_shift_center",
+          metric: "derived.pitch_center_hz",
+        }),
+        expect.objectContaining({
+          target_id: "target_pitch_shift_duration_guard",
+          metric: "derived.duration_seconds",
+          threshold: 0.96,
+        }),
+      ]),
+    );
+    expect(validateAgainstSchema(editPlanSchema, plan)).toBe(true);
+  });
+
   it("fails instead of inventing unsupported behavior", () => {
     try {
       planEdits({
@@ -803,10 +917,61 @@ describe("planEdits", () => {
       }),
     ).toThrow(/SemanticProfile schema validation failed/);
   });
+
+  it("fails clearly for pitch-shift requests on material that does not read as pitched", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Pitch up by 2 semitones.",
+        workspaceRoot: repoRoot,
+        audioVersion: createPitchedAudioVersionFixture(),
+        analysisReport: {
+          ...createPitchedAnalysisReportFixture(),
+          source_character: {
+            primary_class: "percussive",
+            pitched: false,
+            confidence: 0.82,
+          },
+        },
+        semanticProfile: createVersionScopedNeutralSemanticProfile("ver_pitchedTimingFixture"),
+      }),
+    ).toThrow(/only enables conservative pitch shifting when the current source reads as pitched/i);
+  });
 });
 
 function createAudioVersionFixture(): AudioVersion {
   return audioVersionExample as unknown as AudioVersion;
+}
+
+function createTrimSilenceAudioVersionFixture(): AudioVersion {
+  return {
+    ...createAudioVersionFixture(),
+    version_id: "ver_trimSilenceFixture",
+    audio: {
+      ...createAudioVersionFixture().audio,
+      storage_ref: "fixtures/audio/phase-1/request-cycle-trim-silence-source.wav",
+      sample_rate_hz: 22050,
+      channels: 1,
+      duration_seconds: 1.04,
+      frame_count: Math.round(1.04 * 22050),
+      channel_layout: "mono",
+    },
+  };
+}
+
+function createPitchedAudioVersionFixture(): AudioVersion {
+  return {
+    ...createAudioVersionFixture(),
+    version_id: "ver_pitchedTimingFixture",
+    audio: {
+      ...createAudioVersionFixture().audio,
+      storage_ref: "fixtures/audio/phase-1/request-cycle-pitched-timing-source.wav",
+      sample_rate_hz: 22050,
+      channels: 1,
+      duration_seconds: 0.96,
+      frame_count: Math.round(0.96 * 22050),
+      channel_layout: "mono",
+    },
+  };
 }
 
 function createAnalysisReportFixture(): AnalysisReport {
@@ -829,6 +994,38 @@ function createAnalysisReportFixture(): AnalysisReport {
         bands_hz: [3000, 4500],
       },
     ],
+  };
+}
+
+function createTrimSilenceAnalysisReportFixture(): AnalysisReport {
+  return {
+    ...createAnalysisReportFixture(),
+    version_id: "ver_trimSilenceFixture",
+    measurements: {
+      ...createAnalysisReportFixture().measurements,
+      artifacts: {
+        ...createAnalysisReportFixture().measurements.artifacts,
+        noise_floor_dbfs: -60,
+      },
+    },
+    segments: [
+      { kind: "silence", start_seconds: 0, end_seconds: 0.14 },
+      { kind: "active", start_seconds: 0.14, end_seconds: 0.86 },
+      { kind: "silence", start_seconds: 0.86, end_seconds: 1.04 },
+    ],
+  };
+}
+
+function createPitchedAnalysisReportFixture(): AnalysisReport {
+  return {
+    ...createAnalysisReportFixture(),
+    version_id: "ver_pitchedTimingFixture",
+    source_character: {
+      primary_class: "tonal",
+      pitched: true,
+      confidence: 0.91,
+    },
+    segments: [{ kind: "active", start_seconds: 0, end_seconds: 0.96 }],
   };
 }
 
@@ -892,6 +1089,13 @@ function createNeutralSemanticProfileFixture(): SemanticProfile {
   return {
     ...createSemanticProfileFixture(),
     descriptors: [],
+  };
+}
+
+function createVersionScopedNeutralSemanticProfile(versionId: string): SemanticProfile {
+  return {
+    ...createNeutralSemanticProfileFixture(),
+    version_id: versionId,
   };
 }
 
@@ -984,3 +1188,5 @@ function validateAgainstSchema(schema: unknown, payload: unknown): boolean {
 
   return true;
 }
+
+const repoRoot = path.resolve(import.meta.dirname, "../../..");

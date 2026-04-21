@@ -175,8 +175,10 @@ At the moment, that includes:
 
 - `gain`
 - `trim`
+- `trim_silence`
 - `fade`
 - `normalize`
+- `pitch_shift`
 - `parametric_eq`
 - `high_pass_filter`
 - `low_pass_filter`
@@ -186,13 +188,14 @@ At the moment, that includes:
 - `tilt_eq`
 - `compressor`
 - `limiter`
+- `time_stretch`
 - `stereo_width`
 - `denoise`
 - `de_esser`
 - `declick`
 - `dehum`
 
-`time_stretch`, `pitch_shift`, `trim_silence`, the channel-utility and stereo-routing operations, the transient/control operations, and the newer creative effect operations are runtime-available but not yet part of the default planner surface. The transient-shaper surface is currently a compand-based, transient-biased runtime primitive rather than a full transient-designer model.
+The baseline planner now includes a conservative timing-edit slice for explicit boundary-silence trimming, pitch-preserving time stretching, and semitone pitch shifting on pitched material. The channel-utility and stereo-routing operations, the broader transient/control operations, and the newer creative effect operations remain runtime-available without being baseline-planner-selected. The transient-shaper surface is currently a compand-based, transient-biased runtime primitive rather than a full transient-designer model.
 
 ### Tool Surface
 

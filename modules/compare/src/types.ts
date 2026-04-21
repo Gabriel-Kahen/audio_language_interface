@@ -1,3 +1,6 @@
+import type { AnalysisReport as UpstreamAnalysisReport } from "@audio-language-interface/analysis";
+import type { AudioVersion as UpstreamAudioVersion } from "@audio-language-interface/core";
+
 export const CONTRACT_SCHEMA_VERSION = "1.0.0" as const;
 
 export type ComparisonRefType = "version" | "render";
@@ -19,11 +22,7 @@ export type VerificationComparison =
   | "present"
   | "absent";
 
-export interface AudioVersion {
-  schema_version: typeof CONTRACT_SCHEMA_VERSION;
-  version_id: string;
-  asset_id: string;
-}
+export type AudioVersion = UpstreamAudioVersion;
 
 export interface RenderArtifact {
   schema_version: typeof CONTRACT_SCHEMA_VERSION;
@@ -98,23 +97,7 @@ export interface AnalysisAnnotation {
   evidence?: string;
 }
 
-export interface AnalysisReport {
-  schema_version: typeof CONTRACT_SCHEMA_VERSION;
-  report_id: string;
-  asset_id: string;
-  version_id: string;
-  generated_at: string;
-  analyzer: {
-    name: string;
-    version: string;
-  };
-  summary: {
-    plain_text: string;
-    confidence?: number;
-  };
-  measurements: AnalysisMeasurements;
-  annotations?: AnalysisAnnotation[];
-}
+export type AnalysisReport = UpstreamAnalysisReport;
 
 export interface EditPlan {
   schema_version: typeof CONTRACT_SCHEMA_VERSION;
@@ -220,6 +203,7 @@ export interface CompareVersionsOptions {
   candidateVersion: AudioVersion;
   baselineAnalysis: AnalysisReport;
   candidateAnalysis: AnalysisReport;
+  workspaceRoot?: string;
   editPlan?: EditPlan;
   comparisonId?: string;
   generatedAt?: string | Date;

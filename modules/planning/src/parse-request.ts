@@ -18,16 +18,7 @@ const RUNTIME_ONLY_PHRASE_MATCHERS: RuntimeOnlyPhraseMatch[] = [
   { phrase: "saturate", operation: "saturation" },
   { phrase: "flanger", operation: "flanger" },
   { phrase: "phaser", operation: "phaser" },
-  { phrase: "pitch shift", operation: "pitch_shift" },
-  { phrase: "pitch up", operation: "pitch_shift" },
-  { phrase: "pitch down", operation: "pitch_shift" },
-  { phrase: "transpose", operation: "pitch_shift" },
   { phrase: "reverse", operation: "reverse" },
-  { phrase: "trim silence", operation: "trim_silence" },
-  { phrase: "remove silence", operation: "trim_silence" },
-  { phrase: "speed up", operation: "time_stretch" },
-  { phrase: "slow down", operation: "time_stretch" },
-  { phrase: "time stretch", operation: "time_stretch" },
   {
     phrase: "\\bpan(?:\\s+(?:left|right|center|centre)|\\s+it\\s+(?:left|right))\\b",
     operation: "pan",
@@ -50,6 +41,14 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
     raw_request: userRequest,
     normalized_request: normalizedRequest,
     request_classification: "supported",
+    wants_trim_silence: containsAny(normalizedRequest, [
+      "trim silence",
+      "remove silence",
+      "trim the silence",
+      "cut silence",
+    ]),
+    trim_leading_silence: wantsTrimLeadingSilence(normalizedRequest),
+    trim_trailing_silence: wantsTrimTrailingSilence(normalizedRequest),
     wants_darker: containsAny(normalizedRequest, [
       "darker",
       "darken",
@@ -171,6 +170,27 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "less width",
       "make it narrower",
     ]),
+    wants_speed_up: containsAny(normalizedRequest, [
+      "speed up",
+      "faster",
+      "quicken",
+      "increase the tempo",
+      "increase tempo",
+    ]),
+    wants_slow_down: containsAny(normalizedRequest, [
+      "slow down",
+      "slower",
+      "stretch it out",
+      "reduce the tempo",
+      "reduce tempo",
+    ]),
+    wants_pitch_shift: containsAny(normalizedRequest, [
+      "pitch shift",
+      "pitch up",
+      "pitch down",
+      "transpose",
+      "shift the pitch",
+    ]),
     preserve_punch: containsAny(normalizedRequest, [
       "keep the punch",
       "keep punch",
@@ -198,6 +218,16 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
   const humFrequencyHz = parseHumFrequency(normalizedRequest);
   if (humFrequencyHz !== undefined) {
     parsed.hum_frequency_hz = humFrequencyHz;
+  }
+
+  const stretchRatio = parseStretchRatio(normalizedRequest);
+  if (stretchRatio !== undefined) {
+    parsed.stretch_ratio = stretchRatio;
+  }
+
+  const pitchShiftSemitones = parsePitchShiftSemitones(normalizedRequest, parsed);
+  if (pitchShiftSemitones !== undefined) {
+    parsed.pitch_shift_semitones = pitchShiftSemitones;
   }
 
   const trimRange = parseTrimRange(normalizedRequest);
@@ -325,6 +355,7 @@ function classifyRequest(
 
 function hasSupportedIntent(parsed: ParsedEditObjectives): boolean {
   return (
+    parsed.wants_trim_silence ||
     parsed.wants_darker ||
     parsed.wants_brighter ||
     parsed.wants_cleaner ||
@@ -339,6 +370,9 @@ function hasSupportedIntent(parsed: ParsedEditObjectives): boolean {
     parsed.wants_denoise ||
     parsed.wants_wider ||
     parsed.wants_narrower ||
+    parsed.wants_speed_up ||
+    parsed.wants_slow_down ||
+    parsed.wants_pitch_shift ||
     parsed.trim_range !== undefined ||
     parsed.fade_in_seconds !== undefined ||
     parsed.fade_out_seconds !== undefined
@@ -435,4 +469,123 @@ function parseHumFrequency(value: string): number | undefined {
   }
 
   return undefined;
+}
+
+function wantsTrimLeadingSilence(value: string): boolean {
+  if (
+    containsAny(value, [
+      "leading silence",
+      "start silence",
+      "silence at the start",
+      "silence from the start",
+    ])
+  ) {
+    return true;
+  }
+
+  if (
+    containsAny(value, [
+      "trailing silence",
+      "ending silence",
+      "end silence",
+      "silence at the end",
+      "silence from the end",
+    ])
+  ) {
+    return false;
+  }
+
+  return containsAny(value, ["trim silence", "remove silence", "trim the silence", "cut silence"]);
+}
+
+function wantsTrimTrailingSilence(value: string): boolean {
+  if (
+    containsAny(value, [
+      "trailing silence",
+      "ending silence",
+      "end silence",
+      "silence at the end",
+      "silence from the end",
+    ])
+  ) {
+    return true;
+  }
+
+  if (
+    containsAny(value, [
+      "leading silence",
+      "start silence",
+      "silence at the start",
+      "silence from the start",
+    ])
+  ) {
+    return false;
+  }
+
+  return containsAny(value, ["trim silence", "remove silence", "trim the silence", "cut silence"]);
+}
+
+function parseStretchRatio(value: string): number | undefined {
+  const percentMatcher = value.match(
+    /\b(?:speed up|slow down|faster|slower|time stretch|stretch(?: it)? out)\b(?:\s+(?:by|around|about))?\s+(\d+(?:\.\d+)?)\s*(?:%|percent)?/,
+  );
+  if (percentMatcher) {
+    const percent = Number(percentMatcher[1]);
+    if (!Number.isFinite(percent) || percent <= 0 || percent >= 75) {
+      return undefined;
+    }
+
+    if (containsAny(value, ["slow down", "slower", "stretch it out"])) {
+      return Number((1 + percent / 100).toFixed(6));
+    }
+
+    return Number((1 - percent / 100).toFixed(6));
+  }
+
+  const multiplierMatcher = value.match(
+    /\b(?:speed up|slow down|time stretch|stretch(?: it)? out|faster|slower)\b(?:\s+(?:to|by))?\s+(\d+(?:\.\d+)?)\s*x\b/,
+  );
+  if (multiplierMatcher) {
+    const multiplier = Number(multiplierMatcher[1]);
+    if (!Number.isFinite(multiplier) || multiplier <= 0) {
+      return undefined;
+    }
+
+    if (containsAny(value, ["slow down", "slower", "stretch it out"])) {
+      return Number(multiplier.toFixed(6));
+    }
+
+    return Number((1 / multiplier).toFixed(6));
+  }
+
+  return undefined;
+}
+
+function parsePitchShiftSemitones(
+  value: string,
+  parsed: Pick<
+    ParsedEditObjectives,
+    "wants_pitch_shift" | "wants_speed_up" | "wants_slow_down" | "intensity"
+  >,
+): number | undefined {
+  if (!parsed.wants_pitch_shift) {
+    return undefined;
+  }
+
+  const explicitMatcher = value.match(
+    /\b(?:pitch (?:up|down)|transpose|shift the pitch)\b(?:\s+(?:by|up|down))?\s+(-?\d+(?:\.\d+)?)\s+(?:semitones?|st)\b/,
+  );
+  if (explicitMatcher) {
+    const semitones = Number(explicitMatcher[1]);
+    return Number.isFinite(semitones) ? semitones : undefined;
+  }
+
+  const defaultMagnitude =
+    parsed.intensity === "subtle" ? 1 : parsed.intensity === "strong" ? 4 : 2;
+
+  if (containsAny(value, ["pitch down", "transpose down"])) {
+    return -defaultMagnitude;
+  }
+
+  return defaultMagnitude;
 }

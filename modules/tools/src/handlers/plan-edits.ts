@@ -100,6 +100,7 @@ export const planEditsTool: ToolDefinition<PlanEditsArguments, Record<string, un
         audioVersion: args.audioVersion,
         analysisReport: args.analysisReport,
         semanticProfile: args.semanticProfile,
+        workspaceRoot: context.workspaceRoot,
         ...(args.generatedAt === undefined ? {} : { generatedAt: args.generatedAt }),
         ...(args.constraints === undefined ? {} : { constraints: args.constraints }),
       });

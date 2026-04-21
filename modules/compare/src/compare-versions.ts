@@ -1,4 +1,6 @@
-import { computeAnalysisMetricDeltas } from "./deltas.js";
+import { estimatePitchCenter } from "@audio-language-interface/analysis";
+
+import { computeAnalysisMetricDeltas, createMeasurementContext } from "./deltas.js";
 import { evaluateGoalAlignment } from "./goal-alignment.js";
 import {
   assertAnalysisMatchesVersion,
@@ -31,18 +33,35 @@ export function compareVersions(options: CompareVersionsOptions): ComparisonRepo
     assertEditPlanMatchesBaseline(options.editPlan, options.baselineVersion, "AudioVersion");
   }
 
-  const metricDeltas = computeAnalysisMetricDeltas(
-    options.baselineAnalysis.measurements,
-    options.candidateAnalysis.measurements,
-  );
+  const shouldEstimatePitch = shouldEstimatePitchMetrics(options);
+  const baselinePitchCenterHz =
+    shouldEstimatePitch && options.workspaceRoot !== undefined
+      ? resolvePitchCenterHz(options.baselineVersion, options.workspaceRoot)
+      : undefined;
+  const candidatePitchCenterHz =
+    shouldEstimatePitch && options.workspaceRoot !== undefined
+      ? resolvePitchCenterHz(options.candidateVersion, options.workspaceRoot)
+      : undefined;
+  const baselineMeasurements = createMeasurementContext({
+    version: options.baselineVersion,
+    analysis: options.baselineAnalysis,
+    ...(baselinePitchCenterHz === undefined ? {} : { pitchCenterHz: baselinePitchCenterHz }),
+  });
+  const candidateMeasurements = createMeasurementContext({
+    version: options.candidateVersion,
+    analysis: options.candidateAnalysis,
+    ...(candidatePitchCenterHz === undefined ? {} : { pitchCenterHz: candidatePitchCenterHz }),
+  });
+
+  const metricDeltas = computeAnalysisMetricDeltas(baselineMeasurements, candidateMeasurements);
   const semanticDeltas = deriveSemanticDeltas(
-    options.baselineAnalysis.measurements,
-    options.candidateAnalysis.measurements,
+    baselineMeasurements,
+    candidateMeasurements,
     metricDeltas,
   );
   const regressions = detectAnalysisRegressions(
-    options.baselineAnalysis.measurements,
-    options.candidateAnalysis.measurements,
+    baselineMeasurements,
+    candidateMeasurements,
     metricDeltas,
   );
   const structuredVerification =
@@ -50,8 +69,8 @@ export function compareVersions(options: CompareVersionsOptions): ComparisonRepo
       ? undefined
       : evaluateStructuredVerification(
           options.editPlan.verification_targets,
-          options.baselineAnalysis.measurements,
-          options.candidateAnalysis.measurements,
+          baselineMeasurements,
+          candidateMeasurements,
           metricDeltas,
           semanticDeltas,
           regressions,
@@ -62,8 +81,8 @@ export function compareVersions(options: CompareVersionsOptions): ComparisonRepo
       ? undefined
       : evaluateGoalAlignment(
           options.editPlan.goals,
-          options.baselineAnalysis.measurements,
-          options.candidateAnalysis.measurements,
+          baselineMeasurements,
+          candidateMeasurements,
           metricDeltas,
         ));
 
@@ -86,6 +105,36 @@ export function compareVersions(options: CompareVersionsOptions): ComparisonRepo
 
   assertValidComparisonReport(report);
   return report;
+}
+
+function shouldEstimatePitchMetrics(options: CompareVersionsOptions): boolean {
+  const verificationTargets = options.editPlan?.verification_targets ?? [];
+
+  if (
+    verificationTargets.some(
+      (target) =>
+        typeof target === "object" &&
+        target !== null &&
+        target.metric === "derived.pitch_center_hz",
+    )
+  ) {
+    return true;
+  }
+
+  return (
+    options.editPlan?.goals.some((goal) => {
+      const normalized = goal.toLowerCase();
+      return normalized.includes("pitch") || normalized.includes("semitone");
+    }) === true
+  );
+}
+
+function resolvePitchCenterHz(
+  version: CompareVersionsOptions["baselineVersion"],
+  workspaceRoot: string,
+) {
+  const estimate = estimatePitchCenter(version, { workspaceRoot });
+  return estimate.frequency_hz;
 }
 
 function assertDistinctRefs(baselineId: string, candidateId: string, refType: string): void {

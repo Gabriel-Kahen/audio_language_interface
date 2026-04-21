@@ -1,14 +1,10 @@
-import type {
-  AnalysisMeasurements,
-  MetricDelta,
-  RegressionWarning,
-  RenderArtifact,
-} from "./types.js";
+import type { CompareMeasurementContext } from "./deltas.js";
+import type { MetricDelta, RegressionWarning, RenderArtifact } from "./types.js";
 
 /** Detects analysis-side regressions from a narrow set of explicit rules. */
 export function detectAnalysisRegressions(
-  baseline: AnalysisMeasurements,
-  candidate: AnalysisMeasurements,
+  baseline: CompareMeasurementContext,
+  candidate: CompareMeasurementContext,
   metricDeltas: MetricDelta[],
 ): RegressionWarning[] {
   const regressions: RegressionWarning[] = [];

@@ -172,12 +172,15 @@ describe("firstPromptFamilyFixtureCorpus", () => {
     expect(firstPromptFamilyRequestCycleCorpus.fixtureManifestPath).toBe(
       FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
     );
-    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(10);
+    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(13);
     expect(firstPromptFamilyRequestCycleSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
         "request_cycle_tame_sibilance",
         "request_cycle_remove_60hz_hum",
         "request_cycle_clean_up_clicks",
+        "request_cycle_trim_boundary_silence",
+        "request_cycle_speed_up_preserve_pitch",
+        "request_cycle_pitch_up_two_semitones",
         "request_cycle_control_peaks_without_crushing",
         "request_cycle_louder_and_more_controlled",
       ]),
@@ -234,7 +237,7 @@ describe("runComparisonBenchmarks", () => {
       (caseResult) => caseResult.caseId === fallbackClicks.caseId,
     );
     expect(fallbackClickCase?.report.goal_alignment).toEqual([
-      { goal: "reduce clicks", status: "mostly_met" },
+      { goal: "reduce clicks", status: "unknown" },
     ]);
   });
 });
@@ -301,11 +304,14 @@ describe("formatBenchmarkMarkdownReport", () => {
 });
 
 describe("runRequestCycleBenchmarks", () => {
-  it("runs a fixture-backed request-cycle slice across tonal, restoration, and control prompts", async () => {
+  it("runs a fixture-backed request-cycle slice across tonal, restoration, timing, and control prompts", async () => {
     const darkerLessHarsh = getRequestCycleCase("request_cycle_darker_less_harsh");
     const tameSibilance = getRequestCycleCase("request_cycle_tame_sibilance");
     const removeHum = getRequestCycleCase("request_cycle_remove_60hz_hum");
     const cleanUpClicks = getRequestCycleCase("request_cycle_clean_up_clicks");
+    const trimBoundarySilence = getRequestCycleCase("request_cycle_trim_boundary_silence");
+    const speedUp = getRequestCycleCase("request_cycle_speed_up_preserve_pitch");
+    const pitchUp = getRequestCycleCase("request_cycle_pitch_up_two_semitones");
     const controlPeaks = getRequestCycleCase("request_cycle_control_peaks_without_crushing");
     const louderControlled = getRequestCycleCase("request_cycle_louder_and_more_controlled");
     const cleanIt = getRequestCycleCase("request_cycle_clean_it_clarification");
@@ -323,6 +329,9 @@ describe("runRequestCycleBenchmarks", () => {
         tameSibilance,
         removeHum,
         cleanUpClicks,
+        trimBoundarySilence,
+        speedUp,
+        pitchUp,
         controlPeaks,
         louderControlled,
         cleanIt,
@@ -332,7 +341,7 @@ describe("runRequestCycleBenchmarks", () => {
 
     expect(result.suiteId).toBe("first_prompt_family");
     expect(result.corpusId).toBe("request_cycle_test_subset");
-    expect(result.caseResults).toHaveLength(8);
+    expect(result.caseResults).toHaveLength(11);
     expect(result.totalChecks).toBeGreaterThan(0);
     expect(result.totalPassedChecks).toBe(result.totalChecks);
     expect(result.overallScore).toBe(1);
@@ -366,6 +375,30 @@ describe("runRequestCycleBenchmarks", () => {
     expect(clicksCase?.status).toBe("ok");
     expect(clicksCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation)).toEqual([
       "declick",
+    ]);
+
+    const trimSilenceCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === trimBoundarySilence.caseId,
+    );
+    expect(trimSilenceCase?.status).toBe("ok");
+    expect(
+      trimSilenceCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation),
+    ).toEqual(["trim_silence"]);
+
+    const speedUpCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === speedUp.caseId,
+    );
+    expect(speedUpCase?.status).toBe("ok");
+    expect(speedUpCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation)).toEqual([
+      "time_stretch",
+    ]);
+
+    const pitchUpCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === pitchUp.caseId,
+    );
+    expect(pitchUpCase?.status).toBe("ok");
+    expect(pitchUpCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation)).toEqual([
+      "pitch_shift",
     ]);
 
     const peaksCase = result.caseResults.find(
@@ -403,7 +436,7 @@ describe("runRequestCycleBenchmarks", () => {
 describe("formatBenchmarkMarkdownReport request-cycle mode", () => {
   it("renders a stable request-cycle benchmark report", async () => {
     const darkerLessHarsh = getRequestCycleCase("request_cycle_darker_less_harsh");
-    const tameSibilance = getRequestCycleCase("request_cycle_tame_sibilance");
+    const trimBoundarySilence = getRequestCycleCase("request_cycle_trim_boundary_silence");
     const cleanThisSample = getRequestCycleCase(
       "request_cycle_clean_this_sample_up_a_bit_underspecified",
     );
@@ -413,7 +446,7 @@ describe("formatBenchmarkMarkdownReport request-cycle mode", () => {
       suiteId: "first_prompt_family",
       fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
       description: "Request-cycle report formatting smoke suite.",
-      cases: [darkerLessHarsh, tameSibilance, cleanThisSample],
+      cases: [darkerLessHarsh, trimBoundarySilence, cleanThisSample],
     });
 
     const markdown = formatBenchmarkMarkdownReport(result);
@@ -421,10 +454,10 @@ describe("formatBenchmarkMarkdownReport request-cycle mode", () => {
     expect(markdown).toContain("# Benchmark Report: first_prompt_family");
     expect(markdown).toContain("Benchmark mode: request-cycle");
     expect(markdown).toContain("request_cycle_darker_less_harsh");
-    expect(markdown).toContain("request_cycle_tame_sibilance");
+    expect(markdown).toContain("request_cycle_trim_boundary_silence");
     expect(markdown).toContain("request_cycle_clean_this_sample_up_a_bit_underspecified");
     expect(markdown).toContain("planned operations: notch_filter, tilt_eq");
-    expect(markdown).toContain("planned operations: de_esser");
+    expect(markdown).toContain("planned operations: trim_silence");
     expect(markdown).toContain("failure class: supported_but_underspecified");
     expect(markdown).toContain("Fixture corpus: request_cycle_report_subset");
   }, 60_000);

@@ -487,6 +487,7 @@ describe("tools module", () => {
       analysisReport: buildAnalysis("analysis_candidate", "ver_candidate"),
       semanticProfile: buildSemanticProfile("analysis_candidate", "ver_candidate"),
       constraints: ["keep the vocal clear"],
+      workspaceRoot: "/tmp/workspace",
     });
     expect(response.status).toBe("ok");
     expect(response.result?.edit_plan).toEqual(

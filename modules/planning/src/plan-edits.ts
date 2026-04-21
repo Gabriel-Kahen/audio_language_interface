@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 
-import { assertValidAnalysisReport } from "@audio-language-interface/analysis";
+import {
+  assertValidAnalysisReport,
+  estimatePitchCenter,
+  type PitchCenterEstimate,
+} from "@audio-language-interface/analysis";
 import {
   defaultRuntimeCapabilityManifest,
   plannerSupportedRuntimeOperations,
@@ -74,6 +78,8 @@ export function planEdits(options: PlanEditsOptions): EditPlan {
     objectives,
     options.analysisReport,
     options.semanticProfile,
+    resolvePitchEstimate(options, objectives),
+    options.audioVersion,
   );
   const constraints = buildConstraints(objectives, options.constraints);
   const plan: EditPlan = {
@@ -107,6 +113,24 @@ function resolvePlannerObjectives(
   analysisReport: PlanEditsOptions["analysisReport"],
   semanticProfile: PlanEditsOptions["semanticProfile"],
 ): ReturnType<typeof parseUserRequest> {
+  if (objectives.wants_speed_up && objectives.wants_slow_down) {
+    throw createPlanningFailure(
+      "supported_but_underspecified",
+      "The request asks for both faster and slower timing moves. Please choose one direction.",
+    );
+  }
+
+  if (
+    objectives.wants_pitch_shift &&
+    objectives.pitch_shift_semitones !== undefined &&
+    objectives.pitch_shift_semitones === 0
+  ) {
+    throw createPlanningFailure(
+      "supported_but_underspecified",
+      "The request asks for a zero-semitone pitch shift, which would not materially change the audio.",
+    );
+  }
+
   if (objectives.supported_but_underspecified_requests.length > 0) {
     throw createPlanningFailure(
       "supported_but_underspecified",
@@ -188,6 +212,13 @@ function resolvePlannerObjectives(
     semanticLabels.has("harsh") ||
     semanticLabels.has("slightly_harsh");
   const hasMudEvidence = semanticLabels.has("muddy") || semanticLabels.has("slightly_muddy");
+
+  if (objectives.wants_pitch_shift && analysisReport.source_character?.pitched !== true) {
+    throw createPlanningFailure(
+      "supported_but_underspecified",
+      "The baseline planner only enables conservative pitch shifting when the current source reads as pitched material.",
+    );
+  }
 
   if (objectives.wants_denoise) {
     const strongestNoiseSeverity = Math.max(
@@ -312,6 +343,9 @@ function createPlanId(options: PlanEditsOptions, normalizedRequest: string): str
 function buildGoals(objectives: ReturnType<typeof parseUserRequest>): string[] {
   const goals: string[] = [];
 
+  if (objectives.wants_trim_silence) {
+    goals.push("trim leading and trailing boundary silence conservatively");
+  }
   if (objectives.trim_range) {
     goals.push("trim the file to the explicitly requested time range");
   }
@@ -356,6 +390,19 @@ function buildGoals(objectives: ReturnType<typeof parseUserRequest>): string[] {
   }
   if (objectives.wants_peak_control) {
     goals.push("control peak excursions conservatively");
+  }
+  if (objectives.wants_speed_up) {
+    goals.push("shorten the clip duration while preserving pitch");
+  }
+  if (objectives.wants_slow_down) {
+    goals.push("lengthen the clip duration while preserving pitch");
+  }
+  if (objectives.wants_pitch_shift && objectives.pitch_shift_semitones !== undefined) {
+    goals.push(
+      `${objectives.pitch_shift_semitones > 0 ? "raise" : "lower"} the pitch by ${Math.abs(
+        objectives.pitch_shift_semitones,
+      )} semitones`,
+    );
   }
   if (objectives.wants_wider) {
     goals.push("slightly increase stereo width");
@@ -422,6 +469,18 @@ function buildConstraints(
     constraints.push("avoid thinning wanted low-frequency body");
   }
 
+  if (objectives.wants_trim_silence) {
+    constraints.push("remove only boundary silence and avoid cutting into clearly active material");
+  }
+
+  if (objectives.wants_speed_up || objectives.wants_slow_down) {
+    constraints.push("preserve pitch while changing duration");
+  }
+
+  if (objectives.wants_pitch_shift) {
+    constraints.push("keep duration close to the original after pitch shifting");
+  }
+
   if (objectives.wants_wider || objectives.wants_narrower) {
     constraints.push("keep width changes subtle and preserve mono compatibility");
   }
@@ -448,4 +507,27 @@ function dedupe(values: string[]): string[] {
 
 function formatQuotedList(values: string[]): string {
   return values.map((value) => `\`${value}\``).join(", ");
+}
+
+function resolvePitchEstimate(
+  options: PlanEditsOptions,
+  objectives: ReturnType<typeof parseUserRequest>,
+): PitchCenterEstimate | undefined {
+  if (!objectives.wants_pitch_shift && !objectives.wants_speed_up && !objectives.wants_slow_down) {
+    return undefined;
+  }
+
+  if (options.workspaceRoot === undefined) {
+    return undefined;
+  }
+
+  const estimate = estimatePitchCenter(options.audioVersion, {
+    workspaceRoot: options.workspaceRoot,
+  });
+
+  if (estimate.voicing === "unvoiced" || estimate.frequency_hz === undefined) {
+    return undefined;
+  }
+
+  return estimate;
 }

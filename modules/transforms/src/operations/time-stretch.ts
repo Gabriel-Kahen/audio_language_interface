@@ -46,6 +46,7 @@ export function buildTimeStretchOperation(
       duration_seconds: durationSeconds,
       frame_count: Math.round(durationSeconds * audio.sample_rate_hz),
     },
+    requiresOutputProbe: true,
   };
 }
 

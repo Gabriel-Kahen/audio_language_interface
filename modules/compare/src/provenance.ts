@@ -50,7 +50,7 @@ export function assertAnalysisMatchesRender(
 
 export function assertEditPlanMatchesBaseline(
   editPlan: EditPlan,
-  baseline: Pick<AudioVersion, "asset_id" | "version_id">,
+  baseline: { asset_id: string; version_id: string },
   artifactLabel: "AudioVersion" | "RenderArtifact",
 ): void {
   if (editPlan.asset_id !== baseline.asset_id) {

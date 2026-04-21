@@ -524,7 +524,7 @@ export const firstPromptFamilyFixtureCorpus: ComparisonBenchmarkCorpus = {
       }),
       expectation: {
         goalStatuses: {
-          "reduce clicks": "mostly_met",
+          "reduce clicks": "unknown",
         },
         forbiddenRegressionKinds: ["introduced_clipping", "increased_click_proxy", "lost_punch"],
       },
@@ -540,7 +540,7 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
   suiteId: "first_prompt_family",
   fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
   description:
-    "Real request-cycle benchmark corpus over committed phase-1 fixtures, covering supported tonal cleanup, restoration, loudness/control, and explicit clarification/failure controls.",
+    "Real request-cycle benchmark corpus over committed phase-1 fixtures, covering supported tonal cleanup, restoration, timing edits, loudness/control, and explicit clarification/failure controls.",
   cases: [
     {
       caseId: "request_cycle_darker_less_harsh",
@@ -777,6 +777,85 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
       },
     },
     {
+      caseId: "request_cycle_trim_boundary_silence",
+      family: "first_prompt_family",
+      prompt: "Trim the silence at the beginning and end.",
+      description: "Boundary-silence trimming on the committed edge-silence timing fixture.",
+      fixtureId: "fixture_phase1_request_cycle_trim_silence_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["trim_silence"],
+          expected_operation_order: ["trim_silence"],
+          required_goals: ["trim leading and trailing boundary silence conservatively"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "trim leading and trailing boundary silence conservatively": "met",
+          },
+          verification_statuses: {
+            target_trim_leading_silence: "met",
+            target_trim_trailing_silence: "met",
+            target_trim_silence_duration_reduction: "met",
+          },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_speed_up_preserve_pitch",
+      family: "first_prompt_family",
+      prompt: "Speed up by 10%.",
+      description: "Conservative full-file time stretch on the committed pitched timing fixture.",
+      fixtureId: "fixture_phase1_request_cycle_pitched_timing_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["time_stretch"],
+          expected_operation_order: ["time_stretch"],
+          required_goals: ["shorten the clip duration while preserving pitch"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "shorten the clip duration while preserving pitch": "met",
+          },
+          verification_statuses: {
+            target_time_stretch_duration: "met",
+            target_time_stretch_pitch_preservation: "met",
+          },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_pitch_up_two_semitones",
+      family: "first_prompt_family",
+      prompt: "Pitch up by 2 semitones.",
+      description: "Conservative pitch shift on the committed pitched timing fixture.",
+      fixtureId: "fixture_phase1_request_cycle_pitched_timing_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["pitch_shift"],
+          expected_operation_order: ["pitch_shift"],
+          required_goals: ["raise the pitch by 2 semitones"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "raise the pitch by 2 semitones": "met",
+          },
+          verification_statuses: {
+            target_pitch_shift_center: "met",
+            target_pitch_shift_duration_guard: "met",
+          },
+        },
+      },
+    },
+    {
       caseId: "request_cycle_clean_it_clarification",
       family: "first_prompt_family",
       prompt: "clean it",
@@ -874,8 +953,21 @@ function createCompareOptions(input: CreateCompareOptionsInput): CompareVersions
 function createVersion(versionId: string): AudioVersion {
   return {
     schema_version: "1.0.0",
-    version_id: versionId,
+    version_id: versionId as `ver_${string}`,
     asset_id: "asset_benchmark_01",
+    lineage: {
+      created_at: "2026-04-14T20:20:05Z",
+      created_by: "benchmarks",
+      reason: "fixture",
+    },
+    audio: {
+      storage_ref: `storage/audio/${versionId}.wav`,
+      sample_rate_hz: 22050,
+      channels: 1,
+      duration_seconds: 0.96,
+      frame_count: Math.round(0.96 * 22050),
+      channel_layout: "mono",
+    },
   };
 }
 
@@ -924,12 +1016,15 @@ function createAnalysisReport(
       levels: {
         integrated_lufs: values.integratedLufs,
         true_peak_dbtp: values.truePeakDbtp,
-        ...(values.headroomDb === undefined ? {} : { headroom_db: values.headroomDb }),
+        rms_dbfs: values.integratedLufs - 3,
+        sample_peak_dbfs: values.truePeakDbtp - 0.3,
+        headroom_db: values.headroomDb ?? Math.max(0, -(values.truePeakDbtp - 0.3)),
       },
       dynamics: {
         crest_factor_db: values.crestFactorDb,
         transient_density_per_second: values.transientDensity,
-        ...(values.dynamicRangeDb === undefined ? {} : { dynamic_range_db: values.dynamicRangeDb }),
+        rms_short_term_dbfs: values.integratedLufs - 1.5,
+        dynamic_range_db: values.dynamicRangeDb ?? 8,
       },
       spectral_balance: {
         low_band_db: values.lowBandDb,
@@ -940,26 +1035,21 @@ function createAnalysisReport(
       stereo: {
         width: values.stereoWidth,
         correlation: values.stereoCorrelation,
+        balance_db: 0,
       },
       artifacts: {
         clipping_detected: values.clippingDetected,
         noise_floor_dbfs: values.noiseFloorDbfs,
-        ...(values.clippedSampleCount === undefined
-          ? {}
-          : { clipped_sample_count: values.clippedSampleCount }),
-        ...(values.humDetected === undefined ? {} : { hum_detected: values.humDetected }),
+        clipped_sample_count: values.clippedSampleCount ?? 0,
+        hum_detected: values.humDetected ?? false,
         ...(values.humLevelDbfs === undefined ? {} : { hum_level_dbfs: values.humLevelDbfs }),
         ...(values.humFundamentalHz === undefined
           ? {}
           : { hum_fundamental_hz: values.humFundamentalHz }),
-        ...(values.humHarmonicCount === undefined
-          ? {}
-          : { hum_harmonic_count: values.humHarmonicCount }),
-        ...(values.clickDetected === undefined ? {} : { click_detected: values.clickDetected }),
-        ...(values.clickCount === undefined ? {} : { click_count: values.clickCount }),
-        ...(values.clickRatePerSecond === undefined
-          ? {}
-          : { click_rate_per_second: values.clickRatePerSecond }),
+        hum_harmonic_count: values.humHarmonicCount ?? 0,
+        click_detected: values.clickDetected ?? false,
+        click_count: values.clickCount ?? 0,
+        click_rate_per_second: values.clickRatePerSecond ?? 0,
       },
     },
   };

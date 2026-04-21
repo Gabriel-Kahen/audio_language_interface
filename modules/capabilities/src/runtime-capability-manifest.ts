@@ -21,8 +21,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
     "Published runtime capability surface for deterministic audio editing, including first-cohort time_range execution for segment-safe Layer 1 operations.",
   limitations: [
     "Region targeting currently exposes explicit time_range support for a conservative first cohort of duration-preserving operations.",
-    "The baseline planner now uses normalization plus a narrow surgical tone-shaping and restoration wave for explicit supported prompt families only.",
-    "time_stretch is runtime-available but not yet selected by the baseline planner.",
+    "The baseline planner now uses normalization, conservative timing edits, and a narrow surgical tone-shaping and restoration wave for explicit supported prompt families only.",
     "Transient shaping, clipping, and gating are runtime-available but not yet selected by the baseline planner.",
     "Duration-changing operations, tail-bearing ambience effects, and channel-topology-changing operations remain full_file only in the current runtime.",
     "Stereo routing and broader Layer 1 effect operations remain runtime-available but not yet selected by the baseline planner.",
@@ -152,9 +151,11 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       name: "trim_silence",
       category: "timing",
       summary: "Crop leading and/or trailing silence using deterministic edge detection.",
-      intent_support: "runtime_only",
+      intent_support: "planner_supported",
       supported_target_scopes: ["full_file"],
-      planner_notes: ["Runtime-available but not yet chosen by the baseline planner."],
+      planner_notes: [
+        "Chosen by the baseline planner for explicit trim-silence and boundary-cleanup timing requests only.",
+      ],
       parameters: [
         {
           name: "threshold_dbfs",
@@ -224,9 +225,11 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       category: "tonal",
       summary:
         "Shift pitch while keeping duration close to the original through deterministic FFmpeg chaining.",
-      intent_support: "runtime_only",
+      intent_support: "planner_supported",
       supported_target_scopes: ["full_file", "time_range"],
-      planner_notes: ["Runtime-available but not yet chosen by the baseline planner."],
+      planner_notes: [
+        "Chosen by the baseline planner only for conservative pitched-material requests with explicit direction.",
+      ],
       parameters: [
         {
           name: "semitones",
@@ -706,9 +709,11 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       name: "time_stretch",
       category: "timing",
       summary: "Change duration while preserving pitch through deterministic tempo chaining.",
-      intent_support: "runtime_only",
+      intent_support: "planner_supported",
       supported_target_scopes: ["full_file"],
-      planner_notes: ["Runtime-available but not yet chosen by the baseline planner."],
+      planner_notes: [
+        "Chosen by the baseline planner for explicit faster or slower timing requests with moderate ratios.",
+      ],
       parameters: [
         {
           name: "stretch_ratio",

@@ -109,6 +109,27 @@ export function buildFadeSafetyLimits(): string[] {
   ];
 }
 
+export function buildTrimSilenceSafetyLimits(): string[] {
+  return [
+    "trim only leading or trailing silence at the file edges",
+    "avoid aggressive silence thresholds that would cut into clearly active material",
+  ];
+}
+
+export function buildTimeStretchSafetyLimits(): string[] {
+  return [
+    "keep duration changes moderate in a single step",
+    "preserve pitch rather than using simple resampling speed changes",
+  ];
+}
+
+export function buildPitchShiftSafetyLimits(): string[] {
+  return [
+    "keep pitch shifts conservative and duration-preserving",
+    "avoid large formant-blind pitch jumps in a single step",
+  ];
+}
+
 export function assertValidFadeSpans(
   fadeInSeconds: number | undefined,
   fadeOutSeconds: number | undefined,

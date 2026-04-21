@@ -157,6 +157,7 @@ export const compareVersionsTool: ToolDefinition<
         candidateVersion: args.candidateVersion,
         baselineAnalysis: args.baselineAnalysis,
         candidateAnalysis: args.candidateAnalysis,
+        workspaceRoot: context.workspaceRoot,
         ...(args.editPlan === undefined ? {} : { editPlan: args.editPlan }),
         ...(args.comparisonId === undefined ? {} : { comparisonId: args.comparisonId }),
         ...(args.generatedAt === undefined ? {} : { generatedAt: args.generatedAt }),

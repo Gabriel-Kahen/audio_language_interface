@@ -26,6 +26,9 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - `louder` -> conservative `gain` step limited by measured true-peak headroom to a `-1 dBTP` ceiling unless the request also explicitly asks for more control, in which case the dedicated controlled-loudness path takes precedence
 - `quieter` -> conservative negative `gain` step
 - `trim from Xs to Ys` -> `trim` time-range step with explicit start and end seconds
+- `trim the silence`, `remove silence at the beginning and end` -> full-file `trim_silence` using a conservative threshold derived from the measured noise floor
+- `speed up by 10%`, `slow down by 10%`, `faster`, `slower` -> conservative `time_stretch` with explicit `stretch_ratio` and pitch-preservation verification
+- `pitch up by 2 semitones`, `pitch down by 2 semitones`, `transpose` -> conservative `pitch_shift` only when analysis says the source is pitched
 - `fade in Xs`, `fade out Xs` -> `fade` step with explicit durations
 
 ## Safety posture
@@ -35,11 +38,12 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - Time-based requests are checked against the current `AudioVersion` duration before a plan is emitted.
 - Combined `fade in` and `fade out` coverage must not overlap and must stay at or below `50%` of the available duration.
 - If a request cannot be mapped to an explicit supported operation, planning fails instead of guessing.
-- Requests for runtime-available but non-planner-enabled operations such as `reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, `phaser`, `pitch_shift`, `time_stretch`, or `reverse` are classified as `supported_runtime_only_but_not_planner_enabled`.
+- Requests for runtime-available but non-planner-enabled operations such as `reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, `phaser`, or `reverse` are classified as `supported_runtime_only_but_not_planner_enabled`.
 - Requests for declip, dereverb, and broader restoration categories outside denoise, de-ess, declick, and dehum still fail explicitly.
 - Generic cleanup wording does not automatically turn hum or click evidence into restoration steps; hum and click cleanup still require explicit supported intent.
 - Denoise only proceeds when steady-noise evidence is present; otherwise the planner rejects the request instead of guessing.
 - Hum and click verification stay conservative: the planner now prefers direct `AnalysisReport.artifacts` evidence when annotations or semantics support it and only uses coarse low-band or clipped-sample fallbacks where direct artifact measurements are unavailable.
+- Pitch shifting only proceeds when `AnalysisReport.source_character.pitched` is true, and time stretching keeps duration targets conservative rather than attempting broad tempo inference.
 - Stereo-width changes only proceed for two-channel material that is not already too wide, too narrow, or stereo-ambiguous for a conservative move.
 - Tonal moves are intentionally small: `1.5 dB`, `2 dB`, or `3 dB` style shelves and tilts, with notch cuts kept surgical and narrow.
 - `preserve punch` keeps compressor settings conservative by using a slower attack and tighter safety constraints.

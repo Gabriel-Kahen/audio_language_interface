@@ -6,7 +6,7 @@ Evaluate module quality and end-to-end reliability for LLM-driven audio manipula
 
 This module is the evaluation layer over the rest of the architecture.
 
-The current implementation provides two fixture-backed benchmark modes for the current supported cleanup and control prompt family:
+The current implementation provides two fixture-backed benchmark modes for the current supported cleanup, timing, and control prompt family:
 
 - compare-only evaluation over curated `ComparisonReport` inputs
 - end-to-end request-cycle evaluation over the real orchestration pipeline
@@ -79,7 +79,7 @@ The benchmark cases now carry explicit fixture ids for the shared source loop an
 ## Current limitations
 
 - compare-only benchmark scoring is still centered on curated `compareVersions()` inputs for the currently supported cleanup and restoration slice
-- the request-cycle benchmark corpus is intentionally small and currently focuses on stable tonal cleanup, restoration, peak control, and explicit clarification/failure controls
+- the request-cycle benchmark corpus is intentionally small and currently focuses on stable tonal cleanup, restoration, timing edits, peak control, and explicit clarification/failure controls
 - request-cycle outcome scoring is only as strong as the current compare/orchestration evidence:
   - planner correctness is inferred from the emitted `EditPlan`
   - outcome verification is inferred from version/render comparison reports and their structured-verification or goal-alignment outputs
@@ -120,6 +120,9 @@ The first public request-cycle corpus currently covers:
 - `tame the sibilance`
 - `remove 60 Hz hum`
 - `clean up clicks`
+- `trim the silence at the beginning and end`
+- `speed up by 10%`
+- `pitch up by 2 semitones`
 - `control the peaks without crushing it`
 - `make it louder and more controlled`
 - explicit clarification/failure controls such as `clean it` and `clean this sample up a bit`

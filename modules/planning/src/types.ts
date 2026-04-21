@@ -93,6 +93,9 @@ export interface ParsedEditObjectives {
   raw_request: string;
   normalized_request: string;
   request_classification: PlannerRequestClass;
+  wants_trim_silence: boolean;
+  trim_leading_silence: boolean;
+  trim_trailing_silence: boolean;
   wants_darker: boolean;
   wants_brighter: boolean;
   wants_more_air: boolean;
@@ -112,6 +115,9 @@ export interface ParsedEditObjectives {
   wants_remove_hum: boolean;
   wants_wider: boolean;
   wants_narrower: boolean;
+  wants_speed_up: boolean;
+  wants_slow_down: boolean;
+  wants_pitch_shift: boolean;
   preserve_punch: boolean;
   supported_but_underspecified_requests: string[];
   unsupported_requests: string[];
@@ -124,6 +130,8 @@ export interface ParsedEditObjectives {
   fade_in_seconds?: number;
   fade_out_seconds?: number;
   hum_frequency_hz?: number;
+  stretch_ratio?: number;
+  pitch_shift_semitones?: number;
   intensity: "subtle" | "default" | "strong";
 }
 
@@ -132,6 +140,7 @@ export interface PlanEditsOptions {
   audioVersion: AudioVersion;
   analysisReport: AnalysisReport;
   semanticProfile: SemanticProfile;
+  workspaceRoot?: string;
   generatedAt?: string;
   constraints?: string[];
 }

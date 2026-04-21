@@ -176,7 +176,7 @@ Published pitch-shift surface:
 
 `pitch_shift` is currently documented as a whole-file transform that keeps duration close to the original. The runtime may record optional derived fields such as FFmpeg rate and tempo-compensation factors in the emitted `TransformRecord`.
 
-The surgical tone-shaping operations `high_shelf`, `low_shelf`, `notch_filter`, and `tilt_eq`, plus the restoration operations `de_esser`, `declick`, and `dehum`, are now published as `planner_supported` capability-manifest operations in the current baseline. Stereo-routing operations, transient/control operations, and most Layer 1 effect operations remain `runtime_only` and are still valid in the contract surface for explicit technical callers without being selected automatically by the baseline planner.
+The current baseline planner now includes a conservative timing-edit slice across `trim_silence`, `time_stretch`, and `pitch_shift` in addition to the surgical tone-shaping operations `high_shelf`, `low_shelf`, `notch_filter`, and `tilt_eq`, plus the restoration operations `de_esser`, `declick`, and `dehum`. Stereo-routing operations, transient/control operations, and most Layer 1 effect operations remain `runtime_only` and are still valid in the contract surface for explicit technical callers without being selected automatically by the baseline planner.
 
 ## Optional fields
 
