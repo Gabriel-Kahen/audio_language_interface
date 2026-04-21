@@ -50,6 +50,16 @@ Today, the repository supports a real single-file editing loop:
 
 That loop is exposed both through modules and through a thin tool surface.
 
+On top of the one-shot loop, orchestration now supports early iterative follow-up behavior for:
+
+- `more`
+- `less`
+- `undo`
+- `revert to previous version`
+- `try another version`
+
+Those follow-ups stay explicit: orchestration resolves them against recorded session history and version provenance instead of inventing hidden state.
+
 The current cleanup slice is now analysis-backed instead of purely prompt-driven:
 
 - `analysis` emits explicit `hum` and `click` annotations plus file-level artifact fields such as `hum_detected`, `hum_fundamental_hz`, `click_detected`, and `click_count`

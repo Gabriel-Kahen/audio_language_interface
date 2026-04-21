@@ -165,14 +165,14 @@ Current tool-surface caveats:
 - analysis reads the whole file into memory
 - semantic descriptor coverage is intentionally small and conservative
 - planning fails on unsupported requests instead of trying to generalize broadly
-- iterative orchestration supports early `more`, `less`, and `undo` follow-up behavior, but still relies on explicit version materialization through orchestration dependencies for safe revert execution
+- iterative orchestration now supports `more`, `less`, `undo`, `revert to previous version`, and `try another version` follow-up behavior; revert-style and alternate-version flows still rely on explicit version materialization through orchestration dependencies for safe historical execution
 - the baseline planner still does not choose channel utilities, broader stereo routing, or Layer 1 runtime effects automatically
 - render preview is MP3-only
 - final render export is limited to WAV and FLAC
 - compare now prefers planner-emitted structured verification targets and still keeps heuristic goal alignment only as a legacy fallback
 - hum and click analysis evidence now exists in the baseline `AnalysisReport`, and compare now prefers those direct artifact fields before falling back to conservative low-band or clipped-sample proxies
 - the repository does not yet provide a dedicated demo CLI or application entrypoint
-- benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, restoration, timing edits, peak-control, and dedicated louder-and-controlled prompts plus clarification/failure controls
+- benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, restoration, timing edits, iterative follow-up flows, peak-control, and dedicated louder-and-controlled prompts plus clarification/failure controls
 
 ## Practical Interpretation
 

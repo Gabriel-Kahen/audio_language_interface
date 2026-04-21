@@ -1,6 +1,7 @@
 import { analyzeAudioVersion } from "@audio-language-interface/analysis";
 import { compareRenders, compareVersions } from "@audio-language-interface/compare";
 import {
+  createBranch,
   createSessionGraph,
   recordAnalysisReport,
   recordAudioAsset,
@@ -50,6 +51,7 @@ export const defaultOrchestrationDependencies: OrchestrationDependencies = {
   compareVersions,
   compareRenders,
   createSessionGraph,
+  createBranch,
   revertToVersion,
   recordAudioAsset,
   recordAudioVersion,

@@ -27,6 +27,7 @@ export async function runRequestCycle(
   const iterations: IterationResult[] = [];
   let revision: RevisionDecision | undefined;
   let resolvedUserRequest = options.userRequest;
+  let activeBranchId = options.branchId;
   let followUpResolution: FollowUpResolution = {
     kind: "apply",
     resolvedUserRequest: options.userRequest,
@@ -68,10 +69,12 @@ export async function runRequestCycle(
       asset = importedAsset;
       inputVersion = importedVersion;
       sessionGraph = initializeSessionGraph({
-        options,
         sessionGraph,
         asset: importedAsset,
         version: importedVersion,
+        sessionId: options.sessionId,
+        branchId: activeBranchId,
+        dependencies: options.dependencies,
       });
 
       throw rethrowStageError(error, {
@@ -91,10 +94,12 @@ export async function runRequestCycle(
     }
 
     sessionGraph = initializeSessionGraph({
-      options,
       sessionGraph,
       asset,
       version: inputVersion,
+      sessionId: options.sessionId,
+      branchId: activeBranchId,
+      dependencies: options.dependencies,
     });
 
     const existingInputVersion = inputVersion;
@@ -117,24 +122,34 @@ export async function runRequestCycle(
   }
 
   sessionGraph = initializeSessionGraph({
-    options,
     sessionGraph,
     asset,
     version: inputVersion,
+    sessionId: options.sessionId,
+    branchId: activeBranchId,
+    dependencies: options.dependencies,
   });
+  if (!sessionGraph) {
+    throw new Error("Request cycle could not initialize a session graph.");
+  }
+  const initializedSessionGraph = sessionGraph;
 
   if (options.input.kind === "existing") {
-    sessionGraph = options.dependencies.recordAnalysisReport(sessionGraph, inputAnalysis);
+    sessionGraph = options.dependencies.recordAnalysisReport(
+      initializedSessionGraph,
+      inputAnalysis,
+    );
   }
 
   if (options.input.kind === "existing") {
+    const resolvedExistingInputVersion = inputVersion;
     const followUp = await executeWithFailurePolicy({
       stage: "resolve_follow_up",
       operation: async () => {
         const followUpInput = {
           userRequest: options.userRequest,
-          versionId: inputVersion.version_id,
-          ...(sessionGraph === undefined ? {} : { sessionGraph }),
+          versionId: resolvedExistingInputVersion.version_id,
+          sessionGraph: initializedSessionGraph,
         };
 
         return resolveFollowUpRequest(followUpInput);
@@ -164,6 +179,96 @@ export async function runRequestCycle(
     }
 
     resolvedUserRequest = followUp.resolvedUserRequest;
+
+    if (followUp.inputVersionId && followUp.inputVersionId !== inputVersion.version_id) {
+      const followUpInputVersionId = followUp.inputVersionId;
+      const currentSessionGraph = sessionGraph;
+      inputVersion = await executeWithFailurePolicy({
+        stage: "load_follow_up_input",
+        operation: () =>
+          loadSessionVersion({
+            options,
+            asset,
+            sessionGraph: currentSessionGraph,
+            versionId: followUpInputVersionId,
+          }),
+        failurePolicy: options.failurePolicy,
+        getPartialResult: () => ({
+          asset,
+          inputVersion,
+          inputAnalysis,
+          sessionGraph,
+          followUpResolution: followUpResolution,
+        }),
+        trace,
+      });
+
+      sessionGraph = initializeSessionGraph({
+        sessionGraph,
+        asset,
+        version: inputVersion,
+        sessionId: options.sessionId,
+        branchId: activeBranchId,
+        dependencies: options.dependencies,
+      });
+
+      inputAnalysis = await executeWithFailurePolicy({
+        stage: "analyze_input",
+        operation: () => {
+          const loadedInputVersion = inputVersion;
+          if (!loadedInputVersion) {
+            throw new Error("Expected a materialized follow-up input version before analysis.");
+          }
+
+          return options.dependencies.analyzeAudioVersion(loadedInputVersion, {
+            workspaceRoot: options.workspaceRoot,
+            ...options.analysisOptions,
+          });
+        },
+        failurePolicy: options.failurePolicy,
+        getPartialResult: () => ({
+          asset,
+          inputVersion,
+          sessionGraph,
+          followUpResolution: followUpResolution,
+        }),
+        trace,
+      });
+      sessionGraph = options.dependencies.recordAnalysisReport(sessionGraph, inputAnalysis);
+    }
+
+    if (followUp.source === "try_another_version") {
+      const currentSessionGraph = sessionGraph;
+      const followUpBaseVersion = inputVersion;
+      const branchId = await executeWithFailurePolicy({
+        stage: "prepare_follow_up_branch",
+        operation: async () => {
+          const nextBranchId =
+            followUp.branchId ?? createAlternateBranchId(currentSessionGraph, followUpBaseVersion);
+          sessionGraph = options.dependencies.createBranch(currentSessionGraph, {
+            branch_id: nextBranchId,
+            source_version_id: followUpBaseVersion.version_id,
+            created_at: new Date().toISOString(),
+            label: `alternate for ${followUpBaseVersion.version_id}`,
+          });
+          return nextBranchId;
+        },
+        failurePolicy: options.failurePolicy,
+        getPartialResult: () => ({
+          asset,
+          inputVersion,
+          inputAnalysis,
+          sessionGraph,
+          followUpResolution: followUpResolution,
+        }),
+        trace,
+      });
+      activeBranchId = branchId;
+      followUpResolution = {
+        ...followUp,
+        branchId,
+      };
+    }
   }
 
   if (options.input.kind === "import") {
@@ -186,7 +291,12 @@ export async function runRequestCycle(
       trace,
     });
     iterations.push(firstIteration);
-    sessionGraph = recordAppliedIterationArtifacts(options, sessionGraph, firstIteration);
+    sessionGraph = recordAppliedIterationArtifacts(
+      options.dependencies,
+      sessionGraph,
+      firstIteration,
+      activeBranchId,
+    );
     currentVersion = firstIteration.outputVersion;
     currentAnalysis = firstIteration.outputAnalysis;
     revision = await decideRevision(options, firstIteration, iterations);
@@ -204,7 +314,12 @@ export async function runRequestCycle(
         trace,
       });
       iterations.push(secondIteration);
-      sessionGraph = recordAppliedIterationArtifacts(options, sessionGraph, secondIteration);
+      sessionGraph = recordAppliedIterationArtifacts(
+        options.dependencies,
+        sessionGraph,
+        secondIteration,
+        activeBranchId,
+      );
       currentVersion = secondIteration.outputVersion;
       currentAnalysis = secondIteration.outputAnalysis;
     }
@@ -213,7 +328,12 @@ export async function runRequestCycle(
       throw error;
     }
 
-    sessionGraph = recordAppliedIterationPartial(options, sessionGraph, error.partialResult);
+    sessionGraph = recordAppliedIterationPartial(
+      options.dependencies,
+      sessionGraph,
+      error.partialResult,
+      activeBranchId,
+    );
 
     throw rethrowStageError(error, {
       asset,
@@ -536,33 +656,35 @@ async function runRevertRequestCycle(input: {
 }
 
 function initializeSessionGraph(input: {
-  options: RunRequestCycleOptions;
   sessionGraph: RequestCycleResult["sessionGraph"] | undefined;
   asset: RequestCycleResult["asset"];
   version: RequestCycleResult["inputVersion"];
+  sessionId: string | undefined;
+  branchId: string | undefined;
+  dependencies: RunRequestCycleOptions["dependencies"];
 }): RequestCycleResult["sessionGraph"] {
   let sessionGraph =
     input.sessionGraph ??
-    input.options.dependencies.createSessionGraph({
-      session_id: input.options.sessionId ?? createSessionId(),
+    input.dependencies.createSessionGraph({
+      session_id: input.sessionId ?? createSessionId(),
       created_at: input.version.lineage.created_at,
       active_refs: {
         asset_id: input.asset.asset_id,
         version_id: input.version.version_id,
-        ...(input.options.branchId === undefined ? {} : { branch_id: input.options.branchId }),
+        ...(input.branchId === undefined ? {} : { branch_id: input.branchId }),
       },
     });
 
-  sessionGraph = input.options.dependencies.recordAudioAsset(sessionGraph, input.asset);
-  sessionGraph = input.options.dependencies.recordAudioVersion(sessionGraph, input.version, {
-    ...(input.options.branchId === undefined ? {} : { branch_id: input.options.branchId }),
+  sessionGraph = input.dependencies.recordAudioAsset(sessionGraph, input.asset);
+  sessionGraph = input.dependencies.recordAudioVersion(sessionGraph, input.version, {
+    ...(input.branchId === undefined ? {} : { branch_id: input.branchId }),
   });
 
   return sessionGraph;
 }
 
 function recordPlanningArtifacts(
-  options: RunRequestCycleOptions,
+  dependencies: RunRequestCycleOptions["dependencies"],
   sessionGraph: RequestCycleResult["sessionGraph"],
   semanticProfile: RequestCycleResult["semanticProfile"] | undefined,
   editPlan: RequestCycleResult["editPlan"] | undefined,
@@ -570,50 +692,52 @@ function recordPlanningArtifacts(
   let nextGraph = sessionGraph;
 
   if (semanticProfile) {
-    nextGraph = options.dependencies.recordSemanticProfile(nextGraph, semanticProfile);
+    nextGraph = dependencies.recordSemanticProfile(nextGraph, semanticProfile);
   }
 
   if (editPlan) {
-    nextGraph = options.dependencies.recordEditPlan(nextGraph, editPlan);
+    nextGraph = dependencies.recordEditPlan(nextGraph, editPlan);
   }
 
   return nextGraph;
 }
 
 function recordAppliedIterationArtifacts(
-  options: RunRequestCycleOptions,
+  dependencies: RunRequestCycleOptions["dependencies"],
   sessionGraph: RequestCycleResult["sessionGraph"],
   iteration: IterationResult,
+  branchId?: string,
 ): RequestCycleResult["sessionGraph"] {
   let nextGraph = recordPlanningArtifacts(
-    options,
+    dependencies,
     sessionGraph,
     iteration.semanticProfile,
     iteration.editPlan,
   );
-  nextGraph = options.dependencies.recordAudioVersion(nextGraph, iteration.outputVersion, {
-    ...(options.branchId === undefined ? {} : { branch_id: options.branchId }),
+  nextGraph = dependencies.recordAudioVersion(nextGraph, iteration.outputVersion, {
+    ...(branchId === undefined ? {} : { branch_id: branchId }),
   });
-  nextGraph = options.dependencies.recordTransformRecord(
+  nextGraph = dependencies.recordTransformRecord(
     nextGraph,
     iteration.transformResult.transformRecord,
   );
-  nextGraph = options.dependencies.recordAnalysisReport(nextGraph, iteration.outputAnalysis);
-  nextGraph = options.dependencies.recordComparisonReport(nextGraph, iteration.comparisonReport);
+  nextGraph = dependencies.recordAnalysisReport(nextGraph, iteration.outputAnalysis);
+  nextGraph = dependencies.recordComparisonReport(nextGraph, iteration.comparisonReport);
   return nextGraph;
 }
 
 function recordAppliedIterationPartial(
-  options: RunRequestCycleOptions,
+  dependencies: RunRequestCycleOptions["dependencies"],
   sessionGraph: RequestCycleResult["sessionGraph"],
   partialResult: Record<string, unknown> | undefined,
+  branchId?: string,
 ): RequestCycleResult["sessionGraph"] {
   if (!partialResult) {
     return sessionGraph;
   }
 
   let nextGraph = recordPlanningArtifacts(
-    options,
+    dependencies,
     sessionGraph,
     "semanticProfile" in partialResult
       ? (partialResult.semanticProfile as RequestCycleResult["semanticProfile"])
@@ -624,11 +748,11 @@ function recordAppliedIterationPartial(
   );
 
   if ("outputVersion" in partialResult && partialResult.outputVersion) {
-    nextGraph = options.dependencies.recordAudioVersion(
+    nextGraph = dependencies.recordAudioVersion(
       nextGraph,
       partialResult.outputVersion as RequestCycleResult["outputVersion"],
       {
-        ...(options.branchId === undefined ? {} : { branch_id: options.branchId }),
+        ...(branchId === undefined ? {} : { branch_id: branchId }),
       },
     );
   }
@@ -638,28 +762,94 @@ function recordAppliedIterationPartial(
       | RequestCycleResult["transformResult"]
       | undefined;
     if (transformResult) {
-      nextGraph = options.dependencies.recordTransformRecord(
-        nextGraph,
-        transformResult.transformRecord,
-      );
+      nextGraph = dependencies.recordTransformRecord(nextGraph, transformResult.transformRecord);
     }
   }
 
   if ("outputAnalysis" in partialResult && partialResult.outputAnalysis) {
-    nextGraph = options.dependencies.recordAnalysisReport(
+    nextGraph = dependencies.recordAnalysisReport(
       nextGraph,
       partialResult.outputAnalysis as RequestCycleResult["outputAnalysis"],
     );
   }
 
   if ("comparisonReport" in partialResult && partialResult.comparisonReport) {
-    nextGraph = options.dependencies.recordComparisonReport(
+    nextGraph = dependencies.recordComparisonReport(
       nextGraph,
       partialResult.comparisonReport as RequestCycleResult["comparisonReport"],
     );
   }
 
   return nextGraph;
+}
+
+async function loadSessionVersion(input: {
+  options: RunRequestCycleOptions;
+  asset: RequestCycleResult["asset"];
+  sessionGraph: RequestCycleResult["sessionGraph"];
+  versionId: string;
+}): Promise<RequestCycleResult["inputVersion"]> {
+  const loadVersion = input.options.dependencies.getAudioVersionById;
+  if (!loadVersion) {
+    throw new Error(
+      "Follow-up requests that target a prior baseline version require a getAudioVersionById dependency so orchestration can materialize that AudioVersion artifact.",
+    );
+  }
+
+  const resolvedVersion = await loadVersion({
+    asset: input.asset,
+    sessionGraph: input.sessionGraph,
+    versionId: input.versionId,
+  });
+
+  if (!resolvedVersion) {
+    throw new Error(`Could not load AudioVersion '${input.versionId}' for follow-up execution.`);
+  }
+
+  const recordedAssetId = input.sessionGraph.metadata?.provenance?.[input.versionId]?.asset_id;
+  if (resolvedVersion.version_id !== input.versionId) {
+    throw new Error(
+      `Loaded AudioVersion '${resolvedVersion.version_id}' does not match requested follow-up source version '${input.versionId}'.`,
+    );
+  }
+
+  if (resolvedVersion.asset_id !== input.asset.asset_id) {
+    throw new Error(
+      `Loaded AudioVersion '${resolvedVersion.version_id}' belongs to asset '${resolvedVersion.asset_id}', but the current session asset is '${input.asset.asset_id}'.`,
+    );
+  }
+
+  if (recordedAssetId && resolvedVersion.asset_id !== recordedAssetId) {
+    throw new Error(
+      `Loaded AudioVersion '${resolvedVersion.version_id}' does not match the recorded session provenance for asset '${recordedAssetId}'.`,
+    );
+  }
+
+  return resolvedVersion;
+}
+
+function createAlternateBranchId(
+  sessionGraph: RequestCycleResult["sessionGraph"],
+  version: RequestCycleResult["inputVersion"],
+): string {
+  const existingBranchIds = new Set(
+    sessionGraph.metadata?.branches?.map((branch) => branch.branch_id) ?? [],
+  );
+  const baseSlug = `branch_alt_${sanitizeBranchFragment(version.version_id)}`;
+  let index = 1;
+
+  while (existingBranchIds.has(`${baseSlug}_${index}`)) {
+    index += 1;
+  }
+
+  return `${baseSlug}_${index}`;
+}
+
+function sanitizeBranchFragment(value: string): string {
+  return value
+    .replace(/[^A-Za-z0-9]+/g, "")
+    .slice(-24)
+    .toLowerCase();
 }
 
 async function decideRevision(

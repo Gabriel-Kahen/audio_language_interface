@@ -1,21 +1,13 @@
 import {
+  getParentVersionId,
   getVersionFollowUpRequest,
   resolveRevertTarget,
   resolveUndoTarget,
   type SessionGraph,
 } from "@audio-language-interface/history";
+import type { FollowUpApplyResolution, FollowUpRevertResolution } from "./types.js";
 
-export type FollowUpResolution =
-  | {
-      kind: "apply";
-      resolvedUserRequest: string;
-      source: "direct_request" | "repeat_last_request";
-    }
-  | {
-      kind: "revert";
-      targetVersionId: string;
-      source: "less" | "undo" | "revert";
-    };
+export type FollowUpResolution = FollowUpApplyResolution | FollowUpRevertResolution;
 
 type RevertFollowUpSource = Extract<FollowUpResolution, { kind: "revert" }>["source"];
 
@@ -41,6 +33,35 @@ export function resolveFollowUpRequest(input: {
       kind: "apply",
       resolvedUserRequest: previousRequest,
       source: "repeat_last_request",
+    };
+  }
+
+  if (isTryAnotherVersionFollowUp(normalizedRequest)) {
+    if (!input.sessionGraph) {
+      throw new Error(
+        "The follow-up request `try another version` requires a session graph so orchestration can branch safely from the prior baseline version.",
+      );
+    }
+
+    const previousRequest = getVersionFollowUpRequest(input.sessionGraph, input.versionId);
+    if (!previousRequest) {
+      throw new Error(
+        "The follow-up request `try another version` requires the current version to have a recorded prior edit request.",
+      );
+    }
+
+    const parentVersionId = getParentVersionId(input.sessionGraph, input.versionId);
+    if (!parentVersionId) {
+      throw new Error(
+        "The follow-up request `try another version` requires the current version to have a recorded parent version so orchestration can branch from the previous baseline.",
+      );
+    }
+
+    return {
+      kind: "apply",
+      resolvedUserRequest: previousRequest,
+      source: "try_another_version",
+      inputVersionId: parentVersionId,
     };
   }
 
@@ -108,4 +129,14 @@ function getRevertSource(value: string): RevertFollowUpSource | undefined {
   }
 
   return undefined;
+}
+
+function isTryAnotherVersionFollowUp(value: string): boolean {
+  return [
+    "try another version",
+    "another version",
+    "try another",
+    "another take",
+    "alternate version",
+  ].includes(value);
 }

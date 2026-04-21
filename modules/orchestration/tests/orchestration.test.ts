@@ -1,4 +1,5 @@
 import {
+  createBranch,
   createSessionGraph,
   recordAnalysisReport,
   recordAudioAsset,
@@ -237,6 +238,54 @@ describe("runRequestCycle", () => {
     expect(secondCycle.editPlan?.user_request).toBe("Make it darker");
   });
 
+  it("supports `try another version` by branching from the prior baseline and replaying the last request", async () => {
+    const asset = createAsset();
+    const inputVersion = createVersion("ver_input");
+    const dependencies = createDependencies();
+
+    const firstCycle = await runRequestCycle({
+      workspaceRoot: "/workspace",
+      userRequest: "Make it darker",
+      input: {
+        kind: "existing",
+        asset,
+        version: inputVersion,
+      },
+      dependencies,
+    });
+
+    const alternateCycle = await runRequestCycle({
+      workspaceRoot: "/workspace",
+      userRequest: "try another version",
+      input: {
+        kind: "existing",
+        asset: firstCycle.asset,
+        version: firstCycle.outputVersion,
+        sessionGraph: firstCycle.sessionGraph,
+      },
+      dependencies,
+    });
+
+    expect(alternateCycle.result_kind).toBe("applied");
+    expect(alternateCycle.followUpResolution).toMatchObject({
+      kind: "apply",
+      source: "try_another_version",
+      resolvedUserRequest: "Make it darker",
+      inputVersionId: inputVersion.version_id,
+    });
+    expect(alternateCycle.followUpResolution.kind).toBe("apply");
+    if (alternateCycle.followUpResolution.kind !== "apply") {
+      throw new Error("Expected apply follow-up resolution for alternate version flow.");
+    }
+    expect(alternateCycle.followUpResolution.branchId).toMatch(/^branch_alt_/);
+    expect(alternateCycle.inputVersion.version_id).toBe(inputVersion.version_id);
+    expect(alternateCycle.outputVersion.parent_version_id).toBe(inputVersion.version_id);
+    expect(alternateCycle.sessionGraph.active_refs.branch_id).toBe(
+      alternateCycle.followUpResolution.branchId,
+    );
+    expect(validateSessionGraph(alternateCycle.sessionGraph).valid).toBe(true);
+  });
+
   it("preserves pass history and caller rationale when one revision pass is requested", async () => {
     const asset = createAsset();
     const inputVersion = createVersion("ver_input");
@@ -458,6 +507,63 @@ describe("resolveFollowUpRequest", () => {
       source: "undo",
     });
   });
+
+  it("resolves `revert to previous version` as an explicit revert follow-up", async () => {
+    const asset = createAsset();
+    const inputVersion = createVersion("ver_input");
+    const dependencies = createDependencies();
+    const result = await runRequestCycle({
+      workspaceRoot: "/workspace",
+      userRequest: "Make it darker",
+      input: {
+        kind: "existing",
+        asset,
+        version: inputVersion,
+      },
+      dependencies,
+    });
+
+    expect(
+      resolveFollowUpRequest({
+        userRequest: "revert to previous version",
+        versionId: result.outputVersion.version_id,
+        sessionGraph: result.sessionGraph,
+      }),
+    ).toEqual({
+      kind: "revert",
+      targetVersionId: result.inputVersion.version_id,
+      source: "revert",
+    });
+  });
+
+  it("resolves `try another version` to the prior baseline request and source version", async () => {
+    const asset = createAsset();
+    const inputVersion = createVersion("ver_input");
+    const dependencies = createDependencies();
+    const result = await runRequestCycle({
+      workspaceRoot: "/workspace",
+      userRequest: "Make it darker",
+      input: {
+        kind: "existing",
+        asset,
+        version: inputVersion,
+      },
+      dependencies,
+    });
+
+    expect(
+      resolveFollowUpRequest({
+        userRequest: "try another version",
+        versionId: result.outputVersion.version_id,
+        sessionGraph: result.sessionGraph,
+      }),
+    ).toEqual({
+      kind: "apply",
+      resolvedUserRequest: "Make it darker",
+      source: "try_another_version",
+      inputVersionId: result.inputVersion.version_id,
+    });
+  });
 });
 
 describe("iterativeRefine", () => {
@@ -547,6 +653,7 @@ function createDependencies(
         editPlan,
       ),
     createSessionGraph,
+    createBranch,
     revertToVersion,
     recordAudioAsset,
     recordAudioVersion,

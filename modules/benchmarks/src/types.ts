@@ -6,6 +6,7 @@ import type {
 } from "@audio-language-interface/compare";
 import type { ImportAudioOptions } from "@audio-language-interface/io";
 import type {
+  FollowUpResolution,
   OrchestrationDependencies,
   RequestCycleResult,
   RunRequestCycleOptions,
@@ -120,11 +121,15 @@ export type RequestCycleBenchmarkCategory =
 
 export interface RequestCycleBenchmarkPlannerExpectation {
   expected_result_kind?: "applied" | "reverted";
+  expected_follow_up_source?: FollowUpResolution["source"];
   required_operations?: RuntimeOperationName[];
   forbidden_operations?: RuntimeOperationName[];
   expected_operation_order?: RuntimeOperationName[];
   required_goals?: string[];
   require_revision?: boolean;
+  expected_input_setup_index?: number;
+  expected_output_setup_index?: number;
+  require_active_branch?: boolean;
 }
 
 export interface RequestCycleBenchmarkOutcomeExpectation {
@@ -154,6 +159,7 @@ export interface RequestCycleBenchmarkCase {
   prompt: string;
   description: string;
   fixtureId: string;
+  setup_sequence?: string[];
   expectation: {
     planner?: RequestCycleBenchmarkPlannerExpectation;
     outcome?: RequestCycleBenchmarkOutcomeExpectation;
@@ -224,6 +230,7 @@ export interface RequestCycleBenchmarkCaseResult {
   status: "ok" | "error";
   artifacts: RequestCycleBenchmarkArtifacts;
   expectation: RequestCycleBenchmarkCase["expectation"];
+  setupResults?: RequestCycleResult[];
   requestCycleResult?: RequestCycleResult;
   error?: RequestCycleBenchmarkFailure;
   passedChecks: number;

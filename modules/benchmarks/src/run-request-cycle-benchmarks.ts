@@ -3,8 +3,11 @@ import os from "node:os";
 import path from "node:path";
 
 import {
+  type AudioVersion,
   defaultOrchestrationDependencies,
+  type OrchestrationDependencies,
   OrchestrationStageError,
+  type RequestCycleResult,
   runRequestCycle,
 } from "@audio-language-interface/orchestration";
 
@@ -91,16 +94,15 @@ export async function runRequestCycleBenchmarkCase(
     benchmarkCase.caseId,
     options.workspaceRoot,
   );
-  const dependencies = {
-    ...defaultOrchestrationDependencies,
-    ...(options.dependencies ?? {}),
-  };
+  const versionStore = new Map<string, AudioVersion>();
+  const dependencies = createBenchmarkDependencies(versionStore, options.dependencies);
 
   let fixtureManifestPath = options.fixtureManifestPath ?? DEFAULT_AUDIO_FIXTURE_MANIFEST_PATH;
   let fixture: AudioFixtureManifestEntry | undefined;
   let inputPath: string | undefined;
   let sourceFixturePath: string | undefined;
   let requestCycleResult: RequestCycleBenchmarkCaseResult["requestCycleResult"];
+  let setupResults: RequestCycleBenchmarkCaseResult["setupResults"];
   let error: RequestCycleBenchmarkFailure | undefined;
 
   try {
@@ -113,27 +115,92 @@ export async function runRequestCycleBenchmarkCase(
     inputPath = materialized.inputPath;
     sourceFixturePath = materialized.sourceFixturePath;
 
-    requestCycleResult = await runRequestCycle({
-      workspaceRoot,
-      userRequest: benchmarkCase.prompt,
-      input: {
-        kind: "import",
-        inputPath: materialized.inputPath,
-        importOptions: {
-          ...(options.importOptions ?? {}),
-          importedAt: options.importedAt ?? startedAtIso,
-          notes: options.importOptions?.notes ?? buildDefaultImportNotes(benchmarkCase),
+    const setupSequence = benchmarkCase.setup_sequence ?? [];
+    if (setupSequence.length > 0) {
+      setupResults = [];
+      let priorResult: RequestCycleResult | undefined;
+
+      for (const setupPrompt of setupSequence) {
+        const cycleResult = await runRequestCycle({
+          workspaceRoot,
+          userRequest: setupPrompt,
+          input:
+            priorResult === undefined
+              ? {
+                  kind: "import",
+                  inputPath: materialized.inputPath,
+                  importOptions: {
+                    ...(options.importOptions ?? {}),
+                    importedAt: options.importedAt ?? startedAtIso,
+                    notes: options.importOptions?.notes ?? buildDefaultImportNotes(benchmarkCase),
+                  },
+                }
+              : {
+                  kind: "existing",
+                  asset: priorResult.asset,
+                  version: priorResult.outputVersion,
+                  sessionGraph: priorResult.sessionGraph,
+                },
+          ...(options.analysisOptions === undefined
+            ? {}
+            : { analysisOptions: options.analysisOptions }),
+          ...(options.renderKind === undefined ? {} : { renderKind: options.renderKind }),
+          ...(options.revision === undefined ? {} : { revision: options.revision }),
+          ...(options.sessionId === undefined ? {} : { sessionId: options.sessionId }),
+          ...(options.branchId === undefined ? {} : { branchId: options.branchId }),
+          dependencies,
+        });
+
+        setupResults.push(cycleResult);
+        priorResult = cycleResult;
+      }
+
+      const finalInput = priorResult;
+      if (!finalInput) {
+        throw new Error("Expected a setup result before running the final benchmark prompt.");
+      }
+
+      requestCycleResult = await runRequestCycle({
+        workspaceRoot,
+        userRequest: benchmarkCase.prompt,
+        input: {
+          kind: "existing",
+          asset: finalInput.asset,
+          version: finalInput.outputVersion,
+          sessionGraph: finalInput.sessionGraph,
         },
-      },
-      ...(options.analysisOptions === undefined
-        ? {}
-        : { analysisOptions: options.analysisOptions }),
-      ...(options.renderKind === undefined ? {} : { renderKind: options.renderKind }),
-      ...(options.revision === undefined ? {} : { revision: options.revision }),
-      ...(options.sessionId === undefined ? {} : { sessionId: options.sessionId }),
-      ...(options.branchId === undefined ? {} : { branchId: options.branchId }),
-      dependencies,
-    });
+        ...(options.analysisOptions === undefined
+          ? {}
+          : { analysisOptions: options.analysisOptions }),
+        ...(options.renderKind === undefined ? {} : { renderKind: options.renderKind }),
+        ...(options.revision === undefined ? {} : { revision: options.revision }),
+        ...(options.sessionId === undefined ? {} : { sessionId: options.sessionId }),
+        ...(options.branchId === undefined ? {} : { branchId: options.branchId }),
+        dependencies,
+      });
+    } else {
+      requestCycleResult = await runRequestCycle({
+        workspaceRoot,
+        userRequest: benchmarkCase.prompt,
+        input: {
+          kind: "import",
+          inputPath: materialized.inputPath,
+          importOptions: {
+            ...(options.importOptions ?? {}),
+            importedAt: options.importedAt ?? startedAtIso,
+            notes: options.importOptions?.notes ?? buildDefaultImportNotes(benchmarkCase),
+          },
+        },
+        ...(options.analysisOptions === undefined
+          ? {}
+          : { analysisOptions: options.analysisOptions }),
+        ...(options.renderKind === undefined ? {} : { renderKind: options.renderKind }),
+        ...(options.revision === undefined ? {} : { revision: options.revision }),
+        ...(options.sessionId === undefined ? {} : { sessionId: options.sessionId }),
+        ...(options.branchId === undefined ? {} : { branchId: options.branchId }),
+        dependencies,
+      });
+    }
   } catch (caughtError) {
     error = serializeBenchmarkError(caughtError);
   } finally {
@@ -150,7 +217,12 @@ export async function runRequestCycleBenchmarkCase(
     ...(inputPath === undefined ? {} : { inputPath }),
     ...(fixture === undefined ? {} : { fixture }),
   };
-  const scoreResult = scoreRequestCycleBenchmarkCase(benchmarkCase, requestCycleResult, error);
+  const scoreResult = scoreRequestCycleBenchmarkCase(
+    benchmarkCase,
+    requestCycleResult,
+    error,
+    setupResults,
+  );
 
   if (requestCycleResult) {
     return {
@@ -165,6 +237,7 @@ export async function runRequestCycleBenchmarkCase(
       status: "ok",
       artifacts,
       expectation: benchmarkCase.expectation,
+      ...(setupResults === undefined ? {} : { setupResults }),
       requestCycleResult,
       ...scoreResult,
     };
@@ -182,8 +255,44 @@ export async function runRequestCycleBenchmarkCase(
     status: "error",
     artifacts,
     expectation: benchmarkCase.expectation,
+    ...(setupResults === undefined ? {} : { setupResults }),
     ...(error === undefined ? {} : { error }),
     ...scoreResult,
+  };
+}
+
+function createBenchmarkDependencies(
+  versionStore: Map<string, AudioVersion>,
+  overrides: RunRequestCycleBenchmarkCaseOptions["dependencies"] | undefined,
+): OrchestrationDependencies {
+  const baseDependencies: OrchestrationDependencies = {
+    ...defaultOrchestrationDependencies,
+    ...(overrides ?? {}),
+  };
+
+  const importAudioFromFile = async (
+    ...args: Parameters<OrchestrationDependencies["importAudioFromFile"]>
+  ) => {
+    const result = await baseDependencies.importAudioFromFile(...args);
+    versionStore.set(result.version.version_id, result.version as AudioVersion);
+    return result;
+  };
+
+  const applyEditPlan = async (...args: Parameters<OrchestrationDependencies["applyEditPlan"]>) => {
+    const result = await baseDependencies.applyEditPlan(...args);
+    versionStore.set(args[0].version.version_id, args[0].version as AudioVersion);
+    versionStore.set(result.outputVersion.version_id, result.outputVersion as AudioVersion);
+    return result;
+  };
+
+  return {
+    ...baseDependencies,
+    importAudioFromFile,
+    applyEditPlan,
+    getAudioVersionById: async (input) => {
+      const resolvedVersion = await baseDependencies.getAudioVersionById?.(input);
+      return resolvedVersion ?? versionStore.get(input.versionId);
+    },
   };
 }
 

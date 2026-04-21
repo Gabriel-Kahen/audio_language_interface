@@ -315,7 +315,7 @@ describe("request cycle integration", () => {
     });
   });
 
-  it("supports repeated apply, less, and undo cycles with valid session history", async () => {
+  it("supports repeated apply, alternate-version, less, and undo cycles with valid session history", async () => {
     await withTempWorkspace(async (workspaceRoot) => {
       const inputPath = path.join(workspaceRoot, "fixtures", "tone.wav");
       await writeFixtureWav(inputPath, { sampleRateHz: 44_100, durationSeconds: 1.25 });
@@ -388,6 +388,18 @@ describe("request cycle integration", () => {
         dependencies,
       });
 
+      const alternateCycle = await runRequestCycle({
+        workspaceRoot,
+        userRequest: "try another version",
+        input: {
+          kind: "existing",
+          asset: secondCycle.asset,
+          version: secondCycle.outputVersion,
+          sessionGraph: secondCycle.sessionGraph,
+        },
+        dependencies,
+      });
+
       const lessCycle = await runRequestCycle({
         workspaceRoot,
         userRequest: "less",
@@ -432,6 +444,27 @@ describe("request cycle integration", () => {
         targetVersionId: firstCycle.outputVersion.version_id,
         source: "undo",
       });
+
+      expect(alternateCycle.result_kind).toBe("applied");
+      expect(alternateCycle.followUpResolution).toMatchObject({
+        kind: "apply",
+        source: "try_another_version",
+        resolvedUserRequest: "Make this loop darker and less harsh.",
+        inputVersionId: firstCycle.outputVersion.version_id,
+      });
+      expect(alternateCycle.followUpResolution.kind).toBe("apply");
+      if (alternateCycle.followUpResolution.kind !== "apply") {
+        throw new Error("Expected apply follow-up resolution for alternate version integration.");
+      }
+      expect(alternateCycle.followUpResolution.branchId).toMatch(/^branch_alt_/);
+      expect(alternateCycle.inputVersion.version_id).toBe(firstCycle.outputVersion.version_id);
+      expect(alternateCycle.outputVersion.parent_version_id).toBe(
+        firstCycle.outputVersion.version_id,
+      );
+      expect(alternateCycle.sessionGraph.active_refs.branch_id).toBe(
+        alternateCycle.followUpResolution.branchId,
+      );
+      expect(validateSessionGraph(alternateCycle.sessionGraph).valid).toBe(true);
 
       expect(lessCycle.result_kind).toBe("reverted");
       expect(lessCycle.outputVersion.version_id).toBe(firstCycle.outputVersion.version_id);

@@ -66,12 +66,12 @@ The current implementation is a thin integration layer over the existing runtime
 - `iterativeRefine` repeats plan, apply, analyze, and compare until `maxIterations` is reached or the caller stops the loop.
 - `runRequestCycle` can optionally execute one additional revision pass after the first version-level comparison. The decision stays explicit through `options.revision` and every applied pass is preserved in `result.iterations`.
 - `runRequestCycle` now exposes the final version-level comparison directly as `result.versionComparisonReport`, while preserving the final render-to-render comparison as `result.renderComparisonReport` and the legacy compatibility alias `result.comparisonReport`.
-- `resolveFollowUpRequest` can safely expand `more` to the last recorded request, resolve `less` against version ancestry, and resolve `undo` against explicit active-ref history.
+- `resolveFollowUpRequest` can safely expand `more` to the last recorded request, resolve `less` and explicit revert wording against version ancestry, resolve `undo` against explicit active-ref history, and branch `try another version` from the prior baseline when the required session provenance exists.
 
 ## Current limitations
 
 - Orchestration depends on the same current module capabilities as the underlying runtime and intent layers. It does not add hidden planning breadth, hidden transform support, or alternate capability discovery on top of them.
-- Revert-like follow-ups are fully executable when the caller provides `getAudioVersionById`, which lets orchestration materialize the referenced `AudioVersion` artifact explicitly before re-analyzing and re-rendering it.
+- Revert-like and alternate-version follow-ups are fully executable when the caller provides `getAudioVersionById`, which lets orchestration materialize the referenced historical `AudioVersion` artifact explicitly before re-analyzing, branching, re-rendering, or reverting it.
 - When `runRequestCycle` performs a second pass, the final render comparison still compares the original input against the final output. The final version comparison is also surfaced at `result.versionComparisonReport`, while the per-pass version comparisons remain available in `result.iterations` and are also recorded into session history.
 - It does not provide hidden persistence, job scheduling, or service hosting behavior.
 - There is no dedicated CLI or app entrypoint that wraps these orchestration APIs yet.

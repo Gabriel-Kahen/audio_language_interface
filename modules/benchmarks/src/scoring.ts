@@ -99,6 +99,7 @@ export function scoreRequestCycleBenchmarkCase(
   benchmarkCase: RequestCycleBenchmarkCase,
   result: RequestCycleBenchmarkCaseResult["requestCycleResult"],
   error?: RequestCycleBenchmarkFailure,
+  setupResults?: RequestCycleBenchmarkCaseResult["setupResults"],
 ): Pick<
   RequestCycleBenchmarkCaseResult,
   "passedChecks" | "totalChecks" | "score" | "checks" | "scoreBreakdown" | "failureBuckets"
@@ -107,7 +108,7 @@ export function scoreRequestCycleBenchmarkCase(
     result === undefined
       ? scoreErrorExpectation(benchmarkCase.expectation.error, error)
       : [
-          ...scorePlannerCorrectness(benchmarkCase, result),
+          ...scorePlannerCorrectness(benchmarkCase, result, setupResults),
           ...scoreOutcomeVerification(benchmarkCase, result),
           ...scoreRegressionAvoidance(benchmarkCase, result),
         ];
@@ -128,6 +129,7 @@ export function scoreRequestCycleBenchmarkCase(
 function scorePlannerCorrectness(
   benchmarkCase: RequestCycleBenchmarkCase,
   result: NonNullable<RequestCycleBenchmarkCaseResult["requestCycleResult"]>,
+  setupResults?: RequestCycleBenchmarkCaseResult["setupResults"],
 ): RequestCycleBenchmarkCheckResult[] {
   const checks: RequestCycleBenchmarkCheckResult[] = [];
   const expectation = benchmarkCase.expectation.planner;
@@ -142,6 +144,17 @@ function scorePlannerCorrectness(
       passed: result.result_kind === expectation.expected_result_kind,
       expected: expectation.expected_result_kind,
       actual: result.result_kind,
+    });
+  }
+
+  if (expectation?.expected_follow_up_source !== undefined) {
+    checks.push({
+      category: "planner_correctness",
+      scope: "request_cycle",
+      checkId: "planner:follow_up_source",
+      passed: result.followUpResolution.source === expectation.expected_follow_up_source,
+      expected: expectation.expected_follow_up_source,
+      actual: result.followUpResolution.source,
     });
   }
 
@@ -199,6 +212,44 @@ function scorePlannerCorrectness(
       passed: actual === expectation.require_revision,
       expected: expectation.require_revision ? "revise" : "stop",
       actual: actual ? "revise" : "stop",
+    });
+  }
+
+  if (expectation?.expected_input_setup_index !== undefined) {
+    const setupVersionId =
+      setupResults?.[expectation.expected_input_setup_index]?.outputVersion.version_id;
+    checks.push({
+      category: "planner_correctness",
+      scope: "request_cycle",
+      checkId: "planner:input_setup_index",
+      passed: setupVersionId !== undefined && result.inputVersion.version_id === setupVersionId,
+      expected: setupVersionId ?? `setup[${expectation.expected_input_setup_index}]`,
+      actual: result.inputVersion.version_id,
+    });
+  }
+
+  if (expectation?.expected_output_setup_index !== undefined) {
+    const setupVersionId =
+      setupResults?.[expectation.expected_output_setup_index]?.outputVersion.version_id;
+    checks.push({
+      category: "planner_correctness",
+      scope: "request_cycle",
+      checkId: "planner:output_setup_index",
+      passed: setupVersionId !== undefined && result.outputVersion.version_id === setupVersionId,
+      expected: setupVersionId ?? `setup[${expectation.expected_output_setup_index}]`,
+      actual: result.outputVersion.version_id,
+    });
+  }
+
+  if (expectation?.require_active_branch !== undefined) {
+    const actual = result.sessionGraph.active_refs.branch_id !== undefined;
+    checks.push({
+      category: "planner_correctness",
+      scope: "request_cycle",
+      checkId: "planner:active_branch",
+      passed: actual === expectation.require_active_branch,
+      expected: expectation.require_active_branch ? "branch" : "no_branch",
+      actual: actual ? "branch" : "no_branch",
     });
   }
 

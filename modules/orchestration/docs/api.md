@@ -36,6 +36,7 @@ The current v1 surface stays thin by:
 - `compareVersions`
 - `compareRenders`
 - `createSessionGraph`
+- `createBranch`
 - `recordAudioAsset`
 - `recordAudioVersion`
 - `recordAnalysisReport`
@@ -122,9 +123,10 @@ The default behavior is one attempt with no retries.
 - expands shorthand `more` to the recorded `user_request` from the plan that produced the current version
 - resolves `less` and nearby revert-style wording to a concrete ancestor `version_id` using `modules/history`
 - resolves `undo` to the previously active version using explicit `active_ref_history`
+- resolves `try another version` to the prior baseline request and source version, then lets `runRequestCycle()` branch from that baseline before replaying the request
 - throws when the current session state is insufficient to resolve the follow-up safely
 
-`runRequestCycle(options)` now uses this resolver for `input.kind = "existing"`, which lets repeated requests such as `more`, `less`, and `undo` reuse explicit session history without introducing hidden orchestration state.
+`runRequestCycle(options)` now uses this resolver for `input.kind = "existing"`, which lets repeated requests such as `more`, `less`, `undo`, `revert to previous version`, and `try another version` reuse explicit session history without introducing hidden orchestration state.
 
 When `options.revision.enabled` is true, `runRequestCycle()` may execute one additional explicit pass after the first version-level comparison. The default policy is conservative:
 
@@ -141,13 +143,15 @@ Important comparison behavior:
 - the final render comparison still compares the original input against the final output and is returned separately as `result.renderComparisonReport`
 - only pass-level stages carry `trace[].pass`; the final render comparison does not
 
-For revert-style execution, callers must provide `dependencies.getAudioVersionById({ asset, sessionGraph, versionId })`.
+For revert-style and alternate-version execution, callers must provide `dependencies.getAudioVersionById({ asset, sessionGraph, versionId })`.
 
-Orchestration now verifies that the loaded `AudioVersion` matches:
+Orchestration now verifies that the loaded historical `AudioVersion` matches:
 
 - the requested revert `versionId`
 - the current session `asset_id`
 - the recorded session provenance when that provenance exists
+
+When `try another version` is resolved successfully, orchestration also creates a new branch from the recovered source version before recording the new output version on that branch. The current alternate-version flow is still deterministic; it replays the prior request from the prior baseline rather than inventing hidden planner randomness.
 
 That keeps orchestration thin:
 

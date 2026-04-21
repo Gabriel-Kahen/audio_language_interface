@@ -13,8 +13,6 @@ import type {
 import type { SemanticDescriptor, SemanticProfile } from "@audio-language-interface/semantics";
 import type { ApplyTransformsResult } from "@audio-language-interface/transforms";
 
-import type { FollowUpResolution } from "./follow-up-request.js";
-
 export type {
   AnalysisReport,
   AnalyzeAudioOptions,
@@ -24,7 +22,6 @@ export type {
   ComparisonReport,
   EditPlan,
   FinalRenderOptions,
-  FollowUpResolution,
   ImportAudioOptions,
   ImportAudioResult,
   PreviewRenderOptions,
@@ -38,6 +35,8 @@ export type WorkflowStage =
   | "import"
   | "analyze_input"
   | "resolve_follow_up"
+  | "prepare_follow_up_branch"
+  | "load_follow_up_input"
   | "load_revert_target"
   | "semantic_profile"
   | "plan"
@@ -77,6 +76,7 @@ export interface OrchestrationDependencies {
   compareVersions: typeof import("@audio-language-interface/compare").compareVersions;
   compareRenders: typeof import("@audio-language-interface/compare").compareRenders;
   createSessionGraph: typeof import("@audio-language-interface/history").createSessionGraph;
+  createBranch: typeof import("@audio-language-interface/history").createBranch;
   revertToVersion: typeof import("@audio-language-interface/history").revertToVersion;
   recordAudioAsset: typeof import("@audio-language-interface/history").recordAudioAsset;
   recordAudioVersion: typeof import("@audio-language-interface/history").recordAudioVersion;
@@ -253,6 +253,22 @@ export interface RunRequestCycleOptions {
   dependencies: OrchestrationDependencies;
   failurePolicy?: FailurePolicy | undefined;
 }
+
+export interface FollowUpApplyResolution {
+  kind: "apply";
+  resolvedUserRequest: string;
+  source: "direct_request" | "repeat_last_request" | "try_another_version";
+  inputVersionId?: string;
+  branchId?: string;
+}
+
+export interface FollowUpRevertResolution {
+  kind: "revert";
+  targetVersionId: string;
+  source: "less" | "undo" | "revert";
+}
+
+export type FollowUpResolution = FollowUpApplyResolution | FollowUpRevertResolution;
 
 export interface RequestCycleResult {
   result_kind: "applied" | "reverted";

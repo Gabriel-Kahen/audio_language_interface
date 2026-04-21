@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import { defaultOrchestrationDependencies } from "@audio-language-interface/orchestration";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -16,6 +17,7 @@ import {
   firstPromptFamilyRequestCycleSuite,
   formatBenchmarkMarkdownReport,
   runComparisonBenchmarks,
+  runRequestCycleBenchmarkCase,
   runRequestCycleBenchmarks,
   scoreComparisonReport,
 } from "../src/index.js";
@@ -172,7 +174,7 @@ describe("firstPromptFamilyFixtureCorpus", () => {
     expect(firstPromptFamilyRequestCycleCorpus.fixtureManifestPath).toBe(
       FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
     );
-    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(13);
+    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(18);
     expect(firstPromptFamilyRequestCycleSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
         "request_cycle_tame_sibilance",
@@ -181,6 +183,11 @@ describe("firstPromptFamilyFixtureCorpus", () => {
         "request_cycle_trim_boundary_silence",
         "request_cycle_speed_up_preserve_pitch",
         "request_cycle_pitch_up_two_semitones",
+        "request_cycle_follow_up_more",
+        "request_cycle_follow_up_try_another_version",
+        "request_cycle_follow_up_less",
+        "request_cycle_follow_up_undo",
+        "request_cycle_follow_up_revert_previous_version",
         "request_cycle_control_peaks_without_crushing",
         "request_cycle_louder_and_more_controlled",
       ]),
@@ -304,7 +311,7 @@ describe("formatBenchmarkMarkdownReport", () => {
 });
 
 describe("runRequestCycleBenchmarks", () => {
-  it("runs a fixture-backed request-cycle slice across tonal, restoration, timing, and control prompts", async () => {
+  it("runs a fixture-backed request-cycle slice across tonal, restoration, timing, control, and iterative follow-up prompts", async () => {
     const darkerLessHarsh = getRequestCycleCase("request_cycle_darker_less_harsh");
     const tameSibilance = getRequestCycleCase("request_cycle_tame_sibilance");
     const removeHum = getRequestCycleCase("request_cycle_remove_60hz_hum");
@@ -312,6 +319,11 @@ describe("runRequestCycleBenchmarks", () => {
     const trimBoundarySilence = getRequestCycleCase("request_cycle_trim_boundary_silence");
     const speedUp = getRequestCycleCase("request_cycle_speed_up_preserve_pitch");
     const pitchUp = getRequestCycleCase("request_cycle_pitch_up_two_semitones");
+    const followUpMore = getRequestCycleCase("request_cycle_follow_up_more");
+    const tryAnother = getRequestCycleCase("request_cycle_follow_up_try_another_version");
+    const followUpLess = getRequestCycleCase("request_cycle_follow_up_less");
+    const followUpUndo = getRequestCycleCase("request_cycle_follow_up_undo");
+    const followUpRevert = getRequestCycleCase("request_cycle_follow_up_revert_previous_version");
     const controlPeaks = getRequestCycleCase("request_cycle_control_peaks_without_crushing");
     const louderControlled = getRequestCycleCase("request_cycle_louder_and_more_controlled");
     const cleanIt = getRequestCycleCase("request_cycle_clean_it_clarification");
@@ -332,6 +344,11 @@ describe("runRequestCycleBenchmarks", () => {
         trimBoundarySilence,
         speedUp,
         pitchUp,
+        followUpMore,
+        tryAnother,
+        followUpLess,
+        followUpUndo,
+        followUpRevert,
         controlPeaks,
         louderControlled,
         cleanIt,
@@ -341,7 +358,7 @@ describe("runRequestCycleBenchmarks", () => {
 
     expect(result.suiteId).toBe("first_prompt_family");
     expect(result.corpusId).toBe("request_cycle_test_subset");
-    expect(result.caseResults).toHaveLength(11);
+    expect(result.caseResults).toHaveLength(16);
     expect(result.totalChecks).toBeGreaterThan(0);
     expect(result.totalPassedChecks).toBe(result.totalChecks);
     expect(result.overallScore).toBe(1);
@@ -401,6 +418,59 @@ describe("runRequestCycleBenchmarks", () => {
       "pitch_shift",
     ]);
 
+    const followUpMoreCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === followUpMore.caseId,
+    );
+    expect(followUpMoreCase?.status).toBe("ok");
+    expect(followUpMoreCase?.requestCycleResult?.followUpResolution).toMatchObject({
+      kind: "apply",
+      source: "repeat_last_request",
+    });
+    expect(followUpMoreCase?.setupResults).toHaveLength(1);
+
+    const tryAnotherCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === tryAnother.caseId,
+    );
+    expect(tryAnotherCase?.status).toBe("ok");
+    expect(tryAnotherCase?.requestCycleResult?.followUpResolution).toMatchObject({
+      kind: "apply",
+      source: "try_another_version",
+      branchId: expect.stringMatching(/^branch_alt_/),
+    });
+    expect(tryAnotherCase?.requestCycleResult?.sessionGraph.active_refs.branch_id).toMatch(
+      /^branch_alt_/,
+    );
+
+    const followUpLessCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === followUpLess.caseId,
+    );
+    expect(followUpLessCase?.status).toBe("ok");
+    expect(followUpLessCase?.requestCycleResult?.result_kind).toBe("reverted");
+    expect(followUpLessCase?.requestCycleResult?.followUpResolution).toMatchObject({
+      kind: "revert",
+      source: "less",
+    });
+
+    const followUpUndoCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === followUpUndo.caseId,
+    );
+    expect(followUpUndoCase?.status).toBe("ok");
+    expect(followUpUndoCase?.requestCycleResult?.result_kind).toBe("reverted");
+    expect(followUpUndoCase?.requestCycleResult?.followUpResolution).toMatchObject({
+      kind: "revert",
+      source: "undo",
+    });
+
+    const followUpRevertCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === followUpRevert.caseId,
+    );
+    expect(followUpRevertCase?.status).toBe("ok");
+    expect(followUpRevertCase?.requestCycleResult?.result_kind).toBe("reverted");
+    expect(followUpRevertCase?.requestCycleResult?.followUpResolution).toMatchObject({
+      kind: "revert",
+      source: "revert",
+    });
+
     const peaksCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === controlPeaks.caseId,
     );
@@ -430,6 +500,25 @@ describe("runRequestCycleBenchmarks", () => {
     expect(underspecifiedCase?.status).toBe("error");
     expect(underspecifiedCase?.error?.stage).toBe("plan");
     expect(underspecifiedCase?.error?.failureClass).toBe("supported_but_underspecified");
+  }, 60_000);
+
+  it("preserves follow-up version loading when import/apply dependencies are overridden", async () => {
+    const benchmarkCase = getRequestCycleCase("request_cycle_follow_up_try_another_version");
+
+    const result = await runRequestCycleBenchmarkCase(benchmarkCase, {
+      dependencies: {
+        importAudioFromFile: (...args) =>
+          defaultOrchestrationDependencies.importAudioFromFile(...args),
+        applyEditPlan: (...args) => defaultOrchestrationDependencies.applyEditPlan(...args),
+      },
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.requestCycleResult?.followUpResolution).toMatchObject({
+      kind: "apply",
+      source: "try_another_version",
+    });
+    expect(result.score).toBe(1);
   }, 60_000);
 });
 

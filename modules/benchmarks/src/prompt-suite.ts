@@ -856,6 +856,110 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
       },
     },
     {
+      caseId: "request_cycle_follow_up_more",
+      family: "first_prompt_family",
+      prompt: "more",
+      description: "Follow-up shorthand should replay the previous request on the latest version.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      setup_sequence: ["make this loop darker and less harsh"],
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          expected_follow_up_source: "repeat_last_request",
+          expected_input_setup_index: 0,
+          required_operations: ["notch_filter", "tilt_eq"],
+          expected_operation_order: ["notch_filter", "tilt_eq"],
+          required_goals: [
+            "reduce upper-mid harshness",
+            "tilt the overall balance slightly darker",
+          ],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "reduce upper-mid harshness": "met",
+            "tilt the overall balance slightly darker": "met",
+          },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_follow_up_try_another_version",
+      family: "first_prompt_family",
+      prompt: "try another version",
+      description:
+        "Alternate follow-up should branch from the prior baseline and replay the last request.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      setup_sequence: ["make this loop darker and less harsh"],
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          expected_follow_up_source: "try_another_version",
+          require_active_branch: true,
+          required_operations: ["notch_filter", "tilt_eq"],
+          expected_operation_order: ["notch_filter", "tilt_eq"],
+          required_goals: [
+            "reduce upper-mid harshness",
+            "tilt the overall balance slightly darker",
+          ],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "reduce upper-mid harshness": "met",
+            "tilt the overall balance slightly darker": "met",
+          },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_follow_up_less",
+      family: "first_prompt_family",
+      prompt: "less",
+      description: "Less should revert one step back through version ancestry.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      setup_sequence: ["make this loop darker and less harsh", "more"],
+      expectation: {
+        planner: {
+          expected_result_kind: "reverted",
+          expected_follow_up_source: "less",
+          expected_output_setup_index: 0,
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_follow_up_undo",
+      family: "first_prompt_family",
+      prompt: "undo",
+      description: "Undo should restore the prior active version from session history.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      setup_sequence: ["make this loop darker and less harsh", "more", "less"],
+      expectation: {
+        planner: {
+          expected_result_kind: "reverted",
+          expected_follow_up_source: "undo",
+          expected_output_setup_index: 1,
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_follow_up_revert_previous_version",
+      family: "first_prompt_family",
+      prompt: "revert to previous version",
+      description: "Explicit revert wording should resolve to the previous recorded version.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      setup_sequence: ["make this loop darker and less harsh", "more"],
+      expectation: {
+        planner: {
+          expected_result_kind: "reverted",
+          expected_follow_up_source: "revert",
+          expected_output_setup_index: 0,
+        },
+      },
+    },
+    {
       caseId: "request_cycle_clean_it_clarification",
       family: "first_prompt_family",
       prompt: "clean it",
