@@ -76,9 +76,10 @@ The current cleanup slice is now analysis-backed instead of purely prompt-driven
 The current benchmarked planner surface also includes conservative compound-edit handling:
 
 - explicit 2-step and 3-step tonal compounds such as `make this warmer and airier` and `make this darker, less harsh, and less muddy`
+- a narrow cross-family compound slice such as `speed up by 10% and tame the sibilance`, `tame the sibilance and make it darker`, `center this more and make it wider`, and the current tradeoff-style `make this a little tighter and more controlled, and darker`
 - explicit operation-phase ordering instead of prompt-order guesswork
-- structured multi-goal verification rollups that keep requested-target success and regression-guard outcomes separate
-- explicit contradiction failures for prompt pairs such as `make it brighter and darker` or `make it faster and slower`
+- structured multi-goal verification rollups that keep requested-target success and regression-guard outcomes separate, including honest partial-success reporting when only part of a compound request lands
+- explicit contradiction or refusal failures for prompt pairs such as `make it brighter and darker`, `make it faster and slower`, or `make it wider and narrower`, plus one-pass safety refusals for mixes such as brightening-plus-de-essing when the baseline planner cannot justify the sequence conservatively
 
 ## Architecture
 

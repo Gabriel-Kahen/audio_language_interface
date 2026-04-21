@@ -174,11 +174,13 @@ describe("firstPromptFamilyFixtureCorpus", () => {
     expect(firstPromptFamilyRequestCycleCorpus.fixtureManifestPath).toBe(
       FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
     );
-    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(26);
+    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(31);
     expect(firstPromptFamilyRequestCycleSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
         "request_cycle_warmer_and_airier",
         "request_cycle_darker_less_harsh_less_muddy",
+        "request_cycle_speed_up_and_tame_sibilance",
+        "request_cycle_tame_sibilance_and_darker",
         "request_cycle_tame_sibilance",
         "request_cycle_remove_60hz_hum",
         "request_cycle_clean_up_clicks",
@@ -189,6 +191,7 @@ describe("firstPromptFamilyFixtureCorpus", () => {
         "request_cycle_narrow_it_a_bit",
         "request_cycle_center_this_more",
         "request_cycle_fix_stereo_imbalance",
+        "request_cycle_center_this_more_and_make_it_wider",
         "request_cycle_follow_up_more",
         "request_cycle_follow_up_try_another_version",
         "request_cycle_follow_up_less",
@@ -196,8 +199,10 @@ describe("firstPromptFamilyFixtureCorpus", () => {
         "request_cycle_follow_up_revert_previous_version",
         "request_cycle_control_peaks_without_crushing",
         "request_cycle_louder_and_more_controlled",
+        "request_cycle_more_controlled_and_darker",
         "request_cycle_brighter_and_darker_contradiction",
         "request_cycle_speed_up_and_slow_down_contradiction",
+        "request_cycle_wider_and_narrower_contradiction",
       ]),
     );
 
@@ -339,6 +344,10 @@ describe("runRequestCycleBenchmarks", () => {
       "request_cycle_darker_less_harsh_less_muddy",
     );
     const tameSibilance = getRequestCycleCase("request_cycle_tame_sibilance");
+    const speedUpAndTameSibilance = getRequestCycleCase(
+      "request_cycle_speed_up_and_tame_sibilance",
+    );
+    const tameSibilanceAndDarker = getRequestCycleCase("request_cycle_tame_sibilance_and_darker");
     const removeHum = getRequestCycleCase("request_cycle_remove_60hz_hum");
     const cleanUpClicks = getRequestCycleCase("request_cycle_clean_up_clicks");
     const trimBoundarySilence = getRequestCycleCase("request_cycle_trim_boundary_silence");
@@ -348,6 +357,9 @@ describe("runRequestCycleBenchmarks", () => {
     const narrowIt = getRequestCycleCase("request_cycle_narrow_it_a_bit");
     const centerMore = getRequestCycleCase("request_cycle_center_this_more");
     const fixImbalance = getRequestCycleCase("request_cycle_fix_stereo_imbalance");
+    const centerMoreAndWider = getRequestCycleCase(
+      "request_cycle_center_this_more_and_make_it_wider",
+    );
     const followUpMore = getRequestCycleCase("request_cycle_follow_up_more");
     const tryAnother = getRequestCycleCase("request_cycle_follow_up_try_another_version");
     const followUpLess = getRequestCycleCase("request_cycle_follow_up_less");
@@ -355,6 +367,7 @@ describe("runRequestCycleBenchmarks", () => {
     const followUpRevert = getRequestCycleCase("request_cycle_follow_up_revert_previous_version");
     const controlPeaks = getRequestCycleCase("request_cycle_control_peaks_without_crushing");
     const louderControlled = getRequestCycleCase("request_cycle_louder_and_more_controlled");
+    const moreControlledAndDarker = getRequestCycleCase("request_cycle_more_controlled_and_darker");
     const cleanIt = getRequestCycleCase("request_cycle_clean_it_clarification");
     const brighterAndDarker = getRequestCycleCase(
       "request_cycle_brighter_and_darker_contradiction",
@@ -362,6 +375,7 @@ describe("runRequestCycleBenchmarks", () => {
     const speedUpAndSlowDown = getRequestCycleCase(
       "request_cycle_speed_up_and_slow_down_contradiction",
     );
+    const widerAndNarrower = getRequestCycleCase("request_cycle_wider_and_narrower_contradiction");
     const cleanThisSample = getRequestCycleCase(
       "request_cycle_clean_this_sample_up_a_bit_underspecified",
     );
@@ -376,6 +390,8 @@ describe("runRequestCycleBenchmarks", () => {
         warmerAndAirier,
         darkerLessHarshLessMuddy,
         tameSibilance,
+        speedUpAndTameSibilance,
+        tameSibilanceAndDarker,
         removeHum,
         cleanUpClicks,
         trimBoundarySilence,
@@ -385,6 +401,7 @@ describe("runRequestCycleBenchmarks", () => {
         narrowIt,
         centerMore,
         fixImbalance,
+        centerMoreAndWider,
         followUpMore,
         tryAnother,
         followUpLess,
@@ -392,16 +409,18 @@ describe("runRequestCycleBenchmarks", () => {
         followUpRevert,
         controlPeaks,
         louderControlled,
+        moreControlledAndDarker,
         cleanIt,
         brighterAndDarker,
         speedUpAndSlowDown,
+        widerAndNarrower,
         cleanThisSample,
       ],
     });
 
     expect(result.suiteId).toBe("first_prompt_family");
     expect(result.corpusId).toBe("request_cycle_test_subset");
-    expect(result.caseResults).toHaveLength(24);
+    expect(result.caseResults).toHaveLength(29);
     expect(result.totalChecks).toBeGreaterThan(0);
     expect(result.totalPassedChecks).toBe(result.totalChecks);
     expect(result.overallScore).toBe(1);
@@ -440,6 +459,24 @@ describe("runRequestCycleBenchmarks", () => {
     expect(
       sibilanceCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation),
     ).toEqual(["de_esser"]);
+
+    const speedUpAndTameSibilanceCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === speedUpAndTameSibilance.caseId,
+    );
+    expect(speedUpAndTameSibilanceCase?.status).toBe("ok");
+    expect(
+      speedUpAndTameSibilanceCase?.requestCycleResult?.editPlan?.steps.map(
+        (step) => step.operation,
+      ),
+    ).toEqual(["time_stretch", "de_esser"]);
+
+    const tameSibilanceAndDarkerCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === tameSibilanceAndDarker.caseId,
+    );
+    expect(tameSibilanceAndDarkerCase?.status).toBe("ok");
+    expect(
+      tameSibilanceAndDarkerCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation),
+    ).toEqual(["de_esser", "tilt_eq"]);
 
     const humCase = result.caseResults.find((caseResult) => caseResult.caseId === removeHum.caseId);
     expect(humCase?.status).toBe("ok");
@@ -548,6 +585,24 @@ describe("runRequestCycleBenchmarks", () => {
       louderControlledCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation),
     ).toEqual(["compressor", "normalize"]);
 
+    const moreControlledAndDarkerCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === moreControlledAndDarker.caseId,
+    );
+    expect(moreControlledAndDarkerCase?.status).toBe("ok");
+    expect(
+      moreControlledAndDarkerCase?.requestCycleResult?.editPlan?.steps.map(
+        (step) => step.operation,
+      ),
+    ).toEqual(["tilt_eq", "compressor"]);
+
+    const centerMoreAndWiderCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === centerMoreAndWider.caseId,
+    );
+    expect(centerMoreAndWiderCase?.status).toBe("ok");
+    expect(
+      centerMoreAndWiderCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation),
+    ).toEqual(["stereo_balance_correction", "stereo_width"]);
+
     const unsupportedCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === cleanIt.caseId,
     );
@@ -568,6 +623,13 @@ describe("runRequestCycleBenchmarks", () => {
     expect(contradictoryTimingCase?.status).toBe("error");
     expect(contradictoryTimingCase?.error?.stage).toBe("plan");
     expect(contradictoryTimingCase?.error?.failureClass).toBe("supported_but_underspecified");
+
+    const contradictoryStereoCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === widerAndNarrower.caseId,
+    );
+    expect(contradictoryStereoCase?.status).toBe("error");
+    expect(contradictoryStereoCase?.error?.stage).toBe("plan");
+    expect(contradictoryStereoCase?.error?.failureClass).toBe("supported_but_underspecified");
 
     const underspecifiedCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === cleanThisSample.caseId,
@@ -629,6 +691,9 @@ describe("formatBenchmarkMarkdownReport request-cycle mode", () => {
     const darkerLessHarshLessMuddy = getRequestCycleCase(
       "request_cycle_darker_less_harsh_less_muddy",
     );
+    const speedUpAndTameSibilance = getRequestCycleCase(
+      "request_cycle_speed_up_and_tame_sibilance",
+    );
     const trimBoundarySilence = getRequestCycleCase("request_cycle_trim_boundary_silence");
     const cleanThisSample = getRequestCycleCase(
       "request_cycle_clean_this_sample_up_a_bit_underspecified",
@@ -639,7 +704,13 @@ describe("formatBenchmarkMarkdownReport request-cycle mode", () => {
       suiteId: "first_prompt_family",
       fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
       description: "Request-cycle report formatting smoke suite.",
-      cases: [darkerLessHarsh, darkerLessHarshLessMuddy, trimBoundarySilence, cleanThisSample],
+      cases: [
+        darkerLessHarsh,
+        darkerLessHarshLessMuddy,
+        speedUpAndTameSibilance,
+        trimBoundarySilence,
+        cleanThisSample,
+      ],
     });
 
     const markdown = formatBenchmarkMarkdownReport(result);
@@ -648,10 +719,12 @@ describe("formatBenchmarkMarkdownReport request-cycle mode", () => {
     expect(markdown).toContain("Benchmark mode: request-cycle");
     expect(markdown).toContain("request_cycle_darker_less_harsh");
     expect(markdown).toContain("request_cycle_darker_less_harsh_less_muddy");
+    expect(markdown).toContain("request_cycle_speed_up_and_tame_sibilance");
     expect(markdown).toContain("request_cycle_trim_boundary_silence");
     expect(markdown).toContain("request_cycle_clean_this_sample_up_a_bit_underspecified");
     expect(markdown).toContain("planned operations: notch_filter, tilt_eq");
     expect(markdown).toContain("planned operations: notch_filter, tilt_eq, low_shelf");
+    expect(markdown).toContain("planned operations: time_stretch, de_esser");
     expect(markdown).toContain("planned operations: trim_silence");
     expect(markdown).toContain("failure class: supported_but_underspecified");
     expect(markdown).toContain("Fixture corpus: request_cycle_report_subset");

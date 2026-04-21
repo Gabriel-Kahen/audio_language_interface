@@ -100,6 +100,18 @@ describe("parseUserRequest", () => {
     expect(pitchUp.pitch_shift_semitones).toBe(2);
   });
 
+  it("classifies supported cross-family compounds as supported requests", () => {
+    const timingAndTonal = parseUserRequest("Speed it up by 10% and make it darker.");
+    const restorationAndTonal = parseUserRequest("Clean up clicks and make it darker.");
+    const loudnessAndTonal = parseUserRequest(
+      "Make it louder, more controlled, and a little warmer.",
+    );
+
+    expect(timingAndTonal.request_classification).toBe("supported");
+    expect(restorationAndTonal.request_classification).toBe("supported");
+    expect(loudnessAndTonal.request_classification).toBe("supported");
+  });
+
   it("classifies ambiguous and unsupported prompt phrases explicitly", () => {
     const parsed = parseUserRequest("Make it hit harder and remove clicks.");
 
@@ -795,6 +807,109 @@ describe("planEdits", () => {
     ]);
   });
 
+  it("supports timing-plus-restoration prompts when the requested moves do not conflict", () => {
+    const plan = planEdits({
+      userRequest: "Trim the silence at the beginning and end, then remove clicks.",
+      audioVersion: createTrimSilenceAudioVersionFixture(),
+      analysisReport: createTrimSilenceAnalysisReportFixture(),
+      semanticProfile: createVersionScopedNeutralSemanticProfile("ver_trimSilenceFixture"),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["trim_silence", "declick"]);
+  });
+
+  it("supports loudness-control-plus-tonal prompts through the explicit phase order", () => {
+    const plan = planEdits({
+      userRequest: "Make it darker, louder, and more controlled.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual([
+      "tilt_eq",
+      "compressor",
+      "normalize",
+    ]);
+  });
+
+  it("supports compatible restoration-plus-tonal prompts", () => {
+    const plan = planEdits({
+      userRequest: "Remove clicks and make it darker.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createRestorationAnalysisReportFixture({ clipped_sample_count: 14 }),
+      semanticProfile: createRestorationSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["declick", "tilt_eq"]);
+  });
+
+  it("supports safe stereo-plus-stereo prompts by recentering before width changes", () => {
+    const plan = planEdits({
+      userRequest: "Center this more and widen it slightly.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createImbalancedStereoAnalysisReportFixture(),
+      semanticProfile: createOffCenterSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual([
+      "stereo_balance_correction",
+      "stereo_width",
+    ]);
+  });
+
+  it("supports safe stereo-plus-tonal prompts through separate planner phases", () => {
+    const plan = planEdits({
+      userRequest: "Make it darker and center this more.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createImbalancedStereoAnalysisReportFixture(),
+      semanticProfile: createOffCenterSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual([
+      "tilt_eq",
+      "stereo_balance_correction",
+    ]);
+  });
+
+  it("orders timing and tonal compounds explicitly", () => {
+    const plan = planEdits({
+      userRequest: "Speed it up by 10% and make it darker.",
+      workspaceRoot: repoRoot,
+      audioVersion: createPitchedAudioVersionFixture(),
+      analysisReport: createPitchedAnalysisReportFixture(),
+      semanticProfile: createVersionScopedNeutralSemanticProfile("ver_pitchedTimingFixture"),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["time_stretch", "tilt_eq"]);
+  });
+
+  it("orders restoration and tonal compounds explicitly", () => {
+    const plan = planEdits({
+      userRequest: "Clean up clicks and make it darker.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createRestorationAnalysisReportFixture({ clipped_sample_count: 14 }),
+      semanticProfile: createRestorationSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["declick", "tilt_eq"]);
+  });
+
+  it("orders tonal shaping ahead of controlled loudness compounds explicitly", () => {
+    const plan = planEdits({
+      userRequest: "Make it louder, more controlled, and a little warmer.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual([
+      "low_shelf",
+      "compressor",
+      "normalize",
+    ]);
+  });
+
   it("fails instead of inventing unsupported behavior", () => {
     try {
       planEdits({
@@ -927,6 +1042,20 @@ describe("planEdits", () => {
     ).toThrow(/both darker and brighter tonal moves/i);
   });
 
+  it("supports safe stereo compounds that mix centering with width changes", () => {
+    const plan = planEdits({
+      userRequest: "Center this more and make it wider.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createImbalancedStereoAnalysisReportFixture(),
+      semanticProfile: createOffCenterSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual([
+      "stereo_balance_correction",
+      "stereo_width",
+    ]);
+  });
+
   it("fails clearly when cleaner is requested without supported tonal evidence", () => {
     expect(() =>
       planEdits({
@@ -961,6 +1090,50 @@ describe("planEdits", () => {
         semanticProfile: createSemanticProfileFixture(),
       }),
     ).toThrow(/combines louder output with peak control/i);
+  });
+
+  it("fails clearly for brightening-plus-de-essing prompts that the planner cannot sequence safely", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Add some air and tame the sibilance.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createAnalysisReportFixture(),
+        semanticProfile: createSemanticProfileFixture(),
+      }),
+    ).toThrow(/upper-band brightening with sibilance reduction/i);
+  });
+
+  it("fails clearly for denoise-plus-brightening prompts that would risk cleanup artifacts", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Reduce hiss and brighten it.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createNoisyAnalysisReportFixture(),
+        semanticProfile: createNoisySemanticProfileFixture(),
+      }),
+    ).toThrow(/broadband denoise with upper-band brightening/i);
+  });
+
+  it("fails clearly for hum-removal-plus-warmth prompts that would fight in the low band", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Remove 60 Hz hum and make it warmer.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createRestorationAnalysisReportFixture(),
+        semanticProfile: createRestorationSemanticProfileFixture(),
+      }),
+    ).toThrow(/combines hum removal with added warmth/i);
+  });
+
+  it("fails clearly for stereo narrowing-plus-centering when the source is not wide enough", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Narrow this slightly and center this more.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createNarrowImbalancedStereoAnalysisReportFixture(),
+        semanticProfile: createOffCenterSemanticProfileFixture(),
+      }),
+    ).toThrow(/combines narrowing with stereo recentering/i);
   });
 
   it("rejects time-based requests that exceed the current audio version duration", () => {
@@ -1216,6 +1389,22 @@ function createImbalancedStereoAnalysisReportFixture(): AnalysisReport {
         width: 0.24,
         correlation: 0.72,
         balance_db: 3.2,
+      },
+    },
+    annotations: [],
+  };
+}
+
+function createNarrowImbalancedStereoAnalysisReportFixture(): AnalysisReport {
+  return {
+    ...createAnalysisReportFixture(),
+    measurements: {
+      ...createAnalysisReportFixture().measurements,
+      stereo: {
+        ...createAnalysisReportFixture().measurements.stereo,
+        width: 0.18,
+        correlation: 0.76,
+        balance_db: 2.9,
       },
     },
     annotations: [],

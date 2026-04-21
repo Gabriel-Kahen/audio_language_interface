@@ -116,15 +116,16 @@ The request-cycle benchmark mode should be read conservatively. Its scores are u
 
 That separation makes failures easier to diagnose, but it does not turn the benchmark into a perceptual listening test. Request-cycle outcome scoring still depends on the current compare-layer evidence, including structured verification, goal alignment, and regression warnings.
 
-The current request-cycle benchmark corpus is intentionally small. It covers stable tonal cleanup, restoration, timing edits, stereo/spatial edits, iterative follow-up flows, peak-control, and dedicated louder-and-controlled prompts on committed phase-1 fixtures plus explicit clarification/failure controls rather than trying to benchmark the full runtime surface at once.
+The current request-cycle benchmark corpus is intentionally small. It covers stable tonal cleanup, tonal and cross-family compound edits, restoration, timing edits, stereo/spatial edits, iterative follow-up flows, peak-control, and dedicated louder-and-controlled prompts on committed phase-1 fixtures plus explicit clarification/failure controls rather than trying to benchmark the full runtime surface at once.
 
 That corpus now also includes a narrow compound-edit slice:
 
 - 2-step tonal prompts such as `make this warmer and airier`
 - 3-step tonal prompts such as `make this darker, less harsh, and less muddy`
-- explicit contradiction controls such as `make it brighter and darker` and `make it faster and slower`
+- cross-family prompts such as `speed up by 10% and tame the sibilance`, `tame the sibilance and make it darker`, `center this more and make it wider`, and the current tradeoff-style `make this a little tighter and more controlled, and darker`
+- explicit contradiction controls such as `make it brighter and darker`, `make it faster and slower`, and `make it wider and narrower`
 
-Those cases are meant to test planner decomposition, explicit operation ordering, and multi-goal structured verification without pretending the planner can already compose the whole runtime surface safely.
+Those cases are meant to test planner decomposition, explicit operation ordering, multi-goal structured verification, and honest partial-success reporting without pretending the planner can already compose the whole runtime surface safely.
 
 For hum and click cleanup prompts, benchmark outcome checks should prefer direct `AnalysisReport.artifacts` signals such as `hum_detected`, `hum_level_dbfs`, `click_detected`, and `click_count`. Low-band, noise-floor, and clipped-sample checks remain conservative fallback coverage rather than the primary success signal.
 

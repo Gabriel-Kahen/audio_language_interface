@@ -71,7 +71,7 @@ Supported but conservative areas:
 - explicit loudness normalization through `normalize`
 - airier, warmer, less muddy, or less harsh ring through surgical tone-shaping
 - tame sibilance, remove explicitly specified `50 Hz` / `60 Hz` hum, or clean up clicks through narrow restoration primitives
-- small benchmarked compound prompts within the supported slice, especially tonal combinations such as `warmer and airier` or `darker, less harsh, and less muddy`
+- small benchmarked compound prompts within the supported slice, including tonal combinations such as `warmer and airier` or `darker, less harsh, and less muddy` plus a narrow cross-family set such as `speed up by 10% and tame the sibilance`, `tame the sibilance and make it darker`, `center this more and make it wider`, and the current tradeoff-style `make this a little tighter and more controlled, and darker`
 
 ### Runtime-Supported Operations
 
@@ -178,7 +178,7 @@ Current tool-surface caveats:
 - compare now preserves compound-goal tradeoff detail through `goal_alignment[].verification_rollup` when structured verification rolls multiple targets into one goal
 - hum and click analysis evidence now exists in the baseline `AnalysisReport`, and compare now prefers those direct artifact fields before falling back to conservative low-band or clipped-sample proxies
 - the repository does not yet provide a dedicated demo CLI or application entrypoint
-- benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, compound tonal edits, restoration, timing edits, stereo/spatial edits, iterative follow-up flows, peak-control, dedicated louder-and-controlled prompts, and clarification/failure controls
+- benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, tonal and cross-family compound edits, restoration, timing edits, stereo/spatial edits, iterative follow-up flows, peak-control, dedicated louder-and-controlled prompts, and clarification/failure controls
 
 ## Practical Interpretation
 

@@ -89,7 +89,8 @@ The benchmark cases now carry explicit fixture ids for the shared source loop an
 ## Current limitations
 
 - compare-only benchmark scoring is still centered on curated `compareVersions()` inputs for the currently supported cleanup and restoration slice
-- the request-cycle benchmark corpus is intentionally small and currently focuses on stable tonal cleanup, restoration, timing edits, stereo/spatial edits, iterative follow-up flows, peak control, and explicit clarification/failure controls
+- the request-cycle benchmark corpus is intentionally small and currently focuses on stable tonal cleanup, cross-family compounds that stay honest on the committed fixtures, restoration, timing edits, stereo/spatial edits, iterative follow-up flows, peak control, and explicit clarification/failure controls
+- some cross-family request-cycle cases intentionally encode mixed or unmet outcome expectations when that is what the current compare/orchestration path actually produces on the committed fixtures
 - tool-surface request-cycle benchmarks still keep session state explicit by materializing `SessionGraph` and `available_versions` inside the benchmark harness rather than relying on hidden adapter persistence
 - request-cycle outcome scoring is only as strong as the current compare/orchestration evidence:
   - planner correctness is inferred from the emitted `EditPlan`
@@ -131,6 +132,8 @@ The first public request-cycle corpus currently covers:
 - `reduce brightness without losing punch`
 - `make this less muddy`
 - `tame the sibilance`
+- `speed up by 10% and tame the sibilance`
+- `tame the sibilance and make it darker`
 - `remove 60 Hz hum`
 - `clean up clicks`
 - `trim the silence at the beginning and end`
@@ -140,9 +143,11 @@ The first public request-cycle corpus currently covers:
 - `narrow it a bit`
 - `center this more`
 - `fix the stereo imbalance`
+- `center this more and make it wider`
 - iterative follow-up requests such as `more`, `less`, `undo`, `revert to previous version`, and `try another version`
 - `control the peaks without crushing it`
 - `make it louder and more controlled`
-- explicit clarification/failure controls such as `clean it`, `clean this sample up a bit`, `make it brighter and darker`, and `make it faster and slower`
+- `make this a little tighter and more controlled, and darker`
+- explicit clarification/failure controls such as `clean it`, `clean this sample up a bit`, `make it brighter and darker`, `make it faster and slower`, and `make it wider and narrower`
 
-Those cases were chosen because they are stable against the committed phase-1 fixtures and expose the main Layer 2 responsibilities without overclaiming broader planner coverage. The compound tonal cases deliberately stay on the shared first-slice fixture so ordering checks can exercise multi-step planner behavior without adding a larger synthetic corpus. The louder-and-more-controlled case now uses a dedicated sustained source fixture rather than the older transient-heavy peak-control fixture, so the public corpus can benchmark the current `compressor -> normalize` path honestly without pretending the transient-control source was the right benchmark for that request family.
+Those cases were chosen because they are stable against the committed phase-1 fixtures and expose the main Layer 2 responsibilities without overclaiming broader planner coverage. The compound tonal cases deliberately stay on the shared first-slice fixture so ordering checks can exercise multi-step planner behavior without adding a larger synthetic corpus. The newer cross-family compounds stay attached to the fixtures that already justify one side of the request: the sibilance source anchors restoration-plus-timing and restoration-plus-tonal prompts, the shared first-slice fixture anchors the current control-plus-tonal prompt, and the stereo imbalance source anchors stereo-balance-plus-width coverage. When a mixed request is not honestly supported by the current planner surface, the corpus prefers an explicit refusal benchmark over an optimistic happy path.

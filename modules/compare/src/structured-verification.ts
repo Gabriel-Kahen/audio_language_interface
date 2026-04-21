@@ -352,12 +352,12 @@ function deriveGoalAlignment(results: VerificationTargetResult[]): GoalAlignment
   }
 
   return [...grouped.entries()].map(([goal, targets]) => {
-    const statuses = targets.map((target) => target.status);
+    const verificationRollup = createVerificationRollup(targets);
 
     return {
       goal,
-      status: combineGoalStatuses(statuses),
-      verification_rollup: createVerificationRollup(targets),
+      status: deriveGoalStatus(verificationRollup),
+      verification_rollup: verificationRollup,
     };
   });
 }
@@ -367,6 +367,7 @@ function createVerificationRollup(
 ): GoalAlignmentVerificationRollup {
   const requestedTargets = targets.filter((target) => target.kind !== "regression_guard");
   const regressionGuards = targets.filter((target) => target.kind === "regression_guard");
+  const requestedTargetStatus = deriveRequestedTargetStatus(requestedTargets);
 
   return {
     total_targets: targets.length,
@@ -375,13 +376,9 @@ function createVerificationRollup(
     not_met_targets: countTargetsByStatus(targets, "not_met"),
     unknown_targets: countTargetsByStatus(targets, "unknown"),
     requested_target_count: requestedTargets.length,
-    ...(requestedTargets.length === 0
+    ...(requestedTargetStatus === undefined
       ? {}
-      : {
-          requested_target_status: combineGoalStatuses(
-            requestedTargets.map((target) => target.status),
-          ),
-        }),
+      : { requested_target_status: requestedTargetStatus }),
     regression_guard_count: regressionGuards.length,
     ...(regressionGuards.length === 0
       ? {}
@@ -391,6 +388,42 @@ function createVerificationRollup(
           ),
         }),
   };
+}
+
+function deriveRequestedTargetStatus(targets: VerificationTargetResult[]): GoalStatus | undefined {
+  if (targets.length === 0) {
+    return undefined;
+  }
+
+  const statuses = targets.map((target) => target.status);
+  const fallbackStatus = combineGoalStatuses(statuses);
+
+  return hasMixedRequestedTargetOutcome(targets) ? "mostly_met" : fallbackStatus;
+}
+
+function hasMixedRequestedTargetOutcome(targets: VerificationTargetResult[]): boolean {
+  const hasSatisfiedTarget = targets.some(
+    (target) => target.status === "met" || target.status === "mostly_met",
+  );
+  const hasUnsatisfiedTarget = targets.some(
+    (target) => target.status === "not_met" || target.status === "unknown",
+  );
+
+  return hasSatisfiedTarget && hasUnsatisfiedTarget;
+}
+
+function deriveGoalStatus(verificationRollup: GoalAlignmentVerificationRollup): GoalStatus {
+  const statuses: GoalStatus[] = [];
+
+  if (verificationRollup.requested_target_status !== undefined) {
+    statuses.push(verificationRollup.requested_target_status);
+  }
+
+  if (verificationRollup.regression_guard_status !== undefined) {
+    statuses.push(verificationRollup.regression_guard_status);
+  }
+
+  return statuses.length === 0 ? "unknown" : combineGoalStatuses(statuses);
 }
 
 function countTargetsByStatus(targets: VerificationTargetResult[], status: GoalStatus): number {

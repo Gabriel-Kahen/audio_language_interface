@@ -183,6 +183,27 @@ function resolvePlannerObjectives(
     );
   }
 
+  if (objectives.wants_tame_sibilance && (objectives.wants_brighter || objectives.wants_more_air)) {
+    throw createPlanningFailure(
+      "supported_but_underspecified",
+      "The request combines upper-band brightening with sibilance reduction. The baseline planner does not yet sequence added air or brightness against de-essing safely in one pass, so please prioritize either brighter air or less sibilance.",
+    );
+  }
+
+  if (objectives.wants_denoise && (objectives.wants_brighter || objectives.wants_more_air)) {
+    throw createPlanningFailure(
+      "supported_but_underspecified",
+      "The request combines broadband denoise with upper-band brightening. The baseline planner refuses that combination because post-denoise brightening can exaggerate cleanup artifacts in one conservative pass.",
+    );
+  }
+
+  if (objectives.wants_remove_hum && objectives.wants_more_warmth) {
+    throw createPlanningFailure(
+      "supported_but_underspecified",
+      "The request combines hum removal with added warmth. The baseline planner does not yet combine narrow low-frequency cleanup with low-shelf boosting safely in one pass, so please prioritize either hum removal or warmth first.",
+    );
+  }
+
   if (objectives.trim_range && objectives.wants_trim_silence) {
     throw createPlanningFailure(
       "supported_but_underspecified",
@@ -306,6 +327,13 @@ function resolvePlannerObjectives(
       throw createPlanningFailure(
         "supported_but_underspecified",
         "The current audio is already narrow, so the baseline planner will not collapse it further without a clearer technical target.",
+      );
+    }
+
+    if (objectives.wants_narrower && objectives.wants_more_centered && stereo.width < 0.22) {
+      throw createPlanningFailure(
+        "supported_but_underspecified",
+        "The request combines narrowing with stereo recentering on a source that is not wide enough for both moves conservatively. Please prioritize either centering or narrowing first.",
       );
     }
   }
@@ -537,6 +565,10 @@ function buildConstraints(
 
   if (objectives.wants_more_centered) {
     constraints.push("center the image conservatively without collapsing stereo width");
+  }
+
+  if (objectives.wants_more_centered && (objectives.wants_wider || objectives.wants_narrower)) {
+    constraints.push("keep stereo rebalance and width changes modest so the image stays stable");
   }
 
   if (objectives.wants_louder) {

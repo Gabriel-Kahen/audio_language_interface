@@ -165,6 +165,7 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
     ]),
     wants_narrower: containsAny(normalizedRequest, [
       "narrower",
+      "narrow this",
       "narrow the stereo",
       "narrow it",
       "reduce width",
@@ -191,6 +192,7 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
     ]),
     wants_speed_up: containsAny(normalizedRequest, [
       "speed up",
+      "speed it up",
       "faster",
       "quicken",
       "increase the tempo",
@@ -198,6 +200,7 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
     ]),
     wants_slow_down: containsAny(normalizedRequest, [
       "slow down",
+      "slow it down",
       "slower",
       "stretch it out",
       "reduce the tempo",
@@ -377,6 +380,7 @@ function hasSupportedIntent(parsed: ParsedEditObjectives): boolean {
     parsed.wants_trim_silence ||
     parsed.wants_darker ||
     parsed.wants_brighter ||
+    parsed.wants_more_air ||
     parsed.wants_cleaner ||
     parsed.wants_less_harsh ||
     parsed.wants_less_muddy ||
@@ -387,6 +391,9 @@ function hasSupportedIntent(parsed: ParsedEditObjectives): boolean {
     parsed.wants_more_controlled_dynamics ||
     parsed.wants_peak_control ||
     parsed.wants_denoise ||
+    parsed.wants_tame_sibilance ||
+    parsed.wants_remove_clicks ||
+    parsed.wants_remove_hum ||
     parsed.wants_wider ||
     parsed.wants_narrower ||
     parsed.wants_more_centered ||

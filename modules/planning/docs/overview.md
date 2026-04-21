@@ -61,6 +61,9 @@ See `docs/api.md` for the current failure surface, planner entrypoint behavior, 
 - does not auto-promote generic cleanup wording into hum or click restoration; those restoration steps still require explicit supported intent
 - maps conservative `more controlled` language to `compressor`, maps explicit louder-and-controlled language to a measured `compressor -> normalize` path, and maps explicit peak-control language to `limiter`
 - maps explicit boundary-silence requests to `trim_silence`, explicit speed-up or slow-down requests to conservative `time_stretch`, and explicit semitone pitch requests to conservative `pitch_shift` only when the source reads as pitched
+- supports compatible cross-family compounds across timing, restoration, tonal, loudness/control, and stereo families through the fixed phase order instead of phrase order in the prompt
+- supports stereo recentering together with width changes when the current image is safe for both moves, and refuses that compound when the source is too narrow to recenter and narrow conservatively in one pass
+- refuses compound prompts that combine upper-band brightening with de-essing, broadband denoise with upper-band brightening, or hum removal with added warmth because the current baseline planner cannot sequence those safely in one pass
 - supports explicit loudness-normalization, upper-air, warmth, low-mid cleanup, harsh-ring, sibilance, click-cleanup, and hum-removal requests with conservative defaults grounded in the published manifest
 - supports explicit denoise requests only when analysis indicates steady noise
 - prefers annotation-backed or semantic-backed restoration verification when that evidence exists, and now routes hum/click verification through direct artifact measurements before falling back to coarse low-band or clipped-sample proxies

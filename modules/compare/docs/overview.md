@@ -215,6 +215,8 @@ The top-level goal `status` remains intentionally conservative for compatibility
 - `verification_rollup.regression_guard_status` shows whether explicit regression guards held
 - `verification_rollup.*_targets` exposes the exact per-status target counts used to build the rollup
 
+For structured compound goals with multiple requested sub-targets, compare now reports partial requested progress as `mostly_met` when at least one requested sub-target succeeded and another missed. Explicit regression-guard failures still keep the overall goal at `not_met`.
+
 ## Legacy goal alignment fallback
 
 The fallback `evaluateGoalAlignment()` path is still heuristic and keyword-driven. It scans each goal string for fragments and maps it to one of a small set of checks.
@@ -266,6 +268,7 @@ The fallback `evaluateGoalAlignment()` path is still heuristic and keyword-drive
 
 - up to two semantic labels when present
 - a count of satisfied or mostly satisfied structured verification checks when they exist, otherwise a goal-level count
+- a partial-progress count when compound requested targets landed only in part
 - a structured-verification tradeoff count when requested targets were met but regression guards failed
 - a list of regression warning kinds, or an explicit no-regressions sentence
 

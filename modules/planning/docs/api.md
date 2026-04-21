@@ -107,3 +107,4 @@ The baseline planner still does not auto-select runtime-only operations such as 
 - some requests are intentionally rejected even when the runtime could execute them directly
 - pitch shifting is only planner-enabled when the source reads as pitched material
 - several compound requests are still rejected rather than combined in one pass when the planner cannot justify a safe deterministic mapping
+- cross-family compounds are supported only when the fixed planner phase order can express them safely; incompatible one-pass mixes such as brightening-plus-de-essing, denoise-plus-brightening, hum-removal-plus-warmth, or too-narrow recenter-plus-narrower stereo requests still fail explicitly

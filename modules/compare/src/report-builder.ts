@@ -168,6 +168,12 @@ function summarizeStructuredGoalTradeoffs(
       isSatisfiedStatus(rollup.requested_target_status) &&
       rollup.regression_guard_status === "mostly_met",
   ).length;
+  const partialRequestedGoals = rollups.filter(
+    (rollup) =>
+      rollup.requested_target_status === "mostly_met" &&
+      rollup.regression_guard_status !== "not_met" &&
+      rollup.regression_guard_status !== "mostly_met",
+  ).length;
 
   const fragments: string[] = [];
   if (hardTradeoffGoals > 0) {
@@ -179,6 +185,12 @@ function summarizeStructuredGoalTradeoffs(
   if (softTradeoffGoals > 0) {
     fragments.push(
       `${softTradeoffGoals} ${pluralize(softTradeoffGoals, "goal", "goals")} met requested targets but only mostly satisfied regression guards.`,
+    );
+  }
+
+  if (partialRequestedGoals > 0) {
+    fragments.push(
+      `${partialRequestedGoals} ${pluralize(partialRequestedGoals, "goal", "goals")} made partial requested progress across compound verification checks.`,
     );
   }
 

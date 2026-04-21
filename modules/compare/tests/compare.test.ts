@@ -726,6 +726,360 @@ describe("compareVersions", () => {
     );
   });
 
+  it("scores timing and restoration compound targets as partial progress when only one sub-goal lands", () => {
+    const baselineVersion = createVersion("ver_timing_restore_base", {
+      durationSeconds: 1,
+      channels: 1,
+      sampleRateHz: 22050,
+      channelLayout: "mono",
+    });
+    const candidateVersion = createVersion("ver_timing_restore_cand", {
+      durationSeconds: 0.72,
+      channels: 1,
+      sampleRateHz: 22050,
+      channelLayout: "mono",
+    });
+
+    const report = compareVersions({
+      baselineVersion,
+      candidateVersion,
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_timing_restore_base",
+        versionId: baselineVersion.version_id,
+        integratedLufs: -16.4,
+        truePeakDbtp: -1.6,
+        crestFactorDb: 9.8,
+        transientDensity: 1.4,
+        dynamicRangeDb: 7.8,
+        lowBandDb: -13.8,
+        midBandDb: -11.5,
+        highBandDb: -10.7,
+        spectralCentroidHz: 2080,
+        stereoWidth: 0,
+        stereoCorrelation: 1,
+        noiseFloorDbfs: -69,
+        clippingDetected: false,
+        clickDetected: true,
+        clickCount: 8,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_timing_restore_cand",
+        versionId: candidateVersion.version_id,
+        integratedLufs: -16.4,
+        truePeakDbtp: -1.6,
+        crestFactorDb: 9.8,
+        transientDensity: 1.45,
+        dynamicRangeDb: 7.8,
+        lowBandDb: -13.8,
+        midBandDb: -11.5,
+        highBandDb: -10.7,
+        spectralCentroidHz: 2080,
+        stereoWidth: 0,
+        stereoCorrelation: 1,
+        noiseFloorDbfs: -69,
+        clippingDetected: false,
+        clickDetected: true,
+        clickCount: 2,
+      }),
+      editPlan: {
+        ...createEditPlan(),
+        version_id: baselineVersion.version_id,
+        goals: ["shorten the clip and remove residual clicks conservatively"],
+        verification_targets: [
+          {
+            target_id: "target_timing_restore_duration",
+            goal: "shorten the clip and remove residual clicks conservatively",
+            label: "shorten clip duration materially",
+            kind: "analysis_metric",
+            comparison: "decrease_by",
+            metric: "derived.duration_seconds",
+            threshold: 0.2,
+          },
+          {
+            target_id: "target_timing_restore_clicks",
+            goal: "shorten the clip and remove residual clicks conservatively",
+            label: "clear remaining click activity",
+            kind: "analysis_metric",
+            comparison: "at_most",
+            metric: "artifacts.click_count",
+            threshold: 0,
+          },
+        ],
+      },
+      generatedAt: "2026-04-21T21:00:22Z",
+    });
+
+    expect(report.goal_alignment).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          goal: "shorten the clip and remove residual clicks conservatively",
+          status: "mostly_met",
+          verification_rollup: expect.objectContaining({
+            requested_target_status: "mostly_met",
+            regression_guard_count: 0,
+            met_targets: 1,
+            not_met_targets: 1,
+          }),
+        }),
+      ]),
+    );
+    expect(report.summary.plain_text).toContain(
+      "1 goal made partial requested progress across compound verification checks.",
+    );
+  });
+
+  it("scores loudness-control and tonal compound targets as partial progress when only one sub-goal lands", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_control_tonal_base"),
+      candidateVersion: createVersion("ver_control_tonal_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_control_tonal_base",
+        versionId: "ver_control_tonal_base",
+        integratedLufs: -18,
+        truePeakDbtp: -1.7,
+        samplePeakDbfs: -2,
+        headroomDb: 2,
+        crestFactorDb: 9.9,
+        transientDensity: 1.5,
+        dynamicRangeDb: 7.6,
+        lowBandDb: -14.6,
+        midBandDb: -11.4,
+        highBandDb: -10.4,
+        spectralCentroidHz: 2320,
+        stereoWidth: 0.43,
+        stereoCorrelation: 0.52,
+        noiseFloorDbfs: -71,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_control_tonal_cand",
+        versionId: "ver_control_tonal_cand",
+        integratedLufs: -15.4,
+        truePeakDbtp: -1.5,
+        samplePeakDbfs: -1.7,
+        headroomDb: 1.7,
+        crestFactorDb: 9.8,
+        transientDensity: 1.5,
+        dynamicRangeDb: 7.4,
+        lowBandDb: -14.5,
+        midBandDb: -11.3,
+        highBandDb: -10,
+        spectralCentroidHz: 2360,
+        stereoWidth: 0.43,
+        stereoCorrelation: 0.52,
+        noiseFloorDbfs: -71,
+        clippingDetected: false,
+      }),
+      editPlan: {
+        ...createEditPlan(),
+        version_id: "ver_control_tonal_base",
+        goals: ["raise loudness slightly while smoothing the top end"],
+        verification_targets: [
+          {
+            target_id: "target_control_tonal_loudness",
+            goal: "raise loudness slightly while smoothing the top end",
+            label: "increase integrated loudness modestly",
+            kind: "analysis_metric",
+            comparison: "increase_by",
+            metric: "levels.integrated_lufs",
+            threshold: 2,
+          },
+          {
+            target_id: "target_control_tonal_harshness",
+            goal: "raise loudness slightly while smoothing the top end",
+            label: "reduce top-end harshness while lifting level",
+            kind: "analysis_metric",
+            comparison: "decrease_by",
+            metric: "spectral_balance.high_band_db",
+            threshold: 0.5,
+          },
+        ],
+      },
+      generatedAt: "2026-04-21T21:05:22Z",
+    });
+
+    expect(report.goal_alignment).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          goal: "raise loudness slightly while smoothing the top end",
+          status: "mostly_met",
+          verification_rollup: expect.objectContaining({
+            requested_target_status: "mostly_met",
+            met_targets: 1,
+            not_met_targets: 1,
+          }),
+        }),
+      ]),
+    );
+  });
+
+  it("scores restoration and tonal compound targets as partial progress when only one sub-goal lands", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_restore_tonal_base"),
+      candidateVersion: createVersion("ver_restore_tonal_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_restore_tonal_base",
+        versionId: "ver_restore_tonal_base",
+        integratedLufs: -16.2,
+        truePeakDbtp: -1.6,
+        crestFactorDb: 10,
+        transientDensity: 1.7,
+        dynamicRangeDb: 7.9,
+        lowBandDb: -13.9,
+        midBandDb: -11.3,
+        highBandDb: -9.9,
+        spectralCentroidHz: 2410,
+        stereoWidth: 0.46,
+        stereoCorrelation: 0.5,
+        noiseFloorDbfs: -67,
+        clippingDetected: false,
+        clickDetected: true,
+        clickCount: 5,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_restore_tonal_cand",
+        versionId: "ver_restore_tonal_cand",
+        integratedLufs: -16.2,
+        truePeakDbtp: -1.6,
+        crestFactorDb: 10,
+        transientDensity: 1.7,
+        dynamicRangeDb: 7.9,
+        lowBandDb: -13.8,
+        midBandDb: -11.2,
+        highBandDb: -9.7,
+        spectralCentroidHz: 2430,
+        stereoWidth: 0.46,
+        stereoCorrelation: 0.5,
+        noiseFloorDbfs: -67,
+        clippingDetected: false,
+        clickDetected: false,
+      }),
+      editPlan: {
+        ...createEditPlan(),
+        version_id: "ver_restore_tonal_base",
+        goals: ["remove clicks and soften harshness"],
+        verification_targets: [
+          {
+            target_id: "target_restore_tonal_clicks",
+            goal: "remove clicks and soften harshness",
+            label: "clear remaining click activity",
+            kind: "analysis_metric",
+            comparison: "at_most",
+            metric: "artifacts.click_count",
+            threshold: 0,
+          },
+          {
+            target_id: "target_restore_tonal_harshness",
+            goal: "remove clicks and soften harshness",
+            label: "reduce top-end harshness",
+            kind: "analysis_metric",
+            comparison: "decrease_by",
+            metric: "spectral_balance.high_band_db",
+            threshold: 0.4,
+          },
+        ],
+      },
+      generatedAt: "2026-04-21T21:10:22Z",
+    });
+
+    expect(report.goal_alignment).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          goal: "remove clicks and soften harshness",
+          status: "mostly_met",
+          verification_rollup: expect.objectContaining({
+            requested_target_status: "mostly_met",
+            met_targets: 1,
+            not_met_targets: 1,
+          }),
+        }),
+      ]),
+    );
+  });
+
+  it("scores stereo compounds as partial progress when one stereo sub-goal lands and one misses", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_stereo_compound_base"),
+      candidateVersion: createVersion("ver_stereo_compound_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_stereo_compound_base",
+        versionId: "ver_stereo_compound_base",
+        integratedLufs: -16.4,
+        truePeakDbtp: -1.7,
+        crestFactorDb: 9.9,
+        transientDensity: 1.4,
+        dynamicRangeDb: 7.8,
+        lowBandDb: -14.7,
+        midBandDb: -11.5,
+        highBandDb: -10.5,
+        spectralCentroidHz: 2260,
+        stereoWidth: 0.3,
+        stereoCorrelation: 0.68,
+        stereoBalanceDb: 2.2,
+        noiseFloorDbfs: -70,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_stereo_compound_cand",
+        versionId: "ver_stereo_compound_cand",
+        integratedLufs: -16.4,
+        truePeakDbtp: -1.7,
+        crestFactorDb: 9.9,
+        transientDensity: 1.4,
+        dynamicRangeDb: 7.8,
+        lowBandDb: -14.7,
+        midBandDb: -11.5,
+        highBandDb: -10.5,
+        spectralCentroidHz: 2260,
+        stereoWidth: 0.42,
+        stereoCorrelation: 0.58,
+        stereoBalanceDb: 1.8,
+        noiseFloorDbfs: -70,
+        clippingDetected: false,
+      }),
+      editPlan: {
+        ...createEditPlan(),
+        version_id: "ver_stereo_compound_base",
+        goals: ["widen the image slightly and reduce left-right imbalance"],
+        verification_targets: [
+          {
+            target_id: "target_stereo_compound_width",
+            goal: "widen the image slightly and reduce left-right imbalance",
+            label: "increase stereo width modestly",
+            kind: "analysis_metric",
+            comparison: "increase_by",
+            metric: "stereo.width",
+            threshold: 0.08,
+          },
+          {
+            target_id: "target_stereo_compound_balance",
+            goal: "widen the image slightly and reduce left-right imbalance",
+            label: "bring the image closer to center",
+            kind: "analysis_metric",
+            comparison: "at_most",
+            metric: "derived.absolute_stereo_balance_db",
+            threshold: 1,
+          },
+        ],
+      },
+      generatedAt: "2026-04-21T21:15:22Z",
+    });
+
+    expect(report.goal_alignment).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          goal: "widen the image slightly and reduce left-right imbalance",
+          status: "mostly_met",
+          verification_rollup: expect.objectContaining({
+            requested_target_status: "mostly_met",
+            met_targets: 1,
+            not_met_targets: 1,
+          }),
+        }),
+      ]),
+    );
+  });
+
   it("detects clipping and loudness regressions", () => {
     const report = compareVersions({
       baselineVersion: createVersion("ver_clean123"),

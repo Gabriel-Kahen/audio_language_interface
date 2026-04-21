@@ -815,7 +815,7 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
   suiteId: "first_prompt_family",
   fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
   description:
-    "Real request-cycle benchmark corpus over committed phase-1 fixtures, covering supported tonal cleanup, compound tonal edits, restoration, timing edits, stereo-spatial edits, loudness/control, and explicit clarification/failure controls.",
+    "Real request-cycle benchmark corpus over committed phase-1 fixtures, covering supported tonal cleanup, cross-family compounds across restoration, timing, tonal, stereo, and loudness/control edits, plus explicit clarification/failure controls.",
   cases: [
     {
       caseId: "request_cycle_darker_less_harsh",
@@ -995,6 +995,68 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
       },
     },
     {
+      caseId: "request_cycle_speed_up_and_tame_sibilance",
+      family: "first_prompt_family",
+      prompt: "Speed up by 10% and tame the sibilance.",
+      description: "Timing-plus-restoration compound on the committed sibilance fixture.",
+      fixtureId: "fixture_phase1_request_cycle_sibilance_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["time_stretch", "de_esser"],
+          expected_operation_order: ["time_stretch", "de_esser"],
+          required_goals: [
+            "shorten the clip duration while preserving pitch",
+            "tame sibilant bursts conservatively",
+          ],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "shorten the clip duration while preserving pitch": "met",
+            "tame sibilant bursts conservatively": "mostly_met",
+          },
+          verification_statuses: {
+            target_time_stretch_duration: "met",
+            target_reduce_sibilance_presence: "mostly_met",
+            target_reduce_sibilance_harshness_ratio: "mostly_met",
+          },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_tame_sibilance_and_darker",
+      family: "first_prompt_family",
+      prompt: "Tame the sibilance and make it darker.",
+      description: "Restoration-plus-tonal compound on the committed sibilance fixture.",
+      fixtureId: "fixture_phase1_request_cycle_sibilance_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["de_esser", "tilt_eq"],
+          expected_operation_order: ["de_esser", "tilt_eq"],
+          required_goals: [
+            "tame sibilant bursts conservatively",
+            "tilt the overall balance slightly darker",
+          ],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "tame sibilant bursts conservatively": "met",
+            "tilt the overall balance slightly darker": "met",
+          },
+          verification_statuses: {
+            target_reduce_sibilance_presence: "met",
+            target_reduce_sibilance_harshness_ratio: "met",
+            target_darker_brightness_tilt: "met",
+          },
+        },
+      },
+    },
+    {
       caseId: "request_cycle_remove_60hz_hum",
       family: "first_prompt_family",
       prompt: "Remove 60 Hz hum.",
@@ -1114,6 +1176,40 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
             "increased_sibilance",
             "added_muddiness",
           ],
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_more_controlled_and_darker",
+      family: "first_prompt_family",
+      prompt: "Make this a little tighter and more controlled, and darker.",
+      description: "Control-plus-tonal compound on the shared first-slice fixture.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["tilt_eq", "compressor"],
+          expected_operation_order: ["tilt_eq", "compressor"],
+          required_goals: [
+            "tilt the overall balance slightly darker",
+            "make dynamics more controlled without over-compressing",
+          ],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "tilt the overall balance slightly darker": "met",
+            "make dynamics more controlled without over-compressing": "not_met",
+          },
+          verification_statuses: {
+            target_darker_brightness_tilt: "met",
+            target_control_dynamics_range: "not_met",
+            target_control_dynamics_no_overcompression: "met",
+          },
+        },
+        regressions: {
+          forbidden_regression_kinds: ["over_compression"],
         },
       },
     },
@@ -1320,6 +1416,46 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
       },
     },
     {
+      caseId: "request_cycle_center_this_more_and_make_it_wider",
+      family: "first_prompt_family",
+      prompt: "Center this more and make it wider.",
+      description: "Stereo-balance-plus-width compound on the committed imbalanced stereo fixture.",
+      fixtureId: "fixture_phase1_request_cycle_stereo_imbalance_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["stereo_balance_correction", "stereo_width"],
+          expected_operation_order: ["stereo_balance_correction", "stereo_width"],
+          required_goals: [
+            "reduce left-right stereo imbalance conservatively",
+            "slightly increase stereo width",
+          ],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "reduce left-right stereo imbalance conservatively": "met",
+            "slightly increase stereo width": "mostly_met",
+          },
+          verification_statuses: {
+            target_center_stereo_balance: "met",
+            target_center_no_balance_regression: "met",
+            target_wider_stereo_width: "mostly_met",
+            target_wider_no_instability: "met",
+          },
+          required_semantic_labels: ["more_centered", "wider"],
+        },
+        regressions: {
+          forbidden_regression_kinds: [
+            "stereo_balance_regression",
+            "stereo_instability",
+            "stereo_collapse",
+          ],
+        },
+      },
+    },
+    {
       caseId: "request_cycle_follow_up_more",
       family: "first_prompt_family",
       prompt: "more",
@@ -1465,6 +1601,21 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
           stage: "plan",
           failure_class: "supported_but_underspecified",
           message_includes: "both faster and slower timing moves",
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_wider_and_narrower_contradiction",
+      family: "first_prompt_family",
+      prompt: "Make it wider and narrower.",
+      description:
+        "Contradictory stereo-width directions should fail explicitly instead of inventing a compromise image move.",
+      fixtureId: "fixture_phase1_request_cycle_stereo_width_source",
+      expectation: {
+        error: {
+          stage: "plan",
+          failure_class: "supported_but_underspecified",
+          message_includes: "both wider and narrower stereo moves",
         },
       },
     },
