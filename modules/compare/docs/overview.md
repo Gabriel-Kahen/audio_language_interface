@@ -204,9 +204,16 @@ When `EditPlan.verification_targets` contains typed targets, compare evaluates t
 
 - `verification_results` with per-target status plus observed evidence
 - `goal_alignment` as a rolled-up status per requested goal
+- optional `goal_alignment[].verification_rollup` counts plus requested-target / regression-guard sub-statuses for compound goals
 - `evaluation_basis` to show whether metrics came from `analysis_reports` or `render_artifacts`, and whether `verification_results`, `goal_alignment`, or raw `metric_deltas` should be treated as authoritative
 
 If no structured targets are present, compare falls back to the older heuristic `EditPlan.goals` string-matching path so legacy plans and benchmarks keep working.
+
+The top-level goal `status` remains intentionally conservative for compatibility. For compound goals, compare now preserves the measurable tradeoff details separately:
+
+- `verification_rollup.requested_target_status` shows whether non-guard targets were satisfied
+- `verification_rollup.regression_guard_status` shows whether explicit regression guards held
+- `verification_rollup.*_targets` exposes the exact per-status target counts used to build the rollup
 
 ## Legacy goal alignment fallback
 
@@ -259,6 +266,7 @@ The fallback `evaluateGoalAlignment()` path is still heuristic and keyword-drive
 
 - up to two semantic labels when present
 - a count of satisfied or mostly satisfied structured verification checks when they exist, otherwise a goal-level count
+- a structured-verification tradeoff count when requested targets were met but regression guards failed
 - a list of regression warning kinds, or an explicit no-regressions sentence
 
 The summary is intentionally compact and should be treated as a convenience field, not as the canonical machine-readable source of truth.

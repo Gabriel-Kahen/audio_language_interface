@@ -131,6 +131,7 @@ Constructs a schema-shaped `ComparisonReport`, adds a summary string, and genera
 
 Generated ids are derived from baseline and candidate reference type/id pairs.
 The builder also emits `evaluation_basis` and treats `verification_results` as the authoritative summary source whenever structured verification exists.
+When structured verification rolled a goal up from multiple targets, the emitted `goal_alignment[]` item may also include `verification_rollup` with per-status target counts plus separate `requested_target_status` and `regression_guard_status` fields.
 
 ## Validation helpers
 
@@ -155,6 +156,7 @@ Returns `true` when the payload passes schema validation.
 - `ComparisonReport`
 - `EditPlan`
 - `GoalAlignment`
+- `GoalAlignmentVerificationRollup`
 - `GoalStatus`
 - `MetricDelta`
 - `MetricDirection`

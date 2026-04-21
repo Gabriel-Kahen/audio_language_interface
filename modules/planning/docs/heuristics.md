@@ -32,12 +32,29 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - `pitch up by 2 semitones`, `pitch down by 2 semitones`, `transpose` -> conservative `pitch_shift` only when analysis says the source is pitched
 - `fade in Xs`, `fade out Xs` -> `fade` step with explicit durations
 
+## Compound prompt ordering
+
+When one request maps to multiple supported operations, the baseline planner emits steps in a fixed phase order instead of preserving phrase order from the prompt:
+
+- source selection: `trim`
+- boundary cleanup: `trim_silence`
+- duration shaping: `time_stretch`
+- pitch shaping: `pitch_shift`
+- boundary envelopes: `fade`
+- restoration: `declick`, `dehum`, `denoise`, `de_esser`
+- filters: `high_pass_filter`
+- tonal balance: EQ and filter-toning steps such as `tilt_eq`, `notch_filter`, `high_shelf`, `low_shelf`
+- dynamics: `compressor`, `limiter`, or the dedicated controlled-loudness path
+- stereo image: `stereo_balance_correction`, `stereo_width`
+- loudness: `normalize`, `gain`
+
 ## Safety posture
 
 - The baseline planner only emits operations currently implemented by `modules/transforms`.
 - Requests that are vague, contradictory, or blocked by missing evidence are classified as `supported_but_underspecified`.
 - Time-based requests are checked against the current `AudioVersion` duration before a plan is emitted.
 - Combined `fade in` and `fade out` coverage must not overlap and must stay at or below `50%` of the available duration.
+- Compound timing verification composes earlier duration-changing edits first, so `time_stretch` and `pitch_shift` guards use post-trim or post-silence-trim expected durations rather than raw source duration.
 - If a request cannot be mapped to an explicit supported operation, planning fails instead of guessing.
 - Requests for runtime-available but non-planner-enabled operations such as `reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, `phaser`, or `reverse` are classified as `supported_runtime_only_but_not_planner_enabled`.
 - Requests for declip, dereverb, and broader restoration categories outside denoise, de-ess, declick, and dehum still fail explicitly.
@@ -45,6 +62,8 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - Denoise only proceeds when steady-noise evidence is present; otherwise the planner rejects the request instead of guessing.
 - Hum and click verification stay conservative: the planner now prefers direct `AnalysisReport.artifacts` evidence when annotations or semantics support it and only uses coarse low-band or clipped-sample fallbacks where direct artifact measurements are unavailable.
 - Pitch shifting only proceeds when `AnalysisReport.source_character.pitched` is true, and time stretching keeps duration targets conservative rather than attempting broad tempo inference.
+- The planner refuses explicit trim-point requests combined with automatic silence trimming so it does not guess which boundary edit should win.
+- The planner refuses louder-plus-peak-control prompts unless the request explicitly asks for normalization, rather than silently converting that into post-limiter gain staging.
 - Stereo-width changes only proceed for two-channel material that is not already too wide, too narrow, or stereo-ambiguous for a conservative move.
 - Stereo-balance correction only proceeds for two-channel material when measured balance is clearly off-center but not so extreme that a one-shot conservative correction would be unsafe.
 - Tonal moves are intentionally small: `1.5 dB`, `2 dB`, or `3 dB` style shelves and tilts, with notch cuts kept surgical and narrow.

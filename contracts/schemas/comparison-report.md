@@ -48,8 +48,20 @@ The initial machine-readable schema defines these baseline fields:
 - `semantic_deltas[]`: `label`, `confidence`, `evidence`
 - `regressions[]`: `kind`, `severity`, `description`
 - `verification_results[]`: `target_id`, `goal`, `label`, `kind`, `comparison`, `status`, plus observed evidence fields when available
-- `goal_alignment[]`: `goal`, `status`
+- `goal_alignment[]`: `goal`, `status`, and optional `verification_rollup` when the goal came from structured verification
 - `evaluation_basis`: `metric_source`, `goal_evaluation_source`, `authoritative_signal`
+
+`goal_alignment[].verification_rollup` is optional and only appears when `modules/compare` rolled the goal up from typed `verification_targets`. It exposes measurable compound-goal details without changing the top-level conservative `status`:
+
+- `total_targets`
+- `met_targets`
+- `mostly_met_targets`
+- `not_met_targets`
+- `unknown_targets`
+- `requested_target_count`
+- optional `requested_target_status`
+- `regression_guard_count`
+- optional `regression_guard_status`
 
 `goal_alignment[].status` should initially use one of:
 

@@ -2,6 +2,7 @@ import type { CompareMeasurementContext } from "./deltas.js";
 import { combineGoalStatuses } from "./goal-alignment.js";
 import type {
   GoalAlignment,
+  GoalAlignmentVerificationRollup,
   GoalStatus,
   MetricDelta,
   RegressionWarning,
@@ -342,18 +343,58 @@ function calculateSoftThreshold(threshold: number, tolerance: number | undefined
 }
 
 function deriveGoalAlignment(results: VerificationTargetResult[]): GoalAlignment[] {
-  const grouped = new Map<string, GoalStatus[]>();
+  const grouped = new Map<string, VerificationTargetResult[]>();
 
   for (const result of results) {
-    const statuses = grouped.get(result.goal) ?? [];
-    statuses.push(result.status);
-    grouped.set(result.goal, statuses);
+    const targets = grouped.get(result.goal) ?? [];
+    targets.push(result);
+    grouped.set(result.goal, targets);
   }
 
-  return [...grouped.entries()].map(([goal, statuses]) => ({
-    goal,
-    status: combineGoalStatuses(statuses),
-  }));
+  return [...grouped.entries()].map(([goal, targets]) => {
+    const statuses = targets.map((target) => target.status);
+
+    return {
+      goal,
+      status: combineGoalStatuses(statuses),
+      verification_rollup: createVerificationRollup(targets),
+    };
+  });
+}
+
+function createVerificationRollup(
+  targets: VerificationTargetResult[],
+): GoalAlignmentVerificationRollup {
+  const requestedTargets = targets.filter((target) => target.kind !== "regression_guard");
+  const regressionGuards = targets.filter((target) => target.kind === "regression_guard");
+
+  return {
+    total_targets: targets.length,
+    met_targets: countTargetsByStatus(targets, "met"),
+    mostly_met_targets: countTargetsByStatus(targets, "mostly_met"),
+    not_met_targets: countTargetsByStatus(targets, "not_met"),
+    unknown_targets: countTargetsByStatus(targets, "unknown"),
+    requested_target_count: requestedTargets.length,
+    ...(requestedTargets.length === 0
+      ? {}
+      : {
+          requested_target_status: combineGoalStatuses(
+            requestedTargets.map((target) => target.status),
+          ),
+        }),
+    regression_guard_count: regressionGuards.length,
+    ...(regressionGuards.length === 0
+      ? {}
+      : {
+          regression_guard_status: combineGoalStatuses(
+            regressionGuards.map((target) => target.status),
+          ),
+        }),
+  };
+}
+
+function countTargetsByStatus(targets: VerificationTargetResult[], status: GoalStatus): number {
+  return targets.filter((target) => target.status === status).length;
 }
 
 function readMeasurement(

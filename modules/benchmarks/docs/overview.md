@@ -126,6 +126,8 @@ For hum and click cleanup cases, outcome verification should anchor on direct `A
 The first public request-cycle corpus currently covers:
 
 - `make this loop darker and less harsh`
+- `make this warmer and airier`
+- `make this darker, less harsh, and less muddy`
 - `reduce brightness without losing punch`
 - `make this less muddy`
 - `tame the sibilance`
@@ -141,6 +143,6 @@ The first public request-cycle corpus currently covers:
 - iterative follow-up requests such as `more`, `less`, `undo`, `revert to previous version`, and `try another version`
 - `control the peaks without crushing it`
 - `make it louder and more controlled`
-- explicit clarification/failure controls such as `clean it` and `clean this sample up a bit`
+- explicit clarification/failure controls such as `clean it`, `clean this sample up a bit`, `make it brighter and darker`, and `make it faster and slower`
 
-Those cases were chosen because they are stable against the committed phase-1 fixtures and expose the main Layer 2 responsibilities without overclaiming broader planner coverage. The louder-and-more-controlled case now uses a dedicated sustained source fixture rather than the older transient-heavy peak-control fixture, so the public corpus can benchmark the current `compressor -> normalize` path honestly without pretending the transient-control source was the right benchmark for that request family.
+Those cases were chosen because they are stable against the committed phase-1 fixtures and expose the main Layer 2 responsibilities without overclaiming broader planner coverage. The compound tonal cases deliberately stay on the shared first-slice fixture so ordering checks can exercise multi-step planner behavior without adding a larger synthetic corpus. The louder-and-more-controlled case now uses a dedicated sustained source fixture rather than the older transient-heavy peak-control fixture, so the public corpus can benchmark the current `compressor -> normalize` path honestly without pretending the transient-control source was the right benchmark for that request family.

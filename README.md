@@ -73,6 +73,13 @@ The current cleanup slice is now analysis-backed instead of purely prompt-driven
 - `compare` reports `evaluation_basis` so downstream callers can see whether structured verification, heuristic goal alignment, or raw deltas are driving quality interpretation
 - `benchmarks` includes a tiny committed fixture-backed cleanup corpus under [fixtures/audio/phase-1](fixtures/audio/phase-1)
 
+The current benchmarked planner surface also includes conservative compound-edit handling:
+
+- explicit 2-step and 3-step tonal compounds such as `make this warmer and airier` and `make this darker, less harsh, and less muddy`
+- explicit operation-phase ordering instead of prompt-order guesswork
+- structured multi-goal verification rollups that keep requested-target success and regression-guard outcomes separate
+- explicit contradiction failures for prompt pairs such as `make it brighter and darker` or `make it faster and slower`
+
 ## Architecture
 
 The repo is organized into five groups.

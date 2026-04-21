@@ -136,9 +136,22 @@ export interface RegressionWarning {
   description: string;
 }
 
+export interface GoalAlignmentVerificationRollup {
+  total_targets: number;
+  met_targets: number;
+  mostly_met_targets: number;
+  not_met_targets: number;
+  unknown_targets: number;
+  requested_target_count: number;
+  requested_target_status?: GoalStatus;
+  regression_guard_count: number;
+  regression_guard_status?: GoalStatus;
+}
+
 export interface GoalAlignment {
   goal: string;
   status: GoalStatus;
+  verification_rollup?: GoalAlignmentVerificationRollup;
 }
 
 export interface VerificationTarget {

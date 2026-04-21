@@ -117,6 +117,55 @@
           },
           "status": {
             "$ref": "./common.schema.json#/$defs/goalStatus"
+          },
+          "verification_rollup": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "total_targets",
+              "met_targets",
+              "mostly_met_targets",
+              "not_met_targets",
+              "unknown_targets",
+              "requested_target_count",
+              "regression_guard_count"
+            ],
+            "properties": {
+              "total_targets": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "met_targets": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "mostly_met_targets": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "not_met_targets": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "unknown_targets": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "requested_target_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "requested_target_status": {
+                "$ref": "./common.schema.json#/$defs/goalStatus"
+              },
+              "regression_guard_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "regression_guard_status": {
+                "$ref": "./common.schema.json#/$defs/goalStatus"
+              }
+            }
           }
         }
       }

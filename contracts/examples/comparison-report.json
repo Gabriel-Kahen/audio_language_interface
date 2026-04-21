@@ -33,11 +33,31 @@
   "goal_alignment": [
     {
       "goal": "reduce upper-mid harshness",
-      "status": "met"
+      "status": "met",
+      "verification_rollup": {
+        "total_targets": 1,
+        "met_targets": 1,
+        "mostly_met_targets": 0,
+        "not_met_targets": 0,
+        "unknown_targets": 0,
+        "requested_target_count": 1,
+        "requested_target_status": "met",
+        "regression_guard_count": 0
+      }
     },
     {
       "goal": "preserve transient impact",
-      "status": "mostly_met"
+      "status": "mostly_met",
+      "verification_rollup": {
+        "total_targets": 1,
+        "met_targets": 0,
+        "mostly_met_targets": 1,
+        "not_met_targets": 0,
+        "unknown_targets": 0,
+        "requested_target_count": 1,
+        "requested_target_status": "mostly_met",
+        "regression_guard_count": 0
+      }
     }
   ],
   "verification_results": [

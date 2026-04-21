@@ -734,6 +734,67 @@ describe("planEdits", () => {
     expect(validateAgainstSchema(editPlanSchema, plan)).toBe(true);
   });
 
+  it("orders compound timing prompts explicitly and composes duration verification", () => {
+    const plan = planEdits({
+      userRequest:
+        "Trim the silence at the beginning and end, speed up by 10%, pitch up by 2 semitones, and fade out 0.1 seconds.",
+      workspaceRoot: repoRoot,
+      audioVersion: createPitchedAudioVersionFixture(),
+      analysisReport: createPitchedBoundarySilenceAnalysisReportFixture(),
+      semanticProfile: createVersionScopedNeutralSemanticProfile("ver_pitchedTimingFixture"),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual([
+      "trim_silence",
+      "time_stretch",
+      "pitch_shift",
+      "fade",
+    ]);
+    expect(plan.steps[0]?.parameters).toEqual({
+      threshold_dbfs: -50,
+      trim_leading: true,
+      trim_trailing: true,
+      window_seconds: 0.02,
+    });
+    expect(plan.steps[1]?.parameters).toEqual({ stretch_ratio: 0.9 });
+    expect(plan.steps[2]?.parameters).toEqual({ semitones: 2 });
+    expect(plan.steps[3]?.parameters).toEqual({ fade_out_seconds: 0.1 });
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_time_stretch_duration",
+          metric: "derived.duration_seconds",
+          threshold: 0.72,
+        }),
+        expect.objectContaining({
+          target_id: "target_pitch_shift_duration_guard",
+          metric: "derived.duration_seconds",
+          threshold: 0.72,
+        }),
+      ]),
+    );
+    expect(validateAgainstSchema(editPlanSchema, plan)).toBe(true);
+  });
+
+  it("orders compound restoration, tonal, dynamics, and stereo phases explicitly", () => {
+    const plan = planEdits({
+      userRequest:
+        "Remove clicks, tame the sibilance, make it darker, make it more controlled, catch peaks, and center this more.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createImbalancedStereoAnalysisReportFixture(),
+      semanticProfile: createOffCenterSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual([
+      "declick",
+      "de_esser",
+      "tilt_eq",
+      "compressor",
+      "limiter",
+      "stereo_balance_correction",
+    ]);
+  });
+
   it("fails instead of inventing unsupported behavior", () => {
     try {
       planEdits({
@@ -878,6 +939,28 @@ describe("planEdits", () => {
         },
       }),
     ).toThrow(/only supports conservative tonal cleanup/i);
+  });
+
+  it("fails clearly for compound prompts that mix explicit trim points with silence trimming", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Trim from 0.2s to 1.2s and trim the silence at the beginning and end.",
+        audioVersion: createTrimSilenceAudioVersionFixture(),
+        analysisReport: createTrimSilenceAnalysisReportFixture(),
+        semanticProfile: createVersionScopedNeutralSemanticProfile("ver_trimSilenceFixture"),
+      }),
+    ).toThrow(/explicit time-range trimming with automatic silence trimming/i);
+  });
+
+  it("fails clearly for louder-plus-peak-control prompts without explicit normalization", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Make it louder and catch peaks.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createAnalysisReportFixture(),
+        semanticProfile: createSemanticProfileFixture(),
+      }),
+    ).toThrow(/combines louder output with peak control/i);
   });
 
   it("rejects time-based requests that exceed the current audio version duration", () => {
@@ -1060,6 +1143,24 @@ function createPitchedAnalysisReportFixture(): AnalysisReport {
       confidence: 0.91,
     },
     segments: [{ kind: "active", start_seconds: 0, end_seconds: 0.96 }],
+  };
+}
+
+function createPitchedBoundarySilenceAnalysisReportFixture(): AnalysisReport {
+  return {
+    ...createPitchedAnalysisReportFixture(),
+    measurements: {
+      ...createPitchedAnalysisReportFixture().measurements,
+      artifacts: {
+        ...createPitchedAnalysisReportFixture().measurements.artifacts,
+        noise_floor_dbfs: -60,
+      },
+    },
+    segments: [
+      { kind: "silence", start_seconds: 0, end_seconds: 0.08 },
+      { kind: "active", start_seconds: 0.08, end_seconds: 0.88 },
+      { kind: "silence", start_seconds: 0.88, end_seconds: 0.96 },
+    ],
   };
 }
 

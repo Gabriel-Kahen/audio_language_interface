@@ -118,6 +118,14 @@ That separation makes failures easier to diagnose, but it does not turn the benc
 
 The current request-cycle benchmark corpus is intentionally small. It covers stable tonal cleanup, restoration, timing edits, stereo/spatial edits, iterative follow-up flows, peak-control, and dedicated louder-and-controlled prompts on committed phase-1 fixtures plus explicit clarification/failure controls rather than trying to benchmark the full runtime surface at once.
 
+That corpus now also includes a narrow compound-edit slice:
+
+- 2-step tonal prompts such as `make this warmer and airier`
+- 3-step tonal prompts such as `make this darker, less harsh, and less muddy`
+- explicit contradiction controls such as `make it brighter and darker` and `make it faster and slower`
+
+Those cases are meant to test planner decomposition, explicit operation ordering, and multi-goal structured verification without pretending the planner can already compose the whole runtime surface safely.
+
 For hum and click cleanup prompts, benchmark outcome checks should prefer direct `AnalysisReport.artifacts` signals such as `hum_detected`, `hum_level_dbfs`, `click_detected`, and `click_count`. Low-band, noise-floor, and clipped-sample checks remain conservative fallback coverage rather than the primary success signal.
 
 The compare-only corpus now also includes isolated hum and click cases for both direct-artifact and fallback scoring paths. Use those cases when you need to debug compare behavior without involving planning or orchestration.

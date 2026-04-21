@@ -177,13 +177,33 @@ function resolvePlannerObjectives(
   }
 
   if (objectives.wants_more_even_level && objectives.wants_quieter) {
-    throw new Error(
+    throw createPlanningFailure(
+      "supported_but_underspecified",
       "The request asks for both quieter output and loudness normalization. Please choose whether the priority is lower level or explicit normalization.",
     );
   }
 
+  if (objectives.trim_range && objectives.wants_trim_silence) {
+    throw createPlanningFailure(
+      "supported_but_underspecified",
+      "The request combines explicit time-range trimming with automatic silence trimming. Please choose either explicit trim points or silence trimming so the planner does not guess which boundaries should move first.",
+    );
+  }
+
+  if (
+    objectives.wants_louder &&
+    objectives.wants_peak_control &&
+    !objectives.wants_more_even_level
+  ) {
+    throw createPlanningFailure(
+      "supported_but_underspecified",
+      "The request combines louder output with peak control but does not ask for explicit normalization. The baseline planner refuses that combination instead of applying post-limiter gain that could undermine the peak-control move.",
+    );
+  }
+
   if (objectives.wants_remove_hum && objectives.hum_frequency_hz === undefined) {
-    throw new Error(
+    throw createPlanningFailure(
+      "supported_but_underspecified",
       "The baseline planner only supports dehum when the request specifies a 50 Hz or 60 Hz mains frequency explicitly.",
     );
   }
@@ -196,7 +216,8 @@ function resolvePlannerObjectives(
   }
 
   if (objectives.wants_more_warmth && objectives.wants_less_muddy) {
-    throw new Error(
+    throw createPlanningFailure(
+      "supported_but_underspecified",
       "The request asks for both more warmth and less muddiness. The baseline planner does not yet combine those opposing low-band shelf directions safely in one pass.",
     );
   }

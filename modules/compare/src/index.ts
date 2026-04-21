@@ -18,6 +18,7 @@ export type {
   ComparisonReport,
   EditPlan,
   GoalAlignment,
+  GoalAlignmentVerificationRollup,
   GoalEvaluationSource,
   GoalStatus,
   MetricDelta,

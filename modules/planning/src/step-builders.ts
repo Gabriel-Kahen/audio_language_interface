@@ -41,100 +41,99 @@ interface StepBuildContext {
   semanticProfile: SemanticProfile;
 }
 
+type PlannerStepPhase =
+  | "source_selection"
+  | "boundary_cleanup"
+  | "duration_shaping"
+  | "pitch_shaping"
+  | "boundary_envelopes"
+  | "restoration"
+  | "filters"
+  | "tonal_balance"
+  | "dynamics"
+  | "stereo_image"
+  | "loudness";
+
 export function buildPlannedSteps(context: StepBuildContext): EditPlanStep[] {
-  const steps: EditPlanStep[] = [];
   const useControlledLoudnessPath = shouldUseControlledLoudnessPath(context.objectives);
+  const phases = [
+    {
+      phase: "source_selection",
+      steps: [buildTrimStep(context.objectives, context.audioVersion)],
+    },
+    {
+      phase: "boundary_cleanup",
+      steps: [buildTrimSilenceStep(context.objectives, context.analysisReport)],
+    },
+    {
+      phase: "duration_shaping",
+      steps: [buildTimeStretchStep(context.objectives)],
+    },
+    {
+      phase: "pitch_shaping",
+      steps: [buildPitchShiftStep(context.objectives)],
+    },
+    {
+      phase: "boundary_envelopes",
+      steps: [buildFadeStep(context.objectives, context.audioVersion)],
+    },
+    {
+      phase: "restoration",
+      steps: [
+        buildDeclickStep(context.objectives),
+        buildDehumStep(context.objectives),
+        buildDenoiseStep(context.objectives, context.analysisReport),
+        buildDeEsserStep(context.objectives),
+      ],
+    },
+    {
+      phase: "filters",
+      steps: [buildRumbleStep(context.objectives)],
+    },
+    {
+      phase: "tonal_balance",
+      steps: buildTonalSteps(context),
+    },
+    {
+      phase: "dynamics",
+      steps: useControlledLoudnessPath
+        ? buildControlledLoudnessSteps(context.objectives, context.analysisReport)
+        : [
+            buildCompressorStep(context.objectives),
+            buildLimiterStep(context.objectives, context.analysisReport),
+          ],
+    },
+    {
+      phase: "stereo_image",
+      steps: useControlledLoudnessPath
+        ? []
+        : [
+            buildStereoBalanceCorrectionStep(context.objectives, context.analysisReport),
+            buildStereoWidthStep(context.objectives),
+          ],
+    },
+    {
+      phase: "loudness",
+      steps: useControlledLoudnessPath
+        ? []
+        : [
+            buildNormalizeStep(context.objectives, context.analysisReport),
+            buildGainStep(context.objectives, context.analysisReport),
+          ],
+    },
+  ] satisfies Array<{ phase: PlannerStepPhase; steps: Array<EditPlanStep | undefined> }>;
 
-  const trimStep = buildTrimStep(context.objectives, context.audioVersion);
-  if (trimStep) {
-    steps.push(trimStep);
-  }
+  const plannedSteps: EditPlanStep[] = [];
 
-  const trimSilenceStep = buildTrimSilenceStep(context.objectives, context.analysisReport);
-  if (trimSilenceStep) {
-    steps.push(trimSilenceStep);
-  }
-
-  const timeStretchStep = buildTimeStretchStep(context.objectives);
-  if (timeStretchStep) {
-    steps.push(timeStretchStep);
-  }
-
-  const pitchShiftStep = buildPitchShiftStep(context.objectives);
-  if (pitchShiftStep) {
-    steps.push(pitchShiftStep);
-  }
-
-  const fadeStep = buildFadeStep(context.objectives, context.audioVersion);
-  if (fadeStep) {
-    steps.push(fadeStep);
-  }
-
-  const declickStep = buildDeclickStep(context.objectives);
-  if (declickStep) {
-    steps.push(declickStep);
-  }
-
-  const dehumStep = buildDehumStep(context.objectives);
-  if (dehumStep) {
-    steps.push(dehumStep);
-  }
-
-  const denoiseStep = buildDenoiseStep(context.objectives, context.analysisReport);
-  if (denoiseStep) {
-    steps.push(denoiseStep);
-  }
-
-  const deEsserStep = buildDeEsserStep(context.objectives);
-  if (deEsserStep) {
-    steps.push(deEsserStep);
-  }
-
-  const filterStep = buildRumbleStep(context.objectives);
-  if (filterStep) {
-    steps.push(filterStep);
-  }
-
-  steps.push(...buildTonalSteps(context));
-
-  if (useControlledLoudnessPath) {
-    steps.push(...buildControlledLoudnessSteps(context.objectives, context.analysisReport));
-  } else {
-    const compressorStep = buildCompressorStep(context.objectives);
-    if (compressorStep) {
-      steps.push(compressorStep);
-    }
-
-    const limiterStep = buildLimiterStep(context.objectives, context.analysisReport);
-    if (limiterStep) {
-      steps.push(limiterStep);
-    }
-
-    const stereoBalanceCorrectionStep = buildStereoBalanceCorrectionStep(
-      context.objectives,
-      context.analysisReport,
-    );
-    if (stereoBalanceCorrectionStep) {
-      steps.push(stereoBalanceCorrectionStep);
-    }
-
-    const stereoWidthStep = buildStereoWidthStep(context.objectives);
-    if (stereoWidthStep) {
-      steps.push(stereoWidthStep);
-    }
-
-    const normalizeStep = buildNormalizeStep(context.objectives, context.analysisReport);
-    if (normalizeStep) {
-      steps.push(normalizeStep);
-    }
-
-    const gainStep = buildGainStep(context.objectives, context.analysisReport);
-    if (gainStep) {
-      steps.push(gainStep);
+  for (const { steps } of phases) {
+    for (const step of steps) {
+      if (step !== undefined) {
+        plannedSteps.push(step);
+      }
     }
   }
 
-  return steps;
+  return plannedSteps;
 }
 
 function shouldUseControlledLoudnessPath(objectives: ParsedEditObjectives): boolean {

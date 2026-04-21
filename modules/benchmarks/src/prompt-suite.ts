@@ -815,7 +815,7 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
   suiteId: "first_prompt_family",
   fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
   description:
-    "Real request-cycle benchmark corpus over committed phase-1 fixtures, covering supported tonal cleanup, restoration, timing edits, stereo-spatial edits, loudness/control, and explicit clarification/failure controls.",
+    "Real request-cycle benchmark corpus over committed phase-1 fixtures, covering supported tonal cleanup, compound tonal edits, restoration, timing edits, stereo-spatial edits, loudness/control, and explicit clarification/failure controls.",
   cases: [
     {
       caseId: "request_cycle_darker_less_harsh",
@@ -898,6 +898,72 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
           verification_statuses: {
             target_less_muddy_mid_band: "met",
             target_less_muddy_no_lost_air_regression: "met",
+          },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_warmer_and_airier",
+      family: "first_prompt_family",
+      prompt: "Make this warmer and airier.",
+      description: "Two-step tonal compound on the shared first-slice fixture.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["low_shelf", "high_shelf"],
+          expected_operation_order: ["low_shelf", "high_shelf"],
+          required_goals: ["add a little low-band warmth", "add a little upper-band air"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "add a little low-band warmth": "met",
+            "add a little upper-band air": "met",
+          },
+          verification_statuses: {
+            target_more_warmth_low_band: "met",
+            target_more_warmth_no_added_muddiness: "met",
+            target_more_air_high_band: "met",
+            target_more_air_no_sibilance_regression: "met",
+          },
+        },
+        regressions: {
+          forbidden_regression_kinds: ["added_muddiness", "increased_sibilance"],
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_darker_less_harsh_less_muddy",
+      family: "first_prompt_family",
+      prompt: "Make this darker, less harsh, and less muddy.",
+      description: "Three-step tonal compound on the shared first-slice fixture.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["notch_filter", "tilt_eq", "low_shelf"],
+          expected_operation_order: ["notch_filter", "tilt_eq", "low_shelf"],
+          required_goals: [
+            "reduce upper-mid harshness",
+            "trim excess low-mid weight",
+            "tilt the overall balance slightly darker",
+          ],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "reduce upper-mid harshness": "mostly_met",
+            "trim excess low-mid weight": "met",
+            "tilt the overall balance slightly darker": "met",
+          },
+          verification_statuses: {
+            target_reduce_harshness_high_band: "met",
+            target_less_muddy_mid_band: "met",
+            target_less_muddy_no_lost_air_regression: "met",
+            target_darker_brightness_tilt: "met",
           },
         },
       },
@@ -1369,6 +1435,36 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
           stage: "plan",
           failure_class: "supported_but_underspecified",
           message_includes: "could not derive an executable plan",
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_brighter_and_darker_contradiction",
+      family: "first_prompt_family",
+      prompt: "Make it brighter and darker.",
+      description:
+        "Contradictory tonal directions should fail explicitly instead of inventing a blended compound edit.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        error: {
+          stage: "plan",
+          failure_class: "supported_but_underspecified",
+          message_includes: "both darker and brighter tonal moves",
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_speed_up_and_slow_down_contradiction",
+      family: "first_prompt_family",
+      prompt: "Make it faster and slower.",
+      description:
+        "Contradictory timing directions should fail explicitly instead of guessing a compromise.",
+      fixtureId: "fixture_phase1_request_cycle_pitched_timing_source",
+      expectation: {
+        error: {
+          stage: "plan",
+          failure_class: "supported_but_underspecified",
+          message_includes: "both faster and slower timing moves",
         },
       },
     },

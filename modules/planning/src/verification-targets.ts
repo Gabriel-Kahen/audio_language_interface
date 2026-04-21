@@ -40,6 +40,12 @@ export function buildVerificationTargets(
     (clickAnnotation?.severity ?? 0) >= 0.38;
   const leadingSilenceSeconds = getLeadingSilenceSeconds(analysisReport);
   const trailingSilenceSeconds = getTrailingSilenceSeconds(analysisReport);
+  const durationAfterPreStretchEdits = resolveDurationAfterPreStretchEdits(
+    objectives,
+    audioVersion,
+    leadingSilenceSeconds,
+    trailingSilenceSeconds,
+  );
 
   if (objectives.wants_trim_silence) {
     if (objectives.trim_leading_silence) {
@@ -91,7 +97,7 @@ export function buildVerificationTargets(
   if (objectives.wants_speed_up || objectives.wants_slow_down) {
     const stretchRatio = objectives.stretch_ratio ?? 1;
     const expectedDurationSeconds = Number(
-      (audioVersion.audio.duration_seconds * stretchRatio).toFixed(3),
+      (durationAfterPreStretchEdits * stretchRatio).toFixed(3),
     );
 
     targets.push({
@@ -163,7 +169,12 @@ export function buildVerificationTargets(
       kind: "analysis_metric",
       comparison: "within",
       metric: "derived.duration_seconds",
-      threshold: Number(audioVersion.audio.duration_seconds.toFixed(3)),
+      threshold: resolveExpectedFinalDurationSeconds(
+        objectives,
+        audioVersion,
+        leadingSilenceSeconds,
+        trailingSilenceSeconds,
+      ),
       tolerance: 0.02,
       rationale:
         "The baseline pitch-shift path is intended to preserve duration closely while moving pitch.",
@@ -738,6 +749,48 @@ function getTrailingSilenceSeconds(analysisReport: AnalysisReport): number {
   }
 
   return Number(Math.max(0, segment.end_seconds - segment.start_seconds).toFixed(3));
+}
+
+function resolveDurationAfterPreStretchEdits(
+  objectives: ParsedEditObjectives,
+  audioVersion: AudioVersion,
+  leadingSilenceSeconds: number,
+  trailingSilenceSeconds: number,
+): number {
+  let durationSeconds =
+    objectives.trim_range === undefined
+      ? audioVersion.audio.duration_seconds
+      : objectives.trim_range.end_seconds - objectives.trim_range.start_seconds;
+
+  if (objectives.wants_trim_silence) {
+    const removableBoundarySilence =
+      (objectives.trim_leading_silence ? leadingSilenceSeconds : 0) +
+      (objectives.trim_trailing_silence ? trailingSilenceSeconds : 0);
+    durationSeconds = Math.max(0, durationSeconds - removableBoundarySilence);
+  }
+
+  return Number(durationSeconds.toFixed(3));
+}
+
+function resolveExpectedFinalDurationSeconds(
+  objectives: ParsedEditObjectives,
+  audioVersion: AudioVersion,
+  leadingSilenceSeconds: number,
+  trailingSilenceSeconds: number,
+): number {
+  const durationAfterPreStretchEdits = resolveDurationAfterPreStretchEdits(
+    objectives,
+    audioVersion,
+    leadingSilenceSeconds,
+    trailingSilenceSeconds,
+  );
+
+  if (!objectives.wants_speed_up && !objectives.wants_slow_down) {
+    return durationAfterPreStretchEdits;
+  }
+
+  const stretchRatio = objectives.stretch_ratio ?? 1;
+  return Number((durationAfterPreStretchEdits * stretchRatio).toFixed(3));
 }
 
 function shouldUseControlledLoudnessTargets(objectives: ParsedEditObjectives): boolean {

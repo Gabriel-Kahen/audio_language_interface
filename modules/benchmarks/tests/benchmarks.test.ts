@@ -174,9 +174,11 @@ describe("firstPromptFamilyFixtureCorpus", () => {
     expect(firstPromptFamilyRequestCycleCorpus.fixtureManifestPath).toBe(
       FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
     );
-    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(22);
+    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(26);
     expect(firstPromptFamilyRequestCycleSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
+        "request_cycle_warmer_and_airier",
+        "request_cycle_darker_less_harsh_less_muddy",
         "request_cycle_tame_sibilance",
         "request_cycle_remove_60hz_hum",
         "request_cycle_clean_up_clicks",
@@ -194,6 +196,8 @@ describe("firstPromptFamilyFixtureCorpus", () => {
         "request_cycle_follow_up_revert_previous_version",
         "request_cycle_control_peaks_without_crushing",
         "request_cycle_louder_and_more_controlled",
+        "request_cycle_brighter_and_darker_contradiction",
+        "request_cycle_speed_up_and_slow_down_contradiction",
       ]),
     );
 
@@ -330,6 +334,10 @@ describe("formatBenchmarkMarkdownReport", () => {
 describe("runRequestCycleBenchmarks", () => {
   it("runs a fixture-backed request-cycle slice across tonal, restoration, timing, control, and iterative follow-up prompts", async () => {
     const darkerLessHarsh = getRequestCycleCase("request_cycle_darker_less_harsh");
+    const warmerAndAirier = getRequestCycleCase("request_cycle_warmer_and_airier");
+    const darkerLessHarshLessMuddy = getRequestCycleCase(
+      "request_cycle_darker_less_harsh_less_muddy",
+    );
     const tameSibilance = getRequestCycleCase("request_cycle_tame_sibilance");
     const removeHum = getRequestCycleCase("request_cycle_remove_60hz_hum");
     const cleanUpClicks = getRequestCycleCase("request_cycle_clean_up_clicks");
@@ -348,6 +356,12 @@ describe("runRequestCycleBenchmarks", () => {
     const controlPeaks = getRequestCycleCase("request_cycle_control_peaks_without_crushing");
     const louderControlled = getRequestCycleCase("request_cycle_louder_and_more_controlled");
     const cleanIt = getRequestCycleCase("request_cycle_clean_it_clarification");
+    const brighterAndDarker = getRequestCycleCase(
+      "request_cycle_brighter_and_darker_contradiction",
+    );
+    const speedUpAndSlowDown = getRequestCycleCase(
+      "request_cycle_speed_up_and_slow_down_contradiction",
+    );
     const cleanThisSample = getRequestCycleCase(
       "request_cycle_clean_this_sample_up_a_bit_underspecified",
     );
@@ -359,6 +373,8 @@ describe("runRequestCycleBenchmarks", () => {
       description: "Targeted request-cycle benchmark smoke suite.",
       cases: [
         darkerLessHarsh,
+        warmerAndAirier,
+        darkerLessHarshLessMuddy,
         tameSibilance,
         removeHum,
         cleanUpClicks,
@@ -377,13 +393,15 @@ describe("runRequestCycleBenchmarks", () => {
         controlPeaks,
         louderControlled,
         cleanIt,
+        brighterAndDarker,
+        speedUpAndSlowDown,
         cleanThisSample,
       ],
     });
 
     expect(result.suiteId).toBe("first_prompt_family");
     expect(result.corpusId).toBe("request_cycle_test_subset");
-    expect(result.caseResults).toHaveLength(20);
+    expect(result.caseResults).toHaveLength(24);
     expect(result.totalChecks).toBeGreaterThan(0);
     expect(result.totalPassedChecks).toBe(result.totalChecks);
     expect(result.overallScore).toBe(1);
@@ -396,6 +414,24 @@ describe("runRequestCycleBenchmarks", () => {
       "notch_filter",
       "tilt_eq",
     ]);
+
+    const warmerAndAirierCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === warmerAndAirier.caseId,
+    );
+    expect(warmerAndAirierCase?.status).toBe("ok");
+    expect(
+      warmerAndAirierCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation),
+    ).toEqual(["low_shelf", "high_shelf"]);
+
+    const darkerLessHarshLessMuddyCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === darkerLessHarshLessMuddy.caseId,
+    );
+    expect(darkerLessHarshLessMuddyCase?.status).toBe("ok");
+    expect(
+      darkerLessHarshLessMuddyCase?.requestCycleResult?.editPlan?.steps.map(
+        (step) => step.operation,
+      ),
+    ).toEqual(["notch_filter", "tilt_eq", "low_shelf"]);
 
     const sibilanceCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === tameSibilance.caseId,
@@ -519,6 +555,20 @@ describe("runRequestCycleBenchmarks", () => {
     expect(unsupportedCase?.error?.stage).toBe("plan");
     expect(unsupportedCase?.error?.failureClass).toBe("supported_but_underspecified");
 
+    const contradictoryToneCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === brighterAndDarker.caseId,
+    );
+    expect(contradictoryToneCase?.status).toBe("error");
+    expect(contradictoryToneCase?.error?.stage).toBe("plan");
+    expect(contradictoryToneCase?.error?.failureClass).toBe("supported_but_underspecified");
+
+    const contradictoryTimingCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === speedUpAndSlowDown.caseId,
+    );
+    expect(contradictoryTimingCase?.status).toBe("error");
+    expect(contradictoryTimingCase?.error?.stage).toBe("plan");
+    expect(contradictoryTimingCase?.error?.failureClass).toBe("supported_but_underspecified");
+
     const underspecifiedCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === cleanThisSample.caseId,
     );
@@ -576,6 +626,9 @@ describe("runRequestCycleBenchmarks", () => {
 describe("formatBenchmarkMarkdownReport request-cycle mode", () => {
   it("renders a stable request-cycle benchmark report", async () => {
     const darkerLessHarsh = getRequestCycleCase("request_cycle_darker_less_harsh");
+    const darkerLessHarshLessMuddy = getRequestCycleCase(
+      "request_cycle_darker_less_harsh_less_muddy",
+    );
     const trimBoundarySilence = getRequestCycleCase("request_cycle_trim_boundary_silence");
     const cleanThisSample = getRequestCycleCase(
       "request_cycle_clean_this_sample_up_a_bit_underspecified",
@@ -586,7 +639,7 @@ describe("formatBenchmarkMarkdownReport request-cycle mode", () => {
       suiteId: "first_prompt_family",
       fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
       description: "Request-cycle report formatting smoke suite.",
-      cases: [darkerLessHarsh, trimBoundarySilence, cleanThisSample],
+      cases: [darkerLessHarsh, darkerLessHarshLessMuddy, trimBoundarySilence, cleanThisSample],
     });
 
     const markdown = formatBenchmarkMarkdownReport(result);
@@ -594,9 +647,11 @@ describe("formatBenchmarkMarkdownReport request-cycle mode", () => {
     expect(markdown).toContain("# Benchmark Report: first_prompt_family");
     expect(markdown).toContain("Benchmark mode: request-cycle");
     expect(markdown).toContain("request_cycle_darker_less_harsh");
+    expect(markdown).toContain("request_cycle_darker_less_harsh_less_muddy");
     expect(markdown).toContain("request_cycle_trim_boundary_silence");
     expect(markdown).toContain("request_cycle_clean_this_sample_up_a_bit_underspecified");
     expect(markdown).toContain("planned operations: notch_filter, tilt_eq");
+    expect(markdown).toContain("planned operations: notch_filter, tilt_eq, low_shelf");
     expect(markdown).toContain("planned operations: trim_silence");
     expect(markdown).toContain("failure class: supported_but_underspecified");
     expect(markdown).toContain("Fixture corpus: request_cycle_report_subset");

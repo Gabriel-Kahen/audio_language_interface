@@ -88,11 +88,13 @@ describe("compareVersions", () => {
         expect.objectContaining({ label: "darker" }),
       ]),
     );
-    expect(report.goal_alignment).toEqual([
-      { goal: "reduce upper-mid harshness", status: "met" },
-      { goal: "slightly reduce perceived brightness", status: "met" },
-      { goal: "preserve transient impact", status: "met" },
-    ]);
+    expect(report.goal_alignment).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ goal: "reduce upper-mid harshness", status: "met" }),
+        expect.objectContaining({ goal: "slightly reduce perceived brightness", status: "met" }),
+        expect.objectContaining({ goal: "preserve transient impact", status: "met" }),
+      ]),
+    );
     expect(report.verification_results).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -183,9 +185,14 @@ describe("compareVersions", () => {
         status: "met",
       }),
     ]);
-    expect(report.goal_alignment).toEqual([
-      { goal: "reduce mains hum and harmonic buzz conservatively", status: "met" },
-    ]);
+    expect(report.goal_alignment).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          goal: "reduce mains hum and harmonic buzz conservatively",
+          status: "met",
+        }),
+      ]),
+    );
   });
 
   it("treats direct click-activity targets as met when the candidate clears click detection", () => {
@@ -254,9 +261,14 @@ describe("compareVersions", () => {
         status: "met",
       }),
     ]);
-    expect(report.goal_alignment).toEqual([
-      { goal: "repair short clicks and pops conservatively", status: "met" },
-    ]);
+    expect(report.goal_alignment).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          goal: "repair short clicks and pops conservatively",
+          status: "met",
+        }),
+      ]),
+    );
   });
 
   it("scores hum and click reduction goals from direct artifact evidence first", () => {
@@ -428,9 +440,14 @@ describe("compareVersions", () => {
         }),
       ]),
     );
-    expect(report.goal_alignment).toEqual([
-      { goal: "shorten the clip duration while preserving pitch", status: "met" },
-    ]);
+    expect(report.goal_alignment).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          goal: "shorten the clip duration while preserving pitch",
+          status: "met",
+        }),
+      ]),
+    );
   });
 
   it("uses derived silence-edge metrics for trim-silence verification", () => {
@@ -566,9 +583,147 @@ describe("compareVersions", () => {
         }),
       ]),
     );
-    expect(report.goal_alignment).toEqual([
-      { goal: "trim leading and trailing boundary silence conservatively", status: "met" },
-    ]);
+    expect(report.goal_alignment).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          goal: "trim leading and trailing boundary silence conservatively",
+          status: "met",
+        }),
+      ]),
+    );
+  });
+
+  it("surfaces requested-target success separately from regression-guard tradeoffs for compound goals", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_compound_goal_base"),
+      candidateVersion: createVersion("ver_compound_goal_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_compound_goal_base",
+        versionId: "ver_compound_goal_base",
+        integratedLufs: -16,
+        truePeakDbtp: -1.1,
+        samplePeakDbfs: -1.4,
+        headroomDb: 1.4,
+        crestFactorDb: 10.8,
+        transientDensity: 2,
+        dynamicRangeDb: 8.8,
+        lowBandDb: -16.5,
+        midBandDb: -11.6,
+        highBandDb: -10.2,
+        spectralCentroidHz: 2550,
+        stereoWidth: 0.57,
+        stereoCorrelation: 0.49,
+        noiseFloorDbfs: -74,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_compound_goal_cand",
+        versionId: "ver_compound_goal_cand",
+        integratedLufs: -16.1,
+        truePeakDbtp: -1.6,
+        samplePeakDbfs: -1.9,
+        headroomDb: 1.9,
+        crestFactorDb: 8.7,
+        transientDensity: 1.55,
+        dynamicRangeDb: 5.9,
+        lowBandDb: -16.4,
+        midBandDb: -11.8,
+        highBandDb: -11,
+        spectralCentroidHz: 2440,
+        stereoWidth: 0.57,
+        stereoCorrelation: 0.5,
+        noiseFloorDbfs: -74,
+        clippingDetected: false,
+      }),
+      editPlan: {
+        ...createEditPlan(),
+        version_id: "ver_compound_goal_base",
+        goals: ["reduce harshness without killing the punch", "keep peak excursions controlled"],
+        verification_targets: [
+          {
+            target_id: "target_compound_reduce_harshness",
+            goal: "reduce harshness without killing the punch",
+            label: "reduce high-band harshness energy",
+            kind: "analysis_metric",
+            comparison: "decrease_by",
+            metric: "spectral_balance.high_band_db",
+            threshold: 0.5,
+          },
+          {
+            target_id: "target_compound_keep_punch",
+            goal: "reduce harshness without killing the punch",
+            label: "avoid measurable punch loss while darkening",
+            kind: "regression_guard",
+            comparison: "absent",
+            regression_kind: "lost_punch",
+          },
+          {
+            target_id: "target_compound_peak_control",
+            goal: "keep peak excursions controlled",
+            label: "keep true peak under the requested ceiling",
+            kind: "analysis_metric",
+            comparison: "at_most",
+            metric: "levels.true_peak_dbtp",
+            threshold: -1,
+          },
+        ],
+      },
+      generatedAt: "2026-04-21T20:20:22Z",
+    });
+
+    expect(report.verification_results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_compound_reduce_harshness",
+          status: "met",
+        }),
+        expect.objectContaining({
+          target_id: "target_compound_keep_punch",
+          status: "not_met",
+        }),
+        expect.objectContaining({
+          target_id: "target_compound_peak_control",
+          status: "met",
+          observed_value: -1.6,
+        }),
+      ]),
+    );
+    expect(report.goal_alignment).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          goal: "reduce harshness without killing the punch",
+          status: "not_met",
+          verification_rollup: expect.objectContaining({
+            total_targets: 2,
+            met_targets: 1,
+            mostly_met_targets: 0,
+            not_met_targets: 1,
+            unknown_targets: 0,
+            requested_target_count: 1,
+            requested_target_status: "met",
+            regression_guard_count: 1,
+            regression_guard_status: "not_met",
+          }),
+        }),
+        expect.objectContaining({
+          goal: "keep peak excursions controlled",
+          status: "met",
+          verification_rollup: expect.objectContaining({
+            total_targets: 1,
+            met_targets: 1,
+            mostly_met_targets: 0,
+            not_met_targets: 0,
+            unknown_targets: 0,
+            requested_target_count: 1,
+            requested_target_status: "met",
+            regression_guard_count: 0,
+          }),
+        }),
+      ]),
+    );
+    expect(report.summary.plain_text).toContain(
+      "1 goal met requested targets but failed one or more regression guards.",
+    );
   });
 
   it("detects clipping and loudness regressions", () => {
@@ -777,9 +932,14 @@ describe("compareVersions", () => {
         }),
       ]),
     );
-    expect(report.goal_alignment).toEqual([
-      { goal: "reduce left-right stereo imbalance conservatively", status: "met" },
-    ]);
+    expect(report.goal_alignment).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          goal: "reduce left-right stereo imbalance conservatively",
+          status: "met",
+        }),
+      ]),
+    );
   });
 
   it("flags a stereo-balance regression when the image drifts farther off-center", () => {

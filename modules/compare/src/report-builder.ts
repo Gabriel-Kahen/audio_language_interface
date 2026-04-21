@@ -119,6 +119,11 @@ function buildSummary(
     clauses.push(
       `${metCount} of ${verificationResults.length} structured verification checks were satisfied or mostly satisfied.`,
     );
+
+    const tradeoffSummary = summarizeStructuredGoalTradeoffs(goalAlignment);
+    if (tradeoffSummary !== undefined) {
+      clauses.push(tradeoffSummary);
+    }
   } else if (goalAlignment !== undefined && goalAlignment.length > 0) {
     const metCount = goalAlignment.filter(
       (item) => item.status === "met" || item.status === "mostly_met",
@@ -137,6 +142,55 @@ function buildSummary(
   }
 
   return clauses.join(" ");
+}
+
+function summarizeStructuredGoalTradeoffs(
+  goalAlignment: GoalAlignment[] | undefined,
+): string | undefined {
+  if (goalAlignment === undefined || goalAlignment.length === 0) {
+    return undefined;
+  }
+
+  const rollups = goalAlignment
+    .map((goal) => goal.verification_rollup)
+    .filter((rollup) => rollup !== undefined);
+  if (rollups.length === 0) {
+    return undefined;
+  }
+
+  const hardTradeoffGoals = rollups.filter(
+    (rollup) =>
+      isSatisfiedStatus(rollup.requested_target_status) &&
+      rollup.regression_guard_status === "not_met",
+  ).length;
+  const softTradeoffGoals = rollups.filter(
+    (rollup) =>
+      isSatisfiedStatus(rollup.requested_target_status) &&
+      rollup.regression_guard_status === "mostly_met",
+  ).length;
+
+  const fragments: string[] = [];
+  if (hardTradeoffGoals > 0) {
+    fragments.push(
+      `${hardTradeoffGoals} ${pluralize(hardTradeoffGoals, "goal", "goals")} met requested targets but failed one or more regression guards.`,
+    );
+  }
+
+  if (softTradeoffGoals > 0) {
+    fragments.push(
+      `${softTradeoffGoals} ${pluralize(softTradeoffGoals, "goal", "goals")} met requested targets but only mostly satisfied regression guards.`,
+    );
+  }
+
+  return fragments.length === 0 ? undefined : fragments.join(" ");
+}
+
+function isSatisfiedStatus(status: GoalAlignment["status"] | undefined): boolean {
+  return status === "met" || status === "mostly_met";
+}
+
+function pluralize(count: number, singular: string, plural: string): string {
+  return count === 1 ? singular : plural;
 }
 
 function createEvaluationBasis(
