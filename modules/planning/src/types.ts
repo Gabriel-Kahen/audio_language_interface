@@ -115,6 +115,7 @@ export interface ParsedEditObjectives {
   wants_remove_hum: boolean;
   wants_wider: boolean;
   wants_narrower: boolean;
+  wants_more_centered: boolean;
   wants_speed_up: boolean;
   wants_slow_down: boolean;
   wants_pitch_shift: boolean;

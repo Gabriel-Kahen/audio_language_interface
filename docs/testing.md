@@ -79,6 +79,7 @@ The current repository state includes expanded coverage around:
 - stereo and routing behavior (`stereo_width`, `pan`, `channel_swap`, `channel_remap`, `mid_side_eq`)
 - restoration behavior (`denoise`, `de_esser`, `declick`, `dehum`)
 - conservative timing behavior (`trim_silence`, `time_stretch`, `pitch_shift`)
+- conservative stereo/spatial behavior (`stereo_width`, `stereo_balance_correction`)
 - measurement-aware normalization and target-scope execution behavior
 - repeated request-cycle behavior, including alternate-version branching and revert-style follow-ups
 - tool-surface request-cycle execution, including explicit `SessionGraph` and `available_versions` handling for follow-up requests
@@ -115,7 +116,7 @@ The request-cycle benchmark mode should be read conservatively. Its scores are u
 
 That separation makes failures easier to diagnose, but it does not turn the benchmark into a perceptual listening test. Request-cycle outcome scoring still depends on the current compare-layer evidence, including structured verification, goal alignment, and regression warnings.
 
-The current request-cycle benchmark corpus is intentionally small. It covers stable tonal cleanup, restoration, timing edits, iterative follow-up flows, peak-control, and dedicated louder-and-controlled prompts on committed phase-1 fixtures plus explicit clarification/failure controls rather than trying to benchmark the full runtime surface at once.
+The current request-cycle benchmark corpus is intentionally small. It covers stable tonal cleanup, restoration, timing edits, stereo/spatial edits, iterative follow-up flows, peak-control, and dedicated louder-and-controlled prompts on committed phase-1 fixtures plus explicit clarification/failure controls rather than trying to benchmark the full runtime surface at once.
 
 For hum and click cleanup prompts, benchmark outcome checks should prefer direct `AnalysisReport.artifacts` signals such as `hum_detected`, `hum_level_dbfs`, `click_detected`, and `click_count`. Low-band, noise-floor, and clipped-sample checks remain conservative fallback coverage rather than the primary success signal.
 

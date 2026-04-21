@@ -66,6 +66,7 @@ The runtime capability surface is now also published explicitly through `Runtime
 Supported but conservative areas:
 
 - wider or narrower, when stereo evidence is safe enough
+- center this more or fix the stereo imbalance, when measured left-right balance is clearly off but still safe to correct conservatively
 - denoise or reduce hiss, when steady-noise evidence is strong enough
 - explicit loudness normalization through `normalize`
 - airier, warmer, less muddy, or less harsh ring through surgical tone-shaping
@@ -133,13 +134,14 @@ The baseline planner currently plans only against operations marked `planner_sup
 - `compressor`
 - `limiter`
 - `time_stretch`
+- `stereo_balance_correction`
 - `stereo_width`
 - `denoise`
 - `de_esser`
 - `declick`
 - `dehum`
 
-The baseline planner now supports a conservative timing-edit slice for explicit boundary-silence trimming, pitch-preserving time stretching, and semitone pitch shifting on material that reads as pitched. The channel-utility and stereo-routing operations, the broader transient/control operations, and the new Layer 1 effect operations remain runtime-available without being baseline-planner-selected. The current `transient_shaper` surface is compand-based and best suited to transient-rich material.
+The baseline planner now supports a conservative timing-edit slice for explicit boundary-silence trimming, pitch-preserving time stretching, and semitone pitch shifting on material that reads as pitched, plus a narrow stereo/spatial slice for widening, narrowing, and centering already-stereo material when the measured image is safe to adjust conservatively. `pan`, channel-utility and broader stereo-routing operations, the broader transient/control operations, and the new Layer 1 effect operations remain runtime-available without being baseline-planner-selected. The current `transient_shaper` surface is compand-based and best suited to transient-rich material.
 
 ### Implemented Tool Surface
 
@@ -168,13 +170,13 @@ Current tool-surface caveats:
 - semantic descriptor coverage is intentionally small and conservative
 - planning fails on unsupported requests instead of trying to generalize broadly
 - iterative editing now supports `more`, `less`, `undo`, `revert to previous version`, and `try another version` through both orchestration and the published `run_request_cycle` tool; those follow-up flows still require explicit historical version materialization rather than hidden adapter-managed state
-- the baseline planner still does not choose channel utilities, broader stereo routing, or Layer 1 runtime effects automatically
+- the baseline planner still does not choose `pan`, channel remapping, `mid_side_eq`, broader Layer 1 runtime effects, or the creative-effect surface automatically
 - render preview is MP3-only
 - final render export is limited to WAV and FLAC
 - compare now prefers planner-emitted structured verification targets and still keeps heuristic goal alignment only as a legacy fallback
 - hum and click analysis evidence now exists in the baseline `AnalysisReport`, and compare now prefers those direct artifact fields before falling back to conservative low-band or clipped-sample proxies
 - the repository does not yet provide a dedicated demo CLI or application entrypoint
-- benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, restoration, timing edits, iterative follow-up flows, peak-control, and dedicated louder-and-controlled prompts plus clarification/failure controls
+- benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, restoration, timing edits, stereo/spatial edits, iterative follow-up flows, peak-control, and dedicated louder-and-controlled prompts plus clarification/failure controls
 
 ## Practical Interpretation
 

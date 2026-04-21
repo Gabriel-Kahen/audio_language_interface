@@ -711,6 +711,44 @@ describe("buildSemanticProfile", () => {
     expect(profile.unresolved_terms ?? []).not.toContain("wide");
   });
 
+  it("assigns off_center when measured stereo balance is materially skewed", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          stereo: {
+            width: 0.24,
+            correlation: 0.72,
+            balance_db: 3.1,
+          },
+        },
+        annotations: [],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).toContain("off_center");
+    expect(profile.unresolved_terms ?? []).not.toContain("off_center");
+  });
+
+  it("keeps off_center unresolved when stereo balance is only mildly skewed", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          stereo: {
+            width: 0.24,
+            correlation: 0.72,
+            balance_db: 1.5,
+          },
+        },
+        annotations: [],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).not.toContain("off_center");
+    expect(profile.unresolved_terms).toContain("off_center");
+  });
+
   it("keeps wide unresolved when stable width evidence is too brief", () => {
     const profile = buildSemanticProfile(
       createReport({

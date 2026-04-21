@@ -86,6 +86,24 @@ export function detectAnalysisRegressions(
     });
   }
 
+  const baselineAbsoluteBalanceDb = Math.abs(baseline.stereo.balance_db ?? 0);
+  const candidateAbsoluteBalanceDb = Math.abs(candidate.stereo.balance_db ?? 0);
+  const absoluteBalanceDelta = candidateAbsoluteBalanceDb - baselineAbsoluteBalanceDb;
+
+  if (
+    absoluteBalanceDelta >= 1 ||
+    (baselineAbsoluteBalanceDb < 1.25 && candidateAbsoluteBalanceDb >= 2)
+  ) {
+    regressions.push({
+      kind: "stereo_balance_regression",
+      severity: roundSeverity(
+        Math.max(absoluteBalanceDelta / 4, Math.max(candidateAbsoluteBalanceDb - 1.25, 0) / 4),
+      ),
+      description:
+        "Absolute left-right stereo balance moved farther away from center than the baseline.",
+    });
+  }
+
   const crestFactorDelta = getDelta(metricDeltas, "dynamics.crest_factor_db");
   const transientDensityDelta = getDelta(metricDeltas, "dynamics.transient_density_per_second");
   const dynamicRangeDelta = getDelta(metricDeltas, "dynamics.dynamic_range_db");

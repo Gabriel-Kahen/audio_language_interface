@@ -9,7 +9,7 @@ export const DESCRIPTOR_TAXONOMY = {
     "airy",
     "sibilant",
   ],
-  space: ["mono", "narrow", "wide"],
+  space: ["mono", "narrow", "wide", "off_center"],
   dynamics: ["punchy", "controlled", "level_unstable"],
   level: ["loud", "quiet"],
   artifacts: ["clipped", "noisy", "hum_present", "clicks_present"],

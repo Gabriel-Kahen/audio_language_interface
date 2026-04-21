@@ -76,6 +76,10 @@ function evaluateGoal(
     checks.push(classifyStereoWidthGoal(normalizedGoal, baseline, candidate, metricDeltas));
   }
 
+  if (matchesStereoBalanceGoal(normalizedGoal)) {
+    checks.push(classifyStereoBalanceGoal(baseline, candidate, metricDeltas));
+  }
+
   if (
     matchesCleanupPhrase(normalizedGoal) ||
     matchesAny(normalizedGoal, ["noise", "noisy", "cleaner", "cleanup", "denoise", "hiss"])
@@ -807,12 +811,12 @@ function classifyStereoWidthGoal(
   }
 
   if (subtleGoal) {
-    if (widthDelta >= 0.05 && widthDelta <= 0.18 && !widthRisk) {
+    if (widthDelta >= 0.04 && widthDelta <= 0.18 && !widthRisk) {
       return "met";
     }
 
     if (
-      widthDelta >= 0.03 &&
+      widthDelta >= 0.02 &&
       widthDelta <= 0.25 &&
       isMostlyStableWidth(candidate, correlationDelta)
     ) {
@@ -822,11 +826,38 @@ function classifyStereoWidthGoal(
     return "not_met";
   }
 
-  if (widthDelta >= 0.08 && !widthRisk) {
+  if (widthDelta >= 0.05 && !widthRisk) {
     return "met";
   }
 
-  if (widthDelta >= 0.04 && isMostlyStableWidth(candidate, correlationDelta)) {
+  if (widthDelta >= 0.03 && isMostlyStableWidth(candidate, correlationDelta)) {
+    return "mostly_met";
+  }
+
+  return "not_met";
+}
+
+function classifyStereoBalanceGoal(
+  baseline: AnalysisMeasurements,
+  candidate: AnalysisMeasurements,
+  metricDeltas: MetricDelta[],
+): GoalStatus {
+  const absoluteBalanceDelta = getDelta(metricDeltas, "derived.absolute_stereo_balance_db");
+  const candidateAbsoluteBalanceDb = Math.abs(candidate.stereo.balance_db ?? 0);
+  const baselineAbsoluteBalanceDb = Math.abs(baseline.stereo.balance_db ?? 0);
+
+  if (absoluteBalanceDelta === undefined) {
+    return "unknown";
+  }
+
+  if (absoluteBalanceDelta <= -1.1 && candidateAbsoluteBalanceDb <= 1.1) {
+    return "met";
+  }
+
+  if (
+    absoluteBalanceDelta <= -0.6 &&
+    candidateAbsoluteBalanceDb <= Math.max(1.5, baselineAbsoluteBalanceDb - 0.6)
+  ) {
     return "mostly_met";
   }
 
@@ -912,6 +943,22 @@ function matchesStereoWidthGoal(value: string): boolean {
     "narrower",
     "mono compatible",
     "mono-compatible",
+  ]);
+}
+
+function matchesStereoBalanceGoal(value: string): boolean {
+  return matchesAny(value, [
+    "center this more",
+    "centre this more",
+    "more centered",
+    "more centred",
+    "closer to center",
+    "closer to centre",
+    "stereo imbalance",
+    "off center",
+    "off-centre",
+    "off-centre",
+    "left right imbalance",
   ]);
 }
 

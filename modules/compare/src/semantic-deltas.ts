@@ -20,6 +20,7 @@ export function deriveSemanticDeltas(
   pushIfPresent(semanticDeltas, describeMuddinessShift(metricDeltas));
   pushIfPresent(semanticDeltas, describeDynamicsShift(metricDeltas));
   pushIfPresent(semanticDeltas, describeStereoShift(metricDeltas));
+  pushIfPresent(semanticDeltas, describeCenteringShift(baseline, candidate, metricDeltas));
   pushIfPresent(semanticDeltas, describeNoiseShift(baseline, candidate, metricDeltas));
   pushIfPresent(semanticDeltas, describeDurationShift(metricDeltas));
   pushIfPresent(semanticDeltas, describePitchShift(metricDeltas));
@@ -314,7 +315,7 @@ function describeStereoShift(metricDeltas: MetricDelta[]): SemanticDelta | undef
     return undefined;
   }
 
-  if (widthDelta <= -0.08) {
+  if (widthDelta <= -0.02) {
     return {
       label: "narrower",
       confidence: confidenceFromMagnitude(Math.abs(widthDelta) / 0.4),
@@ -322,13 +323,46 @@ function describeStereoShift(metricDeltas: MetricDelta[]): SemanticDelta | undef
     };
   }
 
-  if (widthDelta >= 0.08 && !hasPhaseRisk(correlationDelta)) {
+  if (widthDelta >= 0.02 && !hasPhaseRisk(correlationDelta)) {
     return {
       label: "wider",
       confidence: confidenceFromMagnitude(
         Math.max(Math.abs(widthDelta) / 0.4, Math.max((correlationDelta ?? 0) + 0.2, 0) / 0.3),
       ),
       evidence: "stereo width increased without a matching collapse in correlation",
+    };
+  }
+
+  return undefined;
+}
+
+function describeCenteringShift(
+  baseline: CompareMeasurementContext,
+  candidate: CompareMeasurementContext,
+  metricDeltas: MetricDelta[],
+): SemanticDelta | undefined {
+  const absoluteBalanceDelta = getDelta(metricDeltas, "derived.absolute_stereo_balance_db");
+
+  if (absoluteBalanceDelta === undefined) {
+    return undefined;
+  }
+
+  const baselineAbs = Math.abs(baseline.stereo.balance_db ?? 0);
+  const candidateAbs = Math.abs(candidate.stereo.balance_db ?? 0);
+
+  if (absoluteBalanceDelta <= -0.8 && candidateAbs <= Math.max(1.25, baselineAbs - 0.8)) {
+    return {
+      label: "more_centered",
+      confidence: confidenceFromMagnitude(Math.abs(absoluteBalanceDelta) / 3.5),
+      evidence: "absolute stereo balance offset moved closer to center",
+    };
+  }
+
+  if (absoluteBalanceDelta >= 0.8) {
+    return {
+      label: "less_centered",
+      confidence: confidenceFromMagnitude(Math.abs(absoluteBalanceDelta) / 3.5),
+      evidence: "absolute stereo balance offset moved farther away from center",
     };
   }
 

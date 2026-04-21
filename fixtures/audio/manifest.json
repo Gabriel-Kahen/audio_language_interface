@@ -495,6 +495,82 @@
         "Keep the pitch center stable enough for the baseline estimator while allowing mild amplitude motion.",
         "Use the same source for both time-stretch and pitch-shift request-cycle cases to keep comparisons grounded."
       ]
+    },
+    {
+      "fixture_id": "fixture_phase1_request_cycle_stereo_width_source",
+      "display_name": "Request-Cycle Stereo Width Source",
+      "relative_path": "phase-1/request-cycle-stereo-width-source.wav",
+      "availability": "committed",
+      "format": {
+        "container": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 22050,
+        "channels": 2,
+        "bit_depth": 16,
+        "duration_seconds": 1.0,
+        "file_size_bytes": 88244
+      },
+      "provenance": {
+        "source_type": "synthetic_generation",
+        "created_by": "fixtures/audio request-cycle corpus",
+        "license": "CC0-1.0",
+        "redistributable": true,
+        "checksum_sha256": "266c6075cbb215a915dd82d3291dffbab1270f1f52bce6fdf4aa8d17ee80930e",
+        "notes": "Deterministic stereo source with moderate stable side energy and near-centered balance for stereo-width request-cycle benchmarks."
+      },
+      "intended_use": {
+        "prompt_family": ["make this wider", "narrow it a bit"],
+        "used_by": ["benchmarks"],
+        "expected_characteristics": [
+          "moderate stereo width",
+          "material positive correlation",
+          "nearly centered balance",
+          "tiny committed synthetic stereo source"
+        ]
+      },
+      "generation_recipe": [
+        "Write a 1.0-second stereo WAV at 22050 Hz with deterministic mid-plus-side sine synthesis.",
+        "Keep width present but not already wide so conservative widening and narrowing both remain benchmarkable.",
+        "Keep channel balance effectively centered so width benchmarks are not confounded by imbalance correction."
+      ]
+    },
+    {
+      "fixture_id": "fixture_phase1_request_cycle_stereo_imbalance_source",
+      "display_name": "Request-Cycle Stereo Imbalance Source",
+      "relative_path": "phase-1/request-cycle-stereo-imbalance-source.wav",
+      "availability": "committed",
+      "format": {
+        "container": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 22050,
+        "channels": 2,
+        "bit_depth": 16,
+        "duration_seconds": 1.0,
+        "file_size_bytes": 88244
+      },
+      "provenance": {
+        "source_type": "synthetic_generation",
+        "created_by": "fixtures/audio request-cycle corpus",
+        "license": "CC0-1.0",
+        "redistributable": true,
+        "checksum_sha256": "00f977b6b442baa538aa78d135c1e161b7dbf3e17fe504d1e29da94484eab082",
+        "notes": "Deterministic stereo source with moderate width and a measurable left-right gain offset for stereo-balance correction benchmarks."
+      },
+      "intended_use": {
+        "prompt_family": ["center this more", "fix the stereo imbalance"],
+        "used_by": ["benchmarks"],
+        "expected_characteristics": [
+          "material off-center stereo balance",
+          "still-stable stereo correlation",
+          "moderate width retained after recentering",
+          "tiny committed synthetic stereo source"
+        ]
+      },
+      "generation_recipe": [
+        "Write a 1.0-second stereo WAV at 22050 Hz with the same deterministic mid-plus-side source used for the width fixture.",
+        "Apply a fixed left-channel gain lift so the analyzer reports a measurable but not extreme off-center image.",
+        "Keep width and correlation stable enough that balance correction remains a conservative first-pass planner move."
+      ]
     }
   ]
 }

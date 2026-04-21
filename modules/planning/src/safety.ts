@@ -94,6 +94,13 @@ export function buildStereoWidthSafetyLimits(): string[] {
   ];
 }
 
+export function buildStereoBalanceCorrectionSafetyLimits(): string[] {
+  return [
+    "attenuate only the measurably louder stereo side",
+    "pull the image closer to center without collapsing the stereo field",
+  ];
+}
+
 export function buildTrimSafetyLimits(): string[] {
   return [
     "preserve only the explicitly requested time range",

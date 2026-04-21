@@ -143,6 +143,8 @@ Semantic deltas are evidence-based labels, not free-form interpretations. The cu
 - `more_punchy`
 - `narrower`
 - `wider`
+- `more_centered`
+- `less_centered`
 - `cleaner`
 - `noisier`
 
@@ -224,6 +226,7 @@ The fallback `evaluateGoalAlignment()` path is still heuristic and keyword-drive
 - peak control / tighter dynamics: matches phrases like `control peaks`, `control peak excursions`, `peak control`, `tighter`, `more controlled`, or `under control`
 - width increase: matches fragments like `wide` or `wider`
 - width reduction / narrowing: matches fragments like `narrow`, `narrower`, or `reduce width`
+- stereo centering / imbalance reduction: matches fragments like `center`, `centred`, `centered`, or `imbalance`
 - cleanup / noise reduction: matches phrases like `clean up`, `cleaner`, `noise`, `denoise`, `hiss`, or `hum`
 - clipping avoidance: matches fragments like `clip` or `clipping`
 - loudness and level control: matches fragments like `loud`, `loudness`, `quieter`, `volume`, `level`, `LUFS`, or `normalize`

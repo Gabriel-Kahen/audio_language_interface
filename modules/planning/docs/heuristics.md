@@ -22,7 +22,8 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - `tame sibilance`, `de-ess` -> conservative `de_esser`
 - `remove clicks`, `declick`, `remove pops` -> conservative `declick`
 - `remove 50 Hz hum`, `remove 60 Hz hum`, `dehum 50 hz`, `dehum 60 hz` -> conservative `dehum` at the explicitly requested mains frequency
-- `wider`, `widen`, `more width`, `narrower` -> conservative `stereo_width` only for already-stereo material with safe balance and correlation
+- `wider`, `widen`, `more width`, `narrower`, `narrow it` -> conservative `stereo_width` only for already-stereo material with safe balance and correlation
+- `center this more`, `more centered`, `fix stereo imbalance` -> conservative `stereo_balance_correction` only for already-stereo material with clear but not extreme left-right imbalance
 - `louder` -> conservative `gain` step limited by measured true-peak headroom to a `-1 dBTP` ceiling unless the request also explicitly asks for more control, in which case the dedicated controlled-loudness path takes precedence
 - `quieter` -> conservative negative `gain` step
 - `trim from Xs to Ys` -> `trim` time-range step with explicit start and end seconds
@@ -45,5 +46,6 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - Hum and click verification stay conservative: the planner now prefers direct `AnalysisReport.artifacts` evidence when annotations or semantics support it and only uses coarse low-band or clipped-sample fallbacks where direct artifact measurements are unavailable.
 - Pitch shifting only proceeds when `AnalysisReport.source_character.pitched` is true, and time stretching keeps duration targets conservative rather than attempting broad tempo inference.
 - Stereo-width changes only proceed for two-channel material that is not already too wide, too narrow, or stereo-ambiguous for a conservative move.
+- Stereo-balance correction only proceeds for two-channel material when measured balance is clearly off-center but not so extreme that a one-shot conservative correction would be unsafe.
 - Tonal moves are intentionally small: `1.5 dB`, `2 dB`, or `3 dB` style shelves and tilts, with notch cuts kept surgical and narrow.
 - `preserve punch` keeps compressor settings conservative by using a slower attack and tighter safety constraints.

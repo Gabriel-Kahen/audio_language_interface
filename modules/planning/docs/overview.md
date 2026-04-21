@@ -48,7 +48,7 @@ The initial implementation is a deterministic baseline planner. It uses conserva
 
 ## Baseline behavior
 
-- only emits operations currently marked `planner_supported` in the runtime capability manifest: trim, `trim_silence`, fade, gain, normalize, `pitch_shift`, `time_stretch`, filtering, `parametric_eq`, surgical shelf/notch/tilt EQ, conservative compression, peak limiting, conservative restoration, and conservative stereo-width adjustment
+- only emits operations currently marked `planner_supported` in the runtime capability manifest: trim, `trim_silence`, fade, gain, normalize, `pitch_shift`, `time_stretch`, filtering, `parametric_eq`, surgical shelf/notch/tilt EQ, conservative compression, peak limiting, conservative restoration, and a narrow stereo/spatial slice built around `stereo_width` and `stereo_balance_correction`
 - prefers small explicit steps with published parameter shapes over hidden macro behavior
 - validates inbound `AudioVersion`, `AnalysisReport`, and `SemanticProfile` contracts before planning
 - records the `RuntimeCapabilityManifest` identifier used to ground the plan
@@ -62,7 +62,7 @@ The initial implementation is a deterministic baseline planner. It uses conserva
 - supports explicit loudness-normalization, upper-air, warmth, low-mid cleanup, harsh-ring, sibilance, click-cleanup, and hum-removal requests with conservative defaults grounded in the published manifest
 - supports explicit denoise requests only when analysis indicates steady noise
 - prefers annotation-backed or semantic-backed restoration verification when that evidence exists, and now routes hum/click verification through direct artifact measurements before falling back to coarse low-band or clipped-sample proxies
-- supports explicit stereo-width requests only for already-stereo material when the current image is safe to adjust conservatively
+- supports explicit stereo-width and centering requests only for already-stereo material when the current image is safe to adjust conservatively
 - fails instead of guessing when the request cannot be mapped to an explicit supported operation
 - classifies planner refusals explicitly as `supported_but_underspecified`, `unsupported`, or `supported_runtime_only_but_not_planner_enabled` so adapters can ask for clarification without pretending the runtime or planner can do more than they actually can
 

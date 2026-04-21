@@ -309,6 +309,23 @@ function addSpatialDescriptors(
   if (stereo.width <= 0.18) {
     unresolvedTerms.add("narrow");
   }
+
+  const absoluteBalanceDb = Math.abs(stereo.balance_db ?? 0);
+
+  if (absoluteBalanceDb >= 2) {
+    descriptors.push({
+      label: "off_center",
+      confidence: clamp(0.64 + Math.min((absoluteBalanceDb - 2) / 4, 0.2)),
+      evidence_refs: [evidenceRef],
+      rationale:
+        "Measured left-right RMS balance is materially offset, so the stereo image reads off-center.",
+    });
+    return;
+  }
+
+  if (absoluteBalanceDb >= 1.25) {
+    unresolvedTerms.add("off_center");
+  }
 }
 
 function addDynamicsDescriptors(

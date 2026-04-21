@@ -831,13 +831,15 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
       name: "stereo_balance_correction",
       category: "stereo",
       summary: "Attenuate one stereo channel by an explicit correction amount.",
-      intent_support: "runtime_only",
+      intent_support: "planner_supported",
       supported_target_scopes: ["full_file", "time_range"],
       channel_requirements: {
         exact_channels: 2,
       },
       constraints: ["Requires stereo 2-channel input."],
-      planner_notes: ["Runtime-available but not yet chosen by the baseline planner."],
+      planner_notes: [
+        "Chosen conservatively when measured left-right imbalance is materially off-center.",
+      ],
       parameters: [
         {
           name: "target_channel",

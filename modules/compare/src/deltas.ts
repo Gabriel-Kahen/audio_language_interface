@@ -2,6 +2,7 @@ import type {
   AnalysisMeasurements,
   AnalysisReport,
   AudioVersion,
+  DerivedMeasurements,
   MetricDelta,
   RenderArtifact,
 } from "./types.js";
@@ -9,12 +10,7 @@ import type {
 const UNCHANGED_EPSILON = 1e-6;
 
 export type CompareMeasurementContext = AnalysisMeasurements & {
-  derived?: {
-    duration_seconds?: number;
-    leading_silence_seconds?: number;
-    trailing_silence_seconds?: number;
-    pitch_center_hz?: number;
-  };
+  derived?: DerivedMeasurements;
 };
 
 /** Computes ordered numeric deltas from the measurement fields compare currently understands. */
@@ -199,6 +195,12 @@ export function computeAnalysisMetricDeltas(
     baseline.derived?.pitch_center_hz,
     candidate.derived?.pitch_center_hz,
   );
+  pushOptionalNumericDelta(
+    deltas,
+    "derived.absolute_stereo_balance_db",
+    baseline.derived?.absolute_stereo_balance_db,
+    candidate.derived?.absolute_stereo_balance_db,
+  );
 
   return deltas;
 }
@@ -222,6 +224,7 @@ export function createMeasurementContext(input: {
         ? {}
         : { trailing_silence_seconds: trailingSilenceSeconds }),
       ...(input.pitchCenterHz === undefined ? {} : { pitch_center_hz: input.pitchCenterHz }),
+      absolute_stereo_balance_db: Math.abs(input.analysis.measurements.stereo.balance_db ?? 0),
     },
   };
 }

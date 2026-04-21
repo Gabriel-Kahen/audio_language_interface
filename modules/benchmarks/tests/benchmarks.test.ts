@@ -155,7 +155,7 @@ describe("firstPromptFamilyFixtureCorpus", () => {
   it("binds every benchmark case to committed fixture ids", () => {
     const fixtureIds = new Set(readFixtureManifest().fixtures.map((fixture) => fixture.fixture_id));
 
-    expect(firstPromptFamilyPromptSuite).toHaveLength(9);
+    expect(firstPromptFamilyPromptSuite).toHaveLength(13);
 
     for (const benchmarkCase of firstPromptFamilyPromptSuite) {
       expect(fixtureIds.has(benchmarkCase.fixtures.sourceFixtureId)).toBe(true);
@@ -174,7 +174,7 @@ describe("firstPromptFamilyFixtureCorpus", () => {
     expect(firstPromptFamilyRequestCycleCorpus.fixtureManifestPath).toBe(
       FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
     );
-    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(18);
+    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(22);
     expect(firstPromptFamilyRequestCycleSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
         "request_cycle_tame_sibilance",
@@ -183,6 +183,10 @@ describe("firstPromptFamilyFixtureCorpus", () => {
         "request_cycle_trim_boundary_silence",
         "request_cycle_speed_up_preserve_pitch",
         "request_cycle_pitch_up_two_semitones",
+        "request_cycle_make_this_wider",
+        "request_cycle_narrow_it_a_bit",
+        "request_cycle_center_this_more",
+        "request_cycle_fix_stereo_imbalance",
         "request_cycle_follow_up_more",
         "request_cycle_follow_up_try_another_version",
         "request_cycle_follow_up_less",
@@ -246,6 +250,19 @@ describe("runComparisonBenchmarks", () => {
     expect(fallbackClickCase?.report.goal_alignment).toEqual([
       { goal: "reduce clicks", status: "unknown" },
     ]);
+  });
+
+  it("covers stereo width and centering compare cases in isolation", () => {
+    const wider = getCompareCase("compare_make_this_wider");
+    const narrower = getCompareCase("compare_narrow_it_a_bit");
+    const centered = getCompareCase("compare_center_this_more");
+    const fixImbalance = getCompareCase("compare_fix_stereo_imbalance");
+
+    const result = runComparisonBenchmarks([wider, narrower, centered, fixImbalance]);
+
+    expect(result.caseResults).toHaveLength(4);
+    expect(result.totalPassedChecks).toBe(result.totalChecks);
+    expect(result.overallScore).toBe(1);
   });
 });
 
@@ -319,6 +336,10 @@ describe("runRequestCycleBenchmarks", () => {
     const trimBoundarySilence = getRequestCycleCase("request_cycle_trim_boundary_silence");
     const speedUp = getRequestCycleCase("request_cycle_speed_up_preserve_pitch");
     const pitchUp = getRequestCycleCase("request_cycle_pitch_up_two_semitones");
+    const makeWider = getRequestCycleCase("request_cycle_make_this_wider");
+    const narrowIt = getRequestCycleCase("request_cycle_narrow_it_a_bit");
+    const centerMore = getRequestCycleCase("request_cycle_center_this_more");
+    const fixImbalance = getRequestCycleCase("request_cycle_fix_stereo_imbalance");
     const followUpMore = getRequestCycleCase("request_cycle_follow_up_more");
     const tryAnother = getRequestCycleCase("request_cycle_follow_up_try_another_version");
     const followUpLess = getRequestCycleCase("request_cycle_follow_up_less");
@@ -344,6 +365,10 @@ describe("runRequestCycleBenchmarks", () => {
         trimBoundarySilence,
         speedUp,
         pitchUp,
+        makeWider,
+        narrowIt,
+        centerMore,
+        fixImbalance,
         followUpMore,
         tryAnother,
         followUpLess,
@@ -358,7 +383,7 @@ describe("runRequestCycleBenchmarks", () => {
 
     expect(result.suiteId).toBe("first_prompt_family");
     expect(result.corpusId).toBe("request_cycle_test_subset");
-    expect(result.caseResults).toHaveLength(16);
+    expect(result.caseResults).toHaveLength(20);
     expect(result.totalChecks).toBeGreaterThan(0);
     expect(result.totalPassedChecks).toBe(result.totalChecks);
     expect(result.overallScore).toBe(1);

@@ -87,7 +87,7 @@ The benchmark cases now carry explicit fixture ids for the shared source loop an
 ## Current limitations
 
 - compare-only benchmark scoring is still centered on curated `compareVersions()` inputs for the currently supported cleanup and restoration slice
-- the request-cycle benchmark corpus is intentionally small and currently focuses on stable tonal cleanup, restoration, timing edits, iterative follow-up flows, peak control, and explicit clarification/failure controls
+- the request-cycle benchmark corpus is intentionally small and currently focuses on stable tonal cleanup, restoration, timing edits, stereo/spatial edits, iterative follow-up flows, peak control, and explicit clarification/failure controls
 - tool-surface request-cycle benchmarks still keep session state explicit by materializing `SessionGraph` and `available_versions` inside the benchmark harness rather than relying on hidden adapter persistence
 - request-cycle outcome scoring is only as strong as the current compare/orchestration evidence:
   - planner correctness is inferred from the emitted `EditPlan`
@@ -132,6 +132,10 @@ The first public request-cycle corpus currently covers:
 - `trim the silence at the beginning and end`
 - `speed up by 10%`
 - `pitch up by 2 semitones`
+- `make this wider`
+- `narrow it a bit`
+- `center this more`
+- `fix the stereo imbalance`
 - iterative follow-up requests such as `more`, `less`, `undo`, `revert to previous version`, and `try another version`
 - `control the peaks without crushing it`
 - `make it louder and more controlled`

@@ -64,6 +64,12 @@ describe("parseUserRequest", () => {
     expect(parsed.intensity).toBe("subtle");
   });
 
+  it("parses stereo-centering intent phrases conservatively", () => {
+    const parsed = parseUserRequest("Center this more and fix the stereo imbalance.");
+
+    expect(parsed.wants_more_centered).toBe(true);
+  });
+
   it("parses normalize, surgical EQ, and restoration intent phrases", () => {
     const parsed = parseUserRequest(
       "Normalize it a little louder, add some air, tame sibilance, remove 60 Hz hum, and clean up clicks.",
@@ -604,6 +610,34 @@ describe("planEdits", () => {
     expect(validateAgainstSchema(editPlanSchema, plan)).toBe(true);
   });
 
+  it("maps explicit stereo-centering prompts to stereo-balance correction", () => {
+    const plan = planEdits({
+      userRequest: "Center this more.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createImbalancedStereoAnalysisReportFixture(),
+      semanticProfile: createOffCenterSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["stereo_balance_correction"]);
+    expect(plan.steps[0]?.parameters).toEqual({
+      target_channel: "left",
+      correction_db: 2.72,
+    });
+    expect(plan.goals).toContain("reduce left-right stereo imbalance conservatively");
+    expect(plan.constraints).toContain(
+      "center the image conservatively without collapsing stereo width",
+    );
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_center_stereo_balance",
+          metric: "derived.absolute_stereo_balance_db",
+        }),
+      ]),
+    );
+    expect(validateAgainstSchema(editPlanSchema, plan)).toBe(true);
+  });
+
   it("maps explicit silence-trim prompts to trim_silence with boundary verification", () => {
     const plan = planEdits({
       userRequest: "Trim the silence at the beginning and end.",
@@ -1071,6 +1105,22 @@ function createNarrowStereoAnalysisReportFixture(): AnalysisReport {
   };
 }
 
+function createImbalancedStereoAnalysisReportFixture(): AnalysisReport {
+  return {
+    ...createAnalysisReportFixture(),
+    measurements: {
+      ...createAnalysisReportFixture().measurements,
+      stereo: {
+        ...createAnalysisReportFixture().measurements.stereo,
+        width: 0.24,
+        correlation: 0.72,
+        balance_db: 3.2,
+      },
+    },
+    annotations: [],
+  };
+}
+
 function createNoisySemanticProfileFixture(): SemanticProfile {
   return {
     ...createNeutralSemanticProfileFixture(),
@@ -1108,6 +1158,20 @@ function createWideSemanticProfileFixture(): SemanticProfile {
         confidence: 0.78,
         evidence_refs: ["analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:measurements.stereo"],
         rationale: "Side energy is already materially present.",
+      },
+    ],
+  };
+}
+
+function createOffCenterSemanticProfileFixture(): SemanticProfile {
+  return {
+    ...createNeutralSemanticProfileFixture(),
+    descriptors: [
+      {
+        label: "off_center",
+        confidence: 0.76,
+        evidence_refs: ["analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:measurements.stereo"],
+        rationale: "Left-right balance is materially offset from center.",
       },
     ],
   };

@@ -289,6 +289,32 @@ function resolvePlannerObjectives(
     }
   }
 
+  if (objectives.wants_more_centered) {
+    const stereo = analysisReport.measurements.stereo;
+    const absoluteBalanceDb = Math.abs(stereo.balance_db ?? 0);
+
+    if (audioVersion.audio.channels < 2) {
+      throw createPlanningFailure(
+        "supported_but_underspecified",
+        "The baseline planner only supports stereo-balance correction for audio that already has at least two channels.",
+      );
+    }
+
+    if (absoluteBalanceDb < 1.25) {
+      throw createPlanningFailure(
+        "supported_but_underspecified",
+        "The current stereo image already reads close to center, so the baseline planner will not apply a balance-correction step without clearer imbalance evidence.",
+      );
+    }
+
+    if (absoluteBalanceDb > 7) {
+      throw createPlanningFailure(
+        "supported_but_underspecified",
+        "The current stereo imbalance is too extreme for the baseline planner to correct conservatively in one pass.",
+      );
+    }
+  }
+
   if (!objectives.wants_cleaner) {
     return effectiveObjectives;
   }
@@ -410,6 +436,9 @@ function buildGoals(objectives: ReturnType<typeof parseUserRequest>): string[] {
   if (objectives.wants_narrower) {
     goals.push("slightly reduce stereo width");
   }
+  if (objectives.wants_more_centered) {
+    goals.push("reduce left-right stereo imbalance conservatively");
+  }
   if (objectives.wants_louder) {
     goals.push("increase output level conservatively");
   }
@@ -483,6 +512,10 @@ function buildConstraints(
 
   if (objectives.wants_wider || objectives.wants_narrower) {
     constraints.push("keep width changes subtle and preserve mono compatibility");
+  }
+
+  if (objectives.wants_more_centered) {
+    constraints.push("center the image conservatively without collapsing stereo width");
   }
 
   if (objectives.wants_louder) {

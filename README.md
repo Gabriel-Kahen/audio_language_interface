@@ -205,13 +205,14 @@ At the moment, that includes:
 - `compressor`
 - `limiter`
 - `time_stretch`
+- `stereo_balance_correction`
 - `stereo_width`
 - `denoise`
 - `de_esser`
 - `declick`
 - `dehum`
 
-The baseline planner now includes a conservative timing-edit slice for explicit boundary-silence trimming, pitch-preserving time stretching, and semitone pitch shifting on pitched material. The channel-utility and stereo-routing operations, the broader transient/control operations, and the newer creative effect operations remain runtime-available without being baseline-planner-selected. The transient-shaper surface is currently a compand-based, transient-biased runtime primitive rather than a full transient-designer model.
+The baseline planner now includes a conservative timing-edit slice for explicit boundary-silence trimming, pitch-preserving time stretching, and semitone pitch shifting on pitched material, plus a narrow stereo/spatial slice for widening, narrowing, and centering already-stereo material when the measured image is safe to adjust conservatively. `pan`, channel-utility and broader stereo-routing operations, the broader transient/control operations, and the newer creative effect operations remain runtime-available without being baseline-planner-selected. The transient-shaper surface is currently a compand-based, transient-biased runtime primitive rather than a full transient-designer model.
 
 ### Tool Surface
 
@@ -235,7 +236,7 @@ The current baseline is strongest on conservative cleanup and corrective-edit pr
 - `analysis` can now publish steady mains-hum evidence and sparse click evidence directly in `AnalysisReport`
 - `planning` keeps hum/click cleanup conservative and still requires explicit restoration intent rather than widening generic `clean it up` phrasing automatically
 - `compare` prefers structured verification targets when they exist and exposes `evaluation_basis` in `ComparisonReport`
-- `benchmarks` now include both curated compare cases, including isolated hum/click direct-evidence and fallback checks, and a small fixture-backed request-cycle corpus that executes the real orchestration path across tonal cleanup, restoration, peak-control, and benchmarked louder-and-controlled prompts
+- `benchmarks` now include both curated compare cases, including isolated hum/click direct-evidence and fallback checks, and a small fixture-backed request-cycle corpus that executes the real orchestration path across tonal cleanup, restoration, timing edits, stereo/spatial edits, peak-control, and benchmarked louder-and-controlled prompts
 
 ## Best-Supported Requests Right Now
 
@@ -250,6 +251,7 @@ The current system is strongest on conservative editing requests such as:
 - more controlled
 - control peaks
 - widen or narrow slightly when stereo evidence supports it
+- center the image more or fix the stereo imbalance when measured balance supports it
 - reduce steady broadband noise conservatively
 
 This repo is usable today for technical experimentation and module-level integration work. It is not yet a polished end-user application.
@@ -262,8 +264,8 @@ This repo is usable today for technical experimentation and module-level integra
 - compare now prefers structured verification targets, with heuristic goal alignment kept only as a backward-compatible fallback
 - hum and click comparison now prefers direct `AnalysisReport.artifacts` evidence when it exists, with low-band or clipped-sample proxies kept only as conservative fallbacks
 - there is no dedicated demo CLI or app entrypoint yet
-- the baseline planner does not yet auto-select pitch shifting, trim silence, channel utilities, or Layer 1 runtime effects
-- benchmark coverage now includes a tiny committed cleanup-and-control corpus, but it is still light compared with the long-term goal
+- the baseline planner does not yet auto-select `pan`, `mid_side_eq`, channel remapping, or the broader Layer 1 runtime-effect surface
+- benchmark coverage now includes a tiny committed cleanup, timing, stereo/spatial, and control corpus, but it is still light compared with the long-term goal
 
 ## Repository Layout
 

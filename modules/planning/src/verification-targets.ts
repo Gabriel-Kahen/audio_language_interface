@@ -545,7 +545,7 @@ export function buildVerificationTargets(
       kind: "analysis_metric",
       comparison: "increase_by",
       metric: "stereo.width",
-      threshold: thresholdByIntensity(objectives.intensity, 0.03, 0.06, 0.1),
+      threshold: thresholdByIntensity(objectives.intensity, 0.02, 0.04, 0.06),
       rationale: "A wider image should raise the stereo width measurement modestly.",
     });
     targets.push({
@@ -566,13 +566,44 @@ export function buildVerificationTargets(
       kind: "analysis_metric",
       comparison: "decrease_by",
       metric: "stereo.width",
-      threshold: thresholdByIntensity(objectives.intensity, 0.03, 0.06, 0.1),
+      threshold: thresholdByIntensity(objectives.intensity, 0.02, 0.04, 0.06),
       rationale: "A narrower image should lower the stereo width measurement modestly.",
     });
     targets.push({
       target_id: "target_narrower_no_collapse",
       goal: "slightly reduce stereo width",
       label: "avoid collapsing the image too far",
+      kind: "regression_guard",
+      comparison: "absent",
+      regression_kind: "stereo_collapse",
+    });
+  }
+
+  if (objectives.wants_more_centered) {
+    targets.push({
+      target_id: "target_center_stereo_balance",
+      goal: "reduce left-right stereo imbalance conservatively",
+      label: "bring absolute stereo balance closer to center",
+      kind: "analysis_metric",
+      comparison: "at_most",
+      metric: "derived.absolute_stereo_balance_db",
+      threshold: thresholdByIntensity(objectives.intensity, 1.5, 1, 0.75),
+      tolerance: 0.25,
+      rationale:
+        "A centered stereo image should reduce the absolute left-right balance offset toward zero.",
+    });
+    targets.push({
+      target_id: "target_center_no_balance_regression",
+      goal: "reduce left-right stereo imbalance conservatively",
+      label: "avoid worsening stereo imbalance while recentering",
+      kind: "regression_guard",
+      comparison: "absent",
+      regression_kind: "stereo_balance_regression",
+    });
+    targets.push({
+      target_id: "target_center_no_collapse",
+      goal: "reduce left-right stereo imbalance conservatively",
+      label: "avoid collapsing stereo width while recentering",
       kind: "regression_guard",
       comparison: "absent",
       regression_kind: "stereo_collapse",

@@ -88,6 +88,14 @@ export interface AnalysisMeasurements {
   };
 }
 
+export interface DerivedMeasurements {
+  duration_seconds?: number;
+  leading_silence_seconds?: number;
+  trailing_silence_seconds?: number;
+  pitch_center_hz?: number;
+  absolute_stereo_balance_db?: number;
+}
+
 export interface AnalysisAnnotation {
   kind: string;
   start_seconds: number;

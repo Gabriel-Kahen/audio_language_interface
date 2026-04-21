@@ -3,6 +3,7 @@ import type {
   AudioVersion,
   CompareVersionsOptions,
   EditPlan,
+  VerificationTarget,
 } from "@audio-language-interface/compare";
 
 import type {
@@ -22,7 +23,7 @@ export const firstPromptFamilyFixtureCorpus: ComparisonBenchmarkCorpus = {
   suiteId: "first_prompt_family",
   fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
   description:
-    "Current compare benchmark corpus anchored to committed phase-1 WAV fixtures across tonal, restoration, and control checks plus one explicit ambiguous control.",
+    "Current compare benchmark corpus anchored to committed phase-1 WAV fixtures across tonal, restoration, control, and stereo-spatial checks plus one explicit ambiguous control.",
   cases: [
     {
       caseId: "compare_darker_less_harsh_preserve_punch",
@@ -529,6 +530,280 @@ export const firstPromptFamilyFixtureCorpus: ComparisonBenchmarkCorpus = {
         forbiddenRegressionKinds: ["introduced_clipping", "increased_click_proxy", "lost_punch"],
       },
     },
+    {
+      caseId: "compare_make_this_wider",
+      family: "first_prompt_family",
+      prompt: "make this wider",
+      description: "Conservative stereo widening scored from direct width and stability signals.",
+      fixtures: {
+        sourceFixtureId: "fixture_phase1_request_cycle_stereo_width_source",
+        baselineFixtureId: "fixture_phase1_request_cycle_stereo_width_source",
+        candidateFixtureId: "fixture_phase1_request_cycle_stereo_width_source",
+      },
+      compareOptions: createCompareOptions({
+        baselineVersionId: "ver_suite_10_base",
+        candidateVersionId: "ver_suite_10_cand",
+        baseline: {
+          integratedLufs: -17.4,
+          truePeakDbtp: -1.8,
+          crestFactorDb: 9.9,
+          transientDensity: 1.48,
+          lowBandDb: -15.2,
+          midBandDb: -11.6,
+          highBandDb: -10.4,
+          spectralCentroidHz: 2280,
+          stereoWidth: 0.3,
+          stereoCorrelation: 0.68,
+          stereoBalanceDb: 0,
+          noiseFloorDbfs: -71.4,
+          clippingDetected: false,
+        },
+        candidate: {
+          integratedLufs: -17.5,
+          truePeakDbtp: -1.9,
+          crestFactorDb: 9.8,
+          transientDensity: 1.47,
+          lowBandDb: -15.2,
+          midBandDb: -11.6,
+          highBandDb: -10.4,
+          spectralCentroidHz: 2280,
+          stereoWidth: 0.35,
+          stereoCorrelation: 0.61,
+          stereoBalanceDb: 0.1,
+          noiseFloorDbfs: -71.6,
+          clippingDetected: false,
+        },
+        prompt: "make this wider",
+        goals: ["slightly increase stereo width"],
+        verificationTargets: [
+          {
+            target_id: "target_wider_stereo_width",
+            goal: "slightly increase stereo width",
+            label: "increase stereo width slightly",
+            kind: "analysis_metric",
+            comparison: "increase_by",
+            metric: "stereo.width",
+            threshold: 0.04,
+          },
+          {
+            target_id: "target_wider_no_instability",
+            goal: "slightly increase stereo width",
+            label: "avoid stereo-instability regressions while widening",
+            kind: "regression_guard",
+            comparison: "absent",
+            regression_kind: "stereo_instability",
+          },
+        ],
+      }),
+      expectation: {
+        goalStatuses: {
+          "slightly increase stereo width": "met",
+        },
+        requiredSemanticLabels: ["wider"],
+        forbiddenRegressionKinds: ["stereo_instability", "stereo_balance_regression"],
+      },
+    },
+    {
+      caseId: "compare_narrow_it_a_bit",
+      family: "first_prompt_family",
+      prompt: "narrow it a bit",
+      description: "Conservative stereo narrowing scored from direct width reduction.",
+      fixtures: {
+        sourceFixtureId: "fixture_phase1_request_cycle_stereo_width_source",
+        baselineFixtureId: "fixture_phase1_request_cycle_stereo_width_source",
+        candidateFixtureId: "fixture_phase1_request_cycle_stereo_width_source",
+      },
+      compareOptions: createCompareOptions({
+        baselineVersionId: "ver_suite_11_base",
+        candidateVersionId: "ver_suite_11_cand",
+        baseline: {
+          integratedLufs: -17.4,
+          truePeakDbtp: -1.8,
+          crestFactorDb: 9.9,
+          transientDensity: 1.48,
+          lowBandDb: -15.2,
+          midBandDb: -11.6,
+          highBandDb: -10.4,
+          spectralCentroidHz: 2280,
+          stereoWidth: 0.3,
+          stereoCorrelation: 0.68,
+          stereoBalanceDb: 0,
+          noiseFloorDbfs: -71.4,
+          clippingDetected: false,
+        },
+        candidate: {
+          integratedLufs: -17.4,
+          truePeakDbtp: -1.9,
+          crestFactorDb: 9.9,
+          transientDensity: 1.48,
+          lowBandDb: -15.2,
+          midBandDb: -11.6,
+          highBandDb: -10.4,
+          spectralCentroidHz: 2280,
+          stereoWidth: 0.27,
+          stereoCorrelation: 0.72,
+          stereoBalanceDb: 0,
+          noiseFloorDbfs: -71.5,
+          clippingDetected: false,
+        },
+        prompt: "narrow it a bit",
+        goals: ["slightly reduce stereo width"],
+        verificationTargets: [
+          {
+            target_id: "target_narrower_stereo_width",
+            goal: "slightly reduce stereo width",
+            label: "reduce stereo width slightly",
+            kind: "analysis_metric",
+            comparison: "decrease_by",
+            metric: "stereo.width",
+            threshold: 0.02,
+          },
+          {
+            target_id: "target_narrower_no_collapse",
+            goal: "slightly reduce stereo width",
+            label: "avoid collapsing the image too far",
+            kind: "regression_guard",
+            comparison: "absent",
+            regression_kind: "stereo_collapse",
+          },
+        ],
+      }),
+      expectation: {
+        goalStatuses: {
+          "slightly reduce stereo width": "met",
+        },
+        requiredSemanticLabels: ["narrower"],
+        forbiddenRegressionKinds: ["stereo_collapse", "stereo_balance_regression"],
+      },
+    },
+    {
+      caseId: "compare_center_this_more",
+      family: "first_prompt_family",
+      prompt: "center this more",
+      description: "Centering scored from direct absolute stereo-balance reduction.",
+      fixtures: {
+        sourceFixtureId: "fixture_phase1_request_cycle_stereo_imbalance_source",
+        baselineFixtureId: "fixture_phase1_request_cycle_stereo_imbalance_source",
+        candidateFixtureId: "fixture_phase1_request_cycle_stereo_imbalance_source",
+      },
+      compareOptions: createCompareOptions({
+        baselineVersionId: "ver_suite_12_base",
+        candidateVersionId: "ver_suite_12_cand",
+        baseline: {
+          integratedLufs: -16.9,
+          truePeakDbtp: -1.7,
+          crestFactorDb: 9.7,
+          transientDensity: 1.42,
+          lowBandDb: -15.4,
+          midBandDb: -11.7,
+          highBandDb: -10.6,
+          spectralCentroidHz: 2260,
+          stereoWidth: 0.29,
+          stereoCorrelation: 0.73,
+          stereoBalanceDb: 2.4,
+          noiseFloorDbfs: -71.1,
+          clippingDetected: false,
+        },
+        candidate: {
+          integratedLufs: -17.1,
+          truePeakDbtp: -1.9,
+          crestFactorDb: 9.7,
+          transientDensity: 1.41,
+          lowBandDb: -15.4,
+          midBandDb: -11.7,
+          highBandDb: -10.6,
+          spectralCentroidHz: 2260,
+          stereoWidth: 0.25,
+          stereoCorrelation: 0.79,
+          stereoBalanceDb: 0.8,
+          noiseFloorDbfs: -71.2,
+          clippingDetected: false,
+        },
+        prompt: "center this more",
+        goals: ["reduce left-right stereo imbalance conservatively"],
+        verificationTargets: [
+          {
+            target_id: "target_center_stereo_balance",
+            goal: "reduce left-right stereo imbalance conservatively",
+            label: "bring absolute stereo balance closer to center",
+            kind: "analysis_metric",
+            comparison: "at_most",
+            metric: "derived.absolute_stereo_balance_db",
+            threshold: 1,
+            tolerance: 0.25,
+          },
+          {
+            target_id: "target_center_no_balance_regression",
+            goal: "reduce left-right stereo imbalance conservatively",
+            label: "avoid worsening stereo imbalance while recentering",
+            kind: "regression_guard",
+            comparison: "absent",
+            regression_kind: "stereo_balance_regression",
+          },
+        ],
+      }),
+      expectation: {
+        goalStatuses: {
+          "reduce left-right stereo imbalance conservatively": "met",
+        },
+        requiredSemanticLabels: ["more_centered"],
+        forbiddenRegressionKinds: ["stereo_balance_regression", "stereo_collapse"],
+      },
+    },
+    {
+      caseId: "compare_fix_stereo_imbalance",
+      family: "first_prompt_family",
+      prompt: "fix the stereo imbalance",
+      description: "Stereo-imbalance correction wording variant with the same measurable target.",
+      fixtures: {
+        sourceFixtureId: "fixture_phase1_request_cycle_stereo_imbalance_source",
+        baselineFixtureId: "fixture_phase1_request_cycle_stereo_imbalance_source",
+        candidateFixtureId: "fixture_phase1_request_cycle_stereo_imbalance_source",
+      },
+      compareOptions: createCompareOptions({
+        baselineVersionId: "ver_suite_13_base",
+        candidateVersionId: "ver_suite_13_cand",
+        baseline: {
+          integratedLufs: -16.9,
+          truePeakDbtp: -1.7,
+          crestFactorDb: 9.7,
+          transientDensity: 1.42,
+          lowBandDb: -15.4,
+          midBandDb: -11.7,
+          highBandDb: -10.6,
+          spectralCentroidHz: 2260,
+          stereoWidth: 0.29,
+          stereoCorrelation: 0.73,
+          stereoBalanceDb: 2.4,
+          noiseFloorDbfs: -71.1,
+          clippingDetected: false,
+        },
+        candidate: {
+          integratedLufs: -17.1,
+          truePeakDbtp: -1.9,
+          crestFactorDb: 9.7,
+          transientDensity: 1.41,
+          lowBandDb: -15.4,
+          midBandDb: -11.7,
+          highBandDb: -10.6,
+          spectralCentroidHz: 2260,
+          stereoWidth: 0.25,
+          stereoCorrelation: 0.79,
+          stereoBalanceDb: 0.9,
+          noiseFloorDbfs: -71.2,
+          clippingDetected: false,
+        },
+        prompt: "fix the stereo imbalance",
+        goals: ["reduce left-right stereo imbalance conservatively"],
+      }),
+      expectation: {
+        goalStatuses: {
+          "reduce left-right stereo imbalance conservatively": "met",
+        },
+        requiredSemanticLabels: ["more_centered"],
+        forbiddenRegressionKinds: ["stereo_balance_regression", "stereo_collapse"],
+      },
+    },
   ],
 };
 
@@ -540,7 +815,7 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
   suiteId: "first_prompt_family",
   fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
   description:
-    "Real request-cycle benchmark corpus over committed phase-1 fixtures, covering supported tonal cleanup, restoration, timing edits, loudness/control, and explicit clarification/failure controls.",
+    "Real request-cycle benchmark corpus over committed phase-1 fixtures, covering supported tonal cleanup, restoration, timing edits, stereo-spatial edits, loudness/control, and explicit clarification/failure controls.",
   cases: [
     {
       caseId: "request_cycle_darker_less_harsh",
@@ -856,6 +1131,129 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
       },
     },
     {
+      caseId: "request_cycle_make_this_wider",
+      family: "first_prompt_family",
+      prompt: "Make this wider.",
+      description: "Conservative stereo widening on the committed narrow stereo fixture.",
+      fixtureId: "fixture_phase1_request_cycle_stereo_width_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["stereo_width"],
+          expected_operation_order: ["stereo_width"],
+          required_goals: ["slightly increase stereo width"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "slightly increase stereo width": "met",
+          },
+          verification_statuses: {
+            target_wider_stereo_width: "met",
+            target_wider_no_instability: "met",
+          },
+          required_semantic_labels: ["wider"],
+        },
+        regressions: {
+          forbidden_regression_kinds: ["stereo_instability", "stereo_balance_regression"],
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_narrow_it_a_bit",
+      family: "first_prompt_family",
+      prompt: "Narrow it a bit.",
+      description: "Conservative stereo narrowing on the committed moderate-width stereo fixture.",
+      fixtureId: "fixture_phase1_request_cycle_stereo_width_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["stereo_width"],
+          expected_operation_order: ["stereo_width"],
+          required_goals: ["slightly reduce stereo width"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "slightly reduce stereo width": "met",
+          },
+          verification_statuses: {
+            target_narrower_stereo_width: "met",
+            target_narrower_no_collapse: "met",
+          },
+          required_semantic_labels: ["narrower"],
+        },
+        regressions: {
+          forbidden_regression_kinds: ["stereo_collapse", "stereo_balance_regression"],
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_center_this_more",
+      family: "first_prompt_family",
+      prompt: "Center this more.",
+      description:
+        "Conservative stereo-balance correction on the committed imbalanced stereo fixture.",
+      fixtureId: "fixture_phase1_request_cycle_stereo_imbalance_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["stereo_balance_correction"],
+          expected_operation_order: ["stereo_balance_correction"],
+          required_goals: ["reduce left-right stereo imbalance conservatively"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "reduce left-right stereo imbalance conservatively": "met",
+          },
+          verification_statuses: {
+            target_center_stereo_balance: "met",
+            target_center_no_balance_regression: "met",
+            target_center_no_collapse: "met",
+          },
+          required_semantic_labels: ["more_centered"],
+        },
+        regressions: {
+          forbidden_regression_kinds: ["stereo_balance_regression", "stereo_collapse"],
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_fix_stereo_imbalance",
+      family: "first_prompt_family",
+      prompt: "Fix the stereo imbalance.",
+      description: "Stereo-imbalance wording variant on the committed imbalanced stereo fixture.",
+      fixtureId: "fixture_phase1_request_cycle_stereo_imbalance_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["stereo_balance_correction"],
+          expected_operation_order: ["stereo_balance_correction"],
+          required_goals: ["reduce left-right stereo imbalance conservatively"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "reduce left-right stereo imbalance conservatively": "met",
+          },
+          verification_statuses: {
+            target_center_stereo_balance: "met",
+            target_center_no_balance_regression: "met",
+            target_center_no_collapse: "met",
+          },
+          required_semantic_labels: ["more_centered"],
+        },
+        regressions: {
+          forbidden_regression_kinds: ["stereo_balance_regression", "stereo_collapse"],
+        },
+      },
+    },
+    {
       caseId: "request_cycle_follow_up_more",
       family: "first_prompt_family",
       prompt: "more",
@@ -1006,6 +1404,7 @@ interface AnalysisValues {
   spectralCentroidHz: number;
   stereoWidth: number;
   stereoCorrelation: number;
+  stereoBalanceDb?: number;
   noiseFloorDbfs: number;
   clippingDetected: boolean;
   headroomDb?: number;
@@ -1027,7 +1426,7 @@ interface CreateCompareOptionsInput {
   candidate: AnalysisValues;
   prompt: string;
   goals: string[];
-  verificationTargets?: string[];
+  verificationTargets?: Array<string | VerificationTarget>;
 }
 
 function createCompareOptions(input: CreateCompareOptionsInput): CompareVersionsOptions {
@@ -1079,7 +1478,7 @@ function createEditPlan(
   versionId: string,
   prompt: string,
   goals: string[],
-  verificationTargets?: string[],
+  verificationTargets?: Array<string | VerificationTarget>,
 ): EditPlan {
   const plan: EditPlan = {
     schema_version: "1.0.0",
@@ -1139,7 +1538,7 @@ function createAnalysisReport(
       stereo: {
         width: values.stereoWidth,
         correlation: values.stereoCorrelation,
-        balance_db: 0,
+        balance_db: values.stereoBalanceDb ?? 0,
       },
       artifacts: {
         clipping_detected: values.clippingDetected,

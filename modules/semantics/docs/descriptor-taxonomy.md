@@ -21,6 +21,7 @@ The table below describes the semantic contract surface. A few labels are forwar
 | `mono` | `measurements.stereo` | Width is effectively collapsed. |
 | `narrow` | `measurements.stereo` | Some stereo spread exists, but it remains constrained. |
 | `wide` | `measurements.stereo` plus `annotations[*].kind == stereo_width` | Side energy is meaningfully present, stable width evidence is sustained, and ambiguity stays limited. |
+| `off_center` | `measurements.stereo.balance_db` | Left-right image balance is clearly shifted away from center without being too ambiguous to describe conservatively. |
 | `punchy` | `measurements.dynamics` | Crest factor and transient density are both elevated. |
 | `controlled` | `measurements.dynamics` plus `measurements.levels` | Dynamic swings, crest factor, and sample-domain short-term RMS spread all remain contained. |
 | `loud` | `measurements.levels` plus `measurements.dynamics` | Integrated loudness, RMS level, and true peak all sit in a high-output range. |
@@ -44,11 +45,12 @@ The table below describes the semantic contract surface. A few labels are forwar
 - The current baseline analyzer can emit `hum` and `click` source annotations now, but the semantic mapper still keeps those restoration labels narrow and evidence-first.
 - `slightly_harsh` requires both a harshness annotation and enough upper-mid excess to keep the label tied to measurable evidence.
 - `wide` also requires width evidence to stay materially positive and not conflict with localized width-ambiguity or major left-right imbalance.
+- `off_center` is intentionally conservative. It only appears when left-right balance is measurably displaced, and near-threshold cases stay unresolved instead of forcing a centering claim.
 - When explicit `stereo_ambiguity` evidence is present, `wide` remains unresolved rather than being dropped silently, even if the aggregate correlation is too risky for assignment.
 - `wide` additionally requires sustained `stereo_width` coverage so a brief spread event does not become a whole-file semantic claim.
 - `punchy` also requires localized transient-impact evidence and avoids assignment when clipping or very low short-term dynamic range conflicts with the transient measurements.
 - `controlled` is intentionally assigned only in a restrained region of the dynamics space. The module prefers unresolved output over calling moderately dynamic material "controlled" too early.
 - `loud`, `quiet`, and `level_unstable` are descriptive level states, not quality judgments. Near-threshold cases remain unresolved.
 - `noisy` additionally requires sustained coverage from `noise` annotations so a single short region does not become a whole-file claim.
-- Borderline evidence is recorded under `unresolved_terms` instead of forcing a descriptor. This now includes near-threshold `bright`, `dark`, `muddy`, `warm`, `airy`, `sibilant`, `wide`, `punchy`, `controlled`, `loud`, `quiet`, `level_unstable`, `slightly_harsh`, `noisy`, `hum_present`, and `clicks_present` cases.
+- Borderline evidence is recorded under `unresolved_terms` instead of forcing a descriptor. This now includes near-threshold `bright`, `dark`, `muddy`, `warm`, `airy`, `sibilant`, `wide`, `off_center`, `punchy`, `controlled`, `loud`, `quiet`, `level_unstable`, `slightly_harsh`, `noisy`, `hum_present`, and `clicks_present` cases.
 - Every assigned descriptor includes one or more `evidence_refs` back to the source `AnalysisReport`.

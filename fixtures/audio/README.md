@@ -38,6 +38,8 @@ Phase 1 also now includes small committed source fixtures for the next request-c
 - `request-cycle-louder-controlled-source.wav`: mono sustained harmonic source for `make it louder and more controlled` request-cycle benchmarks.
 - `request-cycle-trim-silence-source.wav`: mono source with explicit leading and trailing silence around one voiced region for boundary-silence trimming benchmarks.
 - `request-cycle-pitched-timing-source.wav`: mono pitched source with a stable harmonic center for time-stretch and pitch-shift request-cycle benchmarks.
+- `request-cycle-stereo-width-source.wav`: stereo source with moderate centered width for `make this wider` and `narrow it a bit` request-cycle benchmarks.
+- `request-cycle-stereo-imbalance-source.wav`: stereo source with a measured left-right offset for `center this more` and `fix the stereo imbalance` request-cycle benchmarks.
 
 These are benchmark-oriented source inputs rather than precomputed candidate outputs. They are intentionally tiny, deterministic, CC0-style synthetic assets so they can be committed and redistributed freely.
 

@@ -166,9 +166,28 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
     wants_narrower: containsAny(normalizedRequest, [
       "narrower",
       "narrow the stereo",
+      "narrow it",
       "reduce width",
       "less width",
       "make it narrower",
+    ]),
+    wants_more_centered: containsAny(normalizedRequest, [
+      "center this more",
+      "centre this more",
+      "more centered",
+      "more centred",
+      "move it toward center",
+      "move it toward centre",
+      "move it to center",
+      "move it to centre",
+      "center it more",
+      "centre it more",
+      "fix stereo imbalance",
+      "fix the stereo imbalance",
+      "correct stereo imbalance",
+      "reduce stereo imbalance",
+      "fix the left right imbalance",
+      "balance the stereo image",
     ]),
     wants_speed_up: containsAny(normalizedRequest, [
       "speed up",
@@ -370,6 +389,7 @@ function hasSupportedIntent(parsed: ParsedEditObjectives): boolean {
     parsed.wants_denoise ||
     parsed.wants_wider ||
     parsed.wants_narrower ||
+    parsed.wants_more_centered ||
     parsed.wants_speed_up ||
     parsed.wants_slow_down ||
     parsed.wants_pitch_shift ||

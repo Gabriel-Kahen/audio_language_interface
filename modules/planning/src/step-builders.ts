@@ -18,6 +18,7 @@ import {
   buildLimiterSafetyLimits,
   buildNormalizeSafetyLimits,
   buildPitchShiftSafetyLimits,
+  buildStereoBalanceCorrectionSafetyLimits,
   buildStereoWidthSafetyLimits,
   buildTimeStretchSafetyLimits,
   buildTrimSafetyLimits,
@@ -107,6 +108,14 @@ export function buildPlannedSteps(context: StepBuildContext): EditPlanStep[] {
     const limiterStep = buildLimiterStep(context.objectives, context.analysisReport);
     if (limiterStep) {
       steps.push(limiterStep);
+    }
+
+    const stereoBalanceCorrectionStep = buildStereoBalanceCorrectionStep(
+      context.objectives,
+      context.analysisReport,
+    );
+    if (stereoBalanceCorrectionStep) {
+      steps.push(stereoBalanceCorrectionStep);
     }
 
     const stereoWidthStep = buildStereoWidthStep(context.objectives);
@@ -753,13 +762,13 @@ function buildStereoWidthStep(objectives: ParsedEditObjectives): EditPlanStep | 
     ? objectives.intensity === "subtle"
       ? 1.12
       : objectives.intensity === "strong"
-        ? 1.28
-        : 1.18
+        ? 1.36
+        : 1.24
     : objectives.intensity === "subtle"
       ? 0.9
       : objectives.intensity === "strong"
-        ? 0.72
-        : 0.82;
+        ? 0.68
+        : 0.78;
 
   return {
     ...assertPlannerStepSupport("stereo_width", "full_file"),
@@ -775,6 +784,38 @@ function buildStereoWidthStep(objectives: ParsedEditObjectives): EditPlanStep | 
         : "slightly narrow the stereo image",
     ],
     safety_limits: buildStereoWidthSafetyLimits(),
+  };
+}
+
+function buildStereoBalanceCorrectionStep(
+  objectives: ParsedEditObjectives,
+  analysisReport: AnalysisReport,
+): EditPlanStep | undefined {
+  if (!objectives.wants_more_centered) {
+    return undefined;
+  }
+
+  const balanceDb = analysisReport.measurements.stereo.balance_db ?? 0;
+  const absoluteBalanceDb = Math.abs(balanceDb);
+  const correctionScale =
+    objectives.intensity === "subtle" ? 0.65 : objectives.intensity === "strong" ? 1 : 0.85;
+  const correctionDb = Number(
+    Math.min(6, Math.max(0.5, absoluteBalanceDb * correctionScale)).toFixed(2),
+  );
+
+  return {
+    ...assertPlannerStepSupport("stereo_balance_correction", "full_file"),
+    step_id: "step_stereo_balance_correction_1",
+    operation: "stereo_balance_correction",
+    target: { scope: "full_file" },
+    parameters: {
+      target_channel: balanceDb >= 0 ? "left" : "right",
+      correction_db: correctionDb,
+    },
+    expected_effects: [
+      `attenuate the ${balanceDb >= 0 ? "left" : "right"} channel to pull the stereo image closer to center`,
+    ],
+    safety_limits: buildStereoBalanceCorrectionSafetyLimits(),
   };
 }
 

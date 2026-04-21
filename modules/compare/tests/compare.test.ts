@@ -688,6 +688,151 @@ describe("compareVersions", () => {
     );
   });
 
+  it("scores stereo-centering goals from absolute balance reduction and emits centering semantics", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_center_base"),
+      candidateVersion: createVersion("ver_center_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_center_base",
+        versionId: "ver_center_base",
+        integratedLufs: -17,
+        truePeakDbtp: -1.7,
+        crestFactorDb: 9.7,
+        transientDensity: 1.4,
+        dynamicRangeDb: 7.8,
+        lowBandDb: -15.4,
+        midBandDb: -11.7,
+        highBandDb: -10.6,
+        spectralCentroidHz: 2260,
+        stereoWidth: 0.29,
+        stereoCorrelation: 0.73,
+        stereoBalanceDb: 2.6,
+        noiseFloorDbfs: -71,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_center_cand",
+        versionId: "ver_center_cand",
+        integratedLufs: -17.1,
+        truePeakDbtp: -1.9,
+        crestFactorDb: 9.7,
+        transientDensity: 1.4,
+        dynamicRangeDb: 7.8,
+        lowBandDb: -15.4,
+        midBandDb: -11.7,
+        highBandDb: -10.6,
+        spectralCentroidHz: 2260,
+        stereoWidth: 0.25,
+        stereoCorrelation: 0.79,
+        stereoBalanceDb: 0.8,
+        noiseFloorDbfs: -71.2,
+        clippingDetected: false,
+      }),
+      editPlan: {
+        ...createEditPlan(),
+        version_id: "ver_center_base",
+        goals: ["reduce left-right stereo imbalance conservatively"],
+        verification_targets: [
+          {
+            target_id: "target_center_stereo_balance",
+            goal: "reduce left-right stereo imbalance conservatively",
+            label: "bring absolute stereo balance closer to center",
+            kind: "analysis_metric",
+            comparison: "at_most",
+            metric: "derived.absolute_stereo_balance_db",
+            threshold: 1,
+            tolerance: 0.25,
+          },
+          {
+            target_id: "target_center_no_balance_regression",
+            goal: "reduce left-right stereo imbalance conservatively",
+            label: "avoid worsening stereo imbalance while recentering",
+            kind: "regression_guard",
+            comparison: "absent",
+            regression_kind: "stereo_balance_regression",
+          },
+        ],
+      },
+      generatedAt: "2026-04-21T19:20:22Z",
+    });
+
+    expect(report.metric_deltas).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          metric: "derived.absolute_stereo_balance_db",
+          direction: "decreased",
+          delta: -1.8,
+        }),
+      ]),
+    );
+    expect(report.semantic_deltas).toEqual(
+      expect.arrayContaining([expect.objectContaining({ label: "more_centered" })]),
+    );
+    expect(report.verification_results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ target_id: "target_center_stereo_balance", status: "met" }),
+        expect.objectContaining({
+          target_id: "target_center_no_balance_regression",
+          status: "met",
+        }),
+      ]),
+    );
+    expect(report.goal_alignment).toEqual([
+      { goal: "reduce left-right stereo imbalance conservatively", status: "met" },
+    ]);
+  });
+
+  it("flags a stereo-balance regression when the image drifts farther off-center", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_balance_reg_base"),
+      candidateVersion: createVersion("ver_balance_reg_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_balance_reg_base",
+        versionId: "ver_balance_reg_base",
+        integratedLufs: -17,
+        truePeakDbtp: -1.7,
+        crestFactorDb: 9.7,
+        transientDensity: 1.4,
+        dynamicRangeDb: 7.8,
+        lowBandDb: -15.4,
+        midBandDb: -11.7,
+        highBandDb: -10.6,
+        spectralCentroidHz: 2260,
+        stereoWidth: 0.29,
+        stereoCorrelation: 0.73,
+        stereoBalanceDb: 1.1,
+        noiseFloorDbfs: -71,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_balance_reg_cand",
+        versionId: "ver_balance_reg_cand",
+        integratedLufs: -17,
+        truePeakDbtp: -1.8,
+        crestFactorDb: 9.7,
+        transientDensity: 1.4,
+        dynamicRangeDb: 7.8,
+        lowBandDb: -15.4,
+        midBandDb: -11.7,
+        highBandDb: -10.6,
+        spectralCentroidHz: 2260,
+        stereoWidth: 0.27,
+        stereoCorrelation: 0.76,
+        stereoBalanceDb: 2.8,
+        noiseFloorDbfs: -71.1,
+        clippingDetected: false,
+      }),
+      generatedAt: "2026-04-21T19:22:22Z",
+    });
+
+    expect(report.regressions).toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: "stereo_balance_regression" })]),
+    );
+    expect(report.semantic_deltas).toEqual(
+      expect.arrayContaining([expect.objectContaining({ label: "less_centered" })]),
+    );
+  });
+
   it("uses estimated-noise-floor wording for noise semantic deltas", () => {
     const report = compareVersions({
       baselineVersion: createVersion("ver_noise_wording_base"),

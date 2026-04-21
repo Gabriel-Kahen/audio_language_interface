@@ -122,6 +122,8 @@ Current supported Layer 2 goal families include:
 - warmth increase
 - air increase
 - muddiness reduction
+- stereo widening and narrowing
+- stereo centering and imbalance reduction
 
 ### `buildComparisonReport(options)`
 

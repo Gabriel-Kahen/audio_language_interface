@@ -73,6 +73,7 @@ The currently assigned descriptor family includes:
 - `mono`
 - `narrow`
 - `wide`
+- `off_center`
 - `punchy`
 - `controlled`
 - `loud`
