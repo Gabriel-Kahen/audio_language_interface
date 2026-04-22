@@ -2,6 +2,7 @@ export { MemoryInterpretationCache } from "./cache.js";
 export { interpretRequest } from "./interpret-request.js";
 export {
   CONTRACT_SCHEMA_VERSION,
+  DEFAULT_INTERPRETATION_POLICY,
   DEFAULT_PROMPT_VERSION,
   type DescriptorHypothesis,
   type DescriptorHypothesisStatus,
@@ -15,6 +16,7 @@ export {
   type InterpretationConstraint,
   type InterpretationConstraintKind,
   type InterpretationNextAction,
+  type InterpretationPolicy,
   type InterpretationProviderConfig,
   type InterpretationProviderKind,
   type InterpretationSessionContext,

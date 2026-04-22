@@ -135,6 +135,7 @@ export interface InterpretationBenchmarkExpectedConstraint {
 }
 
 export interface InterpretationBenchmarkExpectation {
+  interpretationPolicy?: IntentInterpretation["interpretation_policy"];
   requestClassification?: IntentInterpretation["request_classification"];
   nextAction?: InterpretationNextAction;
   requiredNormalizedObjectives?: string[];

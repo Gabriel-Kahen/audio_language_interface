@@ -5,9 +5,11 @@ import type { SemanticProfile } from "@audio-language-interface/semantics";
 
 export const CONTRACT_SCHEMA_VERSION = "1.0.0" as const;
 export const DEFAULT_PROMPT_VERSION = "intent_v1" as const;
+export const DEFAULT_INTERPRETATION_POLICY = "conservative" as const;
 
 export type InterpretationProviderKind = "openai" | "google";
 export type InterpretationNextAction = "plan" | "clarify" | "refuse";
+export type InterpretationPolicy = "conservative" | "best_effort";
 export type DescriptorHypothesisStatus = "supported" | "weak" | "contradicted" | "unresolved";
 export type InterpretationConstraintKind = "intensity" | "preserve" | "avoid" | "safety" | "scope";
 export type RegionIntentScope = "full_file" | "time_range" | "segment_reference";
@@ -77,6 +79,7 @@ export interface InterpretationAlternative {
 export interface IntentInterpretation {
   schema_version: typeof CONTRACT_SCHEMA_VERSION;
   interpretation_id: string;
+  interpretation_policy: InterpretationPolicy;
   asset_id: string;
   version_id: string;
   analysis_report_id: string;
@@ -141,6 +144,7 @@ export interface InterpretRequestOptions {
   semanticProfile: SemanticProfile;
   capabilityManifest?: RuntimeCapabilityManifest;
   provider: InterpretationProviderConfig;
+  policy?: InterpretationPolicy;
   sessionContext?: InterpretationSessionContext;
   promptVersion?: string;
   generatedAt?: string;
@@ -178,6 +182,7 @@ export interface InterpretationProviderRequest {
   semanticProfile: SemanticProfile;
   capabilityManifest: RuntimeCapabilityManifest;
   provider: InterpretationProviderConfig;
+  policy: InterpretationPolicy;
   sessionContext?: InterpretationSessionContext;
   promptVersion: string;
   fetchImpl?: typeof fetch;

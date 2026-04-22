@@ -87,11 +87,119 @@ describe("interpretRequest", () => {
     });
 
     assertValidIntentInterpretation(interpretation);
+    expect(interpretation.interpretation_policy).toBe("conservative");
     expect(interpretation.user_request).toBe("Give this more sparkle and tame the annoying esses.");
     expect(interpretation.normalized_request).toBe("Make it airier and tame the sibilance.");
     expect(interpretation.next_action).toBe("clarify");
     expect(interpretation.provider.kind).toBe("openai");
     expect(interpretation.descriptor_hypotheses?.[0]?.status).toBe("weak");
+  });
+
+  it("promotes an ambiguous grounded request into a best-effort plan when the policy is best_effort", async () => {
+    const interpretation = await interpretRequest({
+      userRequest: "Clean it.",
+      audioVersion: createAudioVersion(),
+      analysisReport: createAnalysisReport(),
+      semanticProfile: createSemanticProfile(),
+      capabilityManifest: defaultRuntimeCapabilityManifest,
+      provider: {
+        kind: "openai",
+        apiKey: "test-key",
+        model: "gpt-4.1-mini",
+      },
+      policy: "best_effort",
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    normalized_request: "Clarify the cleanup target before planning.",
+                    request_classification: "supported_but_underspecified",
+                    next_action: "clarify",
+                    normalized_objectives: [],
+                    candidate_descriptors: ["cleaner"],
+                    ambiguities: ["cleanup target is not specific enough"],
+                    clarification_question:
+                      "Do you want less hum, fewer clicks, less harshness, or lower steady noise?",
+                    candidate_interpretations: [
+                      {
+                        normalized_request: "Reduce steady background noise conservatively.",
+                        request_classification: "supported",
+                        next_action: "plan",
+                        normalized_objectives: ["cleaner", "denoise"],
+                        candidate_descriptors: ["cleaner"],
+                        rationale: "This is the strongest grounded fallback cleanup reading.",
+                        confidence: 0.61,
+                      },
+                    ],
+                    rationale:
+                      "The request is ambiguous, but steady-noise cleanup is the best grounded reading.",
+                    confidence: 0.49,
+                  }),
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+    });
+
+    expect(interpretation.interpretation_policy).toBe("best_effort");
+    expect(interpretation.request_classification).toBe("supported");
+    expect(interpretation.next_action).toBe("plan");
+    expect(interpretation.normalized_request).toBe(
+      "Reduce steady background noise conservatively.",
+    );
+    expect(interpretation.ambiguities).toContain("cleanup target is not specific enough");
+    expect(interpretation.grounding_notes).toContain(
+      "best_effort policy promoted alternate interpretation: Reduce steady background noise conservatively.",
+    );
+  });
+
+  it("normalizes a best-effort planner-facing interpretation to supported when the provider still marks it underspecified", async () => {
+    const interpretation = await interpretRequest({
+      userRequest: "Clean it.",
+      audioVersion: createAudioVersion(),
+      analysisReport: createAnalysisReport(),
+      semanticProfile: createSemanticProfile(),
+      capabilityManifest: defaultRuntimeCapabilityManifest,
+      provider: {
+        kind: "openai",
+        apiKey: "test-key",
+        model: "gpt-4.1-mini",
+      },
+      policy: "best_effort",
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    normalized_request: "Reduce steady background noise conservatively.",
+                    request_classification: "supported_but_underspecified",
+                    next_action: "plan",
+                    normalized_objectives: ["cleaner", "denoise"],
+                    candidate_descriptors: ["cleaner"],
+                    ambiguities: ["cleanup target is not specific enough"],
+                    rationale: "Best-effort cleanup interpretation selected directly.",
+                    confidence: 0.58,
+                  }),
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+    });
+
+    expect(interpretation.request_classification).toBe("supported");
+    expect(interpretation.next_action).toBe("plan");
+    expect(interpretation.grounding_notes).toContain(
+      "best_effort policy normalized the selected planner-facing interpretation to supported.",
+    );
   });
 
   it("builds a validated interpretation artifact from a Google response", async () => {
@@ -138,6 +246,7 @@ describe("interpretRequest", () => {
     });
 
     expect(interpretation.normalized_request).toBe("Center this more and make it wider.");
+    expect(interpretation.interpretation_policy).toBe("conservative");
     expect(interpretation.provider.kind).toBe("google");
     expect(interpretation.next_action).toBe("plan");
   });

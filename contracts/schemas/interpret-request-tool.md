@@ -17,6 +17,7 @@ This tool does not plan or execute edits. It exists so callers can inspect the i
   - `provider`
 - optional arguments:
   - `capability_manifest`
+  - `interpretation_policy`
   - `prompt_version`
   - `session_context`
 
@@ -35,6 +36,13 @@ The tool requires an explicit provider config. It does not read API keys from hi
 - `previous_request`
 - `original_user_request`
 - `follow_up_source`
+
+`interpretation_policy` is optional:
+
+- `conservative` keeps ambiguity visible and may return `next_action = "clarify"`
+- `best_effort` prefers a best planner-facing interpretation for ordinary ambiguity and should usually return `next_action = "plan"` with ambiguity metadata still preserved
+
+When omitted, the interpretation layer defaults to `conservative`.
 
 ## Success response
 

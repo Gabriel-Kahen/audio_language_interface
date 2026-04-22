@@ -29,6 +29,9 @@
         "semantic_profile": { "$ref": "./semantic-profile.schema.json" },
         "user_request": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
         "capability_manifest": { "$ref": "./runtime-capability-manifest.schema.json" },
+        "interpretation_policy": {
+          "$ref": "./common.schema.json#/$defs/interpretationPolicy"
+        },
         "prompt_version": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
         "session_context": {
           "type": "object",

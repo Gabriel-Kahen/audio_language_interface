@@ -89,7 +89,7 @@ Current behavior:
 
 - defaults to `interpretationBenchmarkCorpus`
 - accepts either a full `InterpretationBenchmarkCorpus` or a raw case array
-- scores stable artifact fields such as `request_classification`, `next_action`, normalized objectives, descriptor hypotheses, constraints, region scopes, clarification presence, follow-up kind, and candidate count
+- scores stable artifact fields such as `interpretation_policy`, `request_classification`, `next_action`, normalized objectives, descriptor hypotheses, constraints, region scopes, clarification presence, follow-up kind, and candidate count
 - aggregates passed checks, total checks, and `overallScore`
 
 ## Request-cycle benchmark execution

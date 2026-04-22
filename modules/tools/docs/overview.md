@@ -88,7 +88,7 @@ See `docs/api.md` for the concrete callable tool surface and payload conventions
 - `apply_edit_plan` can defer peak or loudness probing for `normalize` until runtime execution while still requiring the rest of the step to stay inside the published contract surface.
 - `run_request_cycle` exposes orchestration-backed iterative follow-up behavior without introducing hidden tool-layer session state.
 - `interpret_request` exposes the optional provider-backed interpretation layer directly for callers that want a contract-valid `IntentInterpretation` before planning.
-- `interpret_request` now accepts explicit `session_context` plus provider timeout and retry settings, so callers can interpret fuzzy follow-ups without hidden adapter state.
+- `interpret_request` now accepts explicit `session_context`, an `interpretation_policy` switch, and provider timeout and retry settings, so callers can interpret fuzzy follow-ups without hidden adapter state.
 - `run_request_cycle` can also forward an explicit opt-in `interpretation` configuration when the runtime injects an `interpretRequest` implementation, and it surfaces the resulting richer interpretation artifacts back to the caller.
 - The tool layer still does not maintain session state or resolve artifacts by id. Session-aware follow-up calls must provide an explicit `SessionGraph` plus any materialized `available_versions` needed for historical lookups.
 - The tool layer does not persist interpretation state between calls. Callers must opt into interpretation again on each `run_request_cycle` request.

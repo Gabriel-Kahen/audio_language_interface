@@ -70,7 +70,7 @@ It may also consume the optional `interpretation` adapter when callers opt into 
 - `runRequestCycle` can optionally execute one additional revision pass after the first version-level comparison. The decision stays explicit through `options.revision` and every applied pass is preserved in `result.iterations`.
 - `runRequestCycle` now exposes the final version-level comparison directly as `result.versionComparisonReport`, while preserving the final render-to-render comparison as `result.renderComparisonReport` and the legacy compatibility alias `result.comparisonReport`.
 - `resolveFollowUpRequest` can safely expand `more` to the last recorded request, resolve `less` and explicit revert wording against version ancestry, resolve `undo` against explicit active-ref history, and branch `try another version` from the prior baseline when the required session provenance exists.
-- LLM-assisted interpretation stays explicit and opt-in: callers must provide `options.interpretation` plus an `interpretRequest` dependency, and orchestration returns `intentInterpretation` artifacts so the normalized planner request is inspectable.
+- LLM-assisted interpretation stays explicit and opt-in: callers must provide `options.interpretation` plus an `interpretRequest` dependency, and orchestration returns `intentInterpretation` artifacts so the normalized planner request and the chosen `conservative` vs `best_effort` policy stay inspectable.
 
 ## Current limitations
 

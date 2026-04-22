@@ -196,6 +196,7 @@ function buildRequestCycleResult(): RequestCycleResult {
         intentInterpretation: {
           schema_version: "1.0.0",
           interpretation_id: "interpret_cycle123",
+          interpretation_policy: "best_effort",
           asset_id: asset.asset_id,
           version_id: inputVersion.version_id,
           analysis_report_id: "analysis_input",
@@ -247,6 +248,7 @@ function buildRequestCycleResult(): RequestCycleResult {
     intentInterpretation: {
       schema_version: "1.0.0",
       interpretation_id: "interpret_cycle123",
+      interpretation_policy: "best_effort",
       asset_id: asset.asset_id,
       version_id: inputVersion.version_id,
       analysis_report_id: "analysis_input",
@@ -395,6 +397,7 @@ describe("run_request_cycle tool", () => {
       expect(options.interpretation).toMatchObject({
         mode: "llm_assisted",
         apiKey: "test-key",
+        policy: "best_effort",
         provider: {
           kind: "openai",
           model: "gpt-5-mini",
@@ -417,6 +420,7 @@ describe("run_request_cycle tool", () => {
           interpretation: {
             mode: "llm_assisted",
             api_key: "test-key",
+            policy: "best_effort",
             prompt_version: "intent_v1",
             provider: {
               kind: "openai",
@@ -443,6 +447,7 @@ describe("run_request_cycle tool", () => {
     expect(response.status).toBe("ok");
     expect(response.result?.intent_interpretation).toMatchObject({
       interpretation_id: "interpret_cycle123",
+      interpretation_policy: "best_effort",
       provider: {
         kind: "openai",
         model: "gpt-5-mini",

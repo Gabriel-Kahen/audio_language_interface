@@ -40,6 +40,7 @@ When `arguments.interpretation` is present, it is an explicit opt-in object:
 
 - `mode = "llm_assisted"`
 - `api_key`
+- optional `policy`
 - `provider.kind`
 - `provider.model`
 - optional `provider.api_base_url`
@@ -47,6 +48,13 @@ When `arguments.interpretation` is present, it is an explicit opt-in object:
 - optional `provider.timeout_ms`
 - optional `provider.max_retries`
 - optional `prompt_version`
+
+`arguments.interpretation.policy` accepts:
+
+- `conservative`: ambiguity may stay `clarify`
+- `best_effort`: ordinary ambiguity should prefer a best planner-facing interpretation and usually continue with `plan`
+
+When omitted, orchestration forwards the interpretation module default of `conservative`.
 
 Request provenance must stay explicit:
 

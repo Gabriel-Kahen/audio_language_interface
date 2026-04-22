@@ -53,8 +53,8 @@ The benchmark cases now carry explicit fixture ids for the shared source loop an
 The interpretation benchmark corpus currently covers:
 
 - supported normalization with preservation constraints
-- clarification-only ambiguous cleanup
-- contradictory tonal wording
+- ambiguous cleanup under both conservative and best-effort policy
+- contradictory tonal wording under both conservative and best-effort policy
 - region-intent proposals
 - session-aware follow-up intensity reduction
 - alternate-version follow-up interpretation
@@ -125,6 +125,7 @@ Compare-only scores remain simple check-pass ratios so regressions are measurabl
 
 Interpretation-only scores also remain simple check-pass ratios. They intentionally score stable artifact fields such as:
 
+- `interpretation_policy`
 - `request_classification`
 - `next_action`
 - normalized objectives

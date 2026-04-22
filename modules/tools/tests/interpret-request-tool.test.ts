@@ -18,6 +18,7 @@ describe("interpret_request tool", () => {
     const interpretRequest = vi.fn().mockResolvedValue({
       schema_version: "1.0.0",
       interpretation_id: "interpret_tool123",
+      interpretation_policy: "best_effort",
       asset_id: "asset_example",
       version_id: "ver_example",
       analysis_report_id: "analysis_example",
@@ -142,6 +143,7 @@ describe("interpret_request tool", () => {
             },
           },
           user_request: "Make it darker and cleaner.",
+          interpretation_policy: "best_effort",
           session_context: {
             current_version_id: "ver_example",
             previous_request: "Make it darker.",
@@ -167,6 +169,7 @@ describe("interpret_request tool", () => {
     expect(interpretRequest).toHaveBeenCalledTimes(1);
     expect(interpretRequest).toHaveBeenCalledWith(
       expect.objectContaining({
+        policy: "best_effort",
         sessionContext: {
           current_version_id: "ver_example",
           previous_request: "Make it darker.",
@@ -180,6 +183,7 @@ describe("interpret_request tool", () => {
     );
     expect(response.result?.intent_interpretation).toMatchObject({
       interpretation_id: "interpret_tool123",
+      interpretation_policy: "best_effort",
       normalized_request: "Make it darker and less harsh.",
     });
   });

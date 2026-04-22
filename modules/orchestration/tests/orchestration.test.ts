@@ -183,6 +183,7 @@ describe("runRequestCycle", () => {
     const interpretRequest = vi.fn().mockResolvedValue({
       schema_version: "1.0.0",
       interpretation_id: "interpret_test123",
+      interpretation_policy: "best_effort",
       asset_id: inputVersion.asset_id,
       version_id: inputVersion.version_id,
       analysis_report_id: "analysis_input",
@@ -217,6 +218,7 @@ describe("runRequestCycle", () => {
       interpretation: {
         mode: "llm_assisted",
         apiKey: "test-key",
+        policy: "best_effort",
         provider: {
           kind: "openai",
           model: "gpt-5-mini",
@@ -230,6 +232,7 @@ describe("runRequestCycle", () => {
       expect.objectContaining({
         userRequest: "Make it darker",
         audioVersion: inputVersion,
+        policy: "best_effort",
         provider: expect.objectContaining({
           kind: "openai",
           model: "gpt-5-mini",
@@ -239,6 +242,7 @@ describe("runRequestCycle", () => {
     );
     expect(result.intentInterpretation).toMatchObject({
       interpretation_id: "interpret_test123",
+      interpretation_policy: "best_effort",
       provider: {
         kind: "openai",
         model: "gpt-5-mini",

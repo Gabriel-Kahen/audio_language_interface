@@ -45,6 +45,9 @@ export async function resolveRequestInterpretation(options: ResolveRequestInterp
         ? {}
         : { maxRetries: options.interpretation.provider.maxRetries }),
     },
+    ...(options.interpretation.policy === undefined
+      ? {}
+      : { policy: options.interpretation.policy }),
     ...(options.interpretation.promptVersion === undefined
       ? {}
       : { promptVersion: options.interpretation.promptVersion }),

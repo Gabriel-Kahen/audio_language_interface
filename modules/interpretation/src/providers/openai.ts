@@ -29,7 +29,7 @@ export class OpenAIInterpretationProvider implements InterpretationProvider {
               messages: [
                 {
                   role: "system",
-                  content: buildSystemInstruction(),
+                  content: buildSystemInstruction(input.policy),
                 },
                 {
                   role: "user",

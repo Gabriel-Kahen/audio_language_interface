@@ -228,12 +228,14 @@ describe("firstPromptFamilyFixtureCorpus", () => {
 
   it("defines a stable interpretation benchmark corpus for the richer LLM artifact", () => {
     expect(interpretationBenchmarkCorpus.corpusId).toBe(INTERPRETATION_CORPUS_ID);
-    expect(interpretationBenchmarkSuite).toHaveLength(7);
+    expect(interpretationBenchmarkSuite).toHaveLength(9);
     expect(interpretationBenchmarkSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
         "interpret_darker_keep_punch",
-        "interpret_clean_it_clarify",
-        "interpret_brighter_and_darker",
+        "interpret_clean_it_conservative",
+        "interpret_clean_it_best_effort",
+        "interpret_brighter_and_darker_conservative",
+        "interpret_brighter_and_darker_best_effort",
         "interpret_remove_hum_first_second",
         "interpret_follow_up_not_that_much",
         "interpret_try_another_version",
@@ -421,7 +423,7 @@ describe("formatBenchmarkMarkdownReport", () => {
   });
 
   it("renders a stable interpretation benchmark report", () => {
-    const interpretationCase = getInterpretationCase("interpret_clean_it_clarify");
+    const interpretationCase = getInterpretationCase("interpret_clean_it_conservative");
 
     const result = runInterpretationBenchmarks([interpretationCase]);
     const markdown = formatBenchmarkMarkdownReport(result);
@@ -429,7 +431,7 @@ describe("formatBenchmarkMarkdownReport", () => {
     expect(markdown).toContain("# Benchmark Report: intent_interpretation");
     expect(markdown).toContain("Benchmark mode: interpretation");
     expect(markdown).toContain(`Corpus: ${INTERPRETATION_CORPUS_ID}`);
-    expect(markdown).toContain("interpret_clean_it_clarify");
+    expect(markdown).toContain("interpret_clean_it_conservative");
     expect(markdown).toContain("next action: clarify");
   });
 });

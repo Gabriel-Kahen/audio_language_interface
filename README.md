@@ -54,7 +54,8 @@ That loop is exposed both through modules and through a thin tool surface.
 There is now also an optional interpretation layer for open-ended language:
 
 - `modules/interpretation` can call OpenAI or Google APIs to normalize a raw request into a bounded `IntentInterpretation`
-- the richer interpretation artifact now includes explicit `next_action`, evidence-linked descriptor hypotheses, structured constraints, optional region-intent proposals, alternate candidates, and follow-up interpretation metadata
+- callers can choose `conservative` or `best_effort` ambiguity handling when they opt into the interpretation layer
+- the richer interpretation artifact now includes explicit `interpretation_policy`, `next_action`, evidence-linked descriptor hypotheses, structured constraints, optional region-intent proposals, alternate candidates, and follow-up interpretation metadata
 - deterministic planning remains authoritative and may still reject unsupported or weakly grounded interpretations
 - callers can use the standalone `interpret_request` tool or enable LLM-assisted interpretation inside `run_request_cycle`
 

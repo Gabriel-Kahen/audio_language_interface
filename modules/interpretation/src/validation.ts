@@ -22,6 +22,8 @@ import addFormatsImport from "ajv-formats";
 import type {
   IntentInterpretation,
   IntentInterpretationCandidate,
+  InterpretationAlternative,
+  InterpretationPolicy,
   InterpretationProviderRequest,
 } from "./types.js";
 
@@ -304,6 +306,7 @@ export function buildInterpretationArtifact(
   const interpretation: IntentInterpretation = {
     schema_version: "1.0.0",
     interpretation_id: createInterpretationId(),
+    interpretation_policy: input.policy,
     asset_id: input.audioVersion.asset_id,
     version_id: input.audioVersion.version_id,
     analysis_report_id: input.analysisReport.report_id,
@@ -347,6 +350,87 @@ export function buildInterpretationArtifact(
 
   assertValidIntentInterpretation(interpretation);
   return interpretation;
+}
+
+export function applyInterpretationPolicy(
+  candidate: IntentInterpretationCandidate,
+  policy: InterpretationPolicy,
+): IntentInterpretationCandidate {
+  if (policy === "conservative") {
+    return candidate;
+  }
+
+  if (candidate.next_action === "plan") {
+    if (candidate.request_classification === "supported") {
+      return candidate;
+    }
+
+    if (candidate.request_classification === "supported_but_underspecified") {
+      return {
+        ...candidate,
+        request_classification: "supported",
+        grounding_notes: appendGroundingNote(
+          candidate.grounding_notes,
+          "best_effort policy normalized the selected planner-facing interpretation to supported.",
+        ),
+      };
+    }
+
+    return candidate;
+  }
+
+  if (candidate.next_action === "refuse") {
+    return candidate;
+  }
+
+  if (
+    candidate.request_classification === "unsupported" ||
+    candidate.request_classification === "supported_runtime_only_but_not_planner_enabled"
+  ) {
+    return {
+      ...candidate,
+      next_action: "refuse",
+      grounding_notes: appendGroundingNote(
+        candidate.grounding_notes,
+        "best_effort policy preserved refusal because the request remains unsupported or planner-disabled.",
+      ),
+    };
+  }
+
+  const selectedAlternative = selectBestEffortAlternative(candidate.candidate_interpretations);
+  if (selectedAlternative) {
+    const ambiguities = mergeStringArrays(candidate.ambiguities, selectedAlternative.ambiguities);
+    const unsupportedPhrases = mergeStringArrays(
+      candidate.unsupported_phrases,
+      selectedAlternative.unsupported_phrases,
+    );
+    return {
+      ...candidate,
+      normalized_request: selectedAlternative.normalized_request,
+      request_classification: "supported",
+      next_action: "plan",
+      normalized_objectives: [...selectedAlternative.normalized_objectives],
+      candidate_descriptors: [...selectedAlternative.candidate_descriptors],
+      rationale: `Best-effort interpretation selected from ambiguity. ${selectedAlternative.rationale}`,
+      confidence: selectedAlternative.confidence,
+      grounding_notes: appendGroundingNote(
+        candidate.grounding_notes,
+        `best_effort policy promoted alternate interpretation: ${selectedAlternative.normalized_request}`,
+      ),
+      ...(ambiguities === undefined ? {} : { ambiguities }),
+      ...(unsupportedPhrases === undefined ? {} : { unsupported_phrases: unsupportedPhrases }),
+    };
+  }
+
+  return {
+    ...candidate,
+    request_classification: "supported",
+    next_action: "plan",
+    grounding_notes: appendGroundingNote(
+      candidate.grounding_notes,
+      "best_effort policy promoted the top-level interpretation despite ambiguity.",
+    ),
+  };
 }
 
 export function assertValidInterpretationInputs(input: {
@@ -406,4 +490,37 @@ export function isRetryableInterpretationStatus(status: number): boolean {
 
 export async function sleepMs(durationMs: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, durationMs));
+}
+
+function selectBestEffortAlternative(
+  alternatives: InterpretationAlternative[] | undefined,
+): InterpretationAlternative | undefined {
+  if (!alternatives || alternatives.length === 0) {
+    return undefined;
+  }
+
+  const ranked = [...alternatives].sort((left, right) => right.confidence - left.confidence);
+  return (
+    ranked.find(
+      (alternative) =>
+        alternative.next_action === "plan" && alternative.request_classification === "supported",
+    ) ??
+    ranked.find((alternative) => alternative.next_action === "plan") ??
+    undefined
+  );
+}
+
+function appendGroundingNote(existing: string[] | undefined, note: string): string[] {
+  return existing === undefined ? [note] : [...existing, note];
+}
+
+function mergeStringArrays(
+  first: string[] | undefined,
+  second: string[] | undefined,
+): string[] | undefined {
+  if (first === undefined && second === undefined) {
+    return undefined;
+  }
+
+  return [...new Set([...(first ?? []), ...(second ?? [])])];
 }

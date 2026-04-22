@@ -6,6 +6,7 @@
   "required": [
     "schema_version",
     "interpretation_id",
+    "interpretation_policy",
     "asset_id",
     "version_id",
     "analysis_report_id",
@@ -27,6 +28,9 @@
     },
     "interpretation_id": {
       "$ref": "./common.schema.json#/$defs/interpretationId"
+    },
+    "interpretation_policy": {
+      "$ref": "./common.schema.json#/$defs/interpretationPolicy"
     },
     "asset_id": {
       "$ref": "./common.schema.json#/$defs/assetId"

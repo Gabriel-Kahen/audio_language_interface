@@ -988,6 +988,44 @@ describe("planEdits", () => {
     }
   });
 
+  it("treats conservative interpreted ambiguity as a deterministic planning stop", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Clean it.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createAnalysisReportFixture(),
+        semanticProfile: createSemanticProfileFixture(),
+        intentInterpretation: {
+          normalizedRequest: "Clarify the cleanup target before planning.",
+          requestClassification: "supported_but_underspecified",
+          nextAction: "clarify",
+          clarificationQuestion:
+            "Do you want less hum, fewer clicks, less harshness, or lower steady noise?",
+        },
+      }),
+    ).toThrow(/needs clarification/i);
+  });
+
+  it("accepts a best-effort interpreted request once it resolves to a supported planner-facing prompt", () => {
+    const plan = planEdits({
+      userRequest: "Make it brighter and darker.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+      intentInterpretation: {
+        normalizedRequest: "Make it darker.",
+        requestClassification: "supported",
+        nextAction: "plan",
+        ambiguities: ["conflicting tonal directions"],
+        groundingNotes: ["best_effort policy promoted alternate interpretation: Make it darker."],
+      },
+    });
+
+    expect(plan.interpreted_user_request).toBe("Make it darker.");
+    expect(plan.user_request).toBe("Make it brighter and darker.");
+    expect(plan.steps.map((step) => step.operation)).toEqual(["tilt_eq"]);
+  });
+
   it("fails clearly for runtime-only requests that are not planner-enabled", () => {
     try {
       planEdits({

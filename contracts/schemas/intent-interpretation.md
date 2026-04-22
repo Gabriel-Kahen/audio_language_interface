@@ -22,6 +22,7 @@ This artifact is not an `EditPlan`. It is a bounded interpretation proposal that
 | --- | --- | --- |
 | `schema_version` | string | Contract version identifier. |
 | `interpretation_id` | string | Stable interpretation identifier. |
+| `interpretation_policy` | string | Ambiguity-handling policy used to produce the artifact: `conservative` or `best_effort`. |
 | `asset_id` | string | Referenced asset identifier. |
 | `version_id` | string | Referenced version identifier. |
 | `analysis_report_id` | string | Source `AnalysisReport` identifier. |
@@ -56,7 +57,10 @@ This artifact is not an `EditPlan`. It is a bounded interpretation proposal that
 - `normalized_request` must remain a request-level interpretation, not a transform list.
 - The artifact must not contain secrets such as provider API keys.
 - The artifact must stay inspectable and safe to persist.
+- Producers should default `interpretation_policy` to `conservative` when callers do not choose explicitly.
 - Downstream planning may reject the artifact even when `request_classification` is `supported`.
+- Under `conservative`, grounded ambiguity should usually preserve `next_action = "clarify"` instead of guessing.
+- Under `best_effort`, ordinary ambiguity should usually still return `next_action = "plan"` with explicit `ambiguities`, optional `candidate_interpretations`, and `grounding_notes`. `refuse` should remain reserved for unsupported, unsafe, or planner-disabled requests.
 - `next_action` makes clarification and refusal explicit, but it does not bypass deterministic planning.
 - `candidate_interpretations` are advisory only. The selected top-level interpretation remains the only planner-facing candidate.
 - `region_intents` remain proposals. The baseline planner may still refuse them instead of auto-grounding them.

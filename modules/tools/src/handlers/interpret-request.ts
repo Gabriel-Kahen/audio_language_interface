@@ -37,6 +37,7 @@ interface InterpretRequestArguments {
   userRequest: string;
   provider: InterpretRequestProviderArguments;
   capabilityManifest?: RuntimeCapabilityManifest;
+  interpretationPolicy?: "conservative" | "best_effort";
   promptVersion?: string;
   sessionContext?: {
     currentVersionId?: string;
@@ -50,6 +51,18 @@ interface InterpretRequestArguments {
       | "revert"
       | "try_another_version";
   };
+}
+
+function parseInterpretationPolicy(
+  value: unknown,
+  fieldName: string,
+): InterpretRequestArguments["interpretationPolicy"] {
+  const policy = expectString(value, fieldName);
+  if (policy !== "conservative" && policy !== "best_effort") {
+    throw new Error(`${fieldName} must be either 'conservative' or 'best_effort'.`);
+  }
+
+  return policy;
 }
 
 function validateVersionConsistency(request: ToolRequest, audioVersion: AudioVersion): void {
@@ -118,6 +131,10 @@ function validateArguments(value: unknown, request: ToolRequest): InterpretReque
           record.capability_manifest,
           "arguments.capability_manifest",
         );
+  const interpretationPolicy =
+    record.interpretation_policy === undefined
+      ? undefined
+      : parseInterpretationPolicy(record.interpretation_policy, "arguments.interpretation_policy");
   const promptVersion = expectOptionalString(record.prompt_version, "arguments.prompt_version");
   const sessionContextRecord =
     record.session_context === undefined
@@ -171,6 +188,7 @@ function validateArguments(value: unknown, request: ToolRequest): InterpretReque
     userRequest,
     provider,
     ...(capabilityManifest === undefined ? {} : { capabilityManifest }),
+    ...(interpretationPolicy === undefined ? {} : { interpretationPolicy }),
     ...(promptVersion === undefined ? {} : { promptVersion }),
     ...(sessionContext === undefined ? {} : { sessionContext }),
   };
@@ -192,7 +210,12 @@ export const interpretRequestTool: ToolDefinition<
       "user_request",
       "provider",
     ],
-    optional_arguments: ["capability_manifest", "prompt_version", "session_context"],
+    optional_arguments: [
+      "capability_manifest",
+      "interpretation_policy",
+      "prompt_version",
+      "session_context",
+    ],
     error_codes: [
       "invalid_arguments",
       "provenance_mismatch",
@@ -219,6 +242,7 @@ export const interpretRequestTool: ToolDefinition<
         ...(args.provider.timeoutMs === undefined ? {} : { timeoutMs: args.provider.timeoutMs }),
         ...(args.provider.maxRetries === undefined ? {} : { maxRetries: args.provider.maxRetries }),
       },
+      ...(args.interpretationPolicy === undefined ? {} : { policy: args.interpretationPolicy }),
       ...(args.sessionContext === undefined
         ? {}
         : {

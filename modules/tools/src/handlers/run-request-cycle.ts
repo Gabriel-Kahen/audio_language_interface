@@ -336,6 +336,24 @@ function parseInterpretationProvider(
   };
 }
 
+function parseInterpretationPolicy(
+  value: unknown,
+  fieldName: string,
+): NonNullable<LlmAssistedInterpretationOptions["policy"]> {
+  const policy = expectString(value, fieldName);
+  if (policy !== "conservative" && policy !== "best_effort") {
+    throw new ToolInputError(
+      "invalid_arguments",
+      `${fieldName} must be either 'conservative' or 'best_effort'.`,
+      {
+        field: fieldName,
+      },
+    );
+  }
+
+  return policy;
+}
+
 function parseInterpretation(value: unknown): LlmAssistedInterpretationOptions | undefined {
   if (value === undefined) {
     return undefined;
@@ -357,6 +375,11 @@ function parseInterpretation(value: unknown): LlmAssistedInterpretationOptions |
     mode: "llm_assisted",
     apiKey: expectString(record.api_key, "arguments.interpretation.api_key"),
     provider: parseInterpretationProvider(record.provider, "arguments.interpretation.provider"),
+    ...(record.policy === undefined
+      ? {}
+      : {
+          policy: parseInterpretationPolicy(record.policy, "arguments.interpretation.policy"),
+        }),
     ...(record.prompt_version === undefined
       ? {}
       : {

@@ -2,7 +2,10 @@ import type { AnalysisReport, AnalyzeAudioOptions } from "@audio-language-interf
 import type { ComparisonReport } from "@audio-language-interface/compare";
 import type { AudioAsset, AudioVersion } from "@audio-language-interface/core";
 import type { SessionGraph } from "@audio-language-interface/history";
-import type { IntentInterpretation } from "@audio-language-interface/interpretation";
+import type {
+  IntentInterpretation,
+  InterpretationPolicy,
+} from "@audio-language-interface/interpretation";
 import type { ImportAudioOptions, ImportAudioResult } from "@audio-language-interface/io";
 import type { EditPlan } from "@audio-language-interface/planning";
 import type {
@@ -133,6 +136,7 @@ export interface LlmAssistedInterpretationOptions {
   mode: "llm_assisted";
   provider: LlmInterpretationProviderConfig;
   apiKey: string;
+  policy?: InterpretationPolicy;
   promptVersion?: string;
 }
 

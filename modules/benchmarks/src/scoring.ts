@@ -135,6 +135,15 @@ export function scoreIntentInterpretation(
   );
   const groundingNotes = new Set(interpretation.grounding_notes ?? []);
 
+  if (expectation.interpretationPolicy !== undefined) {
+    checks.push({
+      checkId: "interpretation:policy",
+      passed: interpretation.interpretation_policy === expectation.interpretationPolicy,
+      expected: expectation.interpretationPolicy,
+      actual: interpretation.interpretation_policy,
+    });
+  }
+
   if (expectation.requestClassification !== undefined) {
     checks.push({
       checkId: "interpretation:request_classification",

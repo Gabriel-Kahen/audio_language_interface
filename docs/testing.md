@@ -83,7 +83,7 @@ The current repository state includes expanded coverage around:
 - measurement-aware normalization and target-scope execution behavior
 - repeated request-cycle behavior, including alternate-version branching and revert-style follow-ups
 - provider-backed request interpretation, contract validation, and tool/orchestration integration for `IntentInterpretation`
-- interpretation-only benchmark scoring for richer `IntentInterpretation` artifacts, including clarification, constraints, region-intent proposals, and follow-up interpretation
+- interpretation-only benchmark scoring for richer `IntentInterpretation` artifacts, including conservative vs best-effort policy behavior, clarification, constraints, region-intent proposals, and follow-up interpretation
 - tool-surface request-cycle execution, including explicit `SessionGraph` and `available_versions` handling for follow-up requests
 - compare-layer regression logic and structured verification provenance
 - fixture-backed cleanup benchmark corpus integrity

@@ -150,13 +150,14 @@ For revert-style and alternate-version execution, callers must provide `dependen
 
 For opt-in LLM assistance, callers must also provide:
 
-- `options.interpretation = { mode: "llm_assisted", apiKey, provider: ... }`
+- `options.interpretation = { mode: "llm_assisted", apiKey, policy?, provider: ... }`
 - `dependencies.interpretRequest(...)`
 
 That interpretation step stays above deterministic planning:
 
 - orchestration records the original and resolved user requests in the returned artifact
 - the interpreter returns a contract-valid `IntentInterpretation` explicitly
+- the returned artifact records whether the interpretation used `conservative` or `best_effort` ambiguity handling
 - orchestration passes explicit session context such as the current version id, original user request, and prior request when that context exists
 - `modules/planning` still receives one concrete planner-facing request string plus the usual validated `SemanticProfile`
 

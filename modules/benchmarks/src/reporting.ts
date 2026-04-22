@@ -205,6 +205,7 @@ function formatInterpretationCase(caseResult: InterpretationBenchmarkCaseResult)
   return [
     `- ${caseResult.caseId}: ${caseResult.score.toFixed(3)} (${caseResult.passedChecks}/${caseResult.totalChecks})`,
     `  prompt: ${caseResult.prompt}`,
+    `  interpretation policy: ${caseResult.interpretation.interpretation_policy}`,
     `  normalized request: ${caseResult.interpretation.normalized_request}`,
     `  request classification: ${caseResult.interpretation.request_classification}`,
     `  next action: ${caseResult.interpretation.next_action}`,

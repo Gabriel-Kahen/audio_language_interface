@@ -247,6 +247,7 @@ describe("request cycle integration", () => {
         interpretation: {
           mode: "llm_assisted",
           apiKey: "test-key",
+          policy: "best_effort",
           provider: {
             kind: "openai",
             model: "gpt-5-mini",
@@ -263,6 +264,7 @@ describe("request cycle integration", () => {
           }) => ({
             schema_version: "1.0.0",
             interpretation_id: "interpret_integration123",
+            interpretation_policy: "best_effort",
             asset_id: audioVersion.asset_id,
             version_id: audioVersion.version_id,
             analysis_report_id: analysisReport.report_id,
@@ -314,6 +316,7 @@ describe("request cycle integration", () => {
 
       expect(result.intentInterpretation).toMatchObject({
         interpretation_id: "interpret_integration123",
+        interpretation_policy: "best_effort",
         provider: {
           kind: "openai",
           model: "gpt-5-mini",

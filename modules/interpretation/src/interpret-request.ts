@@ -2,8 +2,12 @@ import { createHash } from "node:crypto";
 
 import { createInterpretationProvider } from "./provider.js";
 import type { IntentInterpretation, InterpretRequestOptions } from "./types.js";
-import { DEFAULT_PROMPT_VERSION } from "./types.js";
-import { assertValidInterpretationInputs, buildInterpretationArtifact } from "./validation.js";
+import { DEFAULT_INTERPRETATION_POLICY, DEFAULT_PROMPT_VERSION } from "./types.js";
+import {
+  applyInterpretationPolicy,
+  assertValidInterpretationInputs,
+  buildInterpretationArtifact,
+} from "./validation.js";
 
 /**
  * Interprets a raw user request with an external LLM and returns a validated
@@ -13,6 +17,7 @@ export async function interpretRequest(
   options: InterpretRequestOptions,
 ): Promise<IntentInterpretation> {
   const promptVersion = options.promptVersion ?? DEFAULT_PROMPT_VERSION;
+  const policy = options.policy ?? DEFAULT_INTERPRETATION_POLICY;
   const capabilityManifest = assertValidInterpretationInputs({
     audioVersion: options.audioVersion,
     analysisReport: options.analysisReport,
@@ -48,9 +53,11 @@ export async function interpretRequest(
     provider: options.provider,
     ...(options.sessionContext === undefined ? {} : { sessionContext: options.sessionContext }),
     promptVersion,
+    policy,
     ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
   });
   const responseMs = Date.now() - startedAt;
+  const policyAppliedCandidate = applyInterpretationPolicy(candidate, policy);
 
   const interpretation = buildInterpretationArtifact(
     {
@@ -61,9 +68,10 @@ export async function interpretRequest(
       capabilityManifest,
       provider: options.provider,
       promptVersion,
+      policy,
       ...(options.generatedAt === undefined ? {} : { generatedAt: options.generatedAt }),
     },
-    candidate,
+    policyAppliedCandidate,
   );
 
   const hydratedInterpretation: IntentInterpretation = {
@@ -98,6 +106,7 @@ function buildInterpretationCacheKey(
         provider_kind: options.provider.kind,
         provider_model: options.provider.model,
         prompt_version: promptVersion,
+        interpretation_policy: options.policy ?? DEFAULT_INTERPRETATION_POLICY,
         capability_manifest_id: capabilityManifest.manifest_id,
         session_context: options.sessionContext,
       }),

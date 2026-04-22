@@ -1648,7 +1648,7 @@ export const interpretationBenchmarkCorpus: InterpretationBenchmarkCorpus = {
   corpusId: INTERPRETATION_CORPUS_ID,
   suiteId: "intent_interpretation",
   description:
-    "Offline interpretation benchmark corpus for the richer IntentInterpretation artifact, covering clarification, constraints, region intents, follow-up interpretation, and runtime-only refusal behavior.",
+    "Offline interpretation benchmark corpus for the richer IntentInterpretation artifact, covering conservative vs best-effort ambiguity handling, constraints, region intents, follow-up interpretation, and runtime-only refusal behavior.",
   cases: [
     {
       caseId: "interpret_darker_keep_punch",
@@ -1680,12 +1680,14 @@ export const interpretationBenchmarkCorpus: InterpretationBenchmarkCorpus = {
       },
     },
     {
-      caseId: "interpret_clean_it_clarify",
+      caseId: "interpret_clean_it_conservative",
       family: "intent_interpretation",
       prompt: "Clean it.",
-      description: "Underspecified cleanup wording should clarify rather than overreach.",
+      description:
+        "Underspecified cleanup wording should clarify rather than overreach in conservative mode.",
       interpretation: createInterpretationArtifact({
         userRequest: "Clean it.",
+        interpretationPolicy: "conservative",
         normalizedRequest: "Clarify the cleanup target before planning.",
         requestClassification: "supported_but_underspecified",
         nextAction: "clarify",
@@ -1708,6 +1710,7 @@ export const interpretationBenchmarkCorpus: InterpretationBenchmarkCorpus = {
         ],
       }),
       expectation: {
+        interpretationPolicy: "conservative",
         requestClassification: "supported_but_underspecified",
         nextAction: "clarify",
         requireClarificationQuestion: true,
@@ -1715,13 +1718,58 @@ export const interpretationBenchmarkCorpus: InterpretationBenchmarkCorpus = {
       },
     },
     {
-      caseId: "interpret_brighter_and_darker",
+      caseId: "interpret_clean_it_best_effort",
+      family: "intent_interpretation",
+      prompt: "Clean it.",
+      description:
+        "Best-effort mode should choose one grounded cleanup direction while keeping ambiguity visible.",
+      interpretation: createInterpretationArtifact({
+        userRequest: "Clean it.",
+        interpretationPolicy: "best_effort",
+        normalizedRequest: "Reduce steady background noise conservatively.",
+        requestClassification: "supported",
+        nextAction: "plan",
+        normalizedObjectives: ["cleaner", "denoise"],
+        candidateDescriptors: ["cleaner"],
+        ambiguities: ["cleanup target is not specific enough"],
+        clarificationQuestion:
+          "Do you want less hum, fewer clicks, less harshness, or lower steady noise?",
+        candidateInterpretations: [
+          {
+            normalized_request: "Reduce steady background noise conservatively.",
+            request_classification: "supported",
+            next_action: "plan",
+            normalized_objectives: ["cleaner", "denoise"],
+            candidate_descriptors: ["cleaner"],
+            rationale: "This is the strongest grounded fallback cleanup reading.",
+            confidence: 0.61,
+          },
+        ],
+        groundingNotes: [
+          "best_effort policy promoted alternate interpretation: Reduce steady background noise conservatively.",
+        ],
+      }),
+      expectation: {
+        interpretationPolicy: "best_effort",
+        requestClassification: "supported",
+        nextAction: "plan",
+        requiredNormalizedObjectives: ["cleaner", "denoise"],
+        requireClarificationQuestion: true,
+        expectedCandidateInterpretationCount: 1,
+        requiredGroundingNotes: [
+          "best_effort policy promoted alternate interpretation: Reduce steady background noise conservatively.",
+        ],
+      },
+    },
+    {
+      caseId: "interpret_brighter_and_darker_conservative",
       family: "intent_interpretation",
       prompt: "Make it brighter and darker.",
       description:
         "Contradictory tonal directions should surface as clarification, not a fake compound plan.",
       interpretation: createInterpretationArtifact({
         userRequest: "Make it brighter and darker.",
+        interpretationPolicy: "conservative",
         normalizedRequest: "Clarify whether the tonal direction should be brighter or darker.",
         requestClassification: "supported_but_underspecified",
         nextAction: "clarify",
@@ -1731,10 +1779,58 @@ export const interpretationBenchmarkCorpus: InterpretationBenchmarkCorpus = {
         clarificationQuestion: "Should the result be brighter or darker overall?",
       }),
       expectation: {
+        interpretationPolicy: "conservative",
         requestClassification: "supported_but_underspecified",
         nextAction: "clarify",
         requiredNormalizedObjectives: ["brighter", "darker"],
         requireClarificationQuestion: true,
+      },
+    },
+    {
+      caseId: "interpret_brighter_and_darker_best_effort",
+      family: "intent_interpretation",
+      prompt: "Make it brighter and darker.",
+      description:
+        "Best-effort mode should choose one tonal direction while preserving the contradiction as ambiguity metadata.",
+      interpretation: createInterpretationArtifact({
+        userRequest: "Make it brighter and darker.",
+        interpretationPolicy: "best_effort",
+        normalizedRequest: "Make it brighter.",
+        requestClassification: "supported",
+        nextAction: "plan",
+        normalizedObjectives: ["brighter"],
+        candidateDescriptors: ["bright", "dark"],
+        ambiguities: ["conflicting tonal directions"],
+        clarificationQuestion: "Should the result be brighter or darker overall?",
+        candidateInterpretations: [
+          {
+            normalized_request: "Make it brighter.",
+            request_classification: "supported",
+            next_action: "plan",
+            normalized_objectives: ["brighter"],
+            candidate_descriptors: ["bright"],
+            rationale: "A single brightening move is the cleanest best-effort tonal reading.",
+            confidence: 0.52,
+          },
+          {
+            normalized_request: "Make it darker.",
+            request_classification: "supported",
+            next_action: "plan",
+            normalized_objectives: ["darker"],
+            candidate_descriptors: ["dark"],
+            rationale: "Darkening is the alternate single-direction tonal reading.",
+            confidence: 0.48,
+          },
+        ],
+        groundingNotes: ["best_effort policy promoted alternate interpretation: Make it brighter."],
+      }),
+      expectation: {
+        interpretationPolicy: "best_effort",
+        requestClassification: "supported",
+        nextAction: "plan",
+        requiredNormalizedObjectives: ["brighter"],
+        requireClarificationQuestion: true,
+        expectedCandidateInterpretationCount: 2,
       },
     },
     {
@@ -1901,6 +1997,7 @@ function createCompareOptions(input: CreateCompareOptionsInput): CompareVersions
 interface CreateInterpretationArtifactInput {
   userRequest: string;
   normalizedRequest: string;
+  interpretationPolicy?: IntentInterpretation["interpretation_policy"];
   requestClassification?: IntentInterpretation["request_classification"];
   nextAction: IntentInterpretation["next_action"];
   normalizedObjectives: string[];
@@ -1924,6 +2021,7 @@ function createInterpretationArtifact(
   return {
     schema_version: "1.0.0",
     interpretation_id: `interpret_benchmark_${slugify(input.normalizedRequest)}`,
+    interpretation_policy: input.interpretationPolicy ?? "conservative",
     asset_id: "asset_benchmark_interpretation",
     version_id: "ver_benchmark_interpretation",
     analysis_report_id: "analysis_benchmark_interpretation",

@@ -2,7 +2,7 @@ import type { AnalysisReport } from "@audio-language-interface/analysis";
 import { plannerSupportedRuntimeOperations } from "@audio-language-interface/capabilities";
 import { SUPPORTED_DESCRIPTOR_LABELS } from "@audio-language-interface/semantics";
 
-import type { InterpretationProviderRequest } from "./types.js";
+import type { InterpretationPolicy, InterpretationProviderRequest } from "./types.js";
 
 export const SUPPORTED_NORMALIZATION_PHRASES = [
   "make it darker",
@@ -34,13 +34,19 @@ export const SUPPORTED_NORMALIZATION_PHRASES = [
   "preserve punch",
 ] as const;
 
-export function buildSystemInstruction(): string {
+export function buildSystemInstruction(policy: InterpretationPolicy): string {
+  const policyInstruction =
+    policy === "best_effort"
+      ? "Interpretation policy is best_effort. Always return one best planner-facing interpretation for grounded ambiguous requests instead of dead-ending at clarify. Keep uncertainty explicit through ambiguities, candidate_interpretations, low confidence, grounding_notes, and optional clarification_question metadata. Only use refuse for truly unsupported, unsafe, or runtime-only requests."
+      : "Interpretation policy is conservative. Ambiguous grounded requests should usually stay clarify rather than guessing a best interpretation.";
+
   return [
     "You are interpreting natural-language audio editing requests for a deterministic editing system.",
     "Return only JSON matching the provided schema.",
     "Do not output transforms, ffmpeg parameters, or hidden reasoning chains.",
     "Normalize the request into a concise request phrase that stays inside the system's supported vocabulary when that is honest.",
-    "Set next_action to plan, clarify, or refuse. Supported grounded requests should usually be plan. Ambiguous requests should usually be clarify. Unsupported or planner-disabled requests should usually be refuse.",
+    policyInstruction,
+    "Set next_action to plan, clarify, or refuse. Supported grounded requests should usually be plan. Unsupported or planner-disabled requests should usually be refuse.",
     "Descriptor hypotheses must stay evidence-linked. Use supported_by, contradicted_by, and needs_more_evidence with short artifact-aware references such as semantic:bright or analysis:measurements.stereo.balance_db.",
     "Use constraints to preserve important intent like subtlety, preserve punch, avoid added harshness, or similar safety and preservation language.",
     "Use region_intents only when the user wording clearly scopes the request to a part of the file. Otherwise omit region_intents.",
@@ -90,7 +96,11 @@ export function buildUserPrompt(input: InterpretationProviderRequest): string {
 
   return JSON.stringify(
     {
-      task: "Interpret this audio-edit request conservatively for deterministic planning.",
+      task:
+        input.policy === "best_effort"
+          ? "Interpret this audio-edit request for deterministic planning in best-effort mode."
+          : "Interpret this audio-edit request conservatively for deterministic planning.",
+      interpretation_policy: input.policy,
       prompt_version: input.promptVersion,
       user_request: input.userRequest,
       context,
@@ -107,6 +117,7 @@ export function buildCandidateSchema(): object {
     required: [
       "normalized_request",
       "request_classification",
+      "next_action",
       "normalized_objectives",
       "candidate_descriptors",
       "rationale",

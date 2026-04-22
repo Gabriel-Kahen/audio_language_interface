@@ -28,7 +28,7 @@ export class GoogleInterpretationProvider implements InterpretationProvider {
           },
           body: JSON.stringify({
             systemInstruction: {
-              parts: [{ text: buildSystemInstruction() }],
+              parts: [{ text: buildSystemInstruction(input.policy) }],
             },
             contents: [
               {

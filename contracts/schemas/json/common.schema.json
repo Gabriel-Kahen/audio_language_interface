@@ -157,6 +157,10 @@
       "type": "string",
       "enum": ["openai", "google"]
     },
+    "interpretationPolicy": {
+      "type": "string",
+      "enum": ["conservative", "best_effort"]
+    },
     "interpretationNextAction": {
       "type": "string",
       "enum": ["plan", "clarify", "refuse"]

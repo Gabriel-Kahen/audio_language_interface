@@ -59,6 +59,7 @@ Returns a `report` object containing the `AnalysisReport`. The include flags onl
   - `provider`
 - optional arguments:
   - `capability_manifest`
+  - `interpretation_policy`
   - `prompt_version`
   - `session_context`
 
@@ -68,8 +69,16 @@ This tool does not emit an `EditPlan`. It exists so callers can inspect or cache
 
 `provider` also accepts optional `api_base_url`, `temperature`, `timeout_ms`, and `max_retries`.
 
+`interpretation_policy` accepts:
+
+- `conservative`
+- `best_effort`
+
+When omitted, the interpretation layer defaults to `conservative`.
+
 The returned artifact can now expose:
 
+- `interpretation_policy`
 - `next_action`
 - evidence-linked `descriptor_hypotheses`
 - structured `constraints`
@@ -207,6 +216,7 @@ Returns the completed request-cycle artifact set:
 
 - `mode = "llm_assisted"`
 - `api_key`
+- optional `policy`
 - `provider.kind`
 - `provider.model`
 - optional `provider.api_base_url`
@@ -214,6 +224,8 @@ Returns the completed request-cycle artifact set:
 - optional `provider.timeout_ms`
 - optional `provider.max_retries`
 - optional `prompt_version`
+
+`arguments.interpretation.policy` forwards the same `conservative` vs `best_effort` switch used by `interpret_request`.
 
 When present, the tool forwards that configuration into orchestration and requires a runtime-injected `interpretRequest` implementation. The returned `intent_interpretation` artifact makes the normalized planner-facing request inspectable without bypassing deterministic planning, and now includes the same richer clarification, constraint, region, alternate-candidate, and follow-up fields exposed by the standalone interpretation layer.
 

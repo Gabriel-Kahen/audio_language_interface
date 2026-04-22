@@ -52,5 +52,7 @@ See `docs/api.md` for the concrete API shape and failure behavior.
 - supported providers use direct `fetch` calls, not provider SDKs
 - the module validates both the provider-returned JSON payload and the final `IntentInterpretation`
 - interpretation stays optional and above deterministic planning
-- the artifact can now carry explicit `next_action`, descriptor hypotheses, constraints, region-intent proposals, alternate candidates, and follow-up interpretation metadata
+- callers can now choose `conservative` or `best_effort` interpretation policy
+- the artifact can now carry explicit `interpretation_policy`, `next_action`, descriptor hypotheses, constraints, region-intent proposals, alternate candidates, and follow-up interpretation metadata
+- `conservative` preserves `clarify` for grounded ambiguity, while `best_effort` prefers one planner-facing reading and keeps the ambiguity explicit through alternates and grounding notes
 - provider behavior is hardened with explicit timeout, retry, and optional cache support, but raw provider failures still surface instead of falling back silently
