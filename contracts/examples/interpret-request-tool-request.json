@@ -101,11 +101,18 @@
       }
     },
     "user_request": "Make it a little darker and cleaner.",
+    "session_context": {
+      "current_version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+      "previous_request": "Make it brighter.",
+      "original_user_request": "Make it a little darker and cleaner.",
+      "follow_up_source": "direct_request"
+    },
     "provider": {
       "kind": "openai",
       "api_key": "sk-example",
       "model": "gpt-4.1-mini",
-      "temperature": 0
+      "temperature": 0,
+      "max_retries": 1
     },
     "prompt_version": "intent_v1"
   }

@@ -83,6 +83,7 @@ The current repository state includes expanded coverage around:
 - measurement-aware normalization and target-scope execution behavior
 - repeated request-cycle behavior, including alternate-version branching and revert-style follow-ups
 - provider-backed request interpretation, contract validation, and tool/orchestration integration for `IntentInterpretation`
+- interpretation-only benchmark scoring for richer `IntentInterpretation` artifacts, including clarification, constraints, region-intent proposals, and follow-up interpretation
 - tool-surface request-cycle execution, including explicit `SessionGraph` and `available_versions` handling for follow-up requests
 - compare-layer regression logic and structured verification provenance
 - fixture-backed cleanup benchmark corpus integrity
@@ -104,9 +105,10 @@ No single layer should be treated as sufficient by itself for current capability
 
 ## Benchmark interpretation
 
-The benchmark layer now has two distinct uses:
+The benchmark layer now has three distinct uses:
 
 - compare-only benchmark cases for direct `ComparisonReport` evaluation
+- interpretation-only benchmark cases for direct `IntentInterpretation` evaluation
 - request-cycle benchmark execution plus scoring/reporting for full orchestration-cycle evaluation
 
 The request-cycle benchmark mode should be read conservatively. Its scores are useful because they separate:

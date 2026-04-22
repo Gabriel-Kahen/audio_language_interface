@@ -40,6 +40,7 @@ const candidateSchema = {
   required: [
     "normalized_request",
     "request_classification",
+    "next_action",
     "normalized_objectives",
     "candidate_descriptors",
     "rationale",
@@ -56,6 +57,10 @@ const candidateSchema = {
         "supported_runtime_only_but_not_planner_enabled",
       ],
     },
+    next_action: {
+      type: "string",
+      enum: ["plan", "clarify", "refuse"],
+    },
     normalized_objectives: {
       type: "array",
       items: { type: "string", minLength: 1 },
@@ -63,6 +68,159 @@ const candidateSchema = {
     candidate_descriptors: {
       type: "array",
       items: { type: "string", minLength: 1 },
+    },
+    descriptor_hypotheses: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["label", "status"],
+        properties: {
+          label: { type: "string", minLength: 1 },
+          status: {
+            type: "string",
+            enum: ["supported", "weak", "contradicted", "unresolved"],
+          },
+          supported_by: {
+            type: "array",
+            items: { type: "string", minLength: 1 },
+          },
+          contradicted_by: {
+            type: "array",
+            items: { type: "string", minLength: 1 },
+          },
+          needs_more_evidence: {
+            type: "array",
+            items: { type: "string", minLength: 1 },
+          },
+          rationale: { type: "string", minLength: 1 },
+        },
+      },
+    },
+    constraints: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["kind", "label"],
+        properties: {
+          kind: {
+            type: "string",
+            enum: ["intensity", "preserve", "avoid", "safety", "scope"],
+          },
+          label: { type: "string", minLength: 1 },
+          value: { type: "string", minLength: 1 },
+          rationale: { type: "string", minLength: 1 },
+        },
+      },
+    },
+    region_intents: {
+      type: "array",
+      items: {
+        oneOf: [
+          {
+            type: "object",
+            additionalProperties: false,
+            required: ["scope"],
+            properties: {
+              scope: { const: "full_file" },
+              rationale: { type: "string", minLength: 1 },
+            },
+          },
+          {
+            type: "object",
+            additionalProperties: false,
+            required: ["scope", "start_seconds", "end_seconds"],
+            properties: {
+              scope: { const: "time_range" },
+              start_seconds: { type: "number", minimum: 0 },
+              end_seconds: { type: "number", minimum: 0 },
+              rationale: { type: "string", minLength: 1 },
+            },
+          },
+          {
+            type: "object",
+            additionalProperties: false,
+            required: ["scope", "reference"],
+            properties: {
+              scope: { const: "segment_reference" },
+              reference: { type: "string", minLength: 1 },
+              rationale: { type: "string", minLength: 1 },
+            },
+          },
+        ],
+      },
+    },
+    candidate_interpretations: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "normalized_request",
+          "request_classification",
+          "next_action",
+          "normalized_objectives",
+          "candidate_descriptors",
+          "rationale",
+          "confidence",
+        ],
+        properties: {
+          normalized_request: { type: "string", minLength: 1 },
+          request_classification: {
+            type: "string",
+            enum: [
+              "supported",
+              "supported_but_underspecified",
+              "unsupported",
+              "supported_runtime_only_but_not_planner_enabled",
+            ],
+          },
+          next_action: {
+            type: "string",
+            enum: ["plan", "clarify", "refuse"],
+          },
+          normalized_objectives: {
+            type: "array",
+            items: { type: "string", minLength: 1 },
+          },
+          candidate_descriptors: {
+            type: "array",
+            items: { type: "string", minLength: 1 },
+          },
+          ambiguities: {
+            type: "array",
+            items: { type: "string", minLength: 1 },
+          },
+          unsupported_phrases: {
+            type: "array",
+            items: { type: "string", minLength: 1 },
+          },
+          clarification_question: { type: "string", minLength: 1 },
+          rationale: { type: "string", minLength: 1 },
+          confidence: { type: "number", minimum: 0, maximum: 1 },
+        },
+      },
+    },
+    follow_up_intent: {
+      type: "object",
+      additionalProperties: false,
+      required: ["kind"],
+      properties: {
+        kind: {
+          type: "string",
+          enum: [
+            "direct_request",
+            "repeat_last_request",
+            "reduce_previous_intensity",
+            "undo",
+            "revert",
+            "try_another_version",
+            "unclear_follow_up",
+          ],
+        },
+        rationale: { type: "string", minLength: 1 },
+      },
     },
     ambiguities: {
       type: "array",
@@ -73,6 +231,10 @@ const candidateSchema = {
       items: { type: "string", minLength: 1 },
     },
     clarification_question: { type: "string", minLength: 1 },
+    grounding_notes: {
+      type: "array",
+      items: { type: "string", minLength: 1 },
+    },
     rationale: { type: "string", minLength: 1 },
     confidence: { type: "number", minimum: 0, maximum: 1 },
   },
@@ -149,6 +311,7 @@ export function buildInterpretationArtifact(
     user_request: input.userRequest,
     normalized_request: candidate.normalized_request,
     request_classification: candidate.request_classification,
+    next_action: candidate.next_action,
     normalized_objectives: [...candidate.normalized_objectives],
     candidate_descriptors: [...candidate.candidate_descriptors],
     rationale: candidate.rationale,
@@ -159,6 +322,17 @@ export function buildInterpretationArtifact(
       prompt_version: input.promptVersion,
     },
     generated_at: input.generatedAt ?? nowTimestamp(),
+    ...(candidate.descriptor_hypotheses === undefined
+      ? {}
+      : { descriptor_hypotheses: candidate.descriptor_hypotheses }),
+    ...(candidate.constraints === undefined ? {} : { constraints: candidate.constraints }),
+    ...(candidate.region_intents === undefined ? {} : { region_intents: candidate.region_intents }),
+    ...(candidate.candidate_interpretations === undefined
+      ? {}
+      : { candidate_interpretations: candidate.candidate_interpretations }),
+    ...(candidate.follow_up_intent === undefined
+      ? {}
+      : { follow_up_intent: candidate.follow_up_intent }),
     ...(candidate.ambiguities === undefined ? {} : { ambiguities: [...candidate.ambiguities] }),
     ...(candidate.unsupported_phrases === undefined
       ? {}
@@ -166,6 +340,9 @@ export function buildInterpretationArtifact(
     ...(candidate.clarification_question === undefined
       ? {}
       : { clarification_question: candidate.clarification_question }),
+    ...(candidate.grounding_notes === undefined
+      ? {}
+      : { grounding_notes: [...candidate.grounding_notes] }),
   };
 
   assertValidIntentInterpretation(interpretation);
@@ -221,4 +398,12 @@ export async function toApiError(provider: string, response: Response): Promise<
   }
 
   return `${provider} interpretation request failed with ${response.status}: ${bodyText || response.statusText}`;
+}
+
+export function isRetryableInterpretationStatus(status: number): boolean {
+  return status === 408 || status === 429 || status >= 500;
+}
+
+export async function sleepMs(durationMs: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, durationMs));
 }

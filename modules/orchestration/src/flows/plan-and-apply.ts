@@ -1,3 +1,5 @@
+import { getVersionFollowUpRequest } from "@audio-language-interface/history";
+
 import { executeWithFailurePolicy } from "../failure-policy.js";
 import { resolveRequestInterpretation } from "../request-interpretation.js";
 import type {
@@ -40,6 +42,11 @@ export async function planAndApply(options: PlanAndApplyOptions): Promise<PlanAn
   const planStageResult = await executeWithFailurePolicy({
     stage: "plan",
     operation: async () => {
+      const previousRequest =
+        options.sessionGraph === undefined
+          ? undefined
+          : getVersionFollowUpRequest(options.sessionGraph, options.version.version_id);
+
       intentInterpretation =
         options.requestInterpretation === undefined
           ? undefined
@@ -48,7 +55,23 @@ export async function planAndApply(options: PlanAndApplyOptions): Promise<PlanAn
               audioVersion: options.version,
               analysisReport: options.analysisReport,
               semanticProfile,
+              ...(options.originalUserRequest === undefined
+                ? {}
+                : { originalUserRequest: options.originalUserRequest }),
               interpretation: options.requestInterpretation,
+              ...(options.sessionGraph === undefined
+                ? {}
+                : {
+                    sessionContext: {
+                      current_version_id: options.version.version_id,
+                      ...(previousRequest === undefined
+                        ? {}
+                        : { previous_request: previousRequest }),
+                      ...(options.originalUserRequest === undefined
+                        ? {}
+                        : { original_user_request: options.originalUserRequest }),
+                    },
+                  }),
               interpretRequest: options.dependencies.interpretRequest,
             });
 
@@ -74,6 +97,54 @@ export async function planAndApply(options: PlanAndApplyOptions): Promise<PlanAn
                   ...(intentInterpretation.clarification_question === undefined
                     ? {}
                     : { clarificationQuestion: intentInterpretation.clarification_question }),
+                  ...(intentInterpretation.next_action === undefined
+                    ? {}
+                    : { nextAction: intentInterpretation.next_action }),
+                  ...(intentInterpretation.constraints === undefined
+                    ? {}
+                    : { constraints: intentInterpretation.constraints }),
+                  ...(intentInterpretation.region_intents === undefined
+                    ? {}
+                    : { regionIntents: intentInterpretation.region_intents }),
+                  ...(intentInterpretation.descriptor_hypotheses === undefined
+                    ? {}
+                    : {
+                        descriptorHypotheses: intentInterpretation.descriptor_hypotheses.map(
+                          (hypothesis) => ({
+                            label: hypothesis.label,
+                            status: hypothesis.status,
+                            ...(hypothesis.supported_by === undefined
+                              ? {}
+                              : { supportedBy: hypothesis.supported_by }),
+                            ...(hypothesis.contradicted_by === undefined
+                              ? {}
+                              : { contradictedBy: hypothesis.contradicted_by }),
+                            ...(hypothesis.needs_more_evidence === undefined
+                              ? {}
+                              : { needsMoreEvidence: hypothesis.needs_more_evidence }),
+                            ...(hypothesis.rationale === undefined
+                              ? {}
+                              : { rationale: hypothesis.rationale }),
+                          }),
+                        ),
+                      }),
+                  ...(intentInterpretation.candidate_interpretations === undefined
+                    ? {}
+                    : {
+                        candidateInterpretations:
+                          intentInterpretation.candidate_interpretations.map((candidate) => ({
+                            normalizedRequest: candidate.normalized_request,
+                            requestClassification: candidate.request_classification,
+                            nextAction: candidate.next_action,
+                            confidence: candidate.confidence,
+                          })),
+                      }),
+                  ...(intentInterpretation.follow_up_intent === undefined
+                    ? {}
+                    : { followUpIntent: intentInterpretation.follow_up_intent }),
+                  ...(intentInterpretation.grounding_notes === undefined
+                    ? {}
+                    : { groundingNotes: intentInterpretation.grounding_notes }),
                 },
               }),
           workspaceRoot: options.workspaceRoot,

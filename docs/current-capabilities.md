@@ -45,7 +45,7 @@ The runtime capability surface is now also published explicitly through `Runtime
 
 ### Adapters
 
-- `interpretation`: optional provider-backed request normalization that emits `IntentInterpretation` artifacts for OpenAI or Google API callers
+- `interpretation`: optional provider-backed request normalization that emits richer `IntentInterpretation` artifacts for OpenAI or Google API callers, including `next_action`, descriptor hypotheses, constraints, region-intent proposals, alternate candidates, and follow-up interpretation metadata
 - `tools`: callable tool registry and request execution for the published tool set
 - `orchestration`: composed happy-path workflows and iterative refinement helpers
 
@@ -160,11 +160,11 @@ The baseline planner now supports a conservative timing-edit slice for explicit 
 Current tool-surface caveats:
 
 - `apply_edit_plan` supports the published runtime capability surface, including first-cohort `time_range` execution for selected duration-preserving Layer 1 operations, while still validating explicit runtime prerequisites such as stereo-only processing where applicable
-- `interpret_request` is optional and provider-backed; it normalizes language into a contract-valid `IntentInterpretation` but does not bypass deterministic planning or verification
+- `interpret_request` is optional and provider-backed; it normalizes language into a contract-valid `IntentInterpretation`, accepts explicit session context for fuzzy follow-ups, and does not bypass deterministic planning or verification
 - `plan_edits` only chooses operations marked as `planner_supported` in the runtime capability manifest
 - `plan_edits` can accept an optional `intent_interpretation` artifact, but still validates that proposal against current audio evidence and planner support
 - `compare_versions` returns `evaluation_basis` so callers can see whether structured verification or fallback goal alignment is authoritative
-- `run_request_cycle` exposes the full orchestration editing loop, including session-aware follow-up behavior and optional LLM-assisted request interpretation, while still requiring callers to provide explicit `session_graph` and `available_versions` inputs for historical execution
+- `run_request_cycle` exposes the full orchestration editing loop, including session-aware follow-up behavior and optional LLM-assisted request interpretation with explicit timeout and retry settings, while still requiring callers to provide explicit `session_graph` and `available_versions` inputs for historical execution
 - explicit technical callers can still submit runtime-only Layer 1 effect steps when they stay inside the published contract surface
 
 ## Important Current Limitations

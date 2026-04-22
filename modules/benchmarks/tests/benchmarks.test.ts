@@ -16,10 +16,15 @@ import {
   firstPromptFamilyRequestCycleCorpus,
   firstPromptFamilyRequestCycleSuite,
   formatBenchmarkMarkdownReport,
+  INTERPRETATION_CORPUS_ID,
+  interpretationBenchmarkCorpus,
+  interpretationBenchmarkSuite,
   runComparisonBenchmarks,
+  runInterpretationBenchmarks,
   runRequestCycleBenchmarkCase,
   runRequestCycleBenchmarks,
   scoreComparisonReport,
+  scoreIntentInterpretation,
 } from "../src/index.js";
 
 const repoRoot = path.resolve(import.meta.dirname, "../../..");
@@ -64,6 +69,16 @@ function getCompareCase(caseId: string) {
 
   if (!benchmarkCase) {
     throw new Error(`Expected compare benchmark case ${caseId} to exist.`);
+  }
+
+  return benchmarkCase;
+}
+
+function getInterpretationCase(caseId: string) {
+  const benchmarkCase = interpretationBenchmarkSuite.find((item) => item.caseId === caseId);
+
+  if (!benchmarkCase) {
+    throw new Error(`Expected interpretation benchmark case ${caseId} to exist.`);
   }
 
   return benchmarkCase;
@@ -210,6 +225,22 @@ describe("firstPromptFamilyFixtureCorpus", () => {
       expect(fixtureIds.has(benchmarkCase.fixtureId)).toBe(true);
     }
   });
+
+  it("defines a stable interpretation benchmark corpus for the richer LLM artifact", () => {
+    expect(interpretationBenchmarkCorpus.corpusId).toBe(INTERPRETATION_CORPUS_ID);
+    expect(interpretationBenchmarkSuite).toHaveLength(7);
+    expect(interpretationBenchmarkSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
+      expect.arrayContaining([
+        "interpret_darker_keep_punch",
+        "interpret_clean_it_clarify",
+        "interpret_brighter_and_darker",
+        "interpret_remove_hum_first_second",
+        "interpret_follow_up_not_that_much",
+        "interpret_try_another_version",
+        "interpret_bitcrush_runtime_only",
+      ]),
+    );
+  });
 });
 
 describe("runComparisonBenchmarks", () => {
@@ -312,6 +343,60 @@ describe("scoreComparisonReport", () => {
   });
 });
 
+describe("runInterpretationBenchmarks", () => {
+  it("runs the richer interpretation corpus with explicit artifact expectations", () => {
+    const result = runInterpretationBenchmarks();
+
+    expect(result.suiteId).toBe("intent_interpretation");
+    expect(result.corpusId).toBe(INTERPRETATION_CORPUS_ID);
+    expect(result.caseResults).toHaveLength(interpretationBenchmarkSuite.length);
+    expect(result.totalChecks).toBeGreaterThan(0);
+    expect(result.totalPassedChecks).toBe(result.totalChecks);
+    expect(result.overallScore).toBe(1);
+  });
+
+  it("scores richer interpretation fields like constraints, follow-ups, and region scopes", () => {
+    const result = runInterpretationBenchmarks([
+      getInterpretationCase("interpret_darker_keep_punch"),
+      getInterpretationCase("interpret_remove_hum_first_second"),
+      getInterpretationCase("interpret_follow_up_not_that_much"),
+    ]);
+
+    expect(result.caseResults).toHaveLength(3);
+    expect(result.totalPassedChecks).toBe(result.totalChecks);
+    expect(result.overallScore).toBe(1);
+  });
+});
+
+describe("scoreIntentInterpretation", () => {
+  it("fails explicit checks when richer interpretation fields are missing", () => {
+    const interpretationCase = getInterpretationCase("interpret_follow_up_not_that_much");
+
+    const checks = scoreIntentInterpretation(interpretationCase.interpretation, {
+      requiredConstraints: [{ kind: "preserve", label: "punch" }],
+      expectedFollowUpIntentKind: "undo",
+      requiredGroundingNotes: ["missing note"],
+    });
+
+    expect(checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkId: "interpretation:require_constraint:preserve:punch",
+          passed: false,
+        }),
+        expect.objectContaining({
+          checkId: "interpretation:follow_up_intent",
+          passed: false,
+        }),
+        expect.objectContaining({
+          checkId: "interpretation:grounding_note:missing note",
+          passed: false,
+        }),
+      ]),
+    );
+  });
+});
+
 describe("formatBenchmarkMarkdownReport", () => {
   it("renders a stable human-readable report", () => {
     const promptThree = firstPromptFamilyPromptSuite[2];
@@ -333,6 +418,19 @@ describe("formatBenchmarkMarkdownReport", () => {
       `fixtures: ${FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID} -> fixture_phase1_first_slice_loop_cleaner`,
     );
     expect(markdown).toContain("Overall score: 1.000");
+  });
+
+  it("renders a stable interpretation benchmark report", () => {
+    const interpretationCase = getInterpretationCase("interpret_clean_it_clarify");
+
+    const result = runInterpretationBenchmarks([interpretationCase]);
+    const markdown = formatBenchmarkMarkdownReport(result);
+
+    expect(markdown).toContain("# Benchmark Report: intent_interpretation");
+    expect(markdown).toContain("Benchmark mode: interpretation");
+    expect(markdown).toContain(`Corpus: ${INTERPRETATION_CORPUS_ID}`);
+    expect(markdown).toContain("interpret_clean_it_clarify");
+    expect(markdown).toContain("next action: clarify");
   });
 });
 

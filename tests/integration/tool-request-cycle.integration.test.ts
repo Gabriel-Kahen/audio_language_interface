@@ -188,6 +188,7 @@ describe("run_request_cycle tool integration", () => {
                 user_request: userRequest,
                 normalized_request: "Make this loop darker with a gentle high-shelf cut.",
                 request_classification: "supported",
+                next_action: "plan",
                 normalized_objectives: ["darker"],
                 candidate_descriptors: ["dark"],
                 rationale:

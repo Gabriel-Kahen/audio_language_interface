@@ -30,6 +30,26 @@
         "user_request": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
         "capability_manifest": { "$ref": "./runtime-capability-manifest.schema.json" },
         "prompt_version": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+        "session_context": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "current_version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+            "previous_request": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+            "original_user_request": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+            "follow_up_source": {
+              "type": "string",
+              "enum": [
+                "direct_request",
+                "repeat_last_request",
+                "less",
+                "undo",
+                "revert",
+                "try_another_version"
+              ]
+            }
+          }
+        },
         "provider": {
           "type": "object",
           "additionalProperties": false,
@@ -40,7 +60,8 @@
             "model": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
             "api_base_url": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
             "temperature": { "type": "number" },
-            "timeout_ms": { "type": "integer", "minimum": 1 }
+            "timeout_ms": { "type": "integer", "minimum": 1 },
+            "max_retries": { "type": "integer", "minimum": 0 }
           }
         }
       }

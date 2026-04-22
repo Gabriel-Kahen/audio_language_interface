@@ -4,6 +4,14 @@ import type {
   ComparisonReport,
   GoalStatus,
 } from "@audio-language-interface/compare";
+import type {
+  DescriptorHypothesisStatus,
+  FollowUpIntentKind,
+  IntentInterpretation,
+  InterpretationConstraintKind,
+  InterpretationNextAction,
+  RegionIntentScope,
+} from "@audio-language-interface/interpretation";
 import type { ImportAudioOptions } from "@audio-language-interface/io";
 import type {
   FollowUpResolution,
@@ -110,6 +118,67 @@ export interface ComparisonBenchmarkRunResult {
   suiteId: string;
   corpusId: string;
   caseResults: ComparisonBenchmarkCaseResult[];
+  totalPassedChecks: number;
+  totalChecks: number;
+  overallScore: number;
+}
+
+export interface InterpretationBenchmarkExpectedDescriptor {
+  label: string;
+  status?: DescriptorHypothesisStatus;
+}
+
+export interface InterpretationBenchmarkExpectedConstraint {
+  kind: InterpretationConstraintKind;
+  label?: string;
+  value?: string;
+}
+
+export interface InterpretationBenchmarkExpectation {
+  requestClassification?: IntentInterpretation["request_classification"];
+  nextAction?: InterpretationNextAction;
+  requiredNormalizedObjectives?: string[];
+  forbiddenNormalizedObjectives?: string[];
+  requiredDescriptorHypotheses?: InterpretationBenchmarkExpectedDescriptor[];
+  forbiddenDescriptorHypothesisLabels?: string[];
+  requiredConstraints?: InterpretationBenchmarkExpectedConstraint[];
+  requiredRegionIntentScope?: RegionIntentScope;
+  requireClarificationQuestion?: boolean;
+  expectedFollowUpIntentKind?: FollowUpIntentKind;
+  requiredGroundingNotes?: string[];
+  expectedCandidateInterpretationCount?: number;
+}
+
+export interface InterpretationBenchmarkCase {
+  caseId: string;
+  family: "intent_interpretation";
+  prompt: string;
+  description: string;
+  interpretation: IntentInterpretation;
+  expectation: InterpretationBenchmarkExpectation;
+}
+
+export interface InterpretationBenchmarkCorpus {
+  corpusId: string;
+  suiteId: InterpretationBenchmarkCase["family"];
+  description: string;
+  cases: InterpretationBenchmarkCase[];
+}
+
+export interface InterpretationBenchmarkCaseResult {
+  caseId: string;
+  prompt: string;
+  interpretation: IntentInterpretation;
+  passedChecks: number;
+  totalChecks: number;
+  score: number;
+  checks: BenchmarkCheckResult[];
+}
+
+export interface InterpretationBenchmarkRunResult {
+  suiteId: string;
+  corpusId: string;
+  caseResults: InterpretationBenchmarkCaseResult[];
   totalPassedChecks: number;
   totalChecks: number;
   overallScore: number;

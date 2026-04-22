@@ -54,6 +54,7 @@ That loop is exposed both through modules and through a thin tool surface.
 There is now also an optional interpretation layer for open-ended language:
 
 - `modules/interpretation` can call OpenAI or Google APIs to normalize a raw request into a bounded `IntentInterpretation`
+- the richer interpretation artifact now includes explicit `next_action`, evidence-linked descriptor hypotheses, structured constraints, optional region-intent proposals, alternate candidates, and follow-up interpretation metadata
 - deterministic planning remains authoritative and may still reject unsupported or weakly grounded interpretations
 - callers can use the standalone `interpret_request` tool or enable LLM-assisted interpretation inside `run_request_cycle`
 
@@ -254,7 +255,7 @@ The current baseline is strongest on conservative cleanup and corrective-edit pr
 - `analysis` can now publish steady mains-hum evidence and sparse click evidence directly in `AnalysisReport`
 - `planning` keeps hum/click cleanup conservative and still requires explicit restoration intent rather than widening generic `clean it up` phrasing automatically
 - `compare` prefers structured verification targets when they exist and exposes `evaluation_basis` in `ComparisonReport`
-- `benchmarks` now include both curated compare cases, including isolated hum/click direct-evidence and fallback checks, and a small fixture-backed request-cycle corpus that executes the real orchestration path across tonal cleanup, restoration, timing edits, stereo/spatial edits, peak-control, and benchmarked louder-and-controlled prompts
+- `benchmarks` now include curated compare cases, an interpretation-only corpus for the richer `IntentInterpretation` artifact, and a small fixture-backed request-cycle corpus that executes the real orchestration path across tonal cleanup, restoration, timing edits, stereo/spatial edits, peak-control, and benchmarked louder-and-controlled prompts
 
 ## Best-Supported Requests Right Now
 

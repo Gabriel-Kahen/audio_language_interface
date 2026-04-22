@@ -60,10 +60,23 @@ Returns a `report` object containing the `AnalysisReport`. The include flags onl
 - optional arguments:
   - `capability_manifest`
   - `prompt_version`
+  - `session_context`
 
 Returns an `intent_interpretation` artifact containing a provider-backed but contract-validated normalization of the raw request.
 
 This tool does not emit an `EditPlan`. It exists so callers can inspect or cache request interpretation separately from deterministic planning.
+
+`provider` also accepts optional `api_base_url`, `temperature`, `timeout_ms`, and `max_retries`.
+
+The returned artifact can now expose:
+
+- `next_action`
+- evidence-linked `descriptor_hypotheses`
+- structured `constraints`
+- optional `region_intents`
+- optional `candidate_interpretations`
+- optional `follow_up_intent`
+- provider cache and latency metadata
 
 ### `plan_edits`
 
@@ -199,9 +212,10 @@ Returns the completed request-cycle artifact set:
 - optional `provider.api_base_url`
 - optional `provider.temperature`
 - optional `provider.timeout_ms`
+- optional `provider.max_retries`
 - optional `prompt_version`
 
-When present, the tool forwards that configuration into orchestration and requires a runtime-injected `interpretRequest` implementation. The returned `intent_interpretation` artifact makes the normalized planner-facing request inspectable without bypassing deterministic planning.
+When present, the tool forwards that configuration into orchestration and requires a runtime-injected `interpretRequest` implementation. The returned `intent_interpretation` artifact makes the normalized planner-facing request inspectable without bypassing deterministic planning, and now includes the same richer clarification, constraint, region, alternate-candidate, and follow-up fields exposed by the standalone interpretation layer.
 
 Important follow-up behavior:
 

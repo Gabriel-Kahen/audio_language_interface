@@ -5,16 +5,20 @@ import type {
   EditPlan,
   VerificationTarget,
 } from "@audio-language-interface/compare";
+import type { IntentInterpretation } from "@audio-language-interface/interpretation";
 
 import type {
   ComparisonBenchmarkCase,
   ComparisonBenchmarkCorpus,
+  InterpretationBenchmarkCase,
+  InterpretationBenchmarkCorpus,
   RequestCycleBenchmarkCase,
   RequestCycleBenchmarkCorpus,
 } from "./types.js";
 
 export const FIRST_PROMPT_FAMILY_CORPUS_ID = "cleanup_slice_v1";
 export const FIRST_PROMPT_FAMILY_REQUEST_CYCLE_CORPUS_ID = "cleanup_request_cycle_v1";
+export const INTERPRETATION_CORPUS_ID = "intent_interpretation_v1";
 export const FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH = "fixtures/audio/manifest.json";
 export const FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID = "fixture_phase1_first_slice_loop_synthetic";
 
@@ -1640,6 +1644,200 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
 export const firstPromptFamilyRequestCycleSuite: RequestCycleBenchmarkCase[] =
   firstPromptFamilyRequestCycleCorpus.cases;
 
+export const interpretationBenchmarkCorpus: InterpretationBenchmarkCorpus = {
+  corpusId: INTERPRETATION_CORPUS_ID,
+  suiteId: "intent_interpretation",
+  description:
+    "Offline interpretation benchmark corpus for the richer IntentInterpretation artifact, covering clarification, constraints, region intents, follow-up interpretation, and runtime-only refusal behavior.",
+  cases: [
+    {
+      caseId: "interpret_darker_keep_punch",
+      family: "intent_interpretation",
+      prompt: "Make it darker but keep the punch.",
+      description: "Supported tonal request with a preservation constraint.",
+      interpretation: createInterpretationArtifact({
+        userRequest: "Make it darker but keep the punch.",
+        normalizedRequest: "Make it darker while preserving punch.",
+        nextAction: "plan",
+        normalizedObjectives: ["darker"],
+        candidateDescriptors: ["dark"],
+        constraints: [{ kind: "preserve", label: "punch" }],
+        descriptorHypotheses: [
+          {
+            label: "harsh",
+            status: "weak",
+            needs_more_evidence: ["analysis.measurements.spectral_balance.harshness_ratio_db"],
+          },
+        ],
+        groundingNotes: ["preserve transient impact while darkening"],
+      }),
+      expectation: {
+        requestClassification: "supported",
+        nextAction: "plan",
+        requiredNormalizedObjectives: ["darker"],
+        requiredConstraints: [{ kind: "preserve", label: "punch" }],
+        requiredGroundingNotes: ["preserve transient impact while darkening"],
+      },
+    },
+    {
+      caseId: "interpret_clean_it_clarify",
+      family: "intent_interpretation",
+      prompt: "Clean it.",
+      description: "Underspecified cleanup wording should clarify rather than overreach.",
+      interpretation: createInterpretationArtifact({
+        userRequest: "Clean it.",
+        normalizedRequest: "Clarify the cleanup target before planning.",
+        requestClassification: "supported_but_underspecified",
+        nextAction: "clarify",
+        normalizedObjectives: [],
+        candidateDescriptors: ["cleaner"],
+        ambiguities: ["cleanup target is not specific enough"],
+        clarificationQuestion:
+          "Do you want less hum, fewer clicks, less harshness, or lower steady noise?",
+        candidateInterpretations: [
+          {
+            normalized_request: "Reduce steady background noise conservatively.",
+            request_classification: "supported_but_underspecified",
+            next_action: "clarify",
+            normalized_objectives: ["cleaner"],
+            candidate_descriptors: ["cleaner"],
+            rationale:
+              "One plausible reading is broadband cleanup, but the request is still underspecified.",
+            confidence: 0.48,
+          },
+        ],
+      }),
+      expectation: {
+        requestClassification: "supported_but_underspecified",
+        nextAction: "clarify",
+        requireClarificationQuestion: true,
+        expectedCandidateInterpretationCount: 1,
+      },
+    },
+    {
+      caseId: "interpret_brighter_and_darker",
+      family: "intent_interpretation",
+      prompt: "Make it brighter and darker.",
+      description:
+        "Contradictory tonal directions should surface as clarification, not a fake compound plan.",
+      interpretation: createInterpretationArtifact({
+        userRequest: "Make it brighter and darker.",
+        normalizedRequest: "Clarify whether the tonal direction should be brighter or darker.",
+        requestClassification: "supported_but_underspecified",
+        nextAction: "clarify",
+        normalizedObjectives: ["brighter", "darker"],
+        candidateDescriptors: ["bright", "dark"],
+        ambiguities: ["conflicting tonal directions"],
+        clarificationQuestion: "Should the result be brighter or darker overall?",
+      }),
+      expectation: {
+        requestClassification: "supported_but_underspecified",
+        nextAction: "clarify",
+        requiredNormalizedObjectives: ["brighter", "darker"],
+        requireClarificationQuestion: true,
+      },
+    },
+    {
+      caseId: "interpret_remove_hum_first_second",
+      family: "intent_interpretation",
+      prompt: "Remove the hum only in the first second.",
+      description:
+        "Explicit region language should survive into region_intents even if planning later declines to auto-ground it.",
+      interpretation: createInterpretationArtifact({
+        userRequest: "Remove the hum only in the first second.",
+        normalizedRequest: "Reduce hum only in the first second.",
+        nextAction: "plan",
+        normalizedObjectives: ["remove_hum"],
+        candidateDescriptors: ["hum_present"],
+        regionIntents: [{ scope: "time_range", start_seconds: 0, end_seconds: 1 }],
+        descriptorHypotheses: [
+          {
+            label: "hum_present",
+            status: "supported",
+            supported_by: ["analysis.measurements.artifacts.hum_detected"],
+          },
+        ],
+      }),
+      expectation: {
+        requestClassification: "supported",
+        nextAction: "plan",
+        requiredNormalizedObjectives: ["remove_hum"],
+        requiredDescriptorHypotheses: [{ label: "hum_present", status: "supported" }],
+        requiredRegionIntentScope: "time_range",
+      },
+    },
+    {
+      caseId: "interpret_follow_up_not_that_much",
+      family: "intent_interpretation",
+      prompt: "Not that much.",
+      description:
+        "Session-aware fuzzy follow-up should reduce intensity without replacing deterministic follow-up resolution.",
+      interpretation: createInterpretationArtifact({
+        userRequest: "Not that much.",
+        normalizedRequest: "Make it darker and less harsh, but more subtly.",
+        nextAction: "plan",
+        normalizedObjectives: ["darker", "less_harsh"],
+        candidateDescriptors: ["dark", "harsh"],
+        constraints: [{ kind: "intensity", label: "subtle", value: "subtle" }],
+        followUpIntent: { kind: "reduce_previous_intensity" },
+        groundingNotes: ["use prior request as the semantic baseline"],
+      }),
+      expectation: {
+        requestClassification: "supported",
+        nextAction: "plan",
+        requiredConstraints: [{ kind: "intensity", label: "subtle", value: "subtle" }],
+        expectedFollowUpIntentKind: "reduce_previous_intensity",
+        requiredGroundingNotes: ["use prior request as the semantic baseline"],
+      },
+    },
+    {
+      caseId: "interpret_try_another_version",
+      family: "intent_interpretation",
+      prompt: "Try another version.",
+      description: "Follow-up branching request should stay explicit at the interpretation layer.",
+      interpretation: createInterpretationArtifact({
+        userRequest: "Try another version.",
+        normalizedRequest: "Try another version of the previous request from the prior baseline.",
+        nextAction: "plan",
+        normalizedObjectives: ["alternate_version"],
+        candidateDescriptors: [],
+        followUpIntent: { kind: "try_another_version" },
+      }),
+      expectation: {
+        requestClassification: "supported",
+        nextAction: "plan",
+        expectedFollowUpIntentKind: "try_another_version",
+      },
+    },
+    {
+      caseId: "interpret_bitcrush_runtime_only",
+      family: "intent_interpretation",
+      prompt: "Bitcrush this a little.",
+      description:
+        "Runtime-only wording should remain explicit instead of being upgraded into planner support.",
+      interpretation: createInterpretationArtifact({
+        userRequest: "Bitcrush this a little.",
+        normalizedRequest: "Apply a subtle bitcrush effect.",
+        requestClassification: "supported_runtime_only_but_not_planner_enabled",
+        nextAction: "refuse",
+        normalizedObjectives: ["bitcrush"],
+        candidateDescriptors: ["crunchy"],
+        unsupportedPhrases: ["bitcrush"],
+        rationale:
+          "The runtime can execute bitcrush explicitly, but the baseline planner does not support it automatically.",
+      }),
+      expectation: {
+        requestClassification: "supported_runtime_only_but_not_planner_enabled",
+        nextAction: "refuse",
+        requiredNormalizedObjectives: ["bitcrush"],
+      },
+    },
+  ],
+};
+
+export const interpretationBenchmarkSuite: InterpretationBenchmarkCase[] =
+  interpretationBenchmarkCorpus.cases;
+
 interface AnalysisValues {
   integratedLufs: number;
   truePeakDbtp: number;
@@ -1698,6 +1896,82 @@ function createCompareOptions(input: CreateCompareOptionsInput): CompareVersions
     ),
     generatedAt: "2026-04-14T22:00:00Z",
   };
+}
+
+interface CreateInterpretationArtifactInput {
+  userRequest: string;
+  normalizedRequest: string;
+  requestClassification?: IntentInterpretation["request_classification"];
+  nextAction: IntentInterpretation["next_action"];
+  normalizedObjectives: string[];
+  candidateDescriptors: string[];
+  ambiguities?: string[];
+  unsupportedPhrases?: string[];
+  clarificationQuestion?: string;
+  descriptorHypotheses?: IntentInterpretation["descriptor_hypotheses"];
+  constraints?: IntentInterpretation["constraints"];
+  regionIntents?: IntentInterpretation["region_intents"];
+  candidateInterpretations?: IntentInterpretation["candidate_interpretations"];
+  followUpIntent?: IntentInterpretation["follow_up_intent"];
+  groundingNotes?: string[];
+  rationale?: string;
+  confidence?: number;
+}
+
+function createInterpretationArtifact(
+  input: CreateInterpretationArtifactInput,
+): IntentInterpretation {
+  return {
+    schema_version: "1.0.0",
+    interpretation_id: `interpret_benchmark_${slugify(input.normalizedRequest)}`,
+    asset_id: "asset_benchmark_interpretation",
+    version_id: "ver_benchmark_interpretation",
+    analysis_report_id: "analysis_benchmark_interpretation",
+    semantic_profile_id: "semantic_benchmark_interpretation",
+    user_request: input.userRequest,
+    normalized_request: input.normalizedRequest,
+    request_classification: input.requestClassification ?? "supported",
+    next_action: input.nextAction,
+    normalized_objectives: input.normalizedObjectives,
+    candidate_descriptors: input.candidateDescriptors,
+    ...(input.descriptorHypotheses === undefined
+      ? {}
+      : { descriptor_hypotheses: input.descriptorHypotheses }),
+    ...(input.constraints === undefined ? {} : { constraints: input.constraints }),
+    ...(input.regionIntents === undefined ? {} : { region_intents: input.regionIntents }),
+    ...(input.candidateInterpretations === undefined
+      ? {}
+      : { candidate_interpretations: input.candidateInterpretations }),
+    ...(input.followUpIntent === undefined ? {} : { follow_up_intent: input.followUpIntent }),
+    ...(input.ambiguities === undefined ? {} : { ambiguities: input.ambiguities }),
+    ...(input.unsupportedPhrases === undefined
+      ? {}
+      : { unsupported_phrases: input.unsupportedPhrases }),
+    ...(input.clarificationQuestion === undefined
+      ? {}
+      : { clarification_question: input.clarificationQuestion }),
+    ...(input.groundingNotes === undefined ? {} : { grounding_notes: input.groundingNotes }),
+    rationale:
+      input.rationale ??
+      "Benchmark fixture artifact for evaluating the richer interpretation contract.",
+    confidence: input.confidence ?? 0.78,
+    provider: {
+      kind: "openai",
+      model: "gpt-5-mini",
+      prompt_version: "intent_v2",
+      cached: false,
+      response_ms: 42,
+    },
+    generated_at: "2026-04-21T22:00:00Z",
+  };
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 48);
 }
 
 function createVersion(versionId: string): AudioVersion {

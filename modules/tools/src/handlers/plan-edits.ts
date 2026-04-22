@@ -123,6 +123,52 @@ export const planEditsTool: ToolDefinition<PlanEditsArguments, Record<string, un
                 ...(args.intentInterpretation.clarification_question === undefined
                   ? {}
                   : { clarificationQuestion: args.intentInterpretation.clarification_question }),
+                nextAction: args.intentInterpretation.next_action,
+                ...(args.intentInterpretation.constraints === undefined
+                  ? {}
+                  : { constraints: args.intentInterpretation.constraints }),
+                ...(args.intentInterpretation.region_intents === undefined
+                  ? {}
+                  : { regionIntents: args.intentInterpretation.region_intents }),
+                ...(args.intentInterpretation.descriptor_hypotheses === undefined
+                  ? {}
+                  : {
+                      descriptorHypotheses: args.intentInterpretation.descriptor_hypotheses.map(
+                        (hypothesis) => ({
+                          label: hypothesis.label,
+                          status: hypothesis.status,
+                          ...(hypothesis.supported_by === undefined
+                            ? {}
+                            : { supportedBy: hypothesis.supported_by }),
+                          ...(hypothesis.contradicted_by === undefined
+                            ? {}
+                            : { contradictedBy: hypothesis.contradicted_by }),
+                          ...(hypothesis.needs_more_evidence === undefined
+                            ? {}
+                            : { needsMoreEvidence: hypothesis.needs_more_evidence }),
+                          ...(hypothesis.rationale === undefined
+                            ? {}
+                            : { rationale: hypothesis.rationale }),
+                        }),
+                      ),
+                    }),
+                ...(args.intentInterpretation.candidate_interpretations === undefined
+                  ? {}
+                  : {
+                      candidateInterpretations:
+                        args.intentInterpretation.candidate_interpretations.map((candidate) => ({
+                          normalizedRequest: candidate.normalized_request,
+                          requestClassification: candidate.request_classification,
+                          nextAction: candidate.next_action,
+                          confidence: candidate.confidence,
+                        })),
+                    }),
+                ...(args.intentInterpretation.follow_up_intent === undefined
+                  ? {}
+                  : { followUpIntent: args.intentInterpretation.follow_up_intent }),
+                ...(args.intentInterpretation.grounding_notes === undefined
+                  ? {}
+                  : { groundingNotes: args.intentInterpretation.grounding_notes }),
               },
             }),
         workspaceRoot: context.workspaceRoot,

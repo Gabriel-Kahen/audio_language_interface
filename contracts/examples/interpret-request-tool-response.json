@@ -15,14 +15,30 @@
       "user_request": "Make it a little darker and cleaner.",
       "normalized_request": "Make it darker and less harsh.",
       "request_classification": "supported",
+      "next_action": "plan",
       "normalized_objectives": ["darker", "less_harsh"],
       "candidate_descriptors": ["bright", "harsh"],
+      "descriptor_hypotheses": [
+        {
+          "label": "bright",
+          "status": "supported",
+          "supported_by": ["semantic:bright"]
+        },
+        {
+          "label": "harsh",
+          "status": "weak",
+          "supported_by": ["analysis:summary"],
+          "needs_more_evidence": ["semantic:harsh"]
+        }
+      ],
       "rationale": "The request maps cleanly to a modest darker tonal shift plus harshness reduction.",
       "confidence": 0.78,
       "provider": {
         "kind": "openai",
         "model": "gpt-4.1-mini",
-        "prompt_version": "intent_v1"
+        "prompt_version": "intent_v1",
+        "cached": false,
+        "response_ms": 118
       },
       "generated_at": "2026-04-21T22:30:01Z"
     }

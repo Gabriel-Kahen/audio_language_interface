@@ -36,6 +36,18 @@ Important session-aware constraint:
 - follow-up requests against `kind = "existing"` therefore require callers to provide the current `SessionGraph`
 - revert-style and alternate-version flows also require any needed historical `AudioVersion` artifacts to be materialized explicitly in `arguments.input.available_versions`
 
+When `arguments.interpretation` is present, it is an explicit opt-in object:
+
+- `mode = "llm_assisted"`
+- `api_key`
+- `provider.kind`
+- `provider.model`
+- optional `provider.api_base_url`
+- optional `provider.temperature`
+- optional `provider.timeout_ms`
+- optional `provider.max_retries`
+- optional `prompt_version`
+
 Request provenance must stay explicit:
 
 - `request.asset_id`, when provided, must match `arguments.input.asset.asset_id`
@@ -78,6 +90,7 @@ Important response semantics:
   - branched and replayed the prior request for `try another version`
   - reverted to a concrete historical version for `less`, `undo`, or `revert`
 - when interpretation is enabled, `intent_interpretation` makes the normalized planner-facing request and any ambiguity flags explicit without bypassing deterministic planning
+- the richer interpretation artifact may also expose `next_action`, descriptor hypotheses, constraints, region-intent proposals, alternate candidates, and follow-up interpretation metadata
 
 ## Failure behavior
 

@@ -25,6 +25,7 @@ describe("interpret_request tool", () => {
       user_request: "Make it darker and cleaner.",
       normalized_request: "Make it darker and less harsh.",
       request_classification: "supported",
+      next_action: "plan",
       normalized_objectives: ["darker", "less_harsh"],
       candidate_descriptors: ["bright", "harsh"],
       rationale: "The request maps to modest darker tonal balancing and harshness reduction.",
@@ -141,11 +142,18 @@ describe("interpret_request tool", () => {
             },
           },
           user_request: "Make it darker and cleaner.",
+          session_context: {
+            current_version_id: "ver_example",
+            previous_request: "Make it darker.",
+            original_user_request: "not that much",
+            follow_up_source: "repeat_last_request",
+          },
           provider: {
             kind: "openai",
             api_key: "sk-example",
             model: "gpt-4.1-mini",
             temperature: 0,
+            max_retries: 1,
           },
         },
       },
@@ -157,6 +165,19 @@ describe("interpret_request tool", () => {
 
     expect(response.status).toBe("ok");
     expect(interpretRequest).toHaveBeenCalledTimes(1);
+    expect(interpretRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionContext: {
+          current_version_id: "ver_example",
+          previous_request: "Make it darker.",
+          original_user_request: "not that much",
+          follow_up_source: "repeat_last_request",
+        },
+        provider: expect.objectContaining({
+          maxRetries: 1,
+        }),
+      }),
+    );
     expect(response.result?.intent_interpretation).toMatchObject({
       interpretation_id: "interpret_tool123",
       normalized_request: "Make it darker and less harsh.",

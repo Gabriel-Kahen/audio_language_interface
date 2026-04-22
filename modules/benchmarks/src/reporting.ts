@@ -1,6 +1,8 @@
 import type {
   ComparisonBenchmarkCaseResult,
   ComparisonBenchmarkRunResult,
+  InterpretationBenchmarkCaseResult,
+  InterpretationBenchmarkRunResult,
   RequestCycleBenchmarkCaseResult,
   RequestCycleBenchmarkCategory,
   RequestCycleBenchmarkRunResult,
@@ -9,8 +11,15 @@ import type {
 } from "./types.js";
 
 export function formatBenchmarkMarkdownReport(
-  result: ComparisonBenchmarkRunResult | RequestCycleBenchmarkRunResult,
+  result:
+    | ComparisonBenchmarkRunResult
+    | InterpretationBenchmarkRunResult
+    | RequestCycleBenchmarkRunResult,
 ): string {
+  if (isInterpretationBenchmarkRunResult(result)) {
+    return formatInterpretationMarkdownReport(result);
+  }
+
   return isRequestCycleBenchmarkRunResult(result)
     ? formatRequestCycleMarkdownReport(result)
     : formatComparisonMarkdownReport(result);
@@ -81,6 +90,35 @@ function formatRequestCycleMarkdownReport(result: RequestCycleBenchmarkRunResult
 
   for (const caseResult of result.caseResults) {
     lines.push(...formatRequestCycleCase(caseResult));
+  }
+
+  return lines.join("\n");
+}
+
+function formatInterpretationMarkdownReport(result: InterpretationBenchmarkRunResult): string {
+  const failedChecks = result.caseResults.flatMap((caseResult) =>
+    caseResult.checks
+      .filter((check) => !check.passed)
+      .map((check) => `${check.checkId} (${caseResult.caseId})`),
+  );
+  const lines = [
+    `# Benchmark Report: ${result.suiteId}`,
+    "",
+    "Benchmark mode: interpretation",
+    "",
+    `Corpus: ${result.corpusId}`,
+    "",
+    `Overall score: ${result.overallScore.toFixed(3)} (${result.totalPassedChecks}/${result.totalChecks} checks passed)`,
+    "",
+    "## Cases",
+  ];
+
+  for (const caseResult of result.caseResults) {
+    lines.push(...formatInterpretationCase(caseResult));
+  }
+
+  if (failedChecks.length > 0) {
+    lines.push("", "## Failure Buckets", ...failedChecks.map((failure) => `- ${failure}`));
   }
 
   return lines.join("\n");
@@ -161,6 +199,20 @@ function formatRequestCycleCase(caseResult: RequestCycleBenchmarkCaseResult): st
   );
   lines.push("");
   return lines;
+}
+
+function formatInterpretationCase(caseResult: InterpretationBenchmarkCaseResult): string[] {
+  return [
+    `- ${caseResult.caseId}: ${caseResult.score.toFixed(3)} (${caseResult.passedChecks}/${caseResult.totalChecks})`,
+    `  prompt: ${caseResult.prompt}`,
+    `  normalized request: ${caseResult.interpretation.normalized_request}`,
+    `  request classification: ${caseResult.interpretation.request_classification}`,
+    `  next action: ${caseResult.interpretation.next_action}`,
+    ...caseResult.checks.map(
+      (check) =>
+        `  [${check.passed ? "pass" : "fail"}] ${check.checkId} expected=${check.expected} actual=${check.actual}`,
+    ),
+  ];
 }
 
 function aggregateFailureBuckets(
@@ -287,7 +339,10 @@ function categoryTitle(category: RequestCycleBenchmarkCategory): string {
 }
 
 function isRequestCycleBenchmarkRunResult(
-  value: ComparisonBenchmarkRunResult | RequestCycleBenchmarkRunResult,
+  value:
+    | ComparisonBenchmarkRunResult
+    | InterpretationBenchmarkRunResult
+    | RequestCycleBenchmarkRunResult,
 ): value is RequestCycleBenchmarkRunResult {
   const firstCase = value.caseResults[0];
   return (
@@ -295,5 +350,20 @@ function isRequestCycleBenchmarkRunResult(
     typeof firstCase === "object" &&
     "scoreBreakdown" in firstCase &&
     "failureBuckets" in firstCase
+  );
+}
+
+function isInterpretationBenchmarkRunResult(
+  value:
+    | ComparisonBenchmarkRunResult
+    | InterpretationBenchmarkRunResult
+    | RequestCycleBenchmarkRunResult,
+): value is InterpretationBenchmarkRunResult {
+  const firstCase = value.caseResults[0];
+  return (
+    firstCase !== undefined &&
+    typeof firstCase === "object" &&
+    "interpretation" in firstCase &&
+    !("fixtures" in firstCase)
   );
 }

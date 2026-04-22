@@ -18,14 +18,39 @@ This tool does not plan or execute edits. It exists so callers can inspect the i
 - optional arguments:
   - `capability_manifest`
   - `prompt_version`
+  - `session_context`
 
 The tool requires an explicit provider config. It does not read API keys from hidden environment state.
+
+`provider` now also accepts optional runtime hardening fields:
+
+- `api_base_url`
+- `temperature`
+- `timeout_ms`
+- `max_retries`
+
+`session_context` lets callers provide explicit prior-request context for fuzzy follow-up interpretation without introducing hidden tool-layer state. Supported fields are:
+
+- `current_version_id`
+- `previous_request`
+- `original_user_request`
+- `follow_up_source`
 
 ## Success response
 
 On success, `result.intent_interpretation` contains a contract-valid `IntentInterpretation`.
 
 That artifact captures a bounded interpretation proposal only. Callers must still pass it through deterministic planning or refuse unsupported/ambiguous requests explicitly.
+
+The richer artifact can now carry:
+
+- `next_action`
+- evidence-linked `descriptor_hypotheses`
+- structured `constraints`
+- optional `region_intents`
+- optional alternate `candidate_interpretations`
+- optional `follow_up_intent`
+- optional provider cache and latency metadata
 
 ## Failure behavior
 

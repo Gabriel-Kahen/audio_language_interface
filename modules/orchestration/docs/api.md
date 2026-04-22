@@ -157,6 +157,7 @@ That interpretation step stays above deterministic planning:
 
 - orchestration records the original and resolved user requests in the returned artifact
 - the interpreter returns a contract-valid `IntentInterpretation` explicitly
+- orchestration passes explicit session context such as the current version id, original user request, and prior request when that context exists
 - `modules/planning` still receives one concrete planner-facing request string plus the usual validated `SemanticProfile`
 
 Orchestration now verifies that the loaded historical `AudioVersion` matches:

@@ -1,6 +1,12 @@
 import { buildCandidateSchema, buildSystemInstruction, buildUserPrompt } from "../prompts.js";
 import type { InterpretationProvider, InterpretationProviderRequest } from "../types.js";
-import { parseInterpretationCandidate, resolveFetchImpl, toApiError } from "../validation.js";
+import {
+  isRetryableInterpretationStatus,
+  parseInterpretationCandidate,
+  resolveFetchImpl,
+  sleepMs,
+  toApiError,
+} from "../validation.js";
 
 export class GoogleInterpretationProvider implements InterpretationProvider {
   async interpret(input: InterpretationProviderRequest) {
@@ -11,49 +17,68 @@ export class GoogleInterpretationProvider implements InterpretationProvider {
       baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`,
     );
     url.searchParams.set("key", input.provider.apiKey);
+    const maxAttempts = (input.provider.maxRetries ?? 1) + 1;
 
-    const response = await fetchImpl(url, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: buildSystemInstruction() }],
-        },
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: buildUserPrompt(input) }],
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        const response = await fetchImpl(url, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
           },
-        ],
-        generationConfig: {
-          temperature: input.provider.temperature ?? 0,
-          responseMimeType: "application/json",
-          responseSchema: buildCandidateSchema(),
-        },
-      }),
-      ...(input.provider.timeoutMs === undefined
-        ? {}
-        : { signal: AbortSignal.timeout(input.provider.timeoutMs) }),
-    });
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{ text: buildSystemInstruction() }],
+            },
+            contents: [
+              {
+                role: "user",
+                parts: [{ text: buildUserPrompt(input) }],
+              },
+            ],
+            generationConfig: {
+              temperature: input.provider.temperature ?? 0,
+              responseMimeType: "application/json",
+              responseSchema: buildCandidateSchema(),
+            },
+          }),
+          ...(input.provider.timeoutMs === undefined
+            ? {}
+            : { signal: AbortSignal.timeout(input.provider.timeoutMs) }),
+        });
 
-    if (!response.ok) {
-      throw new Error(await toApiError("Google", response));
-    }
+        if (!response.ok) {
+          if (attempt < maxAttempts && isRetryableInterpretationStatus(response.status)) {
+            await sleepMs(attempt * 200);
+            continue;
+          }
 
-    const payload = (await response.json()) as {
-      candidates?: Array<{
-        content?: {
-          parts?: Array<{ text?: string | null }>;
+          throw new Error(await toApiError("Google", response));
+        }
+
+        const payload = (await response.json()) as {
+          candidates?: Array<{
+            content?: {
+              parts?: Array<{ text?: string | null }>;
+            };
+          }>;
         };
-      }>;
-    };
-    const content = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (typeof content !== "string" || content.length === 0) {
-      throw new Error("Google interpretation response did not contain structured content.");
+        const content = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (typeof content !== "string" || content.length === 0) {
+          throw new Error("Google interpretation response did not contain structured content.");
+        }
+
+        return parseInterpretationCandidate(content);
+      } catch (error) {
+        if (attempt < maxAttempts) {
+          await sleepMs(attempt * 200);
+          continue;
+        }
+
+        throw error;
+      }
     }
 
-    return parseInterpretationCandidate(content);
+    throw new Error("Google interpretation request exhausted all retries.");
   }
 }

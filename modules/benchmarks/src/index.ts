@@ -15,9 +15,17 @@ export {
   firstPromptFamilyPromptSuite,
   firstPromptFamilyRequestCycleCorpus,
   firstPromptFamilyRequestCycleSuite,
+  INTERPRETATION_CORPUS_ID,
+  interpretationBenchmarkCorpus,
+  interpretationBenchmarkSuite,
 } from "./prompt-suite.js";
 export { formatBenchmarkMarkdownReport } from "./reporting.js";
-export { runComparisonBenchmarkCase, runComparisonBenchmarks } from "./run-benchmarks.js";
+export {
+  runComparisonBenchmarkCase,
+  runComparisonBenchmarks,
+  runInterpretationBenchmarkCase,
+  runInterpretationBenchmarks,
+} from "./run-benchmarks.js";
 export {
   runRequestCycleBenchmarkCase,
   runRequestCycleBenchmarks,
@@ -25,6 +33,8 @@ export {
 export {
   scoreComparisonBenchmarkCase,
   scoreComparisonReport,
+  scoreIntentInterpretation,
+  scoreInterpretationBenchmarkCase,
   scoreRequestCycleBenchmarkCase,
 } from "./scoring.js";
 export type {
@@ -40,6 +50,13 @@ export type {
   ComparisonBenchmarkExpectation,
   ComparisonBenchmarkFixtureBinding,
   ComparisonBenchmarkRunResult,
+  InterpretationBenchmarkCase,
+  InterpretationBenchmarkCaseResult,
+  InterpretationBenchmarkCorpus,
+  InterpretationBenchmarkExpectation,
+  InterpretationBenchmarkExpectedConstraint,
+  InterpretationBenchmarkExpectedDescriptor,
+  InterpretationBenchmarkRunResult,
   RequestCycleBenchmarkArtifacts,
   RequestCycleBenchmarkCase,
   RequestCycleBenchmarkCaseResult,

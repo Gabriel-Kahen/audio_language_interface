@@ -324,6 +324,7 @@ function parseInterpretationProvider(
   const apiBaseUrl = expectOptionalString(record.api_base_url, `${fieldName}.api_base_url`);
   const temperature = expectOptionalNumber(record.temperature, `${fieldName}.temperature`);
   const timeoutMs = expectOptionalNumber(record.timeout_ms, `${fieldName}.timeout_ms`);
+  const maxRetries = expectOptionalNumber(record.max_retries, `${fieldName}.max_retries`);
 
   return {
     kind,
@@ -331,6 +332,7 @@ function parseInterpretationProvider(
     ...(apiBaseUrl === undefined ? {} : { apiBaseUrl }),
     ...(temperature === undefined ? {} : { temperature }),
     ...(timeoutMs === undefined ? {} : { timeoutMs }),
+    ...(maxRetries === undefined ? {} : { maxRetries }),
   };
 }
 

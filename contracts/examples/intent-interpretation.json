@@ -8,18 +8,56 @@
   "user_request": "Give this more sparkle and tame the annoying esses.",
   "normalized_request": "Make it airier and tame the sibilance.",
   "request_classification": "supported_but_underspecified",
+  "next_action": "clarify",
   "normalized_objectives": ["more_air", "tame_sibilance"],
   "candidate_descriptors": ["airy", "sibilant"],
+  "descriptor_hypotheses": [
+    {
+      "label": "airy",
+      "status": "weak",
+      "supported_by": ["semantic:bright"],
+      "needs_more_evidence": ["analysis:measurements.spectral_balance.high_band_db"]
+    },
+    {
+      "label": "sibilant",
+      "status": "supported",
+      "supported_by": ["analysis:summary", "semantic:unresolved:sibilant"]
+    }
+  ],
+  "constraints": [
+    {
+      "kind": "avoid",
+      "label": "added_harshness",
+      "rationale": "Do not trade de-essing for extra upper-mid bite."
+    }
+  ],
+  "candidate_interpretations": [
+    {
+      "normalized_request": "Tame the sibilance.",
+      "request_classification": "supported",
+      "next_action": "plan",
+      "normalized_objectives": ["tame_sibilance"],
+      "candidate_descriptors": ["sibilant"],
+      "confidence": 0.68,
+      "rationale": "This is the safer grounded reading."
+    }
+  ],
   "ambiguities": [
     "The request does not say whether preserving current brightness or overall loudness matters."
   ],
   "clarification_question": "Should the priority be added air or less sibilance first?",
+  "grounding_notes": [
+    "semantic:bright suggests upper-band energy",
+    "sibilance remains unresolved in deterministic semantics"
+  ],
   "rationale": "The request maps toward upper-band lift and explicit sibilance reduction, but the current baseline planner treats that combination as a clarification case rather than a safe one-pass compound.",
   "confidence": 0.79,
   "provider": {
     "kind": "openai",
     "model": "gpt-4.1-mini",
-    "prompt_version": "intent_v1"
+    "prompt_version": "intent_v1",
+    "cached": false,
+    "response_ms": 142
   },
   "generated_at": "2026-04-21T20:00:00Z"
 }

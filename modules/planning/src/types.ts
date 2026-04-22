@@ -23,6 +23,8 @@ export type PlannerRequestClass =
   | "unsupported"
   | "supported_runtime_only_but_not_planner_enabled";
 export type PlannerFailureClass = Exclude<PlannerRequestClass, "supported">;
+export type InterpretationNextAction = "plan" | "clarify" | "refuse";
+export type DescriptorHypothesisStatus = "supported" | "weak" | "contradicted" | "unresolved";
 
 export type AudioVersion = CoreAudioVersion;
 export type AnalysisAnnotation = UpstreamAnalysisAnnotation;
@@ -95,9 +97,49 @@ export interface PlannerIntentInterpretationInput {
   interpretationId?: string;
   normalizedRequest: string;
   requestClassification?: PlannerRequestClass;
+  nextAction?: InterpretationNextAction;
   ambiguities?: string[];
   unsupportedPhrases?: string[];
   clarificationQuestion?: string;
+  constraints?: Array<{
+    kind: "intensity" | "preserve" | "avoid" | "safety" | "scope";
+    label: string;
+    value?: string;
+    rationale?: string;
+  }>;
+  regionIntents?: Array<{
+    scope: "full_file" | "time_range" | "segment_reference";
+    start_seconds?: number;
+    end_seconds?: number;
+    reference?: string;
+    rationale?: string;
+  }>;
+  descriptorHypotheses?: Array<{
+    label: string;
+    status: DescriptorHypothesisStatus;
+    supportedBy?: string[];
+    contradictedBy?: string[];
+    needsMoreEvidence?: string[];
+    rationale?: string;
+  }>;
+  candidateInterpretations?: Array<{
+    normalizedRequest: string;
+    requestClassification: PlannerRequestClass;
+    nextAction: InterpretationNextAction;
+    confidence: number;
+  }>;
+  followUpIntent?: {
+    kind:
+      | "direct_request"
+      | "repeat_last_request"
+      | "reduce_previous_intensity"
+      | "undo"
+      | "revert"
+      | "try_another_version"
+      | "unclear_follow_up";
+    rationale?: string;
+  };
+  groundingNotes?: string[];
 }
 
 export interface ParsedEditObjectives {

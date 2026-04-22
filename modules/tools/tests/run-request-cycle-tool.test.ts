@@ -205,6 +205,7 @@ function buildRequestCycleResult(): RequestCycleResult {
           user_request: "Make it darker.",
           normalized_request: "Make it darker with a gentle high-shelf cut.",
           request_classification: "supported",
+          next_action: "plan",
           normalized_objectives: ["darker"],
           candidate_descriptors: ["dark"],
           rationale: "Make the tonal move explicit without bypassing deterministic planning.",
@@ -255,6 +256,7 @@ function buildRequestCycleResult(): RequestCycleResult {
       user_request: "Make it darker.",
       normalized_request: "Make it darker with a gentle high-shelf cut.",
       request_classification: "supported",
+      next_action: "plan",
       normalized_objectives: ["darker"],
       candidate_descriptors: ["dark"],
       rationale: "Make the tonal move explicit without bypassing deterministic planning.",
@@ -398,6 +400,7 @@ describe("run_request_cycle tool", () => {
           model: "gpt-5-mini",
           temperature: 0.2,
           apiBaseUrl: "http://localhost:11434/v1",
+          maxRetries: 2,
         },
       });
       expect(options.dependencies.interpretRequest).toEqual(expect.any(Function));
@@ -420,6 +423,7 @@ describe("run_request_cycle tool", () => {
               model: "gpt-5-mini",
               temperature: 0.2,
               api_base_url: "http://localhost:11434/v1",
+              max_retries: 2,
             },
           },
           input: {

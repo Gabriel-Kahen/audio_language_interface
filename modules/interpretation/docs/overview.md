@@ -9,6 +9,7 @@ This module does not emit an `EditPlan`. It captures a bounded interpretation pr
 ## Public API surface
 
 - `interpretRequest(options) => Promise<IntentInterpretation>`
+- `MemoryInterpretationCache`
 - `assertValidIntentInterpretation(artifact)` and `isValidIntentInterpretation(artifact)` for contract checks
 
 See `docs/api.md` for the concrete API shape and failure behavior.
@@ -20,6 +21,7 @@ See `docs/api.md` for the concrete API shape and failure behavior.
 - `src/provider.ts`: provider selection
 - `src/providers/openai.ts`: fetch-based OpenAI implementation
 - `src/providers/google.ts`: fetch-based Google implementation
+- `src/cache.ts`: optional in-memory cache for explicit interpretation reuse
 - `src/validation.ts`: candidate and contract validation
 - `src/index.ts`: public exports only
 
@@ -50,3 +52,5 @@ See `docs/api.md` for the concrete API shape and failure behavior.
 - supported providers use direct `fetch` calls, not provider SDKs
 - the module validates both the provider-returned JSON payload and the final `IntentInterpretation`
 - interpretation stays optional and above deterministic planning
+- the artifact can now carry explicit `next_action`, descriptor hypotheses, constraints, region-intent proposals, alternate candidates, and follow-up interpretation metadata
+- provider behavior is hardened with explicit timeout, retry, and optional cache support, but raw provider failures still surface instead of falling back silently

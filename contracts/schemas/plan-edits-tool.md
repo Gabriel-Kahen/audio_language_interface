@@ -30,6 +30,8 @@ The returned plan must include `capability_manifest_id` so downstream callers kn
 
 When present, `intent_interpretation` gives the planner a contract-valid normalized request proposal from the optional interpretation layer. Planning still validates and may reject that proposal deterministically.
 
+The planner currently consumes the selected top-level interpretation only. Alternate `candidate_interpretations` remain inspectable context and do not let the tool bypass deterministic planner validation.
+
 ## Failure behavior
 
 The tool follows the shared `ToolResponse` envelope and may return:

@@ -13,6 +13,7 @@
     "user_request",
     "normalized_request",
     "request_classification",
+    "next_action",
     "normalized_objectives",
     "candidate_descriptors",
     "confidence",
@@ -48,11 +49,134 @@
     "request_classification": {
       "$ref": "./common.schema.json#/$defs/plannerRequestClass"
     },
+    "next_action": {
+      "$ref": "./common.schema.json#/$defs/interpretationNextAction"
+    },
     "normalized_objectives": {
       "$ref": "./common.schema.json#/$defs/stringArray"
     },
     "candidate_descriptors": {
       "$ref": "./common.schema.json#/$defs/stringArray"
+    },
+    "descriptor_hypotheses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "status"],
+        "properties": {
+          "label": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+          "status": {
+            "$ref": "./common.schema.json#/$defs/descriptorHypothesisStatus"
+          },
+          "supported_by": { "$ref": "./common.schema.json#/$defs/stringArray" },
+          "contradicted_by": { "$ref": "./common.schema.json#/$defs/stringArray" },
+          "needs_more_evidence": { "$ref": "./common.schema.json#/$defs/stringArray" },
+          "rationale": { "$ref": "./common.schema.json#/$defs/nonEmptyString" }
+        }
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "label"],
+        "properties": {
+          "kind": {
+            "$ref": "./common.schema.json#/$defs/interpretationConstraintKind"
+          },
+          "label": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+          "value": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+          "rationale": { "$ref": "./common.schema.json#/$defs/nonEmptyString" }
+        }
+      }
+    },
+    "region_intents": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["scope"],
+            "properties": {
+              "scope": { "const": "full_file" },
+              "rationale": { "$ref": "./common.schema.json#/$defs/nonEmptyString" }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["scope", "start_seconds", "end_seconds"],
+            "properties": {
+              "scope": { "const": "time_range" },
+              "start_seconds": { "type": "number", "minimum": 0 },
+              "end_seconds": { "type": "number", "minimum": 0 },
+              "rationale": { "$ref": "./common.schema.json#/$defs/nonEmptyString" }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["scope", "reference"],
+            "properties": {
+              "scope": { "const": "segment_reference" },
+              "reference": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+              "rationale": { "$ref": "./common.schema.json#/$defs/nonEmptyString" }
+            }
+          }
+        ]
+      }
+    },
+    "candidate_interpretations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "normalized_request",
+          "request_classification",
+          "next_action",
+          "normalized_objectives",
+          "candidate_descriptors",
+          "confidence",
+          "rationale"
+        ],
+        "properties": {
+          "normalized_request": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+          "request_classification": {
+            "$ref": "./common.schema.json#/$defs/plannerRequestClass"
+          },
+          "next_action": {
+            "$ref": "./common.schema.json#/$defs/interpretationNextAction"
+          },
+          "normalized_objectives": {
+            "$ref": "./common.schema.json#/$defs/stringArray"
+          },
+          "candidate_descriptors": {
+            "$ref": "./common.schema.json#/$defs/stringArray"
+          },
+          "ambiguities": { "$ref": "./common.schema.json#/$defs/stringArray" },
+          "unsupported_phrases": {
+            "$ref": "./common.schema.json#/$defs/stringArray"
+          },
+          "clarification_question": {
+            "$ref": "./common.schema.json#/$defs/nonEmptyString"
+          },
+          "rationale": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+          "confidence": { "$ref": "./common.schema.json#/$defs/confidence" }
+        }
+      }
+    },
+    "follow_up_intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "$ref": "./common.schema.json#/$defs/followUpIntentKind" },
+        "rationale": { "$ref": "./common.schema.json#/$defs/nonEmptyString" }
+      }
     },
     "ambiguities": {
       "$ref": "./common.schema.json#/$defs/stringArray"
@@ -62,6 +186,9 @@
     },
     "clarification_question": {
       "$ref": "./common.schema.json#/$defs/nonEmptyString"
+    },
+    "grounding_notes": {
+      "$ref": "./common.schema.json#/$defs/stringArray"
     },
     "rationale": {
       "$ref": "./common.schema.json#/$defs/nonEmptyString"
@@ -82,6 +209,13 @@
         },
         "prompt_version": {
           "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "cached": {
+          "type": "boolean"
+        },
+        "response_ms": {
+          "type": "number",
+          "minimum": 0
         }
       }
     },

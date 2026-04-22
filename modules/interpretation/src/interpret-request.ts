@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { createInterpretationProvider } from "./provider.js";
 import type { IntentInterpretation, InterpretRequestOptions } from "./types.js";
 import { DEFAULT_PROMPT_VERSION } from "./types.js";
@@ -10,6 +12,7 @@ import { assertValidInterpretationInputs, buildInterpretationArtifact } from "./
 export async function interpretRequest(
   options: InterpretRequestOptions,
 ): Promise<IntentInterpretation> {
+  const promptVersion = options.promptVersion ?? DEFAULT_PROMPT_VERSION;
   const capabilityManifest = assertValidInterpretationInputs({
     audioVersion: options.audioVersion,
     analysisReport: options.analysisReport,
@@ -18,8 +21,24 @@ export async function interpretRequest(
       ? {}
       : { capabilityManifest: options.capabilityManifest }),
   });
+  const cacheKey = buildInterpretationCacheKey(options, capabilityManifest, promptVersion);
+
+  if (options.cacheStore) {
+    const cached = await options.cacheStore.get(cacheKey);
+    if (cached) {
+      return {
+        ...cached,
+        provider: {
+          ...cached.provider,
+          cached: true,
+          response_ms: 0,
+        },
+      };
+    }
+  }
 
   const provider = createInterpretationProvider(options.provider);
+  const startedAt = Date.now();
   const candidate = await provider.interpret({
     userRequest: options.userRequest,
     audioVersion: options.audioVersion,
@@ -27,11 +46,13 @@ export async function interpretRequest(
     semanticProfile: options.semanticProfile,
     capabilityManifest,
     provider: options.provider,
-    promptVersion: options.promptVersion ?? DEFAULT_PROMPT_VERSION,
+    ...(options.sessionContext === undefined ? {} : { sessionContext: options.sessionContext }),
+    promptVersion,
     ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
   });
+  const responseMs = Date.now() - startedAt;
 
-  return buildInterpretationArtifact(
+  const interpretation = buildInterpretationArtifact(
     {
       userRequest: options.userRequest,
       audioVersion: options.audioVersion,
@@ -39,9 +60,47 @@ export async function interpretRequest(
       semanticProfile: options.semanticProfile,
       capabilityManifest,
       provider: options.provider,
-      promptVersion: options.promptVersion ?? DEFAULT_PROMPT_VERSION,
+      promptVersion,
       ...(options.generatedAt === undefined ? {} : { generatedAt: options.generatedAt }),
     },
     candidate,
   );
+
+  const hydratedInterpretation: IntentInterpretation = {
+    ...interpretation,
+    provider: {
+      ...interpretation.provider,
+      cached: false,
+      response_ms: responseMs,
+    },
+  };
+
+  if (options.cacheStore) {
+    await options.cacheStore.set(cacheKey, hydratedInterpretation);
+  }
+
+  return hydratedInterpretation;
+}
+
+function buildInterpretationCacheKey(
+  options: InterpretRequestOptions,
+  capabilityManifest: NonNullable<InterpretRequestOptions["capabilityManifest"]>,
+  promptVersion: string,
+): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        request: options.userRequest,
+        asset_id: options.audioVersion.asset_id,
+        version_id: options.audioVersion.version_id,
+        analysis_report_id: options.analysisReport.report_id,
+        semantic_profile_id: options.semanticProfile.profile_id,
+        provider_kind: options.provider.kind,
+        provider_model: options.provider.model,
+        prompt_version: promptVersion,
+        capability_manifest_id: capabilityManifest.manifest_id,
+        session_context: options.sessionContext,
+      }),
+    )
+    .digest("hex");
 }

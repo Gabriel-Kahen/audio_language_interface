@@ -4,7 +4,11 @@ import type { AudioVersion } from "@audio-language-interface/core";
 import type { SemanticProfile } from "@audio-language-interface/semantics";
 import { describe, expect, it } from "vitest";
 
-import { assertValidIntentInterpretation, interpretRequest } from "../src/index.js";
+import {
+  assertValidIntentInterpretation,
+  interpretRequest,
+  MemoryInterpretationCache,
+} from "../src/index.js";
 
 describe("interpretRequest", () => {
   it("builds a validated interpretation artifact from an OpenAI response", async () => {
@@ -28,10 +32,48 @@ describe("interpretRequest", () => {
                   content: JSON.stringify({
                     normalized_request: "Make it airier and tame the sibilance.",
                     request_classification: "supported_but_underspecified",
+                    next_action: "clarify",
                     normalized_objectives: ["more_air", "tame_sibilance"],
                     candidate_descriptors: ["airy", "sibilant"],
+                    descriptor_hypotheses: [
+                      {
+                        label: "airy",
+                        status: "weak",
+                        supported_by: ["semantic:bright"],
+                        needs_more_evidence: [
+                          "analysis:measurements.spectral_balance.high_band_db",
+                        ],
+                      },
+                      {
+                        label: "sibilant",
+                        status: "supported",
+                        supported_by: ["analysis:summary", "semantic:unresolved:sibilant"],
+                      },
+                    ],
+                    constraints: [
+                      {
+                        kind: "avoid",
+                        label: "added_harshness",
+                        rationale: "Do not trade de-essing for extra upper-mid bite.",
+                      },
+                    ],
+                    candidate_interpretations: [
+                      {
+                        normalized_request: "Tame the sibilance.",
+                        request_classification: "supported",
+                        next_action: "plan",
+                        normalized_objectives: ["tame_sibilance"],
+                        candidate_descriptors: ["sibilant"],
+                        rationale: "This is the safer grounded reading.",
+                        confidence: 0.68,
+                      },
+                    ],
                     clarification_question:
                       "Should the priority be added air or less sibilance first?",
+                    grounding_notes: [
+                      "semantic:bright suggests upper-band energy",
+                      "sibilance remains unresolved in deterministic semantics",
+                    ],
                     rationale:
                       "The request maps toward upper-band lift plus sibilance control, which the current baseline planner treats as a clarification case.",
                     confidence: 0.81,
@@ -47,7 +89,9 @@ describe("interpretRequest", () => {
     assertValidIntentInterpretation(interpretation);
     expect(interpretation.user_request).toBe("Give this more sparkle and tame the annoying esses.");
     expect(interpretation.normalized_request).toBe("Make it airier and tame the sibilance.");
+    expect(interpretation.next_action).toBe("clarify");
     expect(interpretation.provider.kind).toBe("openai");
+    expect(interpretation.descriptor_hypotheses?.[0]?.status).toBe("weak");
   });
 
   it("builds a validated interpretation artifact from a Google response", async () => {
@@ -73,8 +117,12 @@ describe("interpretRequest", () => {
                       text: JSON.stringify({
                         normalized_request: "Center this more and make it wider.",
                         request_classification: "supported",
+                        next_action: "plan",
                         normalized_objectives: ["more_centered", "wider"],
                         candidate_descriptors: ["off_center", "wide"],
+                        follow_up_intent: {
+                          kind: "direct_request",
+                        },
                         rationale:
                           "The request maps cleanly onto the current conservative stereo balance and width prompt family.",
                         confidence: 0.76,
@@ -91,6 +139,7 @@ describe("interpretRequest", () => {
 
     expect(interpretation.normalized_request).toBe("Center this more and make it wider.");
     expect(interpretation.provider.kind).toBe("google");
+    expect(interpretation.next_action).toBe("plan");
   });
 
   it("fails when the provider returns invalid structured JSON", async () => {
@@ -115,6 +164,221 @@ describe("interpretRequest", () => {
           ),
       }),
     ).rejects.toThrow(/invalid candidate payload/i);
+  });
+
+  it("fails when region_intents violate the interpretation contract", async () => {
+    await expect(
+      interpretRequest({
+        userRequest: "Remove the hum in the intro.",
+        audioVersion: createAudioVersion(),
+        analysisReport: createAnalysisReport(),
+        semanticProfile: createSemanticProfile(),
+        capabilityManifest: defaultRuntimeCapabilityManifest,
+        provider: {
+          kind: "openai",
+          apiKey: "test-key",
+          model: "gpt-4.1-mini",
+        },
+        fetchImpl: async () =>
+          new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({
+                      normalized_request: "Remove the hum in the intro.",
+                      request_classification: "supported",
+                      next_action: "plan",
+                      normalized_objectives: ["remove_hum"],
+                      candidate_descriptors: ["hum_present"],
+                      region_intents: [{ scope: "time_range" }],
+                      rationale: "Region-scoped dehum request.",
+                      confidence: 0.72,
+                    }),
+                  },
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+      }),
+    ).rejects.toThrow(/invalid candidate payload/i);
+  });
+
+  it("passes session context through and captures follow-up intent and intensity constraints", async () => {
+    const interpretation = await interpretRequest({
+      userRequest: "not that much",
+      audioVersion: createAudioVersion(),
+      analysisReport: createAnalysisReport(),
+      semanticProfile: createSemanticProfile(),
+      capabilityManifest: defaultRuntimeCapabilityManifest,
+      provider: {
+        kind: "openai",
+        apiKey: "test-key",
+        model: "gpt-4.1-mini",
+      },
+      sessionContext: {
+        current_version_id: "ver_interp123",
+        previous_request: "Make it darker and less harsh.",
+        original_user_request: "not that much",
+        follow_up_source: "direct_request",
+      },
+      fetchImpl: async (_url, init) => {
+        const body = JSON.parse(String(init?.body)) as {
+          messages?: Array<{ role?: string; content?: string }>;
+        };
+        expect(body.messages?.[1]?.content).toContain(
+          '"previous_request": "Make it darker and less harsh."',
+        );
+
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    normalized_request: "Make it darker and less harsh.",
+                    request_classification: "supported",
+                    next_action: "plan",
+                    normalized_objectives: ["darker", "less_harsh"],
+                    candidate_descriptors: ["bright", "harsh"],
+                    constraints: [
+                      {
+                        kind: "intensity",
+                        label: "edit_intensity",
+                        value: "subtle",
+                      },
+                    ],
+                    follow_up_intent: {
+                      kind: "reduce_previous_intensity",
+                      rationale: "The user is softening the prior tonal move.",
+                    },
+                    rationale: "This follow-up keeps the previous request but reduces intensity.",
+                    confidence: 0.79,
+                  }),
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      },
+    });
+
+    expect(interpretation.follow_up_intent?.kind).toBe("reduce_previous_intensity");
+    expect(interpretation.constraints?.[0]?.value).toBe("subtle");
+  });
+
+  it("supports explicit in-memory caching for identical interpretation inputs", async () => {
+    const cache = new MemoryInterpretationCache();
+    let callCount = 0;
+
+    const first = await interpretRequest({
+      userRequest: "Make it darker.",
+      audioVersion: createAudioVersion(),
+      analysisReport: createAnalysisReport(),
+      semanticProfile: createSemanticProfile(),
+      capabilityManifest: defaultRuntimeCapabilityManifest,
+      provider: {
+        kind: "openai",
+        apiKey: "test-key",
+        model: "gpt-4.1-mini",
+      },
+      cacheStore: cache,
+      fetchImpl: async () => {
+        callCount += 1;
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    normalized_request: "Make it darker.",
+                    request_classification: "supported",
+                    next_action: "plan",
+                    normalized_objectives: ["darker"],
+                    candidate_descriptors: ["bright"],
+                    rationale: "Simple tonal-darkening request.",
+                    confidence: 0.88,
+                  }),
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      },
+    });
+
+    const second = await interpretRequest({
+      userRequest: "Make it darker.",
+      audioVersion: createAudioVersion(),
+      analysisReport: createAnalysisReport(),
+      semanticProfile: createSemanticProfile(),
+      capabilityManifest: defaultRuntimeCapabilityManifest,
+      provider: {
+        kind: "openai",
+        apiKey: "test-key",
+        model: "gpt-4.1-mini",
+      },
+      cacheStore: cache,
+      fetchImpl: async () => {
+        callCount += 1;
+        throw new Error("Should not be called when the interpretation is cached.");
+      },
+    });
+
+    expect(callCount).toBe(1);
+    expect(first.normalized_request).toBe(second.normalized_request);
+    expect(second.provider.cached).toBe(true);
+  });
+
+  it("retries transient provider failures when maxRetries is configured", async () => {
+    let attempts = 0;
+
+    const interpretation = await interpretRequest({
+      userRequest: "Make it wider.",
+      audioVersion: createAudioVersion(),
+      analysisReport: createAnalysisReport(),
+      semanticProfile: createSemanticProfile(),
+      capabilityManifest: defaultRuntimeCapabilityManifest,
+      provider: {
+        kind: "openai",
+        apiKey: "test-key",
+        model: "gpt-4.1-mini",
+        maxRetries: 2,
+      },
+      fetchImpl: async () => {
+        attempts += 1;
+        if (attempts < 2) {
+          return new Response("temporary failure", { status: 429 });
+        }
+
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    normalized_request: "Make it wider.",
+                    request_classification: "supported",
+                    next_action: "plan",
+                    normalized_objectives: ["wider"],
+                    candidate_descriptors: ["off_center"],
+                    rationale: "Safe stereo-width request.",
+                    confidence: 0.7,
+                  }),
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      },
+    });
+
+    expect(attempts).toBe(2);
+    expect(interpretation.normalized_request).toBe("Make it wider.");
   });
 });
 

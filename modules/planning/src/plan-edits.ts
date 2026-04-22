@@ -83,7 +83,11 @@ export function planEdits(options: PlanEditsOptions): EditPlan {
     resolvePitchEstimate(options, objectives),
     options.audioVersion,
   );
-  const constraints = buildConstraints(objectives, options.constraints);
+  const constraints = buildConstraints(
+    objectives,
+    options.constraints,
+    options.intentInterpretation,
+  );
   const plan: EditPlan = {
     schema_version: CONTRACT_SCHEMA_VERSION,
     plan_id: createPlanId(options, objectives.normalized_request),
@@ -127,9 +131,25 @@ function resolvePlannerObjectives(
   intentInterpretation?: PlanEditsOptions["intentInterpretation"],
 ): ReturnType<typeof parseUserRequest> {
   if (intentInterpretation?.requestClassification) {
-    if (intentInterpretation.requestClassification !== "supported") {
+    if (
+      intentInterpretation.requestClassification !== "supported" ||
+      intentInterpretation.nextAction === "clarify" ||
+      intentInterpretation.nextAction === "refuse"
+    ) {
+      const failureClass =
+        intentInterpretation.requestClassification === "supported" &&
+        intentInterpretation.nextAction === "clarify"
+          ? "supported_but_underspecified"
+          : intentInterpretation.requestClassification === "supported" &&
+              intentInterpretation.nextAction === "refuse"
+            ? "unsupported"
+            : (intentInterpretation.requestClassification as
+                | "supported_but_underspecified"
+                | "unsupported"
+                | "supported_runtime_only_but_not_planner_enabled");
+
       throw createPlanningFailure(
-        intentInterpretation.requestClassification,
+        failureClass,
         buildInterpretationFailureMessage(intentInterpretation),
         {
           ...(intentInterpretation.unsupportedPhrases === undefined
@@ -142,6 +162,15 @@ function resolvePlannerObjectives(
         },
       );
     }
+  }
+
+  if (
+    intentInterpretation?.regionIntents?.some((regionIntent) => regionIntent.scope !== "full_file")
+  ) {
+    throw createPlanningFailure(
+      "supported_but_underspecified",
+      "The interpretation proposes region-scoped edits, but the baseline planner does not yet ground LLM-derived region intents automatically. Please restate the region explicitly in planner-supported wording.",
+    );
   }
 
   if (objectives.wants_speed_up && objectives.wants_slow_down) {
@@ -275,6 +304,7 @@ function resolvePlannerObjectives(
   }
 
   const effectiveObjectives = { ...objectives };
+  applyInterpretationObjectiveHints(effectiveObjectives, intentInterpretation);
   const semanticLabels = new Set(
     semanticProfile.descriptors
       .filter((descriptor) => descriptor.confidence >= 0.6)
@@ -433,6 +463,26 @@ function resolvePlannerObjectives(
 function buildInterpretationFailureMessage(
   interpretation: NonNullable<PlanEditsOptions["intentInterpretation"]>,
 ): string {
+  if (
+    interpretation.nextAction === "clarify" &&
+    interpretation.requestClassification === "supported"
+  ) {
+    const clarification = interpretation.clarificationQuestion
+      ? ` ${interpretation.clarificationQuestion}`
+      : "";
+    return `The interpreted request still needs clarification before deterministic planning.${clarification}`.trim();
+  }
+
+  if (
+    interpretation.nextAction === "refuse" &&
+    interpretation.requestClassification === "supported"
+  ) {
+    const unsupported = interpretation.unsupportedPhrases?.length
+      ? ` Unsupported phrases: ${interpretation.unsupportedPhrases.join(", ")}.`
+      : "";
+    return `The interpreted request should be refused rather than planned conservatively.${unsupported}`.trim();
+  }
+
   if (interpretation.requestClassification === "supported_but_underspecified") {
     const ambiguities = interpretation.ambiguities?.length
       ? ` Ambiguities: ${interpretation.ambiguities.join("; ")}.`
@@ -454,6 +504,34 @@ function buildInterpretationFailureMessage(
     ? ` Unsupported phrases: ${interpretation.unsupportedPhrases.join(", ")}.`
     : "";
   return `The interpreted request still falls outside the current supported planner surface.${unsupported}`.trim();
+}
+
+function applyInterpretationObjectiveHints(
+  objectives: ReturnType<typeof parseUserRequest>,
+  interpretation?: PlanEditsOptions["intentInterpretation"],
+): void {
+  if (!interpretation) {
+    return;
+  }
+
+  for (const constraint of interpretation.constraints ?? []) {
+    if (constraint.kind === "intensity") {
+      if (
+        constraint.value === "subtle" ||
+        constraint.value === "default" ||
+        constraint.value === "strong"
+      ) {
+        objectives.intensity = constraint.value;
+      }
+    }
+
+    if (
+      constraint.kind === "preserve" &&
+      (constraint.label === "preserve_punch" || constraint.label === "preserve punch")
+    ) {
+      objectives.preserve_punch = true;
+    }
+  }
 }
 
 function createPlanId(options: PlanEditsOptions, normalizedRequest: string): string {
@@ -564,6 +642,7 @@ function buildGoals(objectives: ReturnType<typeof parseUserRequest>): string[] {
 function buildConstraints(
   objectives: ReturnType<typeof parseUserRequest>,
   input: string[] | undefined,
+  interpretation: PlanEditsOptions["intentInterpretation"],
 ): string[] {
   const constraints = [...(input ?? [])];
 
@@ -634,6 +713,18 @@ function buildConstraints(
 
   if (objectives.wants_more_even_level) {
     constraints.push("keep the true-peak ceiling at or below -1 dBTP");
+  }
+
+  for (const interpretationConstraint of interpretation?.constraints ?? []) {
+    const suffix =
+      interpretationConstraint.value === undefined ? "" : ` (${interpretationConstraint.value})`;
+    constraints.push(
+      `${interpretationConstraint.kind}: ${interpretationConstraint.label}${suffix}`.trim(),
+    );
+  }
+
+  for (const note of interpretation?.groundingNotes ?? []) {
+    constraints.push(`grounding note: ${note}`);
   }
 
   return dedupe(constraints);

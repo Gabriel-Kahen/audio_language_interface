@@ -126,6 +126,7 @@ export interface LlmInterpretationProviderConfig {
   apiBaseUrl?: string;
   temperature?: number;
   timeoutMs?: number;
+  maxRetries?: number;
 }
 
 export interface LlmAssistedInterpretationOptions {

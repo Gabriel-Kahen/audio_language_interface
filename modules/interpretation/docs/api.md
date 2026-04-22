@@ -17,6 +17,8 @@ Builds a validated `IntentInterpretation` from:
 - optional `capabilityManifest`
 - provider config for `openai` or `google`
 - optional `promptVersion`
+- optional `sessionContext`
+- optional `cacheStore`
 
 Current behavior:
 
@@ -27,6 +29,9 @@ Current behavior:
 - validates the returned JSON against the module’s candidate schema
 - normalizes the returned JSON into the published `IntentInterpretation` contract
 - schema-validates the final artifact
+- records explicit `next_action`, descriptor hypotheses, constraints, region-intent proposals, alternate interpretations, and follow-up metadata when the provider returns them
+- can reuse explicit cache entries when a caller supplies `cacheStore`
+- records provider cache and latency metadata in `artifact.provider.cached` and `artifact.provider.response_ms`
 
 ### `assertValidIntentInterpretation(artifact)`
 
@@ -41,9 +46,18 @@ Returns `true` when a payload satisfies the published `IntentInterpretation` con
 `src/index.ts` re-exports:
 
 - `IntentInterpretation`
+- `InterpretationNextAction`
+- `DescriptorHypothesis`
+- `InterpretationConstraint`
+- `RegionIntent`
+- `FollowUpIntent`
+- `InterpretationAlternative`
+- `InterpretationSessionContext`
 - `InterpretRequestOptions`
 - `InterpretationProviderConfig`
 - `InterpretationProviderKind`
+- `InterpretationCacheStore`
+- `MemoryInterpretationCache`
 
 ## Current limitations
 
@@ -51,3 +65,4 @@ Returns `true` when a payload satisfies the published `IntentInterpretation` con
 - the module does not emit executable transform parameters or `EditPlan` steps
 - provider support is currently limited to fetch-based OpenAI and Google calls
 - determinism applies to prompt shaping, validation, and artifact normalization, not to remote model behavior
+- alternate `candidate_interpretations` are for inspection only; deterministic planning still consumes one selected interpretation

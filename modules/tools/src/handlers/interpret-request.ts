@@ -27,6 +27,7 @@ interface InterpretRequestProviderArguments {
   apiBaseUrl?: string;
   temperature?: number;
   timeoutMs?: number;
+  maxRetries?: number;
 }
 
 interface InterpretRequestArguments {
@@ -37,6 +38,18 @@ interface InterpretRequestArguments {
   provider: InterpretRequestProviderArguments;
   capabilityManifest?: RuntimeCapabilityManifest;
   promptVersion?: string;
+  sessionContext?: {
+    currentVersionId?: string;
+    previousRequest?: string;
+    originalUserRequest?: string;
+    followUpSource?:
+      | "direct_request"
+      | "repeat_last_request"
+      | "less"
+      | "undo"
+      | "revert"
+      | "try_another_version";
+  };
 }
 
 function validateVersionConsistency(request: ToolRequest, audioVersion: AudioVersion): void {
@@ -75,6 +88,7 @@ function parseProvider(value: unknown): InterpretRequestProviderArguments {
   const apiBaseUrl = expectOptionalString(record.api_base_url, "arguments.provider.api_base_url");
   const temperatureValue = record.temperature;
   const timeoutValue = record.timeout_ms;
+  const maxRetriesValue = record.max_retries;
 
   return {
     kind,
@@ -83,6 +97,7 @@ function parseProvider(value: unknown): InterpretRequestProviderArguments {
     ...(typeof apiBaseUrl === "string" ? { apiBaseUrl } : {}),
     ...(typeof temperatureValue === "number" ? { temperature: temperatureValue } : {}),
     ...(typeof timeoutValue === "number" ? { timeoutMs: timeoutValue } : {}),
+    ...(typeof maxRetriesValue === "number" ? { maxRetries: maxRetriesValue } : {}),
   };
 }
 
@@ -104,8 +119,50 @@ function validateArguments(value: unknown, request: ToolRequest): InterpretReque
           "arguments.capability_manifest",
         );
   const promptVersion = expectOptionalString(record.prompt_version, "arguments.prompt_version");
+  const sessionContextRecord =
+    record.session_context === undefined
+      ? undefined
+      : expectRecord(record.session_context, "arguments.session_context");
+  let sessionContext: InterpretRequestArguments["sessionContext"] | undefined;
 
   validateVersionConsistency(request, audioVersion);
+
+  if (sessionContextRecord !== undefined) {
+    const parsedSessionContext: NonNullable<InterpretRequestArguments["sessionContext"]> = {};
+
+    if (sessionContextRecord.current_version_id !== undefined) {
+      parsedSessionContext.currentVersionId = expectString(
+        sessionContextRecord.current_version_id,
+        "arguments.session_context.current_version_id",
+      );
+    }
+
+    if (sessionContextRecord.previous_request !== undefined) {
+      parsedSessionContext.previousRequest = expectString(
+        sessionContextRecord.previous_request,
+        "arguments.session_context.previous_request",
+      );
+    }
+
+    if (sessionContextRecord.original_user_request !== undefined) {
+      parsedSessionContext.originalUserRequest = expectString(
+        sessionContextRecord.original_user_request,
+        "arguments.session_context.original_user_request",
+      );
+    }
+
+    if (sessionContextRecord.follow_up_source !== undefined) {
+      parsedSessionContext.followUpSource = expectString(
+        sessionContextRecord.follow_up_source,
+        "arguments.session_context.follow_up_source",
+      ) as Exclude<
+        NonNullable<InterpretRequestArguments["sessionContext"]>["followUpSource"],
+        undefined
+      >;
+    }
+
+    sessionContext = parsedSessionContext;
+  }
 
   return {
     audioVersion,
@@ -115,6 +172,7 @@ function validateArguments(value: unknown, request: ToolRequest): InterpretReque
     provider,
     ...(capabilityManifest === undefined ? {} : { capabilityManifest }),
     ...(promptVersion === undefined ? {} : { promptVersion }),
+    ...(sessionContext === undefined ? {} : { sessionContext }),
   };
 }
 
@@ -134,7 +192,7 @@ export const interpretRequestTool: ToolDefinition<
       "user_request",
       "provider",
     ],
-    optional_arguments: ["capability_manifest", "prompt_version"],
+    optional_arguments: ["capability_manifest", "prompt_version", "session_context"],
     error_codes: [
       "invalid_arguments",
       "provenance_mismatch",
@@ -159,7 +217,26 @@ export const interpretRequestTool: ToolDefinition<
           ? {}
           : { temperature: args.provider.temperature }),
         ...(args.provider.timeoutMs === undefined ? {} : { timeoutMs: args.provider.timeoutMs }),
+        ...(args.provider.maxRetries === undefined ? {} : { maxRetries: args.provider.maxRetries }),
       },
+      ...(args.sessionContext === undefined
+        ? {}
+        : {
+            sessionContext: {
+              ...(args.sessionContext.currentVersionId === undefined
+                ? {}
+                : { current_version_id: args.sessionContext.currentVersionId }),
+              ...(args.sessionContext.previousRequest === undefined
+                ? {}
+                : { previous_request: args.sessionContext.previousRequest }),
+              ...(args.sessionContext.originalUserRequest === undefined
+                ? {}
+                : { original_user_request: args.sessionContext.originalUserRequest }),
+              ...(args.sessionContext.followUpSource === undefined
+                ? {}
+                : { follow_up_source: args.sessionContext.followUpSource }),
+            },
+          }),
       ...(args.promptVersion === undefined ? {} : { promptVersion: args.promptVersion }),
     });
 

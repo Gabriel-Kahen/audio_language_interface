@@ -157,6 +157,34 @@
       "type": "string",
       "enum": ["openai", "google"]
     },
+    "interpretationNextAction": {
+      "type": "string",
+      "enum": ["plan", "clarify", "refuse"]
+    },
+    "descriptorHypothesisStatus": {
+      "type": "string",
+      "enum": ["supported", "weak", "contradicted", "unresolved"]
+    },
+    "interpretationConstraintKind": {
+      "type": "string",
+      "enum": ["intensity", "preserve", "avoid", "safety", "scope"]
+    },
+    "regionIntentScope": {
+      "type": "string",
+      "enum": ["full_file", "time_range", "segment_reference"]
+    },
+    "followUpIntentKind": {
+      "type": "string",
+      "enum": [
+        "direct_request",
+        "repeat_last_request",
+        "reduce_previous_intensity",
+        "undo",
+        "revert",
+        "try_another_version",
+        "unclear_follow_up"
+      ]
+    },
     "nodeType": {
       "type": "string",
       "enum": [

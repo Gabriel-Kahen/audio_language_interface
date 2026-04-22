@@ -5,6 +5,9 @@ import type {
   ComparisonBenchmarkCase,
   ComparisonBenchmarkCaseResult,
   ComparisonBenchmarkExpectation,
+  InterpretationBenchmarkCase,
+  InterpretationBenchmarkCaseResult,
+  InterpretationBenchmarkExpectation,
   RequestCycleBenchmarkCase,
   RequestCycleBenchmarkCaseResult,
   RequestCycleBenchmarkCategory,
@@ -89,6 +92,170 @@ export function scoreComparisonReport(
       passed: !regressionKinds.has(kind),
       expected: "absent",
       actual: regressionKinds.has(kind) ? "present" : "absent",
+    });
+  }
+
+  return checks;
+}
+
+export function scoreInterpretationBenchmarkCase(
+  benchmarkCase: InterpretationBenchmarkCase,
+): InterpretationBenchmarkCaseResult {
+  const checks = scoreIntentInterpretation(benchmarkCase.interpretation, benchmarkCase.expectation);
+  const passedChecks = checks.filter((check) => check.passed).length;
+  const totalChecks = checks.length;
+
+  return {
+    caseId: benchmarkCase.caseId,
+    prompt: benchmarkCase.prompt,
+    interpretation: benchmarkCase.interpretation,
+    passedChecks,
+    totalChecks,
+    score: totalChecks === 0 ? 1 : roundScore(passedChecks / totalChecks),
+    checks,
+  };
+}
+
+export function scoreIntentInterpretation(
+  interpretation: InterpretationBenchmarkCase["interpretation"],
+  expectation: InterpretationBenchmarkExpectation,
+): BenchmarkCheckResult[] {
+  const checks: BenchmarkCheckResult[] = [];
+  const normalizedObjectives = new Set(interpretation.normalized_objectives ?? []);
+  const descriptorHypotheses = new Map(
+    (interpretation.descriptor_hypotheses ?? []).map((item) => [item.label, item.status]),
+  );
+  const constraintKeys = new Set(
+    (interpretation.constraints ?? []).map(
+      (item) => `${item.kind}:${item.label}:${item.value ?? ""}`,
+    ),
+  );
+  const regionIntentScopes = new Set(
+    (interpretation.region_intents ?? []).map((item) => item.scope),
+  );
+  const groundingNotes = new Set(interpretation.grounding_notes ?? []);
+
+  if (expectation.requestClassification !== undefined) {
+    checks.push({
+      checkId: "interpretation:request_classification",
+      passed: interpretation.request_classification === expectation.requestClassification,
+      expected: expectation.requestClassification,
+      actual: interpretation.request_classification,
+    });
+  }
+
+  if (expectation.nextAction !== undefined) {
+    checks.push({
+      checkId: "interpretation:next_action",
+      passed: interpretation.next_action === expectation.nextAction,
+      expected: expectation.nextAction,
+      actual: interpretation.next_action,
+    });
+  }
+
+  for (const objective of expectation.requiredNormalizedObjectives ?? []) {
+    checks.push({
+      checkId: `interpretation:require_objective:${objective}`,
+      passed: normalizedObjectives.has(objective),
+      expected: "present",
+      actual: normalizedObjectives.has(objective) ? "present" : "missing",
+    });
+  }
+
+  for (const objective of expectation.forbiddenNormalizedObjectives ?? []) {
+    checks.push({
+      checkId: `interpretation:forbid_objective:${objective}`,
+      passed: !normalizedObjectives.has(objective),
+      expected: "absent",
+      actual: normalizedObjectives.has(objective) ? "present" : "absent",
+    });
+  }
+
+  for (const descriptor of expectation.requiredDescriptorHypotheses ?? []) {
+    const actualStatus = descriptorHypotheses.get(descriptor.label);
+    checks.push({
+      checkId:
+        descriptor.status === undefined
+          ? `interpretation:require_descriptor:${descriptor.label}`
+          : `interpretation:require_descriptor:${descriptor.label}:${descriptor.status}`,
+      passed:
+        actualStatus !== undefined &&
+        (descriptor.status === undefined || actualStatus === descriptor.status),
+      expected: descriptor.status ?? "present",
+      actual: actualStatus ?? "missing",
+    });
+  }
+
+  for (const label of expectation.forbiddenDescriptorHypothesisLabels ?? []) {
+    checks.push({
+      checkId: `interpretation:forbid_descriptor:${label}`,
+      passed: !descriptorHypotheses.has(label),
+      expected: "absent",
+      actual: descriptorHypotheses.has(label) ? "present" : "absent",
+    });
+  }
+
+  for (const constraint of expectation.requiredConstraints ?? []) {
+    const key = `${constraint.kind}:${constraint.label ?? ""}:${constraint.value ?? ""}`;
+    const present =
+      constraint.label === undefined
+        ? [...constraintKeys].some((candidate) => candidate.startsWith(`${constraint.kind}:`))
+        : constraintKeys.has(key);
+    checks.push({
+      checkId:
+        constraint.label === undefined
+          ? `interpretation:require_constraint:${constraint.kind}`
+          : `interpretation:require_constraint:${constraint.kind}:${constraint.label}`,
+      passed: present,
+      expected: "present",
+      actual: present ? "present" : "missing",
+    });
+  }
+
+  if (expectation.requiredRegionIntentScope !== undefined) {
+    checks.push({
+      checkId: "interpretation:region_scope",
+      passed: regionIntentScopes.has(expectation.requiredRegionIntentScope),
+      expected: expectation.requiredRegionIntentScope,
+      actual: regionIntentScopes.size === 0 ? "missing" : [...regionIntentScopes].sort().join(","),
+    });
+  }
+
+  if (expectation.requireClarificationQuestion !== undefined) {
+    const actual = interpretation.clarification_question !== undefined;
+    checks.push({
+      checkId: "interpretation:clarification_question",
+      passed: actual === expectation.requireClarificationQuestion,
+      expected: expectation.requireClarificationQuestion ? "present" : "absent",
+      actual: actual ? "present" : "absent",
+    });
+  }
+
+  if (expectation.expectedFollowUpIntentKind !== undefined) {
+    checks.push({
+      checkId: "interpretation:follow_up_intent",
+      passed: interpretation.follow_up_intent?.kind === expectation.expectedFollowUpIntentKind,
+      expected: expectation.expectedFollowUpIntentKind,
+      actual: interpretation.follow_up_intent?.kind ?? "missing",
+    });
+  }
+
+  for (const note of expectation.requiredGroundingNotes ?? []) {
+    checks.push({
+      checkId: `interpretation:grounding_note:${note}`,
+      passed: groundingNotes.has(note),
+      expected: "present",
+      actual: groundingNotes.has(note) ? "present" : "missing",
+    });
+  }
+
+  if (expectation.expectedCandidateInterpretationCount !== undefined) {
+    const actualCount = interpretation.candidate_interpretations?.length ?? 0;
+    checks.push({
+      checkId: "interpretation:candidate_count",
+      passed: actualCount === expectation.expectedCandidateInterpretationCount,
+      expected: String(expectation.expectedCandidateInterpretationCount),
+      actual: String(actualCount),
     });
   }
 

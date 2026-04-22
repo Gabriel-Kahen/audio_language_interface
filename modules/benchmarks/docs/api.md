@@ -46,12 +46,15 @@ The module exports the current committed benchmark constants and corpora:
 
 - `FIRST_PROMPT_FAMILY_CORPUS_ID`
 - `FIRST_PROMPT_FAMILY_REQUEST_CYCLE_CORPUS_ID`
+- `INTERPRETATION_CORPUS_ID`
 - `FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH`
 - `FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID`
 - `firstPromptFamilyFixtureCorpus`
 - `firstPromptFamilyPromptSuite`
 - `firstPromptFamilyRequestCycleCorpus`
 - `firstPromptFamilyRequestCycleSuite`
+- `interpretationBenchmarkCorpus`
+- `interpretationBenchmarkSuite`
 
 These objects are the default benchmark inputs used when a caller does not supply a custom corpus.
 
@@ -71,6 +74,23 @@ Current behavior:
 - accepts either a full `ComparisonBenchmarkCorpus` or a raw case array
 - aggregates passed checks, total checks, and `overallScore`
 - uses the corpus metadata when present, otherwise falls back to the first-prompt-family defaults
+
+## Interpretation benchmark execution
+
+### `runInterpretationBenchmarkCase(benchmarkCase)`
+
+Scores one explicit `IntentInterpretation` benchmark case against its declared expectations.
+
+### `runInterpretationBenchmarks(benchmarkInput?)`
+
+Runs an interpretation corpus or ad hoc array of interpretation cases.
+
+Current behavior:
+
+- defaults to `interpretationBenchmarkCorpus`
+- accepts either a full `InterpretationBenchmarkCorpus` or a raw case array
+- scores stable artifact fields such as `request_classification`, `next_action`, normalized objectives, descriptor hypotheses, constraints, region scopes, clarification presence, follow-up kind, and candidate count
+- aggregates passed checks, total checks, and `overallScore`
 
 ## Request-cycle benchmark execution
 
@@ -109,6 +129,14 @@ Scores one `ComparisonReport` against explicit goal, semantic-label, and regress
 
 Wraps `scoreComparisonReport(...)` and returns the case-level score object.
 
+### `scoreIntentInterpretation(interpretation, expectation)`
+
+Scores one `IntentInterpretation` against explicit interpretation expectations.
+
+### `scoreInterpretationBenchmarkCase(benchmarkCase)`
+
+Wraps `scoreIntentInterpretation(...)` and returns the case-level score object.
+
 ### `scoreRequestCycleBenchmarkCase(benchmarkCase, result, error?, setupResults?)`
 
 Scores one request-cycle case across three separate responsibility buckets:
@@ -128,11 +156,11 @@ This helper returns:
 
 ### `formatBenchmarkMarkdownReport(result)`
 
-Formats either benchmark mode as Markdown.
+Formats any current benchmark mode as Markdown.
 
 Current behavior:
 
-- auto-detects compare-only versus request-cycle result shapes
+- auto-detects compare-only, interpretation, and request-cycle result shapes
 - prints overall score, per-case summaries, and failure buckets
 - includes category-specific summaries for request-cycle runs
 
@@ -145,6 +173,7 @@ Those types are implementation-facing shapes for the benchmark layer. They are n
 ## Current limitations
 
 - compare-only benchmarks are still centered on curated `ComparisonReport` inputs rather than arbitrary corpus generation
+- interpretation benchmarks are currently offline artifact checks rather than live-provider evaluations
 - request-cycle benchmarks currently run sequentially
 - request-cycle outcome scoring is only as strong as the current compare/orchestration evidence
 - the built-in corpora are intentionally small and focused on the repo’s current supported slice

@@ -6,10 +6,12 @@ import type {
 
 interface ResolveRequestInterpretationOptions {
   userRequest: string;
+  originalUserRequest?: string;
   audioVersion: import("./types.js").AudioVersion;
   analysisReport: import("./types.js").AnalysisReport;
   semanticProfile: SemanticProfile;
   interpretation: LlmAssistedInterpretationOptions;
+  sessionContext?: import("@audio-language-interface/interpretation").InterpretationSessionContext;
   interpretRequest?: OrchestrationDependencies["interpretRequest"];
 }
 
@@ -25,6 +27,7 @@ export async function resolveRequestInterpretation(options: ResolveRequestInterp
     audioVersion: options.audioVersion,
     analysisReport: options.analysisReport,
     semanticProfile: options.semanticProfile,
+    ...(options.sessionContext === undefined ? {} : { sessionContext: options.sessionContext }),
     provider: {
       kind: options.interpretation.provider.kind,
       apiKey: options.interpretation.apiKey,
@@ -38,6 +41,9 @@ export async function resolveRequestInterpretation(options: ResolveRequestInterp
       ...(options.interpretation.provider.timeoutMs === undefined
         ? {}
         : { timeoutMs: options.interpretation.provider.timeoutMs }),
+      ...(options.interpretation.provider.maxRetries === undefined
+        ? {}
+        : { maxRetries: options.interpretation.provider.maxRetries }),
     },
     ...(options.interpretation.promptVersion === undefined
       ? {}

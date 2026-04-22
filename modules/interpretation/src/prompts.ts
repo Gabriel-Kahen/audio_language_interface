@@ -40,9 +40,16 @@ export function buildSystemInstruction(): string {
     "Return only JSON matching the provided schema.",
     "Do not output transforms, ffmpeg parameters, or hidden reasoning chains.",
     "Normalize the request into a concise request phrase that stays inside the system's supported vocabulary when that is honest.",
+    "Set next_action to plan, clarify, or refuse. Supported grounded requests should usually be plan. Ambiguous requests should usually be clarify. Unsupported or planner-disabled requests should usually be refuse.",
+    "Descriptor hypotheses must stay evidence-linked. Use supported_by, contradicted_by, and needs_more_evidence with short artifact-aware references such as semantic:bright or analysis:measurements.stereo.balance_db.",
+    "Use constraints to preserve important intent like subtlety, preserve punch, avoid added harshness, or similar safety and preservation language.",
+    "Use region_intents only when the user wording clearly scopes the request to a part of the file. Otherwise omit region_intents.",
+    "If the request is a fuzzy follow-up relative to an earlier request, use follow_up_intent and constraints to explain the relationship instead of inventing unsupported transforms.",
+    "candidate_interpretations may contain a few alternate grounded readings when the request is ambiguous; keep the top-level fields as the best current interpretation.",
     "If the request is ambiguous, contradictory, unsupported, or only runtime-available, set request_classification accordingly.",
     "Do not invent support for terms or effects that are not grounded by the current capabilities and evidence.",
     "Allowed request classifications: supported, supported_but_underspecified, unsupported, supported_runtime_only_but_not_planner_enabled.",
+    "Allowed next_action values: plan, clarify, refuse.",
     `Supported descriptor labels include: ${SUPPORTED_DESCRIPTOR_LABELS.join(", ")}.`,
     `The normalized request should use phrases from the supported family when possible, such as: ${SUPPORTED_NORMALIZATION_PHRASES.join("; ")}.`,
   ].join(" ");
@@ -61,6 +68,24 @@ export function buildUserPrompt(input: InterpretationProviderRequest): string {
     })),
     unresolved_terms: input.semanticProfile.unresolved_terms ?? [],
     analysis_summary: summarizeAnalysis(input.analysisReport),
+    ...(input.sessionContext === undefined
+      ? {}
+      : {
+          session_context: {
+            ...(input.sessionContext.current_version_id === undefined
+              ? {}
+              : { current_version_id: input.sessionContext.current_version_id }),
+            ...(input.sessionContext.previous_request === undefined
+              ? {}
+              : { previous_request: input.sessionContext.previous_request }),
+            ...(input.sessionContext.original_user_request === undefined
+              ? {}
+              : { original_user_request: input.sessionContext.original_user_request }),
+            ...(input.sessionContext.follow_up_source === undefined
+              ? {}
+              : { follow_up_source: input.sessionContext.follow_up_source }),
+          },
+        }),
   };
 
   return JSON.stringify(
@@ -98,6 +123,10 @@ export function buildCandidateSchema(): object {
           "supported_runtime_only_but_not_planner_enabled",
         ],
       },
+      next_action: {
+        type: "string",
+        enum: ["plan", "clarify", "refuse"],
+      },
       normalized_objectives: {
         type: "array",
         items: { type: "string", minLength: 1 },
@@ -109,6 +138,162 @@ export function buildCandidateSchema(): object {
           enum: [...SUPPORTED_DESCRIPTOR_LABELS],
         },
       },
+      descriptor_hypotheses: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["label", "status"],
+          properties: {
+            label: { type: "string", minLength: 1 },
+            status: {
+              type: "string",
+              enum: ["supported", "weak", "contradicted", "unresolved"],
+            },
+            supported_by: {
+              type: "array",
+              items: { type: "string", minLength: 1 },
+            },
+            contradicted_by: {
+              type: "array",
+              items: { type: "string", minLength: 1 },
+            },
+            needs_more_evidence: {
+              type: "array",
+              items: { type: "string", minLength: 1 },
+            },
+            rationale: { type: "string", minLength: 1 },
+          },
+        },
+      },
+      constraints: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["kind", "label"],
+          properties: {
+            kind: {
+              type: "string",
+              enum: ["intensity", "preserve", "avoid", "safety", "scope"],
+            },
+            label: { type: "string", minLength: 1 },
+            value: { type: "string", minLength: 1 },
+            rationale: { type: "string", minLength: 1 },
+          },
+        },
+      },
+      region_intents: {
+        type: "array",
+        items: {
+          oneOf: [
+            {
+              type: "object",
+              additionalProperties: false,
+              required: ["scope"],
+              properties: {
+                scope: { const: "full_file" },
+                rationale: { type: "string", minLength: 1 },
+              },
+            },
+            {
+              type: "object",
+              additionalProperties: false,
+              required: ["scope", "start_seconds", "end_seconds"],
+              properties: {
+                scope: { const: "time_range" },
+                start_seconds: { type: "number", minimum: 0 },
+                end_seconds: { type: "number", minimum: 0 },
+                rationale: { type: "string", minLength: 1 },
+              },
+            },
+            {
+              type: "object",
+              additionalProperties: false,
+              required: ["scope", "reference"],
+              properties: {
+                scope: { const: "segment_reference" },
+                reference: { type: "string", minLength: 1 },
+                rationale: { type: "string", minLength: 1 },
+              },
+            },
+          ],
+        },
+      },
+      candidate_interpretations: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "normalized_request",
+            "request_classification",
+            "next_action",
+            "normalized_objectives",
+            "candidate_descriptors",
+            "rationale",
+            "confidence",
+          ],
+          properties: {
+            normalized_request: { type: "string", minLength: 1 },
+            request_classification: {
+              type: "string",
+              enum: [
+                "supported",
+                "supported_but_underspecified",
+                "unsupported",
+                "supported_runtime_only_but_not_planner_enabled",
+              ],
+            },
+            next_action: {
+              type: "string",
+              enum: ["plan", "clarify", "refuse"],
+            },
+            normalized_objectives: {
+              type: "array",
+              items: { type: "string", minLength: 1 },
+            },
+            candidate_descriptors: {
+              type: "array",
+              items: {
+                type: "string",
+                enum: [...SUPPORTED_DESCRIPTOR_LABELS],
+              },
+            },
+            ambiguities: {
+              type: "array",
+              items: { type: "string", minLength: 1 },
+            },
+            unsupported_phrases: {
+              type: "array",
+              items: { type: "string", minLength: 1 },
+            },
+            clarification_question: { type: "string", minLength: 1 },
+            rationale: { type: "string", minLength: 1 },
+            confidence: { type: "number", minimum: 0, maximum: 1 },
+          },
+        },
+      },
+      follow_up_intent: {
+        type: "object",
+        additionalProperties: false,
+        required: ["kind"],
+        properties: {
+          kind: {
+            type: "string",
+            enum: [
+              "direct_request",
+              "repeat_last_request",
+              "reduce_previous_intensity",
+              "undo",
+              "revert",
+              "try_another_version",
+              "unclear_follow_up",
+            ],
+          },
+          rationale: { type: "string", minLength: 1 },
+        },
+      },
       ambiguities: {
         type: "array",
         items: { type: "string", minLength: 1 },
@@ -118,6 +303,10 @@ export function buildCandidateSchema(): object {
         items: { type: "string", minLength: 1 },
       },
       clarification_question: { type: "string", minLength: 1 },
+      grounding_notes: {
+        type: "array",
+        items: { type: "string", minLength: 1 },
+      },
       rationale: { type: "string", minLength: 1 },
       confidence: { type: "number", minimum: 0, maximum: 1 },
     },

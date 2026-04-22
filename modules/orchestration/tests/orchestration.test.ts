@@ -190,6 +190,7 @@ describe("runRequestCycle", () => {
       user_request: "Make it darker",
       normalized_request: "Make it darker with a gentle high-shelf cut.",
       request_classification: "supported",
+      next_action: "plan",
       normalized_objectives: ["darker"],
       candidate_descriptors: ["dark"],
       rationale: "Preserve the original intent while making the tonal move more explicit.",
