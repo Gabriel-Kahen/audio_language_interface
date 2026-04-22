@@ -81,12 +81,23 @@ export interface EditPlan {
   asset_id: string;
   version_id: string;
   user_request: string;
+  interpreted_user_request?: string;
+  intent_interpretation_id?: string;
   goals: string[];
   steps: EditPlanStep[];
   created_at: string;
   constraints?: string[];
   verification_targets?: Array<string | VerificationTarget>;
   rationale?: string;
+}
+
+export interface PlannerIntentInterpretationInput {
+  interpretationId?: string;
+  normalizedRequest: string;
+  requestClassification?: PlannerRequestClass;
+  ambiguities?: string[];
+  unsupportedPhrases?: string[];
+  clarificationQuestion?: string;
 }
 
 export interface ParsedEditObjectives {
@@ -141,6 +152,7 @@ export interface PlanEditsOptions {
   audioVersion: AudioVersion;
   analysisReport: AnalysisReport;
   semanticProfile: SemanticProfile;
+  intentInterpretation?: PlannerIntentInterpretationInput;
   workspaceRoot?: string;
   generatedAt?: string;
   constraints?: string[];

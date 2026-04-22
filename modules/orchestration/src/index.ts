@@ -13,6 +13,7 @@ import {
   recordTransformRecord,
   revertToVersion,
 } from "@audio-language-interface/history";
+import { interpretRequest } from "@audio-language-interface/interpretation";
 import { importAudioFromFile } from "@audio-language-interface/io";
 import { planEdits } from "@audio-language-interface/planning";
 import { renderExport, renderPreview } from "@audio-language-interface/render";
@@ -44,6 +45,7 @@ export const defaultOrchestrationDependencies: OrchestrationDependencies = {
   importAudioFromFile,
   analyzeAudioVersion,
   buildSemanticProfile,
+  interpretRequest,
   planEdits,
   applyEditPlan,
   renderPreview,
@@ -79,6 +81,8 @@ export type {
   IterationResult,
   IterativeRefineOptions,
   IterativeRefineResult,
+  LlmAssistedInterpretationOptions,
+  LlmInterpretationProviderConfig,
   OrchestrationDependencies,
   PlanAndApplyOptions,
   PlanAndApplyResult,

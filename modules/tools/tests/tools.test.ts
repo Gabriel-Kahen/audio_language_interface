@@ -284,6 +284,17 @@ describe("tools module", () => {
         ],
       }),
       expect.objectContaining({
+        name: "interpret_request",
+        backing_module: "interpretation",
+        required_arguments: [
+          "audio_version",
+          "analysis_report",
+          "semantic_profile",
+          "user_request",
+          "provider",
+        ],
+      }),
+      expect.objectContaining({
         name: "plan_edits",
         backing_module: "planning",
         required_arguments: [
@@ -332,6 +343,7 @@ describe("tools module", () => {
             "describe_runtime_capabilities",
             "load_audio",
             "analyze_audio",
+            "interpret_request",
             "plan_edits",
             "apply_edit_plan",
             "render_preview",

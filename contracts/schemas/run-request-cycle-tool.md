@@ -14,6 +14,7 @@ This tool is the adapter-layer entrypoint for one-shot and iterative request-cyc
   - `input`
 - optional arguments:
   - `render_kind`
+  - `interpretation`
   - `revision`
 
 `arguments.input` supports two explicit shapes:
@@ -52,6 +53,7 @@ On success, `result` contains the completed request-cycle artifacts:
 - `input_analysis`
 - `follow_up_resolution`
 - optional `semantic_profile`
+- optional `intent_interpretation`
 - optional `edit_plan`
 - `output_version`
 - optional `transform_record`
@@ -75,6 +77,7 @@ Important response semantics:
   - repeated the last request for `more`
   - branched and replayed the prior request for `try another version`
   - reverted to a concrete historical version for `less`, `undo`, or `revert`
+- when interpretation is enabled, `intent_interpretation` makes the normalized planner-facing request and any ambiguity flags explicit without bypassing deterministic planning
 
 ## Failure behavior
 

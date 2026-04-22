@@ -28,6 +28,8 @@ Every published plan should also record which `RuntimeCapabilityManifest` it was
 | `asset_id` | string | Target asset identifier. |
 | `version_id` | string | Input version identifier. |
 | `user_request` | string | Natural-language request being addressed. |
+| `interpreted_user_request` | string | Optional normalized request used for deterministic planning when an external interpretation layer rewrote the prompt into the supported vocabulary. |
+| `intent_interpretation_id` | string | Optional reference to the `IntentInterpretation` artifact that informed planning. |
 | `goals` | array | Declared targets for the edit session. |
 | `steps` | array | Ordered operations with explicit parameters or parameter targets. |
 | `created_at` | string | ISO 8601 UTC timestamp. |

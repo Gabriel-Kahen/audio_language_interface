@@ -20,6 +20,9 @@ export default defineConfig({
       "@audio-language-interface/history": fileURLToPath(
         new URL("./modules/history/src/index.ts", import.meta.url),
       ),
+      "@audio-language-interface/interpretation": fileURLToPath(
+        new URL("./modules/interpretation/src/index.ts", import.meta.url),
+      ),
       "@audio-language-interface/io": fileURLToPath(
         new URL("./modules/io/src/index.ts", import.meta.url),
       ),

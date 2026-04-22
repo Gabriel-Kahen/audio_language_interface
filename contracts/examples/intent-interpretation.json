@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0.0",
+  "interpretation_id": "interpret_01HZX8E7J2V3M4N5P6Q7R8S9T0",
+  "asset_id": "asset_01HZX8E7J2V3M4N5P6Q7R8S9T0",
+  "version_id": "ver_01HZX8E7J2V3M4N5P6Q7R8S9T0",
+  "analysis_report_id": "analysis_01HZX8E7J2V3M4N5P6Q7R8S9T0",
+  "semantic_profile_id": "semantic_01HZX8E7J2V3M4N5P6Q7R8S9T0",
+  "user_request": "Give this more sparkle and tame the annoying esses.",
+  "normalized_request": "Make it airier and tame the sibilance.",
+  "request_classification": "supported_but_underspecified",
+  "normalized_objectives": ["more_air", "tame_sibilance"],
+  "candidate_descriptors": ["airy", "sibilant"],
+  "ambiguities": [
+    "The request does not say whether preserving current brightness or overall loudness matters."
+  ],
+  "clarification_question": "Should the priority be added air or less sibilance first?",
+  "rationale": "The request maps toward upper-band lift and explicit sibilance reduction, but the current baseline planner treats that combination as a clarification case rather than a safe one-pass compound.",
+  "confidence": 0.79,
+  "provider": {
+    "kind": "openai",
+    "model": "gpt-4.1-mini",
+    "prompt_version": "intent_v1"
+  },
+  "generated_at": "2026-04-21T20:00:00Z"
+}

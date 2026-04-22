@@ -33,6 +33,7 @@ The key architectural rule is:
 - the audio runtime owns deterministic execution
 - the intent layer owns semantics and planning
 - the capability manifest is the contract between them
+- optional provider-backed request interpretation stays above the deterministic core
 - tools and orchestration are adapters, not the core system
 
 ## What The System Does
@@ -49,6 +50,12 @@ Today, the repository supports a real single-file editing loop:
 8. record provenance in a `SessionGraph`
 
 That loop is exposed both through modules and through a thin tool surface.
+
+There is now also an optional interpretation layer for open-ended language:
+
+- `modules/interpretation` can call OpenAI or Google APIs to normalize a raw request into a bounded `IntentInterpretation`
+- deterministic planning remains authoritative and may still reject unsupported or weakly grounded interpretations
+- callers can use the standalone `interpret_request` tool or enable LLM-assisted interpretation inside `run_request_cycle`
 
 On top of the one-shot loop, orchestration now supports early iterative follow-up behavior for:
 
@@ -113,10 +120,11 @@ This layer owns interpretation of measurable audio evidence and conversion of us
 
 ### Adapters
 
+- `modules/interpretation`
 - `modules/tools`
 - `modules/orchestration`
 
-This layer exposes stable integration surfaces over the runtime and intent modules without redefining their responsibilities.
+This layer exposes stable integration surfaces over the runtime and intent modules without redefining their responsibilities. `modules/interpretation` is the optional provider-backed request-normalization adapter; it does not replace deterministic planning.
 
 ### Evaluation
 
@@ -134,6 +142,7 @@ The repository converges on a small set of canonical artifacts:
 - `AudioVersion`
 - `AnalysisReport`
 - `SemanticProfile`
+- `IntentInterpretation`
 - `EditPlan`
 - `TransformRecord`
 - `RenderArtifact`
@@ -229,6 +238,7 @@ Published tool entrypoints:
 - `describe_runtime_capabilities`
 - `load_audio`
 - `analyze_audio`
+- `interpret_request`
 - `plan_edits`
 - `apply_edit_plan`
 - `render_preview`
@@ -294,6 +304,7 @@ This repo is usable today for technical experimentation and module-level integra
 |   |-- compare/
 |   |-- core/
 |   |-- history/
+|   |-- interpretation/
 |   |-- io/
 |   |-- orchestration/
 |   |-- planning/

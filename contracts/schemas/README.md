@@ -32,6 +32,7 @@ All three should change together when the contract changes.
 - `tempo-estimate`
 - `slice-map`
 - `semantic-profile`
+- `intent-interpretation`
 - `edit-plan`
 - `runtime-capability-manifest`
 - `transform-record`
@@ -46,6 +47,7 @@ All three should change together when the contract changes.
 - `load-audio-tool`
 - `analyze-audio-tool`
 - `plan-edits-tool`
+- `interpret-request-tool`
 - `apply-edit-plan-tool`
 - `describe-runtime-capabilities-tool`
 - `render-preview-tool`

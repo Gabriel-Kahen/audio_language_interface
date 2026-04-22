@@ -12,6 +12,7 @@ import {
   assertToolResultEditPlan,
   expectAnalysisReport,
   expectAudioVersion,
+  expectIntentInterpretation,
   expectOptionalString,
   expectOptionalStringArray,
   expectRecord,
@@ -24,6 +25,7 @@ interface PlanEditsArguments {
   analysisReport: AnalysisReport;
   semanticProfile: SemanticProfile;
   userRequest: string;
+  intentInterpretation?: import("@audio-language-interface/interpretation").IntentInterpretation;
   generatedAt?: string;
   constraints?: string[];
 }
@@ -61,6 +63,10 @@ function validateArguments(value: unknown, request: ToolRequest): PlanEditsArgum
     "arguments.semantic_profile",
   );
   const userRequest = expectString(record.user_request, "arguments.user_request");
+  const intentInterpretation =
+    record.intent_interpretation === undefined
+      ? undefined
+      : expectIntentInterpretation(record.intent_interpretation, "arguments.intent_interpretation");
   const generatedAt = expectOptionalString(record.generated_at, "arguments.generated_at");
   const constraints = expectOptionalStringArray(record.constraints, "arguments.constraints");
 
@@ -71,6 +77,7 @@ function validateArguments(value: unknown, request: ToolRequest): PlanEditsArgum
     analysisReport,
     semanticProfile,
     userRequest,
+    ...(intentInterpretation === undefined ? {} : { intentInterpretation }),
     ...(generatedAt === undefined ? {} : { generatedAt }),
     ...(constraints === undefined ? {} : { constraints }),
   };
@@ -100,6 +107,24 @@ export const planEditsTool: ToolDefinition<PlanEditsArguments, Record<string, un
         audioVersion: args.audioVersion,
         analysisReport: args.analysisReport,
         semanticProfile: args.semanticProfile,
+        ...(args.intentInterpretation === undefined
+          ? {}
+          : {
+              intentInterpretation: {
+                interpretationId: args.intentInterpretation.interpretation_id,
+                normalizedRequest: args.intentInterpretation.normalized_request,
+                requestClassification: args.intentInterpretation.request_classification,
+                ...(args.intentInterpretation.ambiguities === undefined
+                  ? {}
+                  : { ambiguities: args.intentInterpretation.ambiguities }),
+                ...(args.intentInterpretation.unsupported_phrases === undefined
+                  ? {}
+                  : { unsupportedPhrases: args.intentInterpretation.unsupported_phrases }),
+                ...(args.intentInterpretation.clarification_question === undefined
+                  ? {}
+                  : { clarificationQuestion: args.intentInterpretation.clarification_question }),
+              },
+            }),
         workspaceRoot: context.workspaceRoot,
         ...(args.generatedAt === undefined ? {} : { generatedAt: args.generatedAt }),
         ...(args.constraints === undefined ? {} : { constraints: args.constraints }),

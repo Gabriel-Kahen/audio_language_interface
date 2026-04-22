@@ -13,6 +13,7 @@ export type {
   ParsedEditObjectives,
   PlanEditsOptions,
   PlannerFailureClass,
+  PlannerIntentInterpretationInput,
   PlannerRequestClass,
   SemanticDescriptor,
   SemanticProfile,

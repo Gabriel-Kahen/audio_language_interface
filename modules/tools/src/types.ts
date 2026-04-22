@@ -49,6 +49,7 @@ export interface ToolDescriptor {
     | "capabilities"
     | "io"
     | "analysis"
+    | "interpretation"
     | "planning"
     | "transforms"
     | "render"

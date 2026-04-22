@@ -53,11 +53,13 @@ export function planEdits(options: PlanEditsOptions): EditPlan {
     );
   }
 
+  const planningRequest = options.intentInterpretation?.normalizedRequest ?? options.userRequest;
   const objectives = resolvePlannerObjectives(
-    parseUserRequest(options.userRequest),
+    parseUserRequest(planningRequest),
     options.audioVersion,
     options.analysisReport,
     options.semanticProfile,
+    options.intentInterpretation,
   );
   const steps = buildPlannedSteps({
     objectives,
@@ -95,6 +97,16 @@ export function planEdits(options: PlanEditsOptions): EditPlan {
     rationale: buildRationale(goals, steps.length),
   };
 
+  if (options.intentInterpretation?.normalizedRequest !== undefined) {
+    if (options.intentInterpretation.normalizedRequest !== options.userRequest) {
+      plan.interpreted_user_request = options.intentInterpretation.normalizedRequest;
+    }
+
+    if (options.intentInterpretation.interpretationId !== undefined) {
+      plan.intent_interpretation_id = options.intentInterpretation.interpretationId;
+    }
+  }
+
   if (constraints.length > 0) {
     plan.constraints = constraints;
   }
@@ -112,7 +124,26 @@ function resolvePlannerObjectives(
   audioVersion: PlanEditsOptions["audioVersion"],
   analysisReport: PlanEditsOptions["analysisReport"],
   semanticProfile: PlanEditsOptions["semanticProfile"],
+  intentInterpretation?: PlanEditsOptions["intentInterpretation"],
 ): ReturnType<typeof parseUserRequest> {
+  if (intentInterpretation?.requestClassification) {
+    if (intentInterpretation.requestClassification !== "supported") {
+      throw createPlanningFailure(
+        intentInterpretation.requestClassification,
+        buildInterpretationFailureMessage(intentInterpretation),
+        {
+          ...(intentInterpretation.unsupportedPhrases === undefined
+            ? {}
+            : { matched_requests: intentInterpretation.unsupportedPhrases }),
+          ...(intentInterpretation.requestClassification ===
+          "supported_runtime_only_but_not_planner_enabled"
+            ? { capability_manifest_id: defaultRuntimeCapabilityManifest.manifest_id }
+            : {}),
+        },
+      );
+    }
+  }
+
   if (objectives.wants_speed_up && objectives.wants_slow_down) {
     throw createPlanningFailure(
       "supported_but_underspecified",
@@ -397,6 +428,32 @@ function resolvePlannerObjectives(
     "supported_but_underspecified",
     "The request asks to clean up the audio, but the baseline planner only supports conservative tonal cleanup when analysis or semantics point to harshness or muddiness, or conservative denoise when analysis indicates steady noise. Please ask for a supported direction such as less harsh, darker, less muddy, rumble removal, or explicit noise reduction.",
   );
+}
+
+function buildInterpretationFailureMessage(
+  interpretation: NonNullable<PlanEditsOptions["intentInterpretation"]>,
+): string {
+  if (interpretation.requestClassification === "supported_but_underspecified") {
+    const ambiguities = interpretation.ambiguities?.length
+      ? ` Ambiguities: ${interpretation.ambiguities.join("; ")}.`
+      : "";
+    const clarification = interpretation.clarificationQuestion
+      ? ` ${interpretation.clarificationQuestion}`
+      : "";
+    return `The interpreted request still needs clarification before deterministic planning.${ambiguities}${clarification}`.trim();
+  }
+
+  if (interpretation.requestClassification === "supported_runtime_only_but_not_planner_enabled") {
+    const unsupported = interpretation.unsupportedPhrases?.length
+      ? ` Runtime-only phrases: ${interpretation.unsupportedPhrases.join(", ")}.`
+      : "";
+    return `The interpreted request maps to runtime-only behavior that the baseline planner does not currently choose automatically.${unsupported}`.trim();
+  }
+
+  const unsupported = interpretation.unsupportedPhrases?.length
+    ? ` Unsupported phrases: ${interpretation.unsupportedPhrases.join(", ")}.`
+    : "";
+  return `The interpreted request still falls outside the current supported planner surface.${unsupported}`.trim();
 }
 
 function createPlanId(options: PlanEditsOptions, normalizedRequest: string): string {

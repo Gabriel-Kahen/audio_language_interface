@@ -22,6 +22,7 @@ The current implementation provides a registry-backed execution layer with schem
 - `describe_runtime_capabilities` -> `modules/capabilities`
 - `load_audio` -> `modules/io`
 - `analyze_audio` -> `modules/analysis`
+- `interpret_request` -> `modules/interpretation`
 - `plan_edits` -> `modules/planning`
 - `apply_edit_plan` -> `modules/transforms`
 - `render_preview` -> `modules/render`
@@ -42,6 +43,7 @@ The current implementation provides a registry-backed execution layer with schem
 - `src/validation.ts`: request validation and coercion
 - `src/handlers/load-audio.ts`: import-facing tool handler
 - `src/handlers/analyze-audio.ts`: analysis-facing tool handler
+- `src/handlers/interpret-request.ts`: interpretation-facing tool handler
 - `src/handlers/plan-edits.ts`: planning-facing tool handler
 - `src/handlers/apply-edit-plan.ts`: transform-facing tool handler
 - `src/handlers/render-preview.ts`: render-facing tool handler
@@ -85,5 +87,8 @@ See `docs/api.md` for the concrete callable tool surface and payload conventions
 - `apply_edit_plan` preflights published target-scope support from the runtime capability manifest and still validates runtime prerequisites such as stereo-only processing where applicable.
 - `apply_edit_plan` can defer peak or loudness probing for `normalize` until runtime execution while still requiring the rest of the step to stay inside the published contract surface.
 - `run_request_cycle` exposes orchestration-backed iterative follow-up behavior without introducing hidden tool-layer session state.
+- `interpret_request` exposes the optional provider-backed interpretation layer directly for callers that want a contract-valid `IntentInterpretation` before planning.
+- `run_request_cycle` can also forward an explicit opt-in `interpretation` configuration when the runtime injects an `interpretRequest` implementation, and it surfaces the resulting interpretation artifacts back to the caller.
 - The tool layer still does not maintain session state or resolve artifacts by id. Session-aware follow-up calls must provide an explicit `SessionGraph` plus any materialized `available_versions` needed for historical lookups.
+- The tool layer does not persist interpretation state between calls. Callers must opt into interpretation again on each `run_request_cycle` request.
 - Tool-specific argument validation happens inside handlers rather than through one centralized schema per tool.

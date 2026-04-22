@@ -68,6 +68,10 @@ Owns conversion from user intent plus current audio state into an ordered, param
 
 ### Adapters
 
+#### `modules/interpretation`
+
+Owns optional provider-backed request normalization. It turns open-ended user language into a bounded `IntentInterpretation` artifact without replacing deterministic planning, semantics, or verification.
+
 #### `modules/tools`
 
 Owns the stable tool surface for external LLM callers. It exposes runtime and intent capabilities without redefining them.
@@ -90,11 +94,12 @@ The current natural-language editing workflow is:
 2. `analysis` produces an `AnalysisReport`.
 3. `semantics` produces a `SemanticProfile`.
 4. `planning` produces an `EditPlan`, grounded in a published `RuntimeCapabilityManifest`.
-5. `transforms` executes the plan and emits a `TransformRecord` plus a new `AudioVersion`.
-6. `render` generates a `RenderArtifact`.
-7. `compare` produces a `ComparisonReport`.
-8. `history` records lineage into a `SessionGraph`.
-9. `tools` and `orchestration` expose and compose the above for external callers.
+5. optional `interpretation` may normalize the request into an `IntentInterpretation` before planning, but planning still validates it deterministically.
+6. `transforms` executes the plan and emits a `TransformRecord` plus a new `AudioVersion`.
+7. `render` generates a `RenderArtifact`.
+8. `compare` produces a `ComparisonReport`.
+9. `history` records lineage into a `SessionGraph`.
+10. `tools` and `orchestration` expose and compose the above for external callers.
 
 That workflow is important, but it is not the same thing as the architecture. The repo is organized by responsibility boundaries first, not by one flat pipeline.
 
@@ -139,6 +144,7 @@ The repository publishes these core artifact families under `contracts/schemas/`
 - `AudioVersion`
 - `AnalysisReport`
 - `SemanticProfile`
+- `IntentInterpretation`
 - `EditPlan`
 - `TransformRecord`
 - `RenderArtifact`

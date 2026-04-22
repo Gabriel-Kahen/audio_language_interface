@@ -1,6 +1,8 @@
 import type { AudioAsset, AudioVersion, NormalizationTarget } from "@audio-language-interface/io";
 import {
   defaultOrchestrationDependencies,
+  type LlmAssistedInterpretationOptions,
+  type LlmInterpretationProviderConfig,
   OrchestrationStageError,
   type RequestCycleResult,
 } from "@audio-language-interface/orchestration";
@@ -21,6 +23,7 @@ import {
   expectAudioAsset,
   expectAudioVersion,
   expectOptionalBoolean,
+  expectOptionalNumber,
   expectOptionalString,
   expectOptionalStringArray,
   expectRecord,
@@ -59,6 +62,7 @@ interface RunRequestCycleArguments {
   input: RunRequestCycleInputArguments;
   renderKind?: "preview" | "final";
   revisionEnabled?: boolean;
+  interpretation?: LlmAssistedInterpretationOptions;
 }
 
 function parseNormalizationTarget(
@@ -301,11 +305,73 @@ function validateExistingInputConsistency(
   }
 }
 
+function parseInterpretationProvider(
+  value: unknown,
+  fieldName: string,
+): LlmInterpretationProviderConfig {
+  const record = expectRecord(value, fieldName);
+  const kind = expectString(record.kind, `${fieldName}.kind`);
+  if (kind !== "openai" && kind !== "google") {
+    throw new ToolInputError(
+      "invalid_arguments",
+      `${fieldName}.kind must be either 'openai' or 'google'.`,
+      {
+        field: `${fieldName}.kind`,
+      },
+    );
+  }
+  const model = expectString(record.model, `${fieldName}.model`);
+  const apiBaseUrl = expectOptionalString(record.api_base_url, `${fieldName}.api_base_url`);
+  const temperature = expectOptionalNumber(record.temperature, `${fieldName}.temperature`);
+  const timeoutMs = expectOptionalNumber(record.timeout_ms, `${fieldName}.timeout_ms`);
+
+  return {
+    kind,
+    model,
+    ...(apiBaseUrl === undefined ? {} : { apiBaseUrl }),
+    ...(temperature === undefined ? {} : { temperature }),
+    ...(timeoutMs === undefined ? {} : { timeoutMs }),
+  };
+}
+
+function parseInterpretation(value: unknown): LlmAssistedInterpretationOptions | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const record = expectRecord(value, "arguments.interpretation");
+  const mode = expectString(record.mode, "arguments.interpretation.mode");
+  if (mode !== "llm_assisted") {
+    throw new ToolInputError(
+      "invalid_arguments",
+      "arguments.interpretation.mode must be 'llm_assisted'.",
+      {
+        field: "arguments.interpretation.mode",
+      },
+    );
+  }
+
+  return {
+    mode: "llm_assisted",
+    apiKey: expectString(record.api_key, "arguments.interpretation.api_key"),
+    provider: parseInterpretationProvider(record.provider, "arguments.interpretation.provider"),
+    ...(record.prompt_version === undefined
+      ? {}
+      : {
+          promptVersion: expectString(
+            record.prompt_version,
+            "arguments.interpretation.prompt_version",
+          ),
+        }),
+  };
+}
+
 function validateArguments(value: unknown, request: ToolRequest): RunRequestCycleArguments {
   const record = expectRecord(value, "arguments");
   const userRequest = expectString(record.user_request, "arguments.user_request");
   const input = parseInput(record.input, request);
   const renderKind = expectOptionalString(record.render_kind, "arguments.render_kind");
+  const interpretation = parseInterpretation(record.interpretation);
   const revision =
     record.revision === undefined ? undefined : expectRecord(record.revision, "arguments.revision");
   const revisionEnabled = expectOptionalBoolean(revision?.enabled, "arguments.revision.enabled");
@@ -324,6 +390,7 @@ function validateArguments(value: unknown, request: ToolRequest): RunRequestCycl
     userRequest,
     input,
     ...(renderKind === undefined ? {} : { renderKind }),
+    ...(interpretation === undefined ? {} : { interpretation }),
     ...(revisionEnabled === undefined ? {} : { revisionEnabled }),
   };
 }
@@ -404,6 +471,14 @@ function toIterationShape(
     ...(iteration.semanticProfile === undefined
       ? {}
       : { semantic_profile: iteration.semanticProfile as unknown as Record<string, unknown> }),
+    ...(iteration.intentInterpretation === undefined
+      ? {}
+      : {
+          intent_interpretation: iteration.intentInterpretation as unknown as Record<
+            string,
+            unknown
+          >,
+        }),
     edit_plan: iteration.editPlan as unknown as Record<string, unknown>,
     comparison_report: iteration.comparisonReport as unknown as Record<string, unknown>,
     transform_record: iteration.transformResult.transformRecord as unknown as Record<
@@ -495,6 +570,11 @@ function buildToolResult(result: RequestCycleResult): Record<string, unknown> {
             "result.semantic_profile",
           ) as unknown as Record<string, unknown>,
         }),
+    ...(result.intentInterpretation === undefined
+      ? {}
+      : {
+          intent_interpretation: result.intentInterpretation as unknown as Record<string, unknown>,
+        }),
     ...(result.editPlan === undefined
       ? {}
       : {
@@ -557,7 +637,7 @@ export const runRequestCycleTool: ToolDefinition<
       "Run the full orchestration editing cycle, including explicit session-aware follow-up requests.",
     backing_module: "orchestration",
     required_arguments: ["user_request", "input"],
-    optional_arguments: ["render_kind", "revision"],
+    optional_arguments: ["render_kind", "interpretation", "revision"],
     error_codes: [
       "invalid_arguments",
       "provenance_mismatch",
@@ -572,9 +652,17 @@ export const runRequestCycleTool: ToolDefinition<
         args.input.kind === "existing"
           ? {
               ...defaultOrchestrationDependencies,
+              ...(context.runtime.interpretRequest === undefined
+                ? {}
+                : { interpretRequest: context.runtime.interpretRequest }),
               getAudioVersionById: buildVersionResolver(args.input),
             }
-          : defaultOrchestrationDependencies;
+          : {
+              ...defaultOrchestrationDependencies,
+              ...(context.runtime.interpretRequest === undefined
+                ? {}
+                : { interpretRequest: context.runtime.interpretRequest }),
+            };
 
       const result = await context.runtime.runRequestCycle({
         workspaceRoot: context.workspaceRoot,
@@ -595,6 +683,7 @@ export const runRequestCycleTool: ToolDefinition<
                 sessionGraph: args.input.sessionGraph,
               },
         ...(args.renderKind === undefined ? {} : { renderKind: args.renderKind }),
+        ...(args.interpretation === undefined ? {} : { interpretation: args.interpretation }),
         ...(args.revisionEnabled === undefined
           ? {}
           : { revision: { enabled: args.revisionEnabled } }),

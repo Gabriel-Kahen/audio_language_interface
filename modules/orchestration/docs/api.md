@@ -29,6 +29,7 @@ The current v1 surface stays thin by:
 - `importAudioFromFile`
 - `analyzeAudioVersion`
 - `buildSemanticProfile`
+- `interpretRequest`
 - `planEdits`
 - `applyEditPlan`
 - `renderPreview`
@@ -62,6 +63,7 @@ The returned result includes:
 - input and output versions
 - input and output analyses
 - follow-up resolution metadata
+- optional `intentInterpretation` when explicit LLM-assisted interpretation normalized the planner-facing request
 - optional `iterations[]` when an applied cycle executed one or more explicit version-to-version passes
 - optional `revision` describing whether orchestration chose one additional revision pass and why
 - optional semantic profile
@@ -96,6 +98,7 @@ The default behavior is one attempt with no retries.
 `planAndApply(options)`
 
 - optionally derives a semantic profile
+- optionally derives an `IntentInterpretation` artifact when `options.requestInterpretation` is present and `interpretRequest` is injected
 - builds an edit plan through `modules/planning`
 - applies that plan through `modules/transforms`
 
@@ -114,7 +117,7 @@ The default behavior is one attempt with no retries.
 `planApplyComparePass(options)`
 
 - runs one explicit version-level pass
-- returns the pass-local semantic profile, edit plan, transform result, output analysis, and version comparison report
+- returns the pass-local semantic profile, optional `IntentInterpretation`, edit plan, transform result, output analysis, and version comparison report
 - is the shared building block for `iterativeRefine()` and the optional `runRequestCycle()` revision pass
 
 `resolveFollowUpRequest(options)`
@@ -144,6 +147,17 @@ Important comparison behavior:
 - only pass-level stages carry `trace[].pass`; the final render comparison does not
 
 For revert-style and alternate-version execution, callers must provide `dependencies.getAudioVersionById({ asset, sessionGraph, versionId })`.
+
+For opt-in LLM assistance, callers must also provide:
+
+- `options.interpretation = { mode: "llm_assisted", apiKey, provider: ... }`
+- `dependencies.interpretRequest(...)`
+
+That interpretation step stays above deterministic planning:
+
+- orchestration records the original and resolved user requests in the returned artifact
+- the interpreter returns a contract-valid `IntentInterpretation` explicitly
+- `modules/planning` still receives one concrete planner-facing request string plus the usual validated `SemanticProfile`
 
 Orchestration now verifies that the loaded historical `AudioVersion` matches:
 

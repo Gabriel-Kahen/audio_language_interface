@@ -2,6 +2,7 @@ import type { AnalysisReport, AnalyzeAudioOptions } from "@audio-language-interf
 import type { ComparisonReport } from "@audio-language-interface/compare";
 import type { AudioAsset, AudioVersion } from "@audio-language-interface/core";
 import type { SessionGraph } from "@audio-language-interface/history";
+import type { IntentInterpretation } from "@audio-language-interface/interpretation";
 import type { ImportAudioOptions, ImportAudioResult } from "@audio-language-interface/io";
 import type { EditPlan } from "@audio-language-interface/planning";
 import type {
@@ -24,6 +25,7 @@ export type {
   FinalRenderOptions,
   ImportAudioOptions,
   ImportAudioResult,
+  IntentInterpretation,
   PreviewRenderOptions,
   RenderArtifact,
   RenderResult,
@@ -39,6 +41,7 @@ export type WorkflowStage =
   | "load_follow_up_input"
   | "load_revert_target"
   | "semantic_profile"
+  | "interpret_request"
   | "plan"
   | "apply"
   | "analyze_output"
@@ -69,6 +72,7 @@ export interface OrchestrationDependencies {
   importAudioFromFile: typeof import("@audio-language-interface/io").importAudioFromFile;
   analyzeAudioVersion: typeof import("@audio-language-interface/analysis").analyzeAudioVersion;
   buildSemanticProfile?: typeof import("@audio-language-interface/semantics").buildSemanticProfile;
+  interpretRequest?: typeof import("@audio-language-interface/interpretation").interpretRequest;
   planEdits: typeof import("@audio-language-interface/planning").planEdits;
   applyEditPlan: typeof import("@audio-language-interface/transforms").applyEditPlan;
   renderPreview: typeof import("@audio-language-interface/render").renderPreview;
@@ -116,13 +120,31 @@ export interface ImportAndAnalyzeResult {
   trace: WorkflowTraceEntry[];
 }
 
+export interface LlmInterpretationProviderConfig {
+  kind: "openai" | "google";
+  model: string;
+  apiBaseUrl?: string;
+  temperature?: number;
+  timeoutMs?: number;
+}
+
+export interface LlmAssistedInterpretationOptions {
+  mode: "llm_assisted";
+  provider: LlmInterpretationProviderConfig;
+  apiKey: string;
+  promptVersion?: string;
+}
+
 export interface PlanAndApplyOptions {
   workspaceRoot: string;
   userRequest: string;
+  originalUserRequest?: string;
   version: AudioVersion;
   analysisReport: AnalysisReport;
   pass?: number;
   semanticProfile?: SemanticProfile;
+  requestInterpretation?: LlmAssistedInterpretationOptions;
+  sessionGraph?: SessionGraph;
   outputDir?: string;
   outputVersionId?: string;
   recordId?: string;
@@ -130,13 +152,14 @@ export interface PlanAndApplyOptions {
   ffmpegPath?: string;
   dependencies: Pick<
     OrchestrationDependencies,
-    "planEdits" | "applyEditPlan" | "buildSemanticProfile"
+    "planEdits" | "applyEditPlan" | "buildSemanticProfile" | "interpretRequest"
   >;
   failurePolicy?: FailurePolicy | undefined;
 }
 
 export interface PlanAndApplyResult {
   semanticProfile?: SemanticProfile;
+  intentInterpretation?: IntentInterpretation;
   editPlan: EditPlan;
   outputVersion: AudioVersion;
   transformResult: ApplyTransformsResult;
@@ -175,6 +198,7 @@ export interface IterationResult {
   inputAnalysis: AnalysisReport;
   outputAnalysis: AnalysisReport;
   semanticProfile?: SemanticProfile;
+  intentInterpretation?: IntentInterpretation;
   editPlan: EditPlan;
   comparisonReport: ComparisonReport;
   transformResult: ApplyTransformsResult;
@@ -202,9 +226,12 @@ export interface RequestCycleRevisionOptions {
 export interface IterativeRefineOptions {
   workspaceRoot: string;
   userRequest: string;
+  originalUserRequest?: string;
   version: AudioVersion;
   analysisReport: AnalysisReport;
   analysisOptions?: AnalyzeAudioOptions;
+  requestInterpretation?: LlmAssistedInterpretationOptions;
+  sessionGraph?: SessionGraph;
   maxIterations: number;
   dependencies: Pick<
     OrchestrationDependencies,
@@ -212,6 +239,7 @@ export interface IterativeRefineOptions {
     | "planEdits"
     | "applyEditPlan"
     | "buildSemanticProfile"
+    | "interpretRequest"
     | "compareVersions"
   >;
   shouldContinue?: (input: {
@@ -247,6 +275,7 @@ export interface RunRequestCycleOptions {
   input: RequestCycleInput;
   analysisOptions?: AnalyzeAudioOptions;
   renderKind?: "preview" | "final" | undefined;
+  interpretation?: LlmAssistedInterpretationOptions;
   revision?: RequestCycleRevisionOptions;
   sessionId?: string;
   branchId?: string;
@@ -279,6 +308,7 @@ export interface RequestCycleResult {
   iterations?: IterationResult[];
   revision?: RevisionDecision;
   semanticProfile?: SemanticProfile;
+  intentInterpretation?: IntentInterpretation;
   editPlan?: EditPlan;
   outputVersion: AudioVersion;
   transformResult?: ApplyTransformsResult;

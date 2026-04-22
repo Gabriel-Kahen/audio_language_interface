@@ -9,6 +9,10 @@ import {
 } from "@audio-language-interface/compare";
 import { assertValidSessionGraph, type SessionGraph } from "@audio-language-interface/history";
 import {
+  assertValidIntentInterpretation,
+  type IntentInterpretation,
+} from "@audio-language-interface/interpretation";
+import {
   type AudioAsset,
   type AudioVersion,
   assertValidAudioAsset,
@@ -346,6 +350,43 @@ export function expectSemanticProfile(value: unknown, fieldName: string): Semant
   }
 }
 
+export function expectRuntimeCapabilityManifest(
+  value: unknown,
+  fieldName: string,
+): RuntimeCapabilityManifest {
+  const record = expectRecord(value, fieldName);
+
+  try {
+    assertValidRuntimeCapabilityManifest(record as unknown as RuntimeCapabilityManifest);
+    return assertSchemaValidatedOutput(
+      record,
+      fieldName,
+      "RuntimeCapabilityManifest",
+      runtimeCapabilityManifestValidator,
+    );
+  } catch (error) {
+    invalidContractValue(fieldName, "RuntimeCapabilityManifest", {
+      reason: toErrorMessage(error),
+    });
+  }
+}
+
+export function expectIntentInterpretation(
+  value: unknown,
+  fieldName: string,
+): IntentInterpretation {
+  const record = expectRecord(value, fieldName);
+
+  try {
+    assertValidIntentInterpretation(record as unknown as IntentInterpretation);
+    return record as unknown as IntentInterpretation;
+  } catch (error) {
+    invalidContractValue(fieldName, "IntentInterpretation", {
+      reason: toErrorMessage(error),
+    });
+  }
+}
+
 export function expectEditPlan(value: unknown, fieldName: string): EditPlan {
   const record = expectRecord(value, fieldName);
 
@@ -397,6 +438,20 @@ export function assertToolResultSemanticProfile(
     return value as SemanticProfile;
   } catch (error) {
     invalidToolResultValue(fieldName, "SemanticProfile", {
+      reason: toErrorMessage(error),
+    });
+  }
+}
+
+export function assertToolResultIntentInterpretation(
+  value: unknown,
+  fieldName: string,
+): IntentInterpretation {
+  try {
+    assertValidIntentInterpretation(value as IntentInterpretation);
+    return value as IntentInterpretation;
+  } catch (error) {
+    invalidToolResultValue(fieldName, "IntentInterpretation", {
       reason: toErrorMessage(error),
     });
   }

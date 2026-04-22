@@ -64,6 +64,10 @@
       "type": "string",
       "pattern": "^semantic_[A-Za-z0-9]+$"
     },
+    "interpretationId": {
+      "type": "string",
+      "pattern": "^interpret_[A-Za-z0-9]+$"
+    },
     "planId": {
       "type": "string",
       "pattern": "^plan_[A-Za-z0-9]+$"
@@ -139,6 +143,19 @@
     "verificationComparison": {
       "type": "string",
       "enum": ["increase_by", "decrease_by", "at_most", "at_least", "within", "present", "absent"]
+    },
+    "plannerRequestClass": {
+      "type": "string",
+      "enum": [
+        "supported",
+        "supported_but_underspecified",
+        "unsupported",
+        "supported_runtime_only_but_not_planner_enabled"
+      ]
+    },
+    "interpretationProvider": {
+      "type": "string",
+      "enum": ["openai", "google"]
     },
     "nodeType": {
       "type": "string",

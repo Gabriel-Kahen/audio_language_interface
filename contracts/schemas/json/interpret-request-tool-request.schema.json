@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/interpret-request-tool-request.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "tool_name", "arguments", "requested_at"],
+  "properties": {
+    "schema_version": { "$ref": "./common.schema.json#/$defs/schemaVersion" },
+    "request_id": { "$ref": "./common.schema.json#/$defs/requestId" },
+    "tool_name": { "const": "interpret_request" },
+    "requested_at": { "$ref": "./common.schema.json#/$defs/isoTimestamp" },
+    "session_id": { "$ref": "./common.schema.json#/$defs/sessionId" },
+    "asset_id": { "$ref": "./common.schema.json#/$defs/assetId" },
+    "version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+    "caller": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+    "arguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "audio_version",
+        "analysis_report",
+        "semantic_profile",
+        "user_request",
+        "provider"
+      ],
+      "properties": {
+        "audio_version": { "$ref": "./audio-version.schema.json" },
+        "analysis_report": { "$ref": "./analysis-report.schema.json" },
+        "semantic_profile": { "$ref": "./semantic-profile.schema.json" },
+        "user_request": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+        "capability_manifest": { "$ref": "./runtime-capability-manifest.schema.json" },
+        "prompt_version": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+        "provider": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "api_key", "model"],
+          "properties": {
+            "kind": { "$ref": "./common.schema.json#/$defs/interpretationProvider" },
+            "api_key": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+            "model": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+            "api_base_url": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+            "temperature": { "type": "number" },
+            "timeout_ms": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    }
+  }
+}

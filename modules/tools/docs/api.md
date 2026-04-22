@@ -48,6 +48,23 @@ Returns imported `asset`, imported `version`, source and materialized metadata, 
 
 Returns a `report` object containing the `AnalysisReport`. The include flags only trim response sections after the analysis runs.
 
+### `interpret_request`
+
+- backing module: `interpretation`
+- required arguments:
+  - `audio_version`
+  - `analysis_report`
+  - `semantic_profile`
+  - `user_request`
+  - `provider`
+- optional arguments:
+  - `capability_manifest`
+  - `prompt_version`
+
+Returns an `intent_interpretation` artifact containing a provider-backed but contract-validated normalization of the raw request.
+
+This tool does not emit an `EditPlan`. It exists so callers can inspect or cache request interpretation separately from deterministic planning.
+
 ### `plan_edits`
 
 - backing module: `planning`
@@ -59,6 +76,7 @@ Returns a `report` object containing the `AnalysisReport`. The include flags onl
 - optional arguments:
   - `generated_at`
   - `constraints`
+  - `intent_interpretation`
 
 Returns an `edit_plan` object containing the canonical `EditPlan`.
 
@@ -131,6 +149,7 @@ Returns a `comparison_report`.
   - `input`
 - optional arguments:
   - `render_kind`
+  - `interpretation`
   - `revision`
 
 `arguments.input` supports two explicit shapes:
@@ -156,6 +175,7 @@ Returns the completed request-cycle artifact set:
 - `input_analysis`
 - `follow_up_resolution`
 - optional `semantic_profile`
+- optional `intent_interpretation`
 - optional `edit_plan`
 - `output_version`
 - optional `transform_record`
@@ -169,6 +189,19 @@ Returns the completed request-cycle artifact set:
 - optional `revision`
 - optional `iterations`
 - `trace`
+
+`arguments.interpretation` is currently an explicit opt-in object:
+
+- `mode = "llm_assisted"`
+- `api_key`
+- `provider.kind`
+- `provider.model`
+- optional `provider.api_base_url`
+- optional `provider.temperature`
+- optional `provider.timeout_ms`
+- optional `prompt_version`
+
+When present, the tool forwards that configuration into orchestration and requires a runtime-injected `interpretRequest` implementation. The returned `intent_interpretation` artifact makes the normalized planner-facing request inspectable without bypassing deterministic planning.
 
 Important follow-up behavior:
 

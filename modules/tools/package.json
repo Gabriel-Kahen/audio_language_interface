@@ -13,6 +13,7 @@
     "@audio-language-interface/analysis": "workspace:*",
     "@audio-language-interface/capabilities": "workspace:*",
     "@audio-language-interface/compare": "workspace:*",
+    "@audio-language-interface/interpretation": "workspace:*",
     "@audio-language-interface/io": "workspace:*",
     "@audio-language-interface/planning": "workspace:*",
     "@audio-language-interface/semantics": "workspace:*",

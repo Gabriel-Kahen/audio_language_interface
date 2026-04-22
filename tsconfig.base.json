@@ -10,6 +10,7 @@
       "@audio-language-interface/compare": ["./modules/compare/src/index.ts"],
       "@audio-language-interface/core": ["./modules/core/src/index.ts"],
       "@audio-language-interface/history": ["./modules/history/src/index.ts"],
+      "@audio-language-interface/interpretation": ["./modules/interpretation/src/index.ts"],
       "@audio-language-interface/io": ["./modules/io/src/index.ts"],
       "@audio-language-interface/orchestration": ["./modules/orchestration/src/index.ts"],
       "@audio-language-interface/planning": ["./modules/planning/src/index.ts"],

@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-language-interface.dev/schemas/intent-interpretation.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "interpretation_id",
+    "asset_id",
+    "version_id",
+    "analysis_report_id",
+    "semantic_profile_id",
+    "user_request",
+    "normalized_request",
+    "request_classification",
+    "normalized_objectives",
+    "candidate_descriptors",
+    "confidence",
+    "provider",
+    "generated_at",
+    "rationale"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "./common.schema.json#/$defs/schemaVersion"
+    },
+    "interpretation_id": {
+      "$ref": "./common.schema.json#/$defs/interpretationId"
+    },
+    "asset_id": {
+      "$ref": "./common.schema.json#/$defs/assetId"
+    },
+    "version_id": {
+      "$ref": "./common.schema.json#/$defs/versionId"
+    },
+    "analysis_report_id": {
+      "$ref": "./common.schema.json#/$defs/analysisId"
+    },
+    "semantic_profile_id": {
+      "$ref": "./common.schema.json#/$defs/semanticId"
+    },
+    "user_request": {
+      "$ref": "./common.schema.json#/$defs/nonEmptyString"
+    },
+    "normalized_request": {
+      "$ref": "./common.schema.json#/$defs/nonEmptyString"
+    },
+    "request_classification": {
+      "$ref": "./common.schema.json#/$defs/plannerRequestClass"
+    },
+    "normalized_objectives": {
+      "$ref": "./common.schema.json#/$defs/stringArray"
+    },
+    "candidate_descriptors": {
+      "$ref": "./common.schema.json#/$defs/stringArray"
+    },
+    "ambiguities": {
+      "$ref": "./common.schema.json#/$defs/stringArray"
+    },
+    "unsupported_phrases": {
+      "$ref": "./common.schema.json#/$defs/stringArray"
+    },
+    "clarification_question": {
+      "$ref": "./common.schema.json#/$defs/nonEmptyString"
+    },
+    "rationale": {
+      "$ref": "./common.schema.json#/$defs/nonEmptyString"
+    },
+    "confidence": {
+      "$ref": "./common.schema.json#/$defs/confidence"
+    },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "model", "prompt_version"],
+      "properties": {
+        "kind": {
+          "$ref": "./common.schema.json#/$defs/interpretationProvider"
+        },
+        "model": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        },
+        "prompt_version": {
+          "$ref": "./common.schema.json#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "generated_at": {
+      "$ref": "./common.schema.json#/$defs/isoTimestamp"
+    }
+  }
+}

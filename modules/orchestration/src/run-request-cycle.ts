@@ -283,9 +283,14 @@ export async function runRequestCycle(
       workspaceRoot: options.workspaceRoot,
       iteration: 1,
       userRequest: resolvedUserRequest,
+      originalUserRequest: options.userRequest,
       version: currentVersion,
       analysisReport: currentAnalysis,
       analysisOptions: options.analysisOptions,
+      ...(options.interpretation === undefined
+        ? {}
+        : { requestInterpretation: options.interpretation }),
+      sessionGraph,
       dependencies: options.dependencies,
       failurePolicy: options.failurePolicy,
       trace,
@@ -306,9 +311,14 @@ export async function runRequestCycle(
         workspaceRoot: options.workspaceRoot,
         iteration: 2,
         userRequest: resolvedUserRequest,
+        originalUserRequest: options.userRequest,
         version: currentVersion,
         analysisReport: currentAnalysis,
         analysisOptions: options.analysisOptions,
+        ...(options.interpretation === undefined
+          ? {}
+          : { requestInterpretation: options.interpretation }),
+        sessionGraph,
         dependencies: options.dependencies,
         failurePolicy: options.failurePolicy,
         trace,
@@ -354,6 +364,9 @@ export async function runRequestCycle(
   const exposeTopLevelIterationArtifacts = iterations.length === 1;
   const semanticProfile = exposeTopLevelIterationArtifacts
     ? finalIteration.semanticProfile
+    : undefined;
+  const intentInterpretation = exposeTopLevelIterationArtifacts
+    ? finalIteration.intentInterpretation
     : undefined;
   const editPlan = exposeTopLevelIterationArtifacts ? finalIteration.editPlan : undefined;
   const transformResult = exposeTopLevelIterationArtifacts
@@ -410,6 +423,7 @@ export async function runRequestCycle(
       inputVersion,
       inputAnalysis,
       ...(semanticProfile === undefined ? {} : { semanticProfile }),
+      ...(intentInterpretation === undefined ? {} : { intentInterpretation }),
       ...(editPlan === undefined ? {} : { editPlan }),
       ...(transformResult === undefined ? {} : { transformResult }),
       outputVersion,
@@ -439,6 +453,7 @@ export async function runRequestCycle(
     iterations,
     ...(revision === undefined ? {} : { revision }),
     ...(semanticProfile === undefined ? {} : { semanticProfile }),
+    ...(intentInterpretation === undefined ? {} : { intentInterpretation }),
     ...(editPlan === undefined ? {} : { editPlan }),
     outputVersion,
     ...(transformResult === undefined ? {} : { transformResult }),

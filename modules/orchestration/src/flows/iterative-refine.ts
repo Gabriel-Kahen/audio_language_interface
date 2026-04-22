@@ -15,9 +15,16 @@ export async function iterativeRefine(
       workspaceRoot: options.workspaceRoot,
       iteration: iterationNumber,
       userRequest: options.userRequest,
+      ...(options.originalUserRequest === undefined
+        ? {}
+        : { originalUserRequest: options.originalUserRequest }),
       version: currentVersion,
       analysisReport: currentAnalysis,
       analysisOptions: options.analysisOptions,
+      ...(options.requestInterpretation === undefined
+        ? {}
+        : { requestInterpretation: options.requestInterpretation }),
+      ...(options.sessionGraph === undefined ? {} : { sessionGraph: options.sessionGraph }),
       dependencies: options.dependencies,
       failurePolicy: options.failurePolicy,
       trace,

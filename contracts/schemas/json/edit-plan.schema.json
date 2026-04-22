@@ -33,6 +33,12 @@
     "user_request": {
       "type": "string"
     },
+    "interpreted_user_request": {
+      "type": "string"
+    },
+    "intent_interpretation_id": {
+      "$ref": "./common.schema.json#/$defs/interpretationId"
+    },
     "created_at": {
       "$ref": "./common.schema.json#/$defs/isoTimestamp"
     },

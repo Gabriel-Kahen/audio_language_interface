@@ -229,6 +229,105 @@ describe("request cycle integration", () => {
     });
   });
 
+  it("supports opt-in request interpretation while keeping deterministic planning explicit", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const inputPath = path.join(workspaceRoot, "fixtures", "tone.wav");
+      await writeFixtureWav(inputPath, { sampleRateHz: 44_100, durationSeconds: 1.1 });
+
+      const result = await runRequestCycle({
+        workspaceRoot,
+        userRequest: "Make this loop darker.",
+        input: {
+          kind: "import",
+          inputPath,
+          importOptions: {
+            importedAt: "2026-04-14T20:26:00Z",
+          },
+        },
+        interpretation: {
+          mode: "llm_assisted",
+          apiKey: "test-key",
+          provider: {
+            kind: "openai",
+            model: "gpt-5-mini",
+            temperature: 0.2,
+          },
+        },
+        dependencies: {
+          ...defaultOrchestrationDependencies,
+          interpretRequest: async ({
+            userRequest,
+            audioVersion,
+            analysisReport,
+            semanticProfile,
+          }) => ({
+            schema_version: "1.0.0",
+            interpretation_id: "interpret_integration123",
+            asset_id: audioVersion.asset_id,
+            version_id: audioVersion.version_id,
+            analysis_report_id: analysisReport.report_id,
+            semantic_profile_id: semanticProfile.profile_id,
+            user_request: userRequest,
+            normalized_request: "Make this loop darker with a gentle high-shelf cut.",
+            request_classification: "supported",
+            normalized_objectives: ["darker"],
+            candidate_descriptors: ["dark"],
+            rationale:
+              "Clarified the tonal request into a more explicit deterministic planning prompt.",
+            confidence: 0.73,
+            provider: {
+              kind: "openai",
+              model: "gpt-5-mini",
+              prompt_version: "intent_v1",
+            },
+            generated_at: "2026-04-21T20:45:00Z",
+          }),
+          applyEditPlan: async (options) =>
+            applyEditPlan({ ...options, executor: copyAudioExecutor }),
+          renderPreview: async (options) =>
+            renderPreview({
+              ...options,
+              executor: copyAudioExecutor,
+              probeExecutor: createProbeExecutor({
+                format: "mp3",
+                codec: "mp3",
+                sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
+                channels: options.channels ?? options.version.audio.channels,
+                durationSeconds: options.version.audio.duration_seconds,
+              }),
+            }),
+          renderExport: async (options) =>
+            renderExport({
+              ...options,
+              executor: copyAudioExecutor,
+              probeExecutor: createProbeExecutor({
+                format: options.format ?? "wav",
+                codec: options.format === "flac" ? "flac" : "pcm_s16le",
+                sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
+                channels: options.channels ?? options.version.audio.channels,
+                durationSeconds: options.version.audio.duration_seconds,
+              }),
+            }),
+        },
+      });
+
+      expect(result.intentInterpretation).toMatchObject({
+        interpretation_id: "interpret_integration123",
+        provider: {
+          kind: "openai",
+          model: "gpt-5-mini",
+        },
+        normalized_request: "Make this loop darker with a gentle high-shelf cut.",
+      });
+      expect(result.editPlan?.interpreted_user_request).toBe(
+        "Make this loop darker with a gentle high-shelf cut.",
+      );
+      expect(result.iterations?.[0]?.intentInterpretation).toMatchObject({
+        normalized_request: "Make this loop darker with a gentle high-shelf cut.",
+      });
+    });
+  });
+
   it("can run one explicit revision pass while keeping iteration history inspectable", async () => {
     await withTempWorkspace(async (workspaceRoot) => {
       const inputPath = path.join(workspaceRoot, "fixtures", "tone.wav");

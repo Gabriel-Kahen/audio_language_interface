@@ -14,7 +14,7 @@ import {
 } from "@audio-language-interface/history";
 import { planEdits } from "@audio-language-interface/planning";
 import { buildSemanticProfile } from "@audio-language-interface/semantics";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   type AnalysisReport,
   type ApplyTransformsResult,
@@ -177,6 +177,82 @@ describe("runRequestCycle", () => {
     );
   });
 
+  it("uses opt-in request interpretation above deterministic planning and returns the artifact explicitly", async () => {
+    const asset = createAsset();
+    const inputVersion = createVersion("ver_input");
+    const interpretRequest = vi.fn().mockResolvedValue({
+      schema_version: "1.0.0",
+      interpretation_id: "interpret_test123",
+      asset_id: inputVersion.asset_id,
+      version_id: inputVersion.version_id,
+      analysis_report_id: "analysis_input",
+      semantic_profile_id: "semantic_input",
+      user_request: "Make it darker",
+      normalized_request: "Make it darker with a gentle high-shelf cut.",
+      request_classification: "supported",
+      normalized_objectives: ["darker"],
+      candidate_descriptors: ["dark"],
+      rationale: "Preserve the original intent while making the tonal move more explicit.",
+      confidence: 0.76,
+      provider: {
+        kind: "openai",
+        model: "gpt-5-mini",
+        prompt_version: "intent_v1",
+      },
+      generated_at: "2026-04-21T20:30:00Z",
+    });
+    const dependencies = createDependencies({
+      interpretRequest,
+    });
+
+    const result = await runRequestCycle({
+      workspaceRoot: "/workspace",
+      userRequest: "Make it darker",
+      input: {
+        kind: "existing",
+        asset,
+        version: inputVersion,
+      },
+      interpretation: {
+        mode: "llm_assisted",
+        apiKey: "test-key",
+        provider: {
+          kind: "openai",
+          model: "gpt-5-mini",
+          temperature: 0.2,
+        },
+      },
+      dependencies,
+    });
+
+    expect(interpretRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userRequest: "Make it darker",
+        audioVersion: inputVersion,
+        provider: expect.objectContaining({
+          kind: "openai",
+          model: "gpt-5-mini",
+          temperature: 0.2,
+        }),
+      }),
+    );
+    expect(result.intentInterpretation).toMatchObject({
+      interpretation_id: "interpret_test123",
+      provider: {
+        kind: "openai",
+        model: "gpt-5-mini",
+      },
+      normalized_request: "Make it darker with a gentle high-shelf cut.",
+    });
+    expect(result.editPlan?.user_request).toBe("Make it darker");
+    expect(result.editPlan?.interpreted_user_request).toBe(
+      "Make it darker with a gentle high-shelf cut.",
+    );
+    expect(result.iterations?.[0]?.intentInterpretation).toMatchObject({
+      normalized_request: "Make it darker with a gentle high-shelf cut.",
+    });
+  });
+
   it("wraps stage failures with partial results", async () => {
     const asset = createAsset();
     const inputVersion = createVersion("ver_input");
@@ -202,6 +278,37 @@ describe("runRequestCycle", () => {
       partialResult: {
         semanticProfile: expect.objectContaining({ analysis_report_id: "analysis_input" }),
         editPlan: expect.objectContaining({ user_request: "Make it darker" }),
+      },
+    } satisfies Partial<OrchestrationStageError>);
+  });
+
+  it("fails explicitly when LLM-assisted interpretation is requested without an interpreter dependency", async () => {
+    const asset = createAsset();
+    const inputVersion = createVersion("ver_input");
+
+    await expect(
+      runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "Make it darker",
+        input: {
+          kind: "existing",
+          asset,
+          version: inputVersion,
+        },
+        interpretation: {
+          mode: "llm_assisted",
+          apiKey: "test-key",
+          provider: {
+            kind: "openai",
+            model: "gpt-5-mini",
+          },
+        },
+        dependencies: createDependencies(),
+      }),
+    ).rejects.toMatchObject({
+      stage: "plan",
+      partialResult: {
+        semanticProfile: expect.objectContaining({ analysis_report_id: "analysis_input" }),
       },
     } satisfies Partial<OrchestrationStageError>);
   });

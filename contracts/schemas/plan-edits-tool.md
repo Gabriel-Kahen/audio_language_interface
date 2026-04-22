@@ -20,12 +20,15 @@ Optional arguments:
 
 - `generated_at`
 - `constraints`
+- `intent_interpretation`
 
 ## Success response
 
 On success, `result.edit_plan` contains a contract-valid `EditPlan`.
 
 The returned plan must include `capability_manifest_id` so downstream callers know which runtime capability surface the planner used.
+
+When present, `intent_interpretation` gives the planner a contract-valid normalized request proposal from the optional interpretation layer. Planning still validates and may reject that proposal deterministically.
 
 ## Failure behavior
 

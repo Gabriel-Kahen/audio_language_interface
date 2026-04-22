@@ -4,6 +4,7 @@ export type AssetId = `asset_${string}`;
 export type VersionId = `ver_${string}`;
 export type AnalysisId = `analysis_${string}`;
 export type SemanticId = `semantic_${string}`;
+export type InterpretationId = `interpret_${string}`;
 export type PlanId = `plan_${string}`;
 export type TransformId = `transform_${string}`;
 export type RenderId = `render_${string}`;
@@ -50,6 +51,11 @@ export function createAnalysisId(): AnalysisId {
 /** Returns a new canonical `SemanticProfile` identifier. */
 export function createSemanticId(): SemanticId {
   return createPrefixedId("semantic") as SemanticId;
+}
+
+/** Returns a new canonical `IntentInterpretation` identifier. */
+export function createInterpretationId(): InterpretationId {
+  return createPrefixedId("interpret") as InterpretationId;
 }
 
 /** Returns a new canonical `EditPlan` identifier. */
@@ -104,6 +110,11 @@ export function isAnalysisId(value: unknown): value is AnalysisId {
 /** Checks whether a value matches the shared `SemanticProfile` id contract. */
 export function isSemanticId(value: unknown): value is SemanticId {
   return isPrefixedId("semantic", value);
+}
+
+/** Checks whether a value matches the shared `IntentInterpretation` id contract. */
+export function isInterpretationId(value: unknown): value is InterpretationId {
+  return isPrefixedId("interpret", value);
 }
 
 /** Checks whether a value matches the shared `EditPlan` id contract. */

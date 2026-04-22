@@ -193,6 +193,29 @@ function buildRequestCycleResult(): RequestCycleResult {
         semanticProfile: semanticProfile as unknown as NonNullable<
           RequestCycleResult["semanticProfile"]
         >,
+        intentInterpretation: {
+          schema_version: "1.0.0",
+          interpretation_id: "interpret_cycle123",
+          asset_id: asset.asset_id,
+          version_id: inputVersion.version_id,
+          analysis_report_id: "analysis_input",
+          semantic_profile_id: String(
+            (semanticProfile as Record<string, unknown>).profile_id ?? "semantic_profile_id",
+          ),
+          user_request: "Make it darker.",
+          normalized_request: "Make it darker with a gentle high-shelf cut.",
+          request_classification: "supported",
+          normalized_objectives: ["darker"],
+          candidate_descriptors: ["dark"],
+          rationale: "Make the tonal move explicit without bypassing deterministic planning.",
+          confidence: 0.72,
+          provider: {
+            kind: "openai",
+            model: "gpt-5-mini",
+            prompt_version: "intent_v1",
+          },
+          generated_at: "2026-04-21T20:25:00Z",
+        },
         editPlan: editPlan as unknown as NonNullable<RequestCycleResult["editPlan"]>,
         comparisonReport:
           comparisonReport as unknown as RequestCycleResult["versionComparisonReport"],
@@ -220,6 +243,29 @@ function buildRequestCycleResult(): RequestCycleResult {
     semanticProfile: semanticProfile as unknown as NonNullable<
       RequestCycleResult["semanticProfile"]
     >,
+    intentInterpretation: {
+      schema_version: "1.0.0",
+      interpretation_id: "interpret_cycle123",
+      asset_id: asset.asset_id,
+      version_id: inputVersion.version_id,
+      analysis_report_id: "analysis_input",
+      semantic_profile_id: String(
+        (semanticProfile as Record<string, unknown>).profile_id ?? "semantic_profile_id",
+      ),
+      user_request: "Make it darker.",
+      normalized_request: "Make it darker with a gentle high-shelf cut.",
+      request_classification: "supported",
+      normalized_objectives: ["darker"],
+      candidate_descriptors: ["dark"],
+      rationale: "Make the tonal move explicit without bypassing deterministic planning.",
+      confidence: 0.72,
+      provider: {
+        kind: "openai",
+        model: "gpt-5-mini",
+        prompt_version: "intent_v1",
+      },
+      generated_at: "2026-04-21T20:25:00Z",
+    },
     editPlan: editPlan as unknown as NonNullable<RequestCycleResult["editPlan"]>,
     outputVersion: outputVersion as unknown as RequestCycleResult["outputVersion"],
     transformResult: {
@@ -271,6 +317,7 @@ describe("run_request_cycle tool", () => {
         expect.objectContaining({
           name: "run_request_cycle",
           backing_module: "orchestration",
+          optional_arguments: expect.arrayContaining(["interpretation"]),
         }),
       ]),
     );
@@ -335,6 +382,78 @@ describe("run_request_cycle tool", () => {
         versionId: baselineVersion.version_id,
       }),
     ).resolves.toEqual(baselineVersion);
+  });
+
+  it("forwards interpretation config into orchestration and exposes explicit interpretation artifacts", async () => {
+    const asset = buildAudioAsset();
+    const currentVersion = buildAudioVersion("ver_current");
+    const sessionGraph = buildSessionGraph(asset, [currentVersion]);
+    const requestCycleResult = buildRequestCycleResult();
+    const runRequestCycle = vi.fn().mockImplementation(async (options) => {
+      expect(options.interpretation).toMatchObject({
+        mode: "llm_assisted",
+        apiKey: "test-key",
+        provider: {
+          kind: "openai",
+          model: "gpt-5-mini",
+          temperature: 0.2,
+          apiBaseUrl: "http://localhost:11434/v1",
+        },
+      });
+      expect(options.dependencies.interpretRequest).toEqual(expect.any(Function));
+      return requestCycleResult;
+    });
+
+    const response = await executeToolRequest(
+      buildRequest({
+        session_id: sessionGraph.session_id,
+        asset_id: asset.asset_id,
+        version_id: currentVersion.version_id,
+        arguments: {
+          user_request: "Make it darker.",
+          interpretation: {
+            mode: "llm_assisted",
+            api_key: "test-key",
+            prompt_version: "intent_v1",
+            provider: {
+              kind: "openai",
+              model: "gpt-5-mini",
+              temperature: 0.2,
+              api_base_url: "http://localhost:11434/v1",
+            },
+          },
+          input: {
+            kind: "existing",
+            asset,
+            audio_version: currentVersion,
+            session_graph: sessionGraph,
+          },
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/ali-tools",
+        runtime: { runRequestCycle } satisfies Partial<ToolsRuntime>,
+      },
+    );
+
+    expect(response.status).toBe("ok");
+    expect(response.result?.intent_interpretation).toMatchObject({
+      interpretation_id: "interpret_cycle123",
+      provider: {
+        kind: "openai",
+        model: "gpt-5-mini",
+      },
+      normalized_request: "Make it darker with a gentle high-shelf cut.",
+    });
+    expect(response.result?.iterations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          intent_interpretation: expect.objectContaining({
+            normalized_request: "Make it darker with a gentle high-shelf cut.",
+          }),
+        }),
+      ]),
+    );
   });
 
   it("rejects existing-input requests when the request session id does not match the session graph", async () => {

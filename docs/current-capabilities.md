@@ -45,6 +45,7 @@ The runtime capability surface is now also published explicitly through `Runtime
 
 ### Adapters
 
+- `interpretation`: optional provider-backed request normalization that emits `IntentInterpretation` artifacts for OpenAI or Google API callers
 - `tools`: callable tool registry and request execution for the published tool set
 - `orchestration`: composed happy-path workflows and iterative refinement helpers
 
@@ -149,6 +150,7 @@ The baseline planner now supports a conservative timing-edit slice for explicit 
 - `describe_runtime_capabilities`
 - `load_audio`
 - `analyze_audio`
+- `interpret_request`
 - `plan_edits`
 - `apply_edit_plan`
 - `render_preview`
@@ -158,9 +160,11 @@ The baseline planner now supports a conservative timing-edit slice for explicit 
 Current tool-surface caveats:
 
 - `apply_edit_plan` supports the published runtime capability surface, including first-cohort `time_range` execution for selected duration-preserving Layer 1 operations, while still validating explicit runtime prerequisites such as stereo-only processing where applicable
+- `interpret_request` is optional and provider-backed; it normalizes language into a contract-valid `IntentInterpretation` but does not bypass deterministic planning or verification
 - `plan_edits` only chooses operations marked as `planner_supported` in the runtime capability manifest
+- `plan_edits` can accept an optional `intent_interpretation` artifact, but still validates that proposal against current audio evidence and planner support
 - `compare_versions` returns `evaluation_basis` so callers can see whether structured verification or fallback goal alignment is authoritative
-- `run_request_cycle` exposes the full orchestration editing loop, including session-aware follow-up behavior, while still requiring callers to provide explicit `session_graph` and `available_versions` inputs for historical execution
+- `run_request_cycle` exposes the full orchestration editing loop, including session-aware follow-up behavior and optional LLM-assisted request interpretation, while still requiring callers to provide explicit `session_graph` and `available_versions` inputs for historical execution
 - explicit technical callers can still submit runtime-only Layer 1 effect steps when they stay inside the published contract surface
 
 ## Important Current Limitations
@@ -169,6 +173,7 @@ Current tool-surface caveats:
 - analysis currently requires `.wav` input files on disk
 - analysis reads the whole file into memory
 - semantic descriptor coverage is intentionally small and conservative
+- the optional interpretation layer broadens language handling, but it does not make unsupported descriptors or transforms safe automatically
 - planning fails on unsupported requests instead of trying to generalize broadly
 - iterative editing now supports `more`, `less`, `undo`, `revert to previous version`, and `try another version` through both orchestration and the published `run_request_cycle` tool; those follow-up flows still require explicit historical version materialization rather than hidden adapter-managed state
 - the baseline planner still does not choose `pan`, channel remapping, `mid_side_eq`, broader Layer 1 runtime effects, or the creative-effect surface automatically

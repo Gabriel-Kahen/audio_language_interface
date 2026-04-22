@@ -12,12 +12,16 @@ export async function planApplyComparePass(options: {
   workspaceRoot: string;
   iteration: number;
   userRequest: string;
+  originalUserRequest?: string;
   version: IterationResult["inputVersion"];
   analysisReport: IterationResult["inputAnalysis"];
+  requestInterpretation?: import("../types.js").LlmAssistedInterpretationOptions;
+  sessionGraph?: import("../types.js").SessionGraph;
   dependencies: Pick<
     OrchestrationDependencies,
     | "analyzeAudioVersion"
     | "buildSemanticProfile"
+    | "interpretRequest"
     | "planEdits"
     | "applyEditPlan"
     | "compareVersions"
@@ -29,8 +33,15 @@ export async function planApplyComparePass(options: {
   const planResult = await planAndApply({
     workspaceRoot: options.workspaceRoot,
     userRequest: options.userRequest,
+    ...(options.originalUserRequest === undefined
+      ? {}
+      : { originalUserRequest: options.originalUserRequest }),
     version: options.version,
     analysisReport: options.analysisReport,
+    ...(options.requestInterpretation === undefined
+      ? {}
+      : { requestInterpretation: options.requestInterpretation }),
+    ...(options.sessionGraph === undefined ? {} : { sessionGraph: options.sessionGraph }),
     dependencies: options.dependencies,
     failurePolicy: options.failurePolicy,
     pass: options.iteration,
@@ -84,6 +95,9 @@ export async function planApplyComparePass(options: {
     ...(planResult.semanticProfile === undefined
       ? {}
       : { semanticProfile: planResult.semanticProfile }),
+    ...(planResult.intentInterpretation === undefined
+      ? {}
+      : { intentInterpretation: planResult.intentInterpretation }),
   };
 }
 
@@ -93,6 +107,9 @@ function buildIterationPartial(iteration: number, planResult: PlanAndApplyResult
     ...(planResult.semanticProfile === undefined
       ? {}
       : { semanticProfile: planResult.semanticProfile }),
+    ...(planResult.intentInterpretation === undefined
+      ? {}
+      : { intentInterpretation: planResult.intentInterpretation }),
     editPlan: planResult.editPlan,
     transformResult: planResult.transformResult,
     outputVersion: planResult.outputVersion,

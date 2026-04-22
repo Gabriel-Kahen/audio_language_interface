@@ -1,0 +1,112 @@
+{
+  "schema_version": "1.0.0",
+  "request_id": "toolreq_interpret123",
+  "tool_name": "interpret_request",
+  "requested_at": "2026-04-21T22:30:00Z",
+  "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+  "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+  "arguments": {
+    "audio_version": {
+      "schema_version": "1.0.0",
+      "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+      "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+      "lineage": {
+        "created_at": "2026-04-21T22:00:00Z",
+        "created_by": "modules/io"
+      },
+      "audio": {
+        "storage_ref": "storage/audio/example.wav",
+        "sample_rate_hz": 44100,
+        "channels": 2,
+        "duration_seconds": 3,
+        "frame_count": 132300,
+        "channel_layout": "stereo"
+      },
+      "state": {
+        "is_original": true,
+        "is_preview": false
+      }
+    },
+    "analysis_report": {
+      "schema_version": "1.0.0",
+      "report_id": "analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0",
+      "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+      "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+      "generated_at": "2026-04-21T22:00:01Z",
+      "analyzer": {
+        "name": "baseline",
+        "version": "0.1.0"
+      },
+      "summary": {
+        "plain_text": "Bright stereo loop with mild upper-band harshness."
+      },
+      "measurements": {
+        "levels": {
+          "integrated_lufs": -14,
+          "true_peak_dbtp": -1,
+          "sample_peak_dbfs": -1.2,
+          "rms_dbfs": -17,
+          "headroom_db": 1
+        },
+        "dynamics": {
+          "crest_factor_db": 8,
+          "transient_density_per_second": 2,
+          "rms_short_term_dbfs": -17.4,
+          "dynamic_range_db": 6.2
+        },
+        "spectral_balance": {
+          "low_band_db": -10,
+          "mid_band_db": -8,
+          "high_band_db": -6.5,
+          "brightness_tilt_db": 3.5,
+          "harshness_ratio_db": 2.4,
+          "spectral_centroid_hz": 2800
+        },
+        "stereo": {
+          "width": 0.6,
+          "correlation": 0.2,
+          "balance_db": 0.4
+        },
+        "artifacts": {
+          "clipping_detected": false,
+          "noise_floor_dbfs": -68,
+          "clipped_sample_count": 0,
+          "hum_detected": false,
+          "hum_harmonic_count": 0,
+          "click_detected": false,
+          "click_count": 0,
+          "click_rate_per_second": 0
+        }
+      },
+      "annotations": []
+    },
+    "semantic_profile": {
+      "schema_version": "1.0.0",
+      "profile_id": "semantic_01HZX8D7J2V3M4N5P6Q7R8S9T0",
+      "analysis_report_id": "analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0",
+      "asset_id": "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
+      "version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+      "generated_at": "2026-04-21T22:00:02Z",
+      "descriptors": [
+        {
+          "label": "bright",
+          "confidence": 0.81,
+          "evidence_refs": ["analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:measurements.spectral_balance"],
+          "rationale": "The high band is elevated relative to the mids."
+        }
+      ],
+      "unresolved_terms": ["harsh"],
+      "summary": {
+        "plain_text": "Bright loop with possible mild harshness."
+      }
+    },
+    "user_request": "Make it a little darker and cleaner.",
+    "provider": {
+      "kind": "openai",
+      "api_key": "sk-example",
+      "model": "gpt-4.1-mini",
+      "temperature": 0
+    },
+    "prompt_version": "intent_v1"
+  }
+}

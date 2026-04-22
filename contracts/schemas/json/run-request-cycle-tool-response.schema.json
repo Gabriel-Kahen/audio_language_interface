@@ -85,6 +85,7 @@
           ]
         },
         "semantic_profile": { "$ref": "./semantic-profile.schema.json" },
+        "intent_interpretation": { "$ref": "./intent-interpretation.schema.json" },
         "edit_plan": { "$ref": "./edit-plan.schema.json" },
         "output_version": { "$ref": "./audio-version.schema.json" },
         "transform_record": { "$ref": "./transform-record.schema.json" },
@@ -134,6 +135,7 @@
               "input_analysis": { "$ref": "./analysis-report.schema.json" },
               "output_analysis": { "$ref": "./analysis-report.schema.json" },
               "semantic_profile": { "$ref": "./semantic-profile.schema.json" },
+              "intent_interpretation": { "$ref": "./intent-interpretation.schema.json" },
               "edit_plan": { "$ref": "./edit-plan.schema.json" },
               "comparison_report": { "$ref": "./comparison-report.schema.json" },
               "transform_record": { "$ref": "./transform-record.schema.json" },
@@ -161,6 +163,7 @@
                   "load_follow_up_input",
                   "load_revert_target",
                   "semantic_profile",
+                  "interpret_request",
                   "plan",
                   "apply",
                   "analyze_output",

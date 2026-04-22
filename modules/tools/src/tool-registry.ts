@@ -2,6 +2,7 @@ import { analyzeAudioTool } from "./handlers/analyze-audio.js";
 import { applyEditPlanTool } from "./handlers/apply-edit-plan.js";
 import { compareVersionsTool } from "./handlers/compare-versions.js";
 import { describeRuntimeCapabilitiesTool } from "./handlers/describe-runtime-capabilities.js";
+import { interpretRequestTool } from "./handlers/interpret-request.js";
 import { loadAudioTool } from "./handlers/load-audio.js";
 import { planEditsTool } from "./handlers/plan-edits.js";
 import { renderPreviewTool } from "./handlers/render-preview.js";
@@ -12,6 +13,7 @@ const DEFAULT_DEFINITIONS = [
   describeRuntimeCapabilitiesTool,
   loadAudioTool,
   analyzeAudioTool,
+  interpretRequestTool,
   planEditsTool,
   applyEditPlanTool,
   renderPreviewTool,

@@ -14,6 +14,7 @@
     "@audio-language-interface/compare": "workspace:*",
     "@audio-language-interface/core": "workspace:*",
     "@audio-language-interface/history": "workspace:*",
+    "@audio-language-interface/interpretation": "workspace:*",
     "@audio-language-interface/io": "workspace:*",
     "@audio-language-interface/planning": "workspace:*",
     "@audio-language-interface/render": "workspace:*",
