@@ -304,7 +304,7 @@ describe("firstPromptFamilyFixtureCorpus", () => {
     expect(firstPromptFamilyRequestCycleCorpus.fixtureManifestPath).toBe(
       FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
     );
-    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(33);
+    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(35);
     expect(firstPromptFamilyRequestCycleSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
         "request_cycle_warmer_and_airier",
@@ -577,6 +577,10 @@ describe("runRequestCycleBenchmarks", () => {
     const centerMoreAndWider = getRequestCycleCase(
       "request_cycle_center_this_more_and_make_it_wider",
     );
+    const firstHalfSecondDarker = getRequestCycleCase(
+      "request_cycle_first_half_second_darker_and_less_harsh",
+    );
+    const introDarkerRefusal = getRequestCycleCase("request_cycle_intro_darker_region_refusal");
     const followUpMore = getRequestCycleCase("request_cycle_follow_up_more");
     const tryAnother = getRequestCycleCase("request_cycle_follow_up_try_another_version");
     const followUpLess = getRequestCycleCase("request_cycle_follow_up_less");
@@ -622,6 +626,8 @@ describe("runRequestCycleBenchmarks", () => {
           centerMore,
           fixImbalance,
           centerMoreAndWider,
+          firstHalfSecondDarker,
+          introDarkerRefusal,
           followUpMore,
           tryAnother,
           followUpLess,
@@ -648,7 +654,7 @@ describe("runRequestCycleBenchmarks", () => {
 
     expect(result.suiteId).toBe("first_prompt_family");
     expect(result.corpusId).toBe("request_cycle_test_subset");
-    expect(result.caseResults).toHaveLength(31);
+    expect(result.caseResults).toHaveLength(33);
     expect(result.totalChecks).toBeGreaterThan(0);
     expect(result.totalPassedChecks).toBe(result.totalChecks);
     expect(result.overallScore).toBe(1);
@@ -740,6 +746,25 @@ describe("runRequestCycleBenchmarks", () => {
         (step) => step.operation,
       ),
     ).toEqual(["trim_silence"]);
+
+    const firstHalfSecondDarkerCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === firstHalfSecondDarker.caseId,
+    );
+    expect(firstHalfSecondDarkerCase?.status).toBe("ok");
+    expect(
+      expectAppliedRequestCycleResult(
+        firstHalfSecondDarkerCase?.requestCycleResult,
+      ).editPlan?.steps.map((step) => step.target),
+    ).toEqual([
+      { scope: "time_range", start_seconds: 0, end_seconds: 0.5 },
+      { scope: "time_range", start_seconds: 0, end_seconds: 0.5 },
+    ]);
+
+    const introDarkerRefusalCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === introDarkerRefusal.caseId,
+    );
+    expect(introDarkerRefusalCase?.status).toBe("error");
+    expect(introDarkerRefusalCase?.error?.message).toContain("explicit time range");
 
     const speedUpCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === speedUp.caseId,

@@ -108,7 +108,7 @@ The live interpretation benchmark corpus covers the same prompt families, but st
 - compare-only benchmark scoring is still centered on curated `compareVersions()` inputs for the currently supported cleanup and restoration slice
 - interpretation benchmarks are intentionally offline artifact checks; they benchmark the shape and stability of `IntentInterpretation`, not live provider/network quality
 - live interpretation benchmarks are intentionally opt-in and not part of default CI because they require real provider keys, incur network latency and API cost, and are expected to surface provider drift over time
-- the request-cycle benchmark corpus is intentionally small and currently focuses on stable tonal cleanup, cross-family compounds that stay honest on the committed fixtures, restoration, timing edits, stereo/spatial edits, iterative follow-up flows, peak control, and explicit clarification/failure controls, including a real clarify -> answer -> resume path
+- the request-cycle benchmark corpus is intentionally small and currently focuses on stable tonal cleanup, cross-family compounds that stay honest on the committed fixtures, restoration, timing edits, stereo/spatial edits, the first explicit numeric region-targeting slice, iterative follow-up flows, peak control, and explicit clarification/failure controls, including a real clarify -> answer -> resume path
 - some cross-family request-cycle cases intentionally encode mixed or unmet outcome expectations when that is what the current compare/orchestration path actually produces on the committed fixtures
 - tool-surface request-cycle benchmarks still keep session state explicit by materializing `SessionGraph` and `available_versions` inside the benchmark harness rather than relying on hidden adapter persistence
 - request-cycle outcome scoring is only as strong as the current compare/orchestration evidence:
@@ -144,7 +144,7 @@ Interpretation-only scores also remain simple check-pass ratios. They intentiona
 
 Request-cycle scores are intentionally split by responsibility boundary:
 
-- planner correctness checks whether the cycle emitted the expected result kind, operations, ordering, goals, or revision decision
+- planner correctness checks whether the cycle emitted the expected result kind, operations, ordering, goals, explicit `time_range` targets when applicable, or revision decision
 - outcome verification checks whether the completed version/render comparisons show the expected goal statuses, verification-target statuses, semantic deltas, and structured-verification presence when required
 - regression avoidance checks whether forbidden regression kinds stayed absent and whether severe regressions were avoided
 
@@ -176,10 +176,11 @@ The first public request-cycle corpus currently covers:
 - `center this more`
 - `fix the stereo imbalance`
 - `center this more and make it wider`
+- `make the first 0.5 seconds darker and less harsh`
 - iterative follow-up requests such as `more`, `less`, `undo`, `revert to previous version`, and `try another version`
 - `control the peaks without crushing it`
 - `make it louder and more controlled`
 - `make this a little tighter and more controlled, and darker`
-- explicit clarification/failure controls such as `clean it`, `clean this sample up a bit`, `make it brighter and darker`, `make it faster and slower`, and `make it wider and narrower`
+- explicit clarification/failure controls such as `clean it`, `clean this sample up a bit`, `make it brighter and darker`, `make it faster and slower`, `make it wider and narrower`, and vague region wording such as `make the intro darker`
 
-Those cases were chosen because they are stable against the committed phase-1 fixtures and expose the main Layer 2 responsibilities without overclaiming broader planner coverage. The compound tonal cases deliberately stay on the shared first-slice fixture so ordering checks can exercise multi-step planner behavior without adding a larger synthetic corpus. The newer cross-family compounds stay attached to the fixtures that already justify one side of the request: the sibilance source anchors restoration-plus-timing and restoration-plus-tonal prompts, the shared first-slice fixture anchors the current control-plus-tonal prompt, and the stereo imbalance source anchors stereo-balance-plus-width coverage. When a mixed request is not honestly supported by the current planner surface, the corpus prefers an explicit refusal benchmark over an optimistic happy path.
+Those cases were chosen because they are stable against the committed phase-1 fixtures and expose the main Layer 2 responsibilities without overclaiming broader planner coverage. The compound tonal cases deliberately stay on the shared first-slice fixture so ordering checks can exercise multi-step planner behavior without adding a larger synthetic corpus. The newer cross-family compounds stay attached to the fixtures that already justify one side of the request: the sibilance source anchors restoration-plus-timing and restoration-plus-tonal prompts, the shared first-slice fixture anchors the current control-plus-tonal prompt and the first numeric region-targeted tonal case, and the stereo imbalance source anchors stereo-balance-plus-width coverage. When a mixed request is not honestly supported by the current planner surface, the corpus prefers an explicit refusal benchmark over an optimistic happy path. For the current region-targeting slice, the strongest benchmark signal is still planner correctness: the suite asserts the emitted `time_range` targets directly and keeps outcome expectations conservative until compare grows deeper local-window verification.

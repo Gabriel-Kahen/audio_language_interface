@@ -15,7 +15,7 @@ import { assertValidSemanticProfile } from "@audio-language-interface/semantics"
 import { createPlanningFailure } from "./failures.js";
 import { parseUserRequest } from "./parse-request.js";
 import { buildPlannedSteps } from "./step-builders.js";
-import type { EditPlan, PlanEditsOptions } from "./types.js";
+import type { EditPlan, PlanEditsOptions, RegionTarget } from "./types.js";
 import { CONTRACT_SCHEMA_VERSION } from "./types.js";
 import { assertValidEditPlan } from "./utils/schema.js";
 import { buildVerificationTargets } from "./verification-targets.js";
@@ -164,12 +164,13 @@ function resolvePlannerObjectives(
     }
   }
 
-  if (
-    intentInterpretation?.regionIntents?.some((regionIntent) => regionIntent.scope !== "full_file")
-  ) {
+  if (hasVagueRegionRequest(objectives.supported_but_underspecified_requests)) {
     throw createPlanningFailure(
       "supported_but_underspecified",
-      "The interpretation proposes region-scoped edits, but the baseline planner does not yet ground LLM-derived region intents automatically. Please restate the region explicitly in planner-supported wording.",
+      "The request uses vague region wording. Please restate the edit with an explicit time range such as `the first 0.5 seconds`, `the last 0.5 seconds`, or `from 0.2s to 0.7s`.",
+      {
+        matched_requests: objectives.supported_but_underspecified_requests,
+      },
     );
   }
 
@@ -305,6 +306,10 @@ function resolvePlannerObjectives(
 
   const effectiveObjectives = { ...objectives };
   applyInterpretationObjectiveHints(effectiveObjectives, intentInterpretation);
+  const regionTarget = resolveRegionTarget(effectiveObjectives, audioVersion, intentInterpretation);
+  if (regionTarget !== undefined) {
+    effectiveObjectives.region_target = regionTarget;
+  }
   const semanticLabels = new Set(
     semanticProfile.descriptors
       .filter((descriptor) => descriptor.confidence >= 0.6)
@@ -429,6 +434,110 @@ function resolvePlannerObjectives(
     return effectiveObjectives;
   }
 
+  function resolveRegionTarget(
+    objectives: ReturnType<typeof parseUserRequest>,
+    audioVersion: PlanEditsOptions["audioVersion"],
+    interpretation?: PlanEditsOptions["intentInterpretation"],
+  ): RegionTarget | undefined {
+    const interpretedRegionIntents = interpretation?.regionIntents ?? [];
+    const timeRangeIntents = interpretedRegionIntents.filter((item) => item.scope === "time_range");
+
+    if (interpretedRegionIntents.some((item) => item.scope === "segment_reference")) {
+      throw createPlanningFailure(
+        "supported_but_underspecified",
+        "The request points at a named segment like `intro` or `ending`, but the baseline planner only grounds explicit numeric time ranges today.",
+      );
+    }
+
+    if (timeRangeIntents.length > 1) {
+      throw createPlanningFailure(
+        "supported_but_underspecified",
+        "The interpretation proposes multiple time ranges, but the baseline planner only supports one explicit region per request today.",
+      );
+    }
+
+    if (timeRangeIntents.length === 1) {
+      const interpretedRange = timeRangeIntents[0];
+      if (
+        interpretedRange?.start_seconds === undefined ||
+        interpretedRange.end_seconds === undefined
+      ) {
+        throw createPlanningFailure(
+          "supported_but_underspecified",
+          "The interpreted region is missing explicit start or end seconds.",
+        );
+      }
+
+      return validateRegionTarget(
+        {
+          scope: "time_range",
+          start_seconds: interpretedRange.start_seconds,
+          end_seconds: interpretedRange.end_seconds,
+        },
+        audioVersion.audio.duration_seconds,
+      );
+    }
+
+    const hint = objectives.region_target_hint;
+    if (hint === undefined) {
+      return undefined;
+    }
+
+    switch (hint.kind) {
+      case "absolute_range":
+        return validateRegionTarget(
+          {
+            scope: "time_range",
+            start_seconds: hint.start_seconds,
+            end_seconds: hint.end_seconds,
+          },
+          audioVersion.audio.duration_seconds,
+        );
+      case "leading_window":
+        return validateRegionTarget(
+          {
+            scope: "time_range",
+            start_seconds: 0,
+            end_seconds: hint.duration_seconds,
+          },
+          audioVersion.audio.duration_seconds,
+        );
+      case "trailing_window":
+        return validateRegionTarget(
+          {
+            scope: "time_range",
+            start_seconds: Number(
+              Math.max(0, audioVersion.audio.duration_seconds - hint.duration_seconds).toFixed(6),
+            ),
+            end_seconds: audioVersion.audio.duration_seconds,
+          },
+          audioVersion.audio.duration_seconds,
+        );
+    }
+  }
+
+  function validateRegionTarget(regionTarget: RegionTarget, durationSeconds: number): RegionTarget {
+    if (regionTarget.end_seconds <= regionTarget.start_seconds) {
+      throw createPlanningFailure(
+        "supported_but_underspecified",
+        "The requested edit region must end after it starts.",
+      );
+    }
+
+    if (regionTarget.start_seconds < 0 || regionTarget.end_seconds > durationSeconds) {
+      throw createPlanningFailure(
+        "supported_but_underspecified",
+        "The requested edit region must stay inside the current audio duration.",
+      );
+    }
+
+    return {
+      scope: "time_range",
+      start_seconds: Number(regionTarget.start_seconds.toFixed(6)),
+      end_seconds: Number(regionTarget.end_seconds.toFixed(6)),
+    };
+  }
+
   if (
     effectiveObjectives.wants_remove_clicks ||
     effectiveObjectives.wants_remove_hum ||
@@ -532,6 +641,21 @@ function applyInterpretationObjectiveHints(
       objectives.preserve_punch = true;
     }
   }
+}
+
+function hasVagueRegionRequest(requests: string[]): boolean {
+  return requests.some((request) =>
+    [
+      "intro",
+      "outro",
+      "beginning",
+      "at the start",
+      "at the end",
+      "ending word",
+      "middle section",
+      "middle part",
+    ].includes(request),
+  );
 }
 
 function createPlanId(options: PlanEditsOptions, normalizedRequest: string): string {
@@ -713,6 +837,12 @@ function buildConstraints(
 
   if (objectives.wants_more_even_level) {
     constraints.push("keep the true-peak ceiling at or below -1 dBTP");
+  }
+
+  if (objectives.region_target) {
+    constraints.push(
+      `apply supported edits only within ${objectives.region_target.start_seconds}s to ${objectives.region_target.end_seconds}s`,
+    );
   }
 
   for (const interpretationConstraint of interpretation?.constraints ?? []) {

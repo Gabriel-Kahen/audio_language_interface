@@ -100,6 +100,41 @@ describe("parseUserRequest", () => {
     expect(pitchUp.pitch_shift_semitones).toBe(2);
   });
 
+  it("parses explicit time-range region phrases for supported local edits", () => {
+    const firstWindow = parseUserRequest("Make the first second darker and less harsh.");
+    const explicitRange = parseUserRequest("Make it darker from 0.2s to 0.7s.");
+
+    expect(firstWindow.region_target_hint).toEqual({
+      kind: "leading_window",
+      duration_seconds: 1,
+      source_phrase: "first second",
+    });
+    expect(explicitRange.region_target_hint).toEqual({
+      kind: "absolute_range",
+      start_seconds: 0.2,
+      end_seconds: 0.7,
+      source_phrase: "from 0.2s to 0.7s",
+    });
+  });
+
+  it("keeps vague region wording underspecified when no explicit time range is present", () => {
+    const parsed = parseUserRequest("Make the intro darker.");
+
+    expect(parsed.supported_but_underspecified_requests).toContain("intro");
+    expect(parsed.request_classification).toBe("supported_but_underspecified");
+  });
+
+  it("does not classify bare region wording as a supported edit intent", () => {
+    const parsed = parseUserRequest("the first second");
+
+    expect(parsed.region_target_hint).toEqual({
+      kind: "leading_window",
+      duration_seconds: 1,
+      source_phrase: "first second",
+    });
+    expect(parsed.request_classification).toBe("supported_but_underspecified");
+  });
+
   it("classifies supported cross-family compounds as supported requests", () => {
     const timingAndTonal = parseUserRequest("Speed it up by 10% and make it darker.");
     const restorationAndTonal = parseUserRequest("Clean up clicks and make it darker.");
@@ -199,6 +234,75 @@ describe("planEdits", () => {
       gain_db: -1.5,
       q: 0.6,
     });
+  });
+
+  it("grounds explicit leading-window tonal requests to time_range step targets", () => {
+    const plan = planEdits({
+      userRequest: "Make the first second darker and less harsh.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["notch_filter", "tilt_eq"]);
+    expect(plan.steps[0]?.target).toEqual({
+      scope: "time_range",
+      start_seconds: 0,
+      end_seconds: 1,
+    });
+    expect(plan.steps[1]?.target).toEqual({
+      scope: "time_range",
+      start_seconds: 0,
+      end_seconds: 1,
+    });
+    expect(plan.constraints).toContain("apply supported edits only within 0s to 1s");
+  });
+
+  it("grounds interpreted time-range intents when the requested operations are region-safe", () => {
+    const plan = planEdits({
+      userRequest: "Remove the 60 Hz hum only in the first second.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createRestorationAnalysisReportFixture(),
+      semanticProfile: createRestorationSemanticProfileFixture(),
+      intentInterpretation: {
+        interpretationId: "interpret_regionhum",
+        normalizedRequest: "Remove 60 Hz hum.",
+        requestClassification: "supported",
+        nextAction: "plan",
+        regionIntents: [{ scope: "time_range", start_seconds: 0, end_seconds: 1 }],
+      },
+    });
+
+    expect(plan.steps).toHaveLength(1);
+    expect(plan.steps[0]?.operation).toBe("dehum");
+    expect(plan.steps[0]?.target).toEqual({
+      scope: "time_range",
+      start_seconds: 0,
+      end_seconds: 1,
+    });
+  });
+
+  it("rejects vague region wording with an explicit numeric-range hint", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Make the intro darker.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createAnalysisReportFixture(),
+        semanticProfile: createSemanticProfileFixture(),
+      }),
+    ).toThrow(/explicit time range/i);
+  });
+
+  it("rejects region-scoped timing edits that are not in the first time-range cohort", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Speed up only the first 0.5 seconds.",
+        audioVersion: createPitchedAudioVersionFixture(),
+        workspaceRoot: repoRoot,
+        analysisReport: createPitchedAnalysisReportFixture(),
+        semanticProfile: createVersionScopedNeutralSemanticProfile("ver_pitchedTimingFixture"),
+      }),
+    ).toThrow(/explicit time-range cohort/i);
   });
 
   it("maps the exact cleaner first-slice prompt to evidence-backed tonal cleanup", () => {

@@ -28,6 +28,7 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - `louder` -> conservative `gain` step limited by measured true-peak headroom to a `-1 dBTP` ceiling unless the request also explicitly asks for more control, in which case the dedicated controlled-loudness path takes precedence
 - `quieter` -> conservative negative `gain` step
 - `trim from Xs to Ys` -> `trim` time-range step with explicit start and end seconds
+- `make the first 0.5 seconds darker`, `remove 60 Hz hum only in the last 0.5 seconds`, `make it less harsh from 0.2s to 0.7s` -> keep the same supported operation family, but ground the steps to one explicit `time_range` target instead of `full_file`
 - `trim the silence`, `remove silence at the beginning and end` -> full-file `trim_silence` using a conservative threshold derived from the measured noise floor
 - `speed up by 10%`, `slow down by 10%`, `faster`, `slower` -> conservative `time_stretch` with explicit `stretch_ratio` and pitch-preservation verification
 - `pitch up by 2 semitones`, `pitch down by 2 semitones`, `transpose` -> conservative `pitch_shift` only when analysis says the source is pitched
@@ -73,6 +74,9 @@ Compatible compounds that the baseline planner now supports explicitly include:
 - Hum and click verification stay conservative: the planner now prefers direct `AnalysisReport.artifacts` evidence when annotations or semantics support it and only uses coarse low-band or clipped-sample fallbacks where direct artifact measurements are unavailable.
 - Pitch shifting only proceeds when `AnalysisReport.source_character.pitched` is true, and time stretching keeps duration targets conservative rather than attempting broad tempo inference.
 - The planner refuses explicit trim-point requests combined with automatic silence trimming so it does not guess which boundary edit should win.
+- Region-targeted planning is intentionally narrower than runtime `time_range` support. The first planner-grounded cohort is limited to EQ/tonal shaping, conservative restoration, gain/normalize staging, and the current stereo cleanup steps.
+- Region wording must resolve to one explicit numeric window. Phrases such as `intro`, `outro`, `middle section`, or `ending word` still fail as `supported_but_underspecified`.
+- Region-targeted requests still fail when the selected operation family is full-file-only in the baseline planner, such as `trim_silence`, `time_stretch`, `pitch_shift`, or the current dynamics-control path.
 - The planner refuses louder-plus-peak-control prompts unless the request explicitly asks for normalization, rather than silently converting that into post-limiter gain staging.
 - The planner refuses upper-band brightening combined with de-essing, because the current one-pass phase order cannot guarantee that added air or brightness will not undermine the de-essing move.
 - The planner refuses broadband denoise combined with upper-band brightening, because brightening after denoise can exaggerate cleanup artifacts in one conservative pass.

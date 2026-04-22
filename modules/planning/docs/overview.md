@@ -68,6 +68,8 @@ See `docs/api.md` for the current failure surface, planner entrypoint behavior, 
 - supports explicit denoise requests only when analysis indicates steady noise
 - prefers annotation-backed or semantic-backed restoration verification when that evidence exists, and now routes hum/click verification through direct artifact measurements before falling back to coarse low-band or clipped-sample proxies
 - supports explicit stereo-width and centering requests only for already-stereo material when the current image is safe to adjust conservatively
+- now grounds explicit `time_range` region wording such as `the first 0.5 seconds`, `the last 0.5 seconds`, or `from 0.2s to 0.7s` for a narrow first cohort of planner operations: tonal EQ moves, conservative restoration, gain/normalize staging, and the current stereo-image cleanup steps
+- still refuses vague named regions such as `intro`, `outro`, or `ending word`, and still refuses region-scoped requests that would require full-file-only operations such as `time_stretch`, `trim_silence`, or the current dynamics-control path
 - fails instead of guessing when the request cannot be mapped to an explicit supported operation
 - classifies planner refusals explicitly as `supported_but_underspecified`, `unsupported`, or `supported_runtime_only_but_not_planner_enabled` so adapters can ask for clarification without pretending the runtime or planner can do more than they actually can
 

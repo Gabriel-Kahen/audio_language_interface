@@ -57,6 +57,7 @@ There is now also an optional interpretation layer for open-ended language:
 - callers can choose `conservative` or `best_effort` ambiguity handling when they opt into the interpretation layer
 - the richer interpretation artifact now includes explicit `interpretation_policy`, `next_action`, evidence-linked descriptor hypotheses, structured constraints, optional region-intent proposals, alternate candidates, and follow-up interpretation metadata
 - deterministic planning remains authoritative and may still reject unsupported or weakly grounded interpretations
+- explicit numeric region wording such as `the first 0.5 seconds` or `from 0.2s to 0.7s` can now ground into real `time_range` planner targets for a narrow first cohort of region-safe operations; vague named regions such as `intro` still stay clarification or refusal territory
 - in `conservative` mode, orchestration can now return a first-class clarification result and carry the pending clarification state forward explicitly in `SessionGraph.metadata.pending_clarification`
 - callers can use the standalone `interpret_request` tool or enable LLM-assisted interpretation inside `run_request_cycle`
 
@@ -91,6 +92,7 @@ The current benchmarked planner surface also includes conservative compound-edit
 - explicit operation-phase ordering instead of prompt-order guesswork
 - structured multi-goal verification rollups that keep requested-target success and regression-guard outcomes separate, including honest partial-success reporting when only part of a compound request lands
 - explicit contradiction or refusal failures for prompt pairs such as `make it brighter and darker`, `make it faster and slower`, or `make it wider and narrower`, plus one-pass safety refusals for mixes such as brightening-plus-de-essing when the baseline planner cannot justify the sequence conservatively
+- a first explicit numeric region-targeting slice, currently benchmarked around planner-emitted `time_range` targets for localized tonal cleanup and explicit refusal of vague region wording
 
 The benchmark layer now also has an opt-in live interpretation evaluation path:
 

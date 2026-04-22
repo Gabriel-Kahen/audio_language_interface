@@ -39,7 +39,7 @@ The repository now already includes:
 1. published runtime capability discovery
 2. planning grounded against capability metadata rather than transform internals
 3. a broad deterministic Layer 1 runtime surface spanning level, timing, tonal, dynamics/control, stereo/routing, restoration, and creative effect operations
-4. first-cohort `time_range` targeting for duration-preserving, channel-stable operations
+4. first-cohort `time_range` targeting for duration-preserving, channel-stable operations, now including a narrow planner-grounded numeric region slice
 5. measurement-aware `normalize` execution plus runtime restoration primitives such as `de_esser`, `declick`, and `dehum`
 
 That means the next Phase 2 work is no longer "add the first serious transforms."
@@ -50,7 +50,7 @@ See `docs/phase-2-plan.md` for the current execution order, module tasks, and te
 ### Deeper runtime precision
 
 - deepen the current runtime so its broad operation set becomes easier to target, verify, and plan against safely
-- prioritize precision gaps such as stronger compare behavior, richer planner grounding, and the remaining hard region-targeting cases
+- prioritize precision gaps such as stronger compare behavior, richer planner grounding, and the remaining hard region-targeting cases beyond the new numeric `time_range` slice
 
 Why this matters:
 

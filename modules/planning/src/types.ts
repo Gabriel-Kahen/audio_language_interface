@@ -42,6 +42,30 @@ export interface EditTarget {
   bands_hz?: [number, number];
 }
 
+export interface RegionTarget {
+  scope: "time_range";
+  start_seconds: number;
+  end_seconds: number;
+}
+
+export type RegionTargetHint =
+  | {
+      kind: "absolute_range";
+      start_seconds: number;
+      end_seconds: number;
+      source_phrase: string;
+    }
+  | {
+      kind: "leading_window";
+      duration_seconds: number;
+      source_phrase: string;
+    }
+  | {
+      kind: "trailing_window";
+      duration_seconds: number;
+      source_phrase: string;
+    };
+
 export interface EditPlanStep {
   step_id: string;
   operation: OperationName;
@@ -181,6 +205,8 @@ export interface ParsedEditObjectives {
     start_seconds: number;
     end_seconds: number;
   };
+  region_target?: RegionTarget;
+  region_target_hint?: RegionTargetHint;
   fade_in_seconds?: number;
   fade_out_seconds?: number;
   hum_frequency_hz?: number;

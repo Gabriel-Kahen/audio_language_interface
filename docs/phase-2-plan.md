@@ -13,7 +13,7 @@ The repository already includes:
 - a published `RuntimeCapabilityManifest`
 - capability-grounded planning that no longer imports runtime internals
 - deterministic runtime support for a broad Layer 1 operation set spanning level, timing, tonal, dynamics/control, stereo/routing, restoration, and creative effects
-- first-cohort `time_range` targeting for duration-preserving, channel-stable operations
+- first-cohort `time_range` targeting for duration-preserving, channel-stable operations, plus the new baseline planner grounding for explicit numeric region wording on a narrow safe subset
 - measurement-aware `normalize` execution with peak and integrated-loudness modes
 - restoration primitives such as `de_esser`, `declick`, and `dehum`
 - baseline analysis-side hum and click evidence in `AnalysisReport`, including explicit annotations and file-level artifact fields

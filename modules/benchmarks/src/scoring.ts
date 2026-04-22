@@ -437,6 +437,33 @@ function scorePlannerCorrectness(
     });
   }
 
+  if (expectation?.expected_step_target !== undefined) {
+    const expectedTarget = expectation.expected_step_target;
+    const editPlan = result.result_kind === "clarification_required" ? undefined : result.editPlan;
+    const actualTargets =
+      editPlan?.steps.map((step) =>
+        step.target.scope === "time_range"
+          ? `${step.operation}:${step.target.start_seconds}-${step.target.end_seconds}`
+          : `${step.operation}:${step.target.scope}`,
+      ) ?? [];
+
+    checks.push({
+      category: "planner_correctness",
+      scope: "planner",
+      checkId: "planner:step_target",
+      passed:
+        (editPlan?.steps.length ?? 0) > 0 &&
+        editPlan?.steps.every(
+          (step) =>
+            step.target.scope === "time_range" &&
+            step.target.start_seconds === expectedTarget.start_seconds &&
+            step.target.end_seconds === expectedTarget.end_seconds,
+        ) === true,
+      expected: `${expectedTarget.scope}:${expectedTarget.start_seconds}-${expectedTarget.end_seconds}`,
+      actual: actualTargets.join(", ") || "missing",
+    });
+  }
+
   for (const goal of expectation?.required_goals ?? []) {
     checks.push({
       category: "planner_correctness",

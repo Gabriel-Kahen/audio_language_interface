@@ -3,7 +3,7 @@ import {
   type RuntimeOperationName,
   type RuntimeTargetScope,
 } from "@audio-language-interface/capabilities";
-
+import { createPlanningFailure } from "./failures.js";
 import {
   assertValidFadeSpans,
   buildCompressorSafetyLimits,
@@ -31,6 +31,7 @@ import type {
   AudioVersion,
   EditPlanStep,
   ParsedEditObjectives,
+  RegionTarget,
   SemanticProfile,
 } from "./types.js";
 
@@ -53,6 +54,24 @@ type PlannerStepPhase =
   | "dynamics"
   | "stereo_image"
   | "loudness";
+
+const REGION_SUPPORTED_PLANNER_OPERATIONS = new Set<RuntimeOperationName>([
+  "gain",
+  "normalize",
+  "parametric_eq",
+  "high_pass_filter",
+  "low_pass_filter",
+  "high_shelf",
+  "low_shelf",
+  "notch_filter",
+  "tilt_eq",
+  "denoise",
+  "de_esser",
+  "declick",
+  "dehum",
+  "stereo_width",
+  "stereo_balance_correction",
+]);
 
 export function buildPlannedSteps(context: StepBuildContext): EditPlanStep[] {
   const useControlledLoudnessPath = shouldUseControlledLoudnessPath(context.objectives);
@@ -128,7 +147,7 @@ export function buildPlannedSteps(context: StepBuildContext): EditPlanStep[] {
   for (const { steps } of phases) {
     for (const step of steps) {
       if (step !== undefined) {
-        plannedSteps.push(step);
+        plannedSteps.push(applyRegionTargetIfNeeded(step, context.objectives.region_target));
       }
     }
   }
@@ -820,6 +839,33 @@ function buildStereoBalanceCorrectionStep(
 
 function midpoint(start: number, end: number): number {
   return Number(((start + end) / 2).toFixed(2));
+}
+
+function applyRegionTargetIfNeeded(
+  step: EditPlanStep,
+  regionTarget: RegionTarget | undefined,
+): EditPlanStep {
+  if (regionTarget === undefined) {
+    return step;
+  }
+
+  if (!REGION_SUPPORTED_PLANNER_OPERATIONS.has(step.operation)) {
+    throw createPlanningFailure(
+      "supported_but_underspecified",
+      `The request asks for a region-scoped edit, but \`${step.operation}\` is not in the baseline planner's explicit time-range cohort yet.`,
+    );
+  }
+
+  assertPlannerStepSupport(step.operation, "time_range");
+
+  return {
+    ...step,
+    target: {
+      scope: "time_range",
+      start_seconds: regionTarget.start_seconds,
+      end_seconds: regionTarget.end_seconds,
+    },
+  };
 }
 
 function assertPlannerStepSupport(

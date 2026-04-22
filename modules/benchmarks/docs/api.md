@@ -125,6 +125,7 @@ Current behavior:
 - supports `executionSurface = "orchestration"` or `executionSurface = "tool"`
 - can run an optional `setup_sequence` before the main prompt
 - stores materialized `AudioVersion` artifacts so follow-up and alternate-version cases remain explicit
+- planner expectations can now assert one exact emitted `time_range` target across the planned steps for the first benchmarked region-targeting slice
 - returns either a successful `requestCycleResult` or a structured serialized error payload
 - deletes the temporary workspace unless `preserveWorkspace` is true
 

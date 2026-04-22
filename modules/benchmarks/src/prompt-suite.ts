@@ -1473,6 +1473,48 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
       },
     },
     {
+      caseId: "request_cycle_first_half_second_darker_and_less_harsh",
+      family: "first_prompt_family",
+      prompt: "Make the first 0.5 seconds darker and less harsh.",
+      description:
+        "Explicit leading-window tonal cleanup should ground to time_range targets instead of editing the whole file.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["notch_filter", "tilt_eq"],
+          expected_operation_order: ["notch_filter", "tilt_eq"],
+          expected_step_target: {
+            scope: "time_range",
+            start_seconds: 0,
+            end_seconds: 0.5,
+          },
+          required_goals: [
+            "reduce upper-mid harshness",
+            "tilt the overall balance slightly darker",
+          ],
+        },
+        regressions: {
+          forbidden_regression_kinds: ["introduced_clipping", "lost_punch"],
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_intro_darker_region_refusal",
+      family: "first_prompt_family",
+      prompt: "Make the intro darker.",
+      description:
+        "Vague named-region wording should fail explicitly until the planner has a deterministic segment resolver.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        error: {
+          stage: "plan",
+          failure_class: "supported_but_underspecified",
+          message_includes: "explicit time range",
+        },
+      },
+    },
+    {
       caseId: "request_cycle_follow_up_more",
       family: "first_prompt_family",
       prompt: "more",

@@ -1,4 +1,4 @@
-import type { OperationName, ParsedEditObjectives } from "./types.js";
+import type { OperationName, ParsedEditObjectives, RegionTargetHint } from "./types.js";
 
 interface RuntimeOnlyPhraseMatch {
   phrase: string;
@@ -257,6 +257,11 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
     parsed.trim_range = trimRange;
   }
 
+  const regionTargetHint = parseRegionTargetHint(normalizedRequest, Boolean(trimRange));
+  if (regionTargetHint !== undefined) {
+    parsed.region_target_hint = regionTargetHint;
+  }
+
   const fadeInSeconds = parseNamedDuration(normalizedRequest, "fade in");
   if (fadeInSeconds !== undefined) {
     parsed.fade_in_seconds = fadeInSeconds;
@@ -265,6 +270,11 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
   const fadeOutSeconds = parseNamedDuration(normalizedRequest, "fade out");
   if (fadeOutSeconds !== undefined) {
     parsed.fade_out_seconds = fadeOutSeconds;
+  }
+
+  const vagueRegionRequests = parseVagueRegionRequests(normalizedRequest, parsed);
+  if (vagueRegionRequests.length > 0) {
+    parsed.supported_but_underspecified_requests.push(...vagueRegionRequests);
   }
 
   parsed.request_classification = classifyRequest(parsed);
@@ -403,6 +413,130 @@ function hasSupportedIntent(parsed: ParsedEditObjectives): boolean {
     parsed.trim_range !== undefined ||
     parsed.fade_in_seconds !== undefined ||
     parsed.fade_out_seconds !== undefined
+  );
+}
+
+function parseRegionTargetHint(
+  value: string,
+  hasExplicitTrimRange: boolean,
+): RegionTargetHint | undefined {
+  if (!hasExplicitTrimRange) {
+    const explicitRangeMatch = value.match(
+      /\b(?:from|between)\s+(\d+(?:\.\d+)?)\s*s(?:econds?)?\s+(?:to|until|through|and)\s+(\d+(?:\.\d+)?)\s*s(?:econds?)?\b/u,
+    );
+
+    if (explicitRangeMatch) {
+      const startSeconds = Number(explicitRangeMatch[1]);
+      const endSeconds = Number(explicitRangeMatch[2]);
+
+      if (
+        Number.isFinite(startSeconds) &&
+        Number.isFinite(endSeconds) &&
+        endSeconds > startSeconds
+      ) {
+        return {
+          kind: "absolute_range",
+          start_seconds: startSeconds,
+          end_seconds: endSeconds,
+          source_phrase: explicitRangeMatch[0].trim(),
+        };
+      }
+    }
+  }
+
+  const leadingWindowMatch = value.match(
+    /\b(?:only|just)?\s*(?:in|on|for)?\s*the first\s+(\d+(?:\.\d+)?)\s*(?:s|sec|secs|second|seconds)\b/u,
+  );
+  if (leadingWindowMatch) {
+    const durationSeconds = Number(leadingWindowMatch[1]);
+
+    if (Number.isFinite(durationSeconds) && durationSeconds > 0) {
+      return {
+        kind: "leading_window",
+        duration_seconds: durationSeconds,
+        source_phrase: leadingWindowMatch[0].trim(),
+      };
+    }
+  }
+
+  if (value.includes("first second")) {
+    return {
+      kind: "leading_window",
+      duration_seconds: 1,
+      source_phrase: "first second",
+    };
+  }
+
+  const trailingWindowMatch = value.match(
+    /\b(?:only|just)?\s*(?:in|on|for)?\s*the last\s+(\d+(?:\.\d+)?)\s*(?:s|sec|secs|second|seconds)\b/u,
+  );
+  if (trailingWindowMatch) {
+    const durationSeconds = Number(trailingWindowMatch[1]);
+
+    if (Number.isFinite(durationSeconds) && durationSeconds > 0) {
+      return {
+        kind: "trailing_window",
+        duration_seconds: durationSeconds,
+        source_phrase: trailingWindowMatch[0].trim(),
+      };
+    }
+  }
+
+  if (value.includes("last second")) {
+    return {
+      kind: "trailing_window",
+      duration_seconds: 1,
+      source_phrase: "last second",
+    };
+  }
+
+  return undefined;
+}
+
+function parseVagueRegionRequests(value: string, parsed: ParsedEditObjectives): string[] {
+  if (
+    parsed.region_target_hint !== undefined ||
+    parsed.wants_trim_silence ||
+    !hasRegionScopeCandidate(parsed)
+  ) {
+    return [];
+  }
+
+  const matches = new Set<string>();
+
+  collectMatchedPhrases(matches, value, [
+    "intro",
+    "outro",
+    "beginning",
+    "at the start",
+    "at the end",
+    "ending word",
+    "middle section",
+    "middle part",
+  ]);
+
+  return [...matches];
+}
+
+function hasRegionScopeCandidate(parsed: ParsedEditObjectives): boolean {
+  return (
+    parsed.wants_darker ||
+    parsed.wants_brighter ||
+    parsed.wants_more_air ||
+    parsed.wants_less_harsh ||
+    parsed.wants_less_muddy ||
+    parsed.wants_more_warmth ||
+    parsed.wants_remove_rumble ||
+    parsed.wants_louder ||
+    parsed.wants_quieter ||
+    parsed.wants_more_even_level ||
+    parsed.wants_denoise ||
+    parsed.wants_tame_sibilance ||
+    parsed.wants_remove_clicks ||
+    parsed.wants_remove_hum ||
+    parsed.wants_wider ||
+    parsed.wants_narrower ||
+    parsed.wants_more_centered
   );
 }
 

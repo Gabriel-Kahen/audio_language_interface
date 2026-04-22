@@ -47,7 +47,7 @@ This artifact is not an `EditPlan`. It is a bounded interpretation proposal that
 | `clarification_question` | string | Optional follow-up question when the request needs clarification. |
 | `descriptor_hypotheses` | array | Evidence-linked descriptor hypotheses with status such as `supported`, `weak`, `contradicted`, or `unresolved`. |
 | `constraints` | array | Structured constraints extracted from the request, such as preservation, avoidance, safety, or intensity cues. |
-| `region_intents` | array | Optional region-scoping proposals derived from user wording. These stay advisory until deterministic planning can ground them safely. |
+| `region_intents` | array | Optional region-scoping proposals derived from user wording. Explicit `time_range` intents can now be grounded by deterministic planning for the current first-cohort region-safe operations, while free-form segment references remain advisory. |
 | `candidate_interpretations` | array | Ranked alternate interpretations for ambiguity analysis. These are inspectable alternatives, not planner inputs. |
 | `follow_up_intent` | object | Optional follow-up interpretation metadata such as `reduce_previous_intensity` or `try_another_version`. |
 | `grounding_notes` | array | Compact notes explaining how session or evidence context influenced the interpretation. |
@@ -63,7 +63,8 @@ This artifact is not an `EditPlan`. It is a bounded interpretation proposal that
 - Under `best_effort`, ordinary ambiguity should usually still return `next_action = "plan"` with explicit `ambiguities`, optional `candidate_interpretations`, and `grounding_notes`. `refuse` should remain reserved for unsupported, unsafe, or planner-disabled requests.
 - `next_action` makes clarification and refusal explicit, but it does not bypass deterministic planning.
 - `candidate_interpretations` are advisory only. The selected top-level interpretation remains the only planner-facing candidate.
-- `region_intents` remain proposals. The baseline planner may still refuse them instead of auto-grounding them.
+- `region_intents` remain proposals unless deterministic planning can map them to one explicit `time_range`.
+- Free-form `segment_reference` region intents such as `intro` or `ending word` remain advisory and may still be refused until a deterministic segment resolver exists.
 - Provider metadata may include cache or latency hints such as `cached` and `response_ms`, but never hidden provider state.
 
 ## Example

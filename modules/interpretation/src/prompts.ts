@@ -31,6 +31,8 @@ export const SUPPORTED_NORMALIZATION_PHRASES = [
   "narrow it",
   "center this more",
   "fix the stereo imbalance",
+  "make the first 0.5 seconds darker",
+  "make it less harsh from 0.2s to 0.7s",
   "preserve punch",
 ] as const;
 
@@ -49,7 +51,7 @@ export function buildSystemInstruction(policy: InterpretationPolicy): string {
     "Set next_action to plan, clarify, or refuse. Supported grounded requests should usually be plan. Unsupported or planner-disabled requests should usually be refuse.",
     "Descriptor hypotheses must stay evidence-linked. Use supported_by, contradicted_by, and needs_more_evidence with short artifact-aware references such as semantic:bright or analysis:measurements.stereo.balance_db.",
     "Use constraints to preserve important intent like subtlety, preserve punch, avoid added harshness, or similar safety and preservation language.",
-    "Use region_intents only when the user wording clearly scopes the request to a part of the file. Otherwise omit region_intents.",
+    "Use region_intents only when the user wording clearly scopes the request to a part of the file. Explicit numeric windows like `the first 0.5 seconds` or `from 0.2s to 0.7s` are the safest form.",
     "If the request is a fuzzy follow-up relative to an earlier request, use follow_up_intent and constraints to explain the relationship instead of inventing unsupported transforms.",
     "If session_context.pending_clarification is present, treat the current user_request as a possible answer to that clarification question. Use the prior request and clarification question to resolve the user's intent when that is grounded.",
     "candidate_interpretations may contain a few alternate grounded readings when the request is ambiguous; keep the top-level fields as the best current interpretation.",

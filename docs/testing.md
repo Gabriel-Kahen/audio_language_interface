@@ -85,6 +85,7 @@ The current repository state includes expanded coverage around:
 - provider-backed request interpretation, contract validation, and tool/orchestration integration for `IntentInterpretation`
 - interpretation-only benchmark scoring for richer `IntentInterpretation` artifacts, including conservative vs best-effort policy behavior, clarification, constraints, region-intent proposals, and follow-up interpretation
 - end-to-end clarification-loop orchestration, tool, and request-cycle benchmark coverage for `clarify -> answer -> resume`
+- planner-facing request-cycle checks for the first explicit numeric region-targeting slice, including exact `time_range` target assertions on emitted `EditPlan` steps
 - tool-surface request-cycle execution, including explicit `SessionGraph` and `available_versions` handling for follow-up requests
 - compare-layer regression logic and structured verification provenance
 - fixture-backed cleanup benchmark corpus integrity
@@ -121,7 +122,7 @@ The request-cycle benchmark mode should be read conservatively. Its scores are u
 
 That separation makes failures easier to diagnose, but it does not turn the benchmark into a perceptual listening test. Request-cycle outcome scoring still depends on the current compare-layer evidence, including structured verification, goal alignment, and regression warnings.
 
-The current request-cycle benchmark corpus is intentionally small. It covers stable tonal cleanup, tonal and cross-family compound edits, restoration, timing edits, stereo/spatial edits, iterative follow-up flows, peak-control, dedicated louder-and-controlled prompts, and explicit clarification/failure controls on committed phase-1 fixtures rather than trying to benchmark the full runtime surface at once.
+The current request-cycle benchmark corpus is intentionally small. It covers stable tonal cleanup, tonal and cross-family compound edits, restoration, timing edits, stereo/spatial edits, the first explicit numeric region-targeting slice, iterative follow-up flows, peak-control, dedicated louder-and-controlled prompts, and explicit clarification/failure controls on committed phase-1 fixtures rather than trying to benchmark the full runtime surface at once.
 
 That corpus now also includes a narrow compound-edit slice:
 

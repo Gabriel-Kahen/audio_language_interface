@@ -307,6 +307,11 @@ export interface RequestCycleBenchmarkPlannerExpectation {
   required_operations?: RuntimeOperationName[];
   forbidden_operations?: RuntimeOperationName[];
   expected_operation_order?: RuntimeOperationName[];
+  expected_step_target?: {
+    scope: "time_range";
+    start_seconds: number;
+    end_seconds: number;
+  };
   required_goals?: string[];
   require_revision?: boolean;
   expected_input_setup_index?: number;

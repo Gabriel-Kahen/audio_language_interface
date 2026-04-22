@@ -175,6 +175,7 @@ Current tool-surface caveats:
 - analysis reads the whole file into memory
 - semantic descriptor coverage is intentionally small and conservative
 - the optional interpretation layer broadens language handling, but it does not make unsupported descriptors or transforms safe automatically
+- the baseline planner now grounds one narrow region-targeting slice for explicit numeric `time_range` wording such as `the first 0.5 seconds` or `from 0.2s to 0.7s`, but it still refuses vague named regions like `intro` and it still refuses region-scoped requests that require full-file-only planner operations
 - planning fails on unsupported requests instead of trying to generalize broadly
 - iterative editing now supports `more`, `less`, `undo`, `revert to previous version`, and `try another version` through both orchestration and the published `run_request_cycle` tool; those follow-up flows still require explicit historical version materialization rather than hidden adapter-managed state
 - conservative interpretation can now stop at a first-class clarification result instead of a planner error, and the next caller-supplied `session_graph` can resume that clarification path explicitly
@@ -185,7 +186,7 @@ Current tool-surface caveats:
 - compare now preserves compound-goal tradeoff detail through `goal_alignment[].verification_rollup` when structured verification rolls multiple targets into one goal
 - hum and click analysis evidence now exists in the baseline `AnalysisReport`, and compare now prefers those direct artifact fields before falling back to conservative low-band or clipped-sample proxies
 - the repository does not yet provide a dedicated demo CLI or application entrypoint
-- benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, tonal and cross-family compound edits, restoration, timing edits, stereo/spatial edits, iterative follow-up flows, peak-control, dedicated louder-and-controlled prompts, and clarification/failure controls
+- benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, tonal and cross-family compound edits, restoration, timing edits, stereo/spatial edits, the first explicit numeric region-targeting slice, iterative follow-up flows, peak-control, dedicated louder-and-controlled prompts, and clarification/failure controls
 - live provider evaluation exists for the interpretation layer, but it is intentionally opt-in and narrower than the deterministic benchmark/reporting path because provider drift, key management, latency, and API cost are part of what that harness is meant to measure
 
 ## Practical Interpretation
