@@ -6,10 +6,11 @@ Evaluate module quality and end-to-end reliability for LLM-driven audio manipula
 
 This module is the evaluation layer over the rest of the architecture.
 
-The current implementation provides three benchmark modes for the current supported cleanup, timing, control, iterative follow-up, and interpretation prompt family:
+The current implementation provides four benchmark modes for the current supported cleanup, timing, control, iterative follow-up, and interpretation prompt family:
 
 - compare-only evaluation over curated `ComparisonReport` inputs
 - interpretation-only evaluation over curated `IntentInterpretation` artifacts
+- live-provider interpretation evaluation over real `interpretRequest(...)` calls
 - end-to-end request-cycle evaluation over the real orchestration pipeline
 
 The benchmark runtime is implemented under `modules/benchmarks/src` and is anchored to committed WAV fixtures under `fixtures/audio/phase-1/`.
@@ -20,10 +21,11 @@ The benchmark runtime is implemented under `modules/benchmarks/src` and is ancho
 - run repeatable benchmark jobs
 - score and summarize benchmark results
 
-The benchmark scoring/reporting layer now supports three evaluation shapes:
+The benchmark scoring/reporting layer now supports four evaluation shapes:
 
 - compare-only benchmark cases, which score direct `ComparisonReport` expectations
 - interpretation benchmark cases, which score explicit `IntentInterpretation` expectations
+- live interpretation benchmark cases, which execute provider-backed interpretation calls and then score the returned `IntentInterpretation`
 - request-cycle benchmark cases, which score a completed orchestration cycle by separating:
   - planner correctness
   - outcome verification
@@ -60,10 +62,13 @@ The interpretation benchmark corpus currently covers:
 - alternate-version follow-up interpretation
 - runtime-only refusal behavior
 
+The live interpretation benchmark corpus covers the same prompt families, but stores executable `AudioVersion`, `AnalysisReport`, `SemanticProfile`, and optional session-context inputs instead of prebuilt interpretation artifacts so provider behavior can be measured directly. Its expectations are intentionally coarser than the offline interpretation corpus: it favors stable structured fields such as policy, request classification, next action, constraints, region scope, and follow-up kind over exact alternate counts or exact grounding-note strings.
+
 ## Current source files
 
 - `src/prompt-suite.ts`: fixture-backed corpus metadata, prompt collections, and curated compare inputs
 - `src/run-benchmarks.ts`: compare-only and interpretation benchmark execution entrypoint
+- `src/run-live-interpretation-benchmarks.ts`: opt-in live provider evaluation for the interpretation layer
 - `src/run-request-cycle-benchmarks.ts`: end-to-end request-cycle benchmark execution entrypoint
 - `src/fixture-loader.ts`: fixture manifest loading and workspace materialization helpers
 - `src/scoring.ts`: metric aggregation and score policies
@@ -102,6 +107,7 @@ The interpretation benchmark corpus currently covers:
 
 - compare-only benchmark scoring is still centered on curated `compareVersions()` inputs for the currently supported cleanup and restoration slice
 - interpretation benchmarks are intentionally offline artifact checks; they benchmark the shape and stability of `IntentInterpretation`, not live provider/network quality
+- live interpretation benchmarks are intentionally opt-in and not part of default CI because they require real provider keys, incur network latency and API cost, and are expected to surface provider drift over time
 - the request-cycle benchmark corpus is intentionally small and currently focuses on stable tonal cleanup, cross-family compounds that stay honest on the committed fixtures, restoration, timing edits, stereo/spatial edits, iterative follow-up flows, peak control, and explicit clarification/failure controls
 - some cross-family request-cycle cases intentionally encode mixed or unmet outcome expectations when that is what the current compare/orchestration path actually produces on the committed fixtures
 - tool-surface request-cycle benchmarks still keep session state explicit by materializing `SessionGraph` and `available_versions` inside the benchmark harness rather than relying on hidden adapter persistence

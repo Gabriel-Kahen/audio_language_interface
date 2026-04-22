@@ -90,6 +90,11 @@ The current benchmarked planner surface also includes conservative compound-edit
 - structured multi-goal verification rollups that keep requested-target success and regression-guard outcomes separate, including honest partial-success reporting when only part of a compound request lands
 - explicit contradiction or refusal failures for prompt pairs such as `make it brighter and darker`, `make it faster and slower`, or `make it wider and narrower`, plus one-pass safety refusals for mixes such as brightening-plus-de-essing when the baseline planner cannot justify the sequence conservatively
 
+The benchmark layer now also has an opt-in live interpretation evaluation path:
+
+- `modules/benchmarks` can call OpenAI or Google through the real `interpretRequest(...)` surface and score the returned `IntentInterpretation` against the curated interpretation corpus
+- that live eval path is intentionally separate from `pnpm run ci` because it depends on real provider keys, network behavior, latency, and API cost
+
 ## Architecture
 
 The repo is organized into five groups.

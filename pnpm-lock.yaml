@@ -68,6 +68,9 @@ importers:
       '@audio-language-interface/compare':
         specifier: workspace:*
         version: link:../compare
+      '@audio-language-interface/interpretation':
+        specifier: workspace:*
+        version: link:../interpretation
 
   modules/capabilities:
     dependencies:

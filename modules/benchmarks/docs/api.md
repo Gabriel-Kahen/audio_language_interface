@@ -47,6 +47,7 @@ The module exports the current committed benchmark constants and corpora:
 - `FIRST_PROMPT_FAMILY_CORPUS_ID`
 - `FIRST_PROMPT_FAMILY_REQUEST_CYCLE_CORPUS_ID`
 - `INTERPRETATION_CORPUS_ID`
+- `LIVE_INTERPRETATION_CORPUS_ID`
 - `FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH`
 - `FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID`
 - `firstPromptFamilyFixtureCorpus`
@@ -55,6 +56,8 @@ The module exports the current committed benchmark constants and corpora:
 - `firstPromptFamilyRequestCycleSuite`
 - `interpretationBenchmarkCorpus`
 - `interpretationBenchmarkSuite`
+- `liveInterpretationBenchmarkCorpus`
+- `liveInterpretationBenchmarkSuite`
 
 These objects are the default benchmark inputs used when a caller does not supply a custom corpus.
 
@@ -74,6 +77,23 @@ Current behavior:
 - accepts either a full `ComparisonBenchmarkCorpus` or a raw case array
 - aggregates passed checks, total checks, and `overallScore`
 - uses the corpus metadata when present, otherwise falls back to the first-prompt-family defaults
+
+## Live interpretation benchmark execution
+
+### `runLiveInterpretationBenchmarks(benchmarkInput?, options)`
+
+Runs a live-provider interpretation corpus or ad hoc array of live interpretation cases.
+
+Current behavior:
+
+- defaults to `liveInterpretationBenchmarkCorpus`
+- requires explicit `options.providerTargets`
+- calls `interpretRequest(...)` directly rather than going through orchestration
+- executes each `case x providerTarget` combination sequentially
+- records provider kind, model, latency, cached state, and structured failure metadata for each provider run
+- scores successful provider runs with the same `scoreIntentInterpretation(...)` helper used by offline interpretation benchmarks
+- leaves provider/network evaluation opt-in and outside `pnpm run ci`
+- keeps live expectations intentionally coarser than the offline artifact corpus so the harness measures provider behavior, not exact wording drift
 
 ## Interpretation benchmark execution
 
@@ -137,6 +157,13 @@ Scores one `IntentInterpretation` against explicit interpretation expectations.
 
 Wraps `scoreIntentInterpretation(...)` and returns the case-level score object.
 
+### `scoreLiveInterpretationBenchmarkProviderResult(benchmarkCase, providerResult)`
+
+Scores one live provider execution by combining:
+
+- one execution check (`ok` vs provider failure)
+- the usual `scoreIntentInterpretation(...)` checks when a contract-valid interpretation artifact exists
+
 ### `scoreRequestCycleBenchmarkCase(benchmarkCase, result, error?, setupResults?)`
 
 Scores one request-cycle case across three separate responsibility buckets:
@@ -160,8 +187,9 @@ Formats any current benchmark mode as Markdown.
 
 Current behavior:
 
-- auto-detects compare-only, interpretation, and request-cycle result shapes
+- dispatches on explicit `benchmarkMode` discriminants for compare-only, interpretation, live-interpretation, and request-cycle runs
 - prints overall score, per-case summaries, and failure buckets
+- includes provider summaries for live interpretation runs
 - includes category-specific summaries for request-cycle runs
 
 ## Public types
@@ -174,6 +202,7 @@ Those types are implementation-facing shapes for the benchmark layer. They are n
 
 - compare-only benchmarks are still centered on curated `ComparisonReport` inputs rather than arbitrary corpus generation
 - interpretation benchmarks are currently offline artifact checks rather than live-provider evaluations
+- live interpretation benchmarks require explicit provider keys and are intentionally excluded from the default CI loop
 - request-cycle benchmarks currently run sequentially
 - request-cycle outcome scoring is only as strong as the current compare/orchestration evidence
 - the built-in corpora are intentionally small and focused on the repo’s current supported slice

@@ -10,6 +10,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@audio-language-interface/compare": "workspace:*"
+    "@audio-language-interface/compare": "workspace:*",
+    "@audio-language-interface/interpretation": "workspace:*"
   }
 }

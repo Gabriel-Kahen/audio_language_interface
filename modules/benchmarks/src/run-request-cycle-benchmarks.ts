@@ -71,6 +71,7 @@ export async function runRequestCycleBenchmarks(
   const totalChecks = caseResults.reduce((sum, item) => sum + item.totalChecks, 0);
 
   return {
+    benchmarkMode: "request_cycle",
     suiteId: Array.isArray(benchmarkInput)
       ? (benchmarkCases[0]?.family ?? "request_cycle_fixture")
       : benchmarkInput.suiteId,

@@ -6,12 +6,15 @@ import type {
   VerificationTarget,
 } from "@audio-language-interface/compare";
 import type { IntentInterpretation } from "@audio-language-interface/interpretation";
+import type { SemanticProfile } from "@audio-language-interface/semantics";
 
 import type {
   ComparisonBenchmarkCase,
   ComparisonBenchmarkCorpus,
   InterpretationBenchmarkCase,
   InterpretationBenchmarkCorpus,
+  LiveInterpretationBenchmarkCase,
+  LiveInterpretationBenchmarkCorpus,
   RequestCycleBenchmarkCase,
   RequestCycleBenchmarkCorpus,
 } from "./types.js";
@@ -19,6 +22,7 @@ import type {
 export const FIRST_PROMPT_FAMILY_CORPUS_ID = "cleanup_slice_v1";
 export const FIRST_PROMPT_FAMILY_REQUEST_CYCLE_CORPUS_ID = "cleanup_request_cycle_v1";
 export const INTERPRETATION_CORPUS_ID = "intent_interpretation_v1";
+export const LIVE_INTERPRETATION_CORPUS_ID = "intent_interpretation_live_v1";
 export const FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH = "fixtures/audio/manifest.json";
 export const FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID = "fixture_phase1_first_slice_loop_synthetic";
 
@@ -1934,6 +1938,377 @@ export const interpretationBenchmarkCorpus: InterpretationBenchmarkCorpus = {
 export const interpretationBenchmarkSuite: InterpretationBenchmarkCase[] =
   interpretationBenchmarkCorpus.cases;
 
+export const liveInterpretationBenchmarkCorpus: LiveInterpretationBenchmarkCorpus = {
+  corpusId: LIVE_INTERPRETATION_CORPUS_ID,
+  suiteId: "live_intent_interpretation",
+  description:
+    "Live-provider interpretation benchmark corpus covering the same supported ambiguity, follow-up, region, and runtime-only request families with executable input context instead of prebuilt artifacts.",
+  cases: [
+    {
+      caseId: "live_interpret_darker_keep_punch",
+      family: "live_intent_interpretation",
+      prompt: "Make it darker but keep the punch.",
+      description: "Supported tonal request with a preservation constraint.",
+      input: {
+        policy: "conservative",
+        audioVersion: createVersion("ver_liveinterpdark01"),
+        analysisReport: createAnalysisReport("analysis_liveinterpdark01", "ver_liveinterpdark01", {
+          integratedLufs: -15.1,
+          truePeakDbtp: -1.2,
+          crestFactorDb: 10.8,
+          transientDensity: 2.1,
+          lowBandDb: -14.7,
+          midBandDb: -10.9,
+          highBandDb: -8.8,
+          spectralCentroidHz: 2980,
+          stereoWidth: 0.62,
+          stereoCorrelation: 0.38,
+          noiseFloorDbfs: -72,
+          clippingDetected: false,
+        }),
+        semanticProfile: createSemanticProfile(
+          "analysis_liveinterpdark01",
+          "ver_liveinterpdark01",
+          {
+            descriptors: [
+              { label: "bright", confidence: 0.77 },
+              { label: "harsh", confidence: 0.69 },
+              { label: "controlled", confidence: 0.51 },
+            ],
+            summary: "Bright and slightly harsh, with decent transient shape.",
+          },
+        ),
+      },
+      expectation: getLiveInterpretationExpectation("interpret_darker_keep_punch"),
+    },
+    {
+      caseId: "live_interpret_clean_it_conservative",
+      family: "live_intent_interpretation",
+      prompt: "Clean it.",
+      description: "Conservative ambiguity handling should clarify broad cleanup wording.",
+      input: {
+        policy: "conservative",
+        audioVersion: createVersion("ver_liveinterpclean01"),
+        analysisReport: createAnalysisReport(
+          "analysis_liveinterpclean01",
+          "ver_liveinterpclean01",
+          {
+            integratedLufs: -16.4,
+            truePeakDbtp: -1.8,
+            crestFactorDb: 11.1,
+            transientDensity: 1.8,
+            lowBandDb: -15.4,
+            midBandDb: -12.2,
+            highBandDb: -11.9,
+            spectralCentroidHz: 2140,
+            stereoWidth: 0.55,
+            stereoCorrelation: 0.49,
+            noiseFloorDbfs: -61,
+            clippingDetected: false,
+          },
+        ),
+        semanticProfile: createSemanticProfile(
+          "analysis_liveinterpclean01",
+          "ver_liveinterpclean01",
+          {
+            descriptors: [{ label: "cleaner", confidence: 0.42 }],
+            unresolvedTerms: ["steady_noise", "hum_present", "clicks_present"],
+            summary: "Some cleanup may help, but the dominant issue is unclear.",
+          },
+        ),
+      },
+      expectation: getLiveInterpretationExpectation("interpret_clean_it_conservative"),
+    },
+    {
+      caseId: "live_interpret_clean_it_best_effort",
+      family: "live_intent_interpretation",
+      prompt: "Clean it.",
+      description: "Best-effort ambiguity handling should choose a grounded cleanup reading.",
+      input: {
+        policy: "best_effort",
+        audioVersion: createVersion("ver_liveinterpcleanbesteffort01"),
+        analysisReport: createAnalysisReport(
+          "analysis_liveinterpcleanbesteffort01",
+          "ver_liveinterpcleanbesteffort01",
+          {
+            integratedLufs: -16.4,
+            truePeakDbtp: -1.8,
+            crestFactorDb: 11.1,
+            transientDensity: 1.8,
+            lowBandDb: -15.4,
+            midBandDb: -12.2,
+            highBandDb: -11.9,
+            spectralCentroidHz: 2140,
+            stereoWidth: 0.55,
+            stereoCorrelation: 0.49,
+            noiseFloorDbfs: -61,
+            clippingDetected: false,
+          },
+        ),
+        semanticProfile: createSemanticProfile(
+          "analysis_liveinterpcleanbesteffort01",
+          "ver_liveinterpcleanbesteffort01",
+          {
+            descriptors: [{ label: "cleaner", confidence: 0.42 }],
+            unresolvedTerms: ["steady_noise", "hum_present", "clicks_present"],
+            summary: "Some cleanup may help, but the dominant issue is unclear.",
+          },
+        ),
+      },
+      expectation: getLiveInterpretationExpectation("interpret_clean_it_best_effort"),
+    },
+    {
+      caseId: "live_interpret_brighter_and_darker_conservative",
+      family: "live_intent_interpretation",
+      prompt: "Make it brighter and darker.",
+      description: "Conservative policy should clarify contradictory tonal wording.",
+      input: {
+        policy: "conservative",
+        audioVersion: createVersion("ver_liveinterpcontradiction01"),
+        analysisReport: createAnalysisReport(
+          "analysis_liveinterpcontradiction01",
+          "ver_liveinterpcontradiction01",
+          {
+            integratedLufs: -14.9,
+            truePeakDbtp: -1.1,
+            crestFactorDb: 9.7,
+            transientDensity: 2.0,
+            lowBandDb: -15.2,
+            midBandDb: -11.4,
+            highBandDb: -10.1,
+            spectralCentroidHz: 2450,
+            stereoWidth: 0.6,
+            stereoCorrelation: 0.41,
+            noiseFloorDbfs: -70,
+            clippingDetected: false,
+          },
+        ),
+        semanticProfile: createSemanticProfile(
+          "analysis_liveinterpcontradiction01",
+          "ver_liveinterpcontradiction01",
+          {
+            descriptors: [
+              { label: "bright", confidence: 0.61 },
+              { label: "warm", confidence: 0.36 },
+            ],
+            summary:
+              "Tonally balanced enough that contradictory direction words need clarification.",
+          },
+        ),
+      },
+      expectation: getLiveInterpretationExpectation("interpret_brighter_and_darker_conservative"),
+    },
+    {
+      caseId: "live_interpret_brighter_and_darker_best_effort",
+      family: "live_intent_interpretation",
+      prompt: "Make it brighter and darker.",
+      description:
+        "Best-effort policy should choose one tonal direction while preserving ambiguity metadata.",
+      input: {
+        policy: "best_effort",
+        audioVersion: createVersion("ver_liveinterpcontradictionbesteffort01"),
+        analysisReport: createAnalysisReport(
+          "analysis_liveinterpcontradictionbesteffort01",
+          "ver_liveinterpcontradictionbesteffort01",
+          {
+            integratedLufs: -14.9,
+            truePeakDbtp: -1.1,
+            crestFactorDb: 9.7,
+            transientDensity: 2.0,
+            lowBandDb: -15.2,
+            midBandDb: -11.4,
+            highBandDb: -10.1,
+            spectralCentroidHz: 2450,
+            stereoWidth: 0.6,
+            stereoCorrelation: 0.41,
+            noiseFloorDbfs: -70,
+            clippingDetected: false,
+          },
+        ),
+        semanticProfile: createSemanticProfile(
+          "analysis_liveinterpcontradictionbesteffort01",
+          "ver_liveinterpcontradictionbesteffort01",
+          {
+            descriptors: [
+              { label: "bright", confidence: 0.61 },
+              { label: "warm", confidence: 0.36 },
+            ],
+            summary:
+              "Tonally balanced enough that contradictory direction words need clarification.",
+          },
+        ),
+      },
+      expectation: getLiveInterpretationExpectation("interpret_brighter_and_darker_best_effort"),
+    },
+    {
+      caseId: "live_interpret_remove_hum_first_second",
+      family: "live_intent_interpretation",
+      prompt: "Remove the hum only in the first second.",
+      description:
+        "Region language and hum evidence should survive into the live interpretation artifact.",
+      input: {
+        policy: "conservative",
+        audioVersion: createVersion("ver_liveinterphum01"),
+        analysisReport: createAnalysisReport("analysis_liveinterphum01", "ver_liveinterphum01", {
+          integratedLufs: -18.2,
+          truePeakDbtp: -2.6,
+          crestFactorDb: 8.4,
+          transientDensity: 0.9,
+          lowBandDb: -11.8,
+          midBandDb: -16.7,
+          highBandDb: -20.2,
+          spectralCentroidHz: 1180,
+          stereoWidth: 0.08,
+          stereoCorrelation: 0.96,
+          noiseFloorDbfs: -58,
+          clippingDetected: false,
+          humDetected: true,
+          humLevelDbfs: -36,
+          humFundamentalHz: 60,
+          humHarmonicCount: 4,
+        }),
+        semanticProfile: createSemanticProfile("analysis_liveinterphum01", "ver_liveinterphum01", {
+          descriptors: [{ label: "hum_present", confidence: 0.93 }],
+          summary: "Clear mains hum is present.",
+        }),
+      },
+      expectation: getLiveInterpretationExpectation("interpret_remove_hum_first_second"),
+    },
+    {
+      caseId: "live_interpret_follow_up_not_that_much",
+      family: "live_intent_interpretation",
+      prompt: "Not that much.",
+      description:
+        "Live interpretation should use explicit session context for vague intensity reduction follow-ups.",
+      input: {
+        policy: "best_effort",
+        audioVersion: createVersion("ver_liveinterpfollowup01"),
+        analysisReport: createAnalysisReport(
+          "analysis_liveinterpfollowup01",
+          "ver_liveinterpfollowup01",
+          {
+            integratedLufs: -14.8,
+            truePeakDbtp: -1.2,
+            crestFactorDb: 10.5,
+            transientDensity: 2.0,
+            lowBandDb: -15.9,
+            midBandDb: -11.1,
+            highBandDb: -9.4,
+            spectralCentroidHz: 2810,
+            stereoWidth: 0.61,
+            stereoCorrelation: 0.43,
+            noiseFloorDbfs: -71,
+            clippingDetected: false,
+          },
+        ),
+        semanticProfile: createSemanticProfile(
+          "analysis_liveinterpfollowup01",
+          "ver_liveinterpfollowup01",
+          {
+            descriptors: [
+              { label: "bright", confidence: 0.71 },
+              { label: "harsh", confidence: 0.64 },
+            ],
+            summary: "Bright and somewhat harsh, matching the prior tonal correction request.",
+          },
+        ),
+        sessionContext: {
+          current_version_id: "ver_liveinterpfollowup01",
+          previous_request: "Make it darker and less harsh.",
+          original_user_request: "Make it darker and less harsh.",
+          follow_up_source: "less",
+        },
+      },
+      expectation: getLiveInterpretationExpectation("interpret_follow_up_not_that_much"),
+    },
+    {
+      caseId: "live_interpret_try_another_version",
+      family: "live_intent_interpretation",
+      prompt: "Try another version.",
+      description:
+        "Live interpretation should surface alternate-version follow-up intent when session context is explicit.",
+      input: {
+        policy: "best_effort",
+        audioVersion: createVersion("ver_liveinterptryanother01"),
+        analysisReport: createAnalysisReport(
+          "analysis_liveinterptryanother01",
+          "ver_liveinterptryanother01",
+          {
+            integratedLufs: -15.0,
+            truePeakDbtp: -1.4,
+            crestFactorDb: 10.2,
+            transientDensity: 2.0,
+            lowBandDb: -15.8,
+            midBandDb: -11.2,
+            highBandDb: -10.1,
+            spectralCentroidHz: 2520,
+            stereoWidth: 0.59,
+            stereoCorrelation: 0.45,
+            noiseFloorDbfs: -70.5,
+            clippingDetected: false,
+          },
+        ),
+        semanticProfile: createSemanticProfile(
+          "analysis_liveinterptryanother01",
+          "ver_liveinterptryanother01",
+          {
+            descriptors: [{ label: "bright", confidence: 0.59 }],
+            summary: "Current version is a follow-up candidate for alternate branching.",
+          },
+        ),
+        sessionContext: {
+          current_version_id: "ver_liveinterptryanother01",
+          previous_request: "Make it darker and less harsh.",
+          original_user_request: "Make it darker and less harsh.",
+          follow_up_source: "try_another_version",
+        },
+      },
+      expectation: getLiveInterpretationExpectation("interpret_try_another_version"),
+    },
+    {
+      caseId: "live_interpret_bitcrush_runtime_only",
+      family: "live_intent_interpretation",
+      prompt: "Bitcrush this a little.",
+      description: "Runtime-only requests should stay explicit in live provider evaluation too.",
+      input: {
+        policy: "best_effort",
+        audioVersion: createVersion("ver_liveinterpbitcrush01"),
+        analysisReport: createAnalysisReport(
+          "analysis_liveinterpbitcrush01",
+          "ver_liveinterpbitcrush01",
+          {
+            integratedLufs: -15.3,
+            truePeakDbtp: -1.7,
+            crestFactorDb: 9.6,
+            transientDensity: 2.3,
+            lowBandDb: -14.8,
+            midBandDb: -11.6,
+            highBandDb: -9.9,
+            spectralCentroidHz: 2760,
+            stereoWidth: 0.57,
+            stereoCorrelation: 0.47,
+            noiseFloorDbfs: -68,
+            clippingDetected: false,
+          },
+        ),
+        semanticProfile: createSemanticProfile(
+          "analysis_liveinterpbitcrush01",
+          "ver_liveinterpbitcrush01",
+          {
+            descriptors: [{ label: "bright", confidence: 0.48 }],
+            unresolvedTerms: ["crunchy"],
+            summary: "No direct evidence grounds a bitcrush-specific descriptor.",
+          },
+        ),
+      },
+      expectation: getLiveInterpretationExpectation("interpret_bitcrush_runtime_only"),
+    },
+  ],
+};
+
+export const liveInterpretationBenchmarkSuite: LiveInterpretationBenchmarkCase[] =
+  liveInterpretationBenchmarkCorpus.cases;
+
 interface AnalysisValues {
   integratedLufs: number;
   truePeakDbtp: number;
@@ -2015,6 +2390,12 @@ interface CreateInterpretationArtifactInput {
   confidence?: number;
 }
 
+interface CreateSemanticProfileInput {
+  descriptors: Array<{ label: string; confidence: number }>;
+  summary: string;
+  unresolvedTerms?: string[];
+}
+
 function createInterpretationArtifact(
   input: CreateInterpretationArtifactInput,
 ): IntentInterpretation {
@@ -2062,6 +2443,56 @@ function createInterpretationArtifact(
     },
     generated_at: "2026-04-21T22:00:00Z",
   };
+}
+
+function createSemanticProfile(
+  analysisReportId: string,
+  versionId: string,
+  input: CreateSemanticProfileInput,
+): SemanticProfile {
+  const profileToken = versionId.replace(/[^A-Za-z0-9]/g, "");
+  return {
+    schema_version: "1.0.0",
+    profile_id: `semantic_${profileToken}`,
+    analysis_report_id: analysisReportId,
+    asset_id: "asset_benchmark_01",
+    version_id: versionId,
+    generated_at: "2026-04-22T20:00:00Z",
+    descriptors: input.descriptors.map((descriptor) => ({
+      label: descriptor.label,
+      confidence: descriptor.confidence,
+      evidence_refs: [`analysis:${analysisReportId}`, `semantic:${descriptor.label}`],
+      rationale: `Benchmark semantic profile includes ${descriptor.label}.`,
+    })),
+    summary: {
+      plain_text: input.summary,
+    },
+    ...(input.unresolvedTerms === undefined ? {} : { unresolved_terms: input.unresolvedTerms }),
+  };
+}
+
+function getInterpretationExpectation(caseId: string): InterpretationBenchmarkCase["expectation"] {
+  const benchmarkCase = interpretationBenchmarkSuite.find((item) => item.caseId === caseId);
+  if (benchmarkCase === undefined) {
+    throw new Error(`Unknown interpretation benchmark case '${caseId}'.`);
+  }
+
+  return benchmarkCase.expectation;
+}
+
+function getLiveInterpretationExpectation(
+  caseId: string,
+): InterpretationBenchmarkCase["expectation"] {
+  const expectation = getInterpretationExpectation(caseId);
+  const {
+    expectedCandidateInterpretationCount: _ignoredCandidateCount,
+    requiredGroundingNotes: _ignoredGroundingNotes,
+    ...liveExpectation
+  } = expectation;
+
+  // Live provider evaluation should favor stable structured fields over
+  // brittle prompt-wording artifacts such as exact alternate counts or note text.
+  return liveExpectation;
 }
 
 function slugify(value: string): string {

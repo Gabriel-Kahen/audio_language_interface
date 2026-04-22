@@ -51,7 +51,7 @@ The runtime capability surface is now also published explicitly through `Runtime
 
 ### Evaluation
 
-- `benchmarks`: fixture-backed compare benchmark harness plus a real request-cycle benchmark runner for the current cleanup and control prompt family
+- `benchmarks`: fixture-backed compare benchmarks, offline interpretation benchmarks, opt-in live provider interpretation evals, and a real request-cycle benchmark runner for the current supported prompt family
 
 ## Current Prompt And Operation Scope
 
@@ -161,6 +161,7 @@ Current tool-surface caveats:
 
 - `apply_edit_plan` supports the published runtime capability surface, including first-cohort `time_range` execution for selected duration-preserving Layer 1 operations, while still validating explicit runtime prerequisites such as stereo-only processing where applicable
 - `interpret_request` is optional and provider-backed; it normalizes language into a contract-valid `IntentInterpretation`, accepts explicit session context plus a `conservative` vs `best_effort` policy for fuzzy follow-ups, and does not bypass deterministic planning or verification
+- the benchmark layer can now evaluate that interpretation surface directly against real OpenAI and Google calls through an opt-in live benchmark harness; that live path is outside default CI and intended for provider-quality measurement rather than deterministic regression gating
 - `plan_edits` only chooses operations marked as `planner_supported` in the runtime capability manifest
 - `plan_edits` can accept an optional `intent_interpretation` artifact, but still validates that proposal against current audio evidence and planner support
 - `compare_versions` returns `evaluation_basis` so callers can see whether structured verification or fallback goal alignment is authoritative
@@ -184,6 +185,7 @@ Current tool-surface caveats:
 - hum and click analysis evidence now exists in the baseline `AnalysisReport`, and compare now prefers those direct artifact fields before falling back to conservative low-band or clipped-sample proxies
 - the repository does not yet provide a dedicated demo CLI or application entrypoint
 - benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, tonal and cross-family compound edits, restoration, timing edits, stereo/spatial edits, iterative follow-up flows, peak-control, dedicated louder-and-controlled prompts, and clarification/failure controls
+- live provider evaluation exists for the interpretation layer, but it is intentionally opt-in and narrower than the deterministic benchmark/reporting path because provider drift, key management, latency, and API cost are part of what that harness is meant to measure
 
 ## Practical Interpretation
 

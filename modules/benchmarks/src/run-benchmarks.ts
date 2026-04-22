@@ -30,6 +30,7 @@ export function runComparisonBenchmarks(
   const totalChecks = caseResults.reduce((sum, item) => sum + item.totalChecks, 0);
 
   return {
+    benchmarkMode: "comparison",
     suiteId: Array.isArray(benchmarkInput)
       ? (firstPromptFamilyPromptSuite[0]?.family ?? "first_prompt_family")
       : benchmarkInput.suiteId,
@@ -62,6 +63,7 @@ export function runInterpretationBenchmarks(
   const totalChecks = caseResults.reduce((sum, item) => sum + item.totalChecks, 0);
 
   return {
+    benchmarkMode: "interpretation",
     suiteId: Array.isArray(benchmarkInput)
       ? (benchmarkCases[0]?.family ?? "intent_interpretation")
       : benchmarkInput.suiteId,

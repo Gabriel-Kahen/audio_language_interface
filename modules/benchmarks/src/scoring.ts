@@ -8,6 +8,9 @@ import type {
   InterpretationBenchmarkCase,
   InterpretationBenchmarkCaseResult,
   InterpretationBenchmarkExpectation,
+  LiveInterpretationBenchmarkCase,
+  LiveInterpretationBenchmarkCheckResult,
+  LiveInterpretationBenchmarkProviderResult,
   RequestCycleBenchmarkCase,
   RequestCycleBenchmarkCaseResult,
   RequestCycleBenchmarkCategory,
@@ -109,6 +112,55 @@ export function scoreInterpretationBenchmarkCase(
     caseId: benchmarkCase.caseId,
     prompt: benchmarkCase.prompt,
     interpretation: benchmarkCase.interpretation,
+    passedChecks,
+    totalChecks,
+    score: totalChecks === 0 ? 1 : roundScore(passedChecks / totalChecks),
+    checks,
+  };
+}
+
+export function scoreLiveInterpretationBenchmarkProviderResult(
+  benchmarkCase: LiveInterpretationBenchmarkCase,
+  providerResult: Pick<
+    LiveInterpretationBenchmarkProviderResult,
+    "status" | "interpretation" | "error"
+  >,
+): Pick<
+  LiveInterpretationBenchmarkProviderResult,
+  "passedChecks" | "totalChecks" | "score" | "checks"
+> {
+  const checks: LiveInterpretationBenchmarkCheckResult[] =
+    providerResult.status === "ok" && providerResult.interpretation !== undefined
+      ? [
+          {
+            scope: "execution",
+            checkId: "live_interpretation:execution",
+            passed: true,
+            expected: "ok",
+            actual: "ok",
+          },
+          ...scoreIntentInterpretation(
+            providerResult.interpretation,
+            benchmarkCase.expectation,
+          ).map((check) => ({
+            ...check,
+            scope: "interpretation" as const,
+          })),
+        ]
+      : [
+          {
+            scope: "execution",
+            checkId: "live_interpretation:execution",
+            passed: false,
+            expected: "ok",
+            actual: providerResult.error?.failureClass ?? "error",
+          },
+        ];
+
+  const passedChecks = checks.filter((check) => check.passed).length;
+  const totalChecks = checks.length;
+
+  return {
     passedChecks,
     totalChecks,
     score: totalChecks === 0 ? 1 : roundScore(passedChecks / totalChecks),

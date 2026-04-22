@@ -4,12 +4,18 @@ import type {
   ComparisonReport,
   GoalStatus,
 } from "@audio-language-interface/compare";
+import type { AudioVersion } from "@audio-language-interface/core";
 import type {
   DescriptorHypothesisStatus,
   FollowUpIntentKind,
   IntentInterpretation,
+  InterpretationCacheStore,
   InterpretationConstraintKind,
   InterpretationNextAction,
+  InterpretationPolicy,
+  InterpretationProviderConfig,
+  InterpretationProviderKind,
+  InterpretationSessionContext,
   RegionIntentScope,
 } from "@audio-language-interface/interpretation";
 import type { ImportAudioOptions } from "@audio-language-interface/io";
@@ -115,6 +121,7 @@ export interface ComparisonBenchmarkCaseResult {
 }
 
 export interface ComparisonBenchmarkRunResult {
+  benchmarkMode: "comparison";
   suiteId: string;
   corpusId: string;
   caseResults: ComparisonBenchmarkCaseResult[];
@@ -177,12 +184,114 @@ export interface InterpretationBenchmarkCaseResult {
 }
 
 export interface InterpretationBenchmarkRunResult {
+  benchmarkMode: "interpretation";
   suiteId: string;
   corpusId: string;
   caseResults: InterpretationBenchmarkCaseResult[];
   totalPassedChecks: number;
   totalChecks: number;
   overallScore: number;
+}
+
+export interface LiveInterpretationBenchmarkInput {
+  policy: InterpretationPolicy;
+  audioVersion: AudioVersion;
+  analysisReport: import("@audio-language-interface/analysis").AnalysisReport;
+  semanticProfile: import("@audio-language-interface/semantics").SemanticProfile;
+  capabilityManifest?: import("@audio-language-interface/capabilities").RuntimeCapabilityManifest;
+  sessionContext?: InterpretationSessionContext;
+  promptVersion?: string;
+}
+
+export interface LiveInterpretationBenchmarkCase {
+  caseId: string;
+  family: "live_intent_interpretation";
+  prompt: string;
+  description: string;
+  input: LiveInterpretationBenchmarkInput;
+  expectation: InterpretationBenchmarkExpectation;
+  providerAllowlist?: InterpretationProviderKind[];
+}
+
+export interface LiveInterpretationBenchmarkCorpus {
+  corpusId: string;
+  suiteId: LiveInterpretationBenchmarkCase["family"];
+  description: string;
+  cases: LiveInterpretationBenchmarkCase[];
+}
+
+export interface LiveInterpretationBenchmarkProviderTarget
+  extends Omit<InterpretationProviderConfig, "apiKey"> {
+  apiKey: string;
+  label?: string;
+}
+
+export interface LiveInterpretationBenchmarkError {
+  name: string;
+  message: string;
+  stack?: string;
+  failureClass: "provider_error" | "schema_invalid" | "timeout" | "validation_error";
+}
+
+export interface LiveInterpretationBenchmarkCheckResult extends BenchmarkCheckResult {
+  scope: "execution" | "interpretation";
+}
+
+export interface LiveInterpretationBenchmarkProviderResult {
+  provider: InterpretationProviderKind;
+  model: string;
+  label?: string;
+  policy: InterpretationPolicy;
+  startedAt: string;
+  finishedAt: string;
+  durationMs: number;
+  status: "ok" | "error";
+  cached: boolean;
+  interpretation?: IntentInterpretation;
+  error?: LiveInterpretationBenchmarkError;
+  passedChecks: number;
+  totalChecks: number;
+  score: number;
+  checks: LiveInterpretationBenchmarkCheckResult[];
+}
+
+export interface LiveInterpretationBenchmarkCaseResult {
+  caseId: string;
+  prompt: string;
+  description: string;
+  providerResults: LiveInterpretationBenchmarkProviderResult[];
+  totalPassedChecks: number;
+  totalChecks: number;
+  score: number;
+}
+
+export interface LiveInterpretationProviderSummary {
+  provider: InterpretationProviderKind;
+  model: string;
+  label?: string;
+  totalRuns: number;
+  succeededRuns: number;
+  failedRuns: number;
+  totalPassedChecks: number;
+  totalChecks: number;
+  overallScore: number;
+  averageDurationMs: number;
+}
+
+export interface LiveInterpretationBenchmarkRunResult {
+  benchmarkMode: "live_interpretation";
+  suiteId: string;
+  corpusId: string;
+  caseResults: LiveInterpretationBenchmarkCaseResult[];
+  providerSummaries: LiveInterpretationProviderSummary[];
+  totalCases: number;
+  totalProviderRuns: number;
+  succeededProviderRuns: number;
+  failedProviderRuns: number;
+  totalPassedChecks: number;
+  totalChecks: number;
+  overallScore: number;
+  totalDurationMs: number;
 }
 
 export type RequestCycleBenchmarkCategory =
@@ -316,6 +425,7 @@ export interface RequestCycleBenchmarkCaseResult {
 }
 
 export interface RequestCycleBenchmarkRunResult {
+  benchmarkMode: "request_cycle";
   suiteId: string;
   corpusId: string;
   fixtureManifestPath: string;
@@ -349,4 +459,13 @@ export interface RunRequestCycleBenchmarkCaseOptions {
 export interface RunRequestCycleBenchmarksOptions
   extends Omit<RunRequestCycleBenchmarkCaseOptions, "fixtureManifest"> {
   fixtureManifest?: AudioFixtureManifest;
+}
+
+export interface RunLiveInterpretationBenchmarksOptions {
+  providerTargets: LiveInterpretationBenchmarkProviderTarget[];
+  interpretRequest?: typeof import("@audio-language-interface/interpretation").interpretRequest;
+  cacheStore?: InterpretationCacheStore;
+  generatedAt?: string;
+  continueOnProviderError?: boolean;
+  caseFilter?: (benchmarkCase: LiveInterpretationBenchmarkCase) => boolean;
 }

@@ -37,7 +37,7 @@ See `docs/api.md` for the concrete API shape and failure behavior.
 
 - `modules/orchestration` for optional request interpretation before deterministic planning
 - `modules/tools` for explicit adapter-surface interpretation calls
-- tests or benchmarks comparing interpretation output across providers
+- tests or benchmarks comparing interpretation output across providers, including the opt-in live provider eval path in `modules/benchmarks`
 
 ## Non-goals
 

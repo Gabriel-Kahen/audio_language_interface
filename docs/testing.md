@@ -105,10 +105,11 @@ No single layer should be treated as sufficient by itself for current capability
 
 ## Benchmark interpretation
 
-The benchmark layer now has three distinct uses:
+The benchmark layer now has four distinct uses:
 
 - compare-only benchmark cases for direct `ComparisonReport` evaluation
 - interpretation-only benchmark cases for direct `IntentInterpretation` evaluation
+- live interpretation benchmark execution for real OpenAI/Google `interpretRequest(...)` calls against the curated interpretation corpus
 - request-cycle benchmark execution plus scoring/reporting for full orchestration-cycle evaluation
 
 The request-cycle benchmark mode should be read conservatively. Its scores are useful because they separate:
@@ -133,6 +134,21 @@ Those cases are meant to test planner decomposition, explicit operation ordering
 For hum and click cleanup prompts, benchmark outcome checks should prefer direct `AnalysisReport.artifacts` signals such as `hum_detected`, `hum_level_dbfs`, `click_detected`, and `click_count`. Low-band, noise-floor, and clipped-sample checks remain conservative fallback coverage rather than the primary success signal.
 
 The compare-only corpus now also includes isolated hum and click cases for both direct-artifact and fallback scoring paths. Use those cases when you need to debug compare behavior without involving planning or orchestration.
+
+The live interpretation benchmark mode is intentionally opt-in. Run it separately from the default CI loop with:
+
+```bash
+OPENAI_API_KEY=... GOOGLE_API_KEY=... pnpm run bench:interpretation:live
+```
+
+Optional environment controls:
+
+- `LIVE_INTERPRETATION_PROVIDERS=openai,google`
+- `OPENAI_MODEL=...`
+- `GOOGLE_MODEL=...`
+- `LIVE_INTERPRETATION_CASES=live_interpret_clean_it_conservative,live_interpret_clean_it_best_effort`
+
+That command exits nonzero when a provider run fails or when the measured live interpretations miss their declared benchmark expectations.
 
 ## Current Capability-Expansion Testing Expectations
 
@@ -195,6 +211,8 @@ Current CI steps:
 3. install system `ffmpeg`
 4. install workspace dependencies
 5. run `pnpm run ci`
+
+Live interpretation evaluation is intentionally excluded from this path.
 
 ## System dependency note
 

@@ -9,6 +9,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
+    "bench:interpretation:live": "node --experimental-strip-types scripts/run-live-interpretation-benchmarks.mts",
     "ci": "pnpm validate:schemas && pnpm lint && pnpm typecheck && pnpm test",
     "lint": "biome check .",
     "format": "biome format --write .",

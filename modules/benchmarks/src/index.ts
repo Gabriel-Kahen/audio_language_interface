@@ -18,6 +18,9 @@ export {
   INTERPRETATION_CORPUS_ID,
   interpretationBenchmarkCorpus,
   interpretationBenchmarkSuite,
+  LIVE_INTERPRETATION_CORPUS_ID,
+  liveInterpretationBenchmarkCorpus,
+  liveInterpretationBenchmarkSuite,
 } from "./prompt-suite.js";
 export { formatBenchmarkMarkdownReport } from "./reporting.js";
 export {
@@ -26,6 +29,7 @@ export {
   runInterpretationBenchmarkCase,
   runInterpretationBenchmarks,
 } from "./run-benchmarks.js";
+export { runLiveInterpretationBenchmarks } from "./run-live-interpretation-benchmarks.js";
 export {
   runRequestCycleBenchmarkCase,
   runRequestCycleBenchmarks,
@@ -35,6 +39,7 @@ export {
   scoreComparisonReport,
   scoreIntentInterpretation,
   scoreInterpretationBenchmarkCase,
+  scoreLiveInterpretationBenchmarkProviderResult,
   scoreRequestCycleBenchmarkCase,
 } from "./scoring.js";
 export type {
@@ -57,6 +62,16 @@ export type {
   InterpretationBenchmarkExpectedConstraint,
   InterpretationBenchmarkExpectedDescriptor,
   InterpretationBenchmarkRunResult,
+  LiveInterpretationBenchmarkCase,
+  LiveInterpretationBenchmarkCaseResult,
+  LiveInterpretationBenchmarkCheckResult,
+  LiveInterpretationBenchmarkCorpus,
+  LiveInterpretationBenchmarkError,
+  LiveInterpretationBenchmarkInput,
+  LiveInterpretationBenchmarkProviderResult,
+  LiveInterpretationBenchmarkProviderTarget,
+  LiveInterpretationBenchmarkRunResult,
+  LiveInterpretationProviderSummary,
   RequestCycleBenchmarkArtifacts,
   RequestCycleBenchmarkCase,
   RequestCycleBenchmarkCaseResult,
@@ -71,6 +86,7 @@ export type {
   RequestCycleCategoryScore,
   RequestCycleFailureBucket,
   RequestCycleScoreBreakdown,
+  RunLiveInterpretationBenchmarksOptions,
   RunRequestCycleBenchmarkCaseOptions,
   RunRequestCycleBenchmarksOptions,
 } from "./types.js";

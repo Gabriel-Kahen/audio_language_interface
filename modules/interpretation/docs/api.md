@@ -33,6 +33,7 @@ Current behavior:
 - records explicit `interpretation_policy`, `next_action`, descriptor hypotheses, constraints, region-intent proposals, alternate interpretations, and follow-up metadata when the provider returns them
 - can reuse explicit cache entries when a caller supplies `cacheStore`
 - records provider cache and latency metadata in `artifact.provider.cached` and `artifact.provider.response_ms`
+- serves as the direct execution surface for the live interpretation benchmark harness in `modules/benchmarks`
 
 Policy behavior:
 
