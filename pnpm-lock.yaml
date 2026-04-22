@@ -91,6 +91,27 @@ importers:
 
   modules/history: {}
 
+  modules/interpretation:
+    dependencies:
+      '@audio-language-interface/analysis':
+        specifier: workspace:*
+        version: link:../analysis
+      '@audio-language-interface/capabilities':
+        specifier: workspace:*
+        version: link:../capabilities
+      '@audio-language-interface/core':
+        specifier: workspace:*
+        version: link:../core
+      '@audio-language-interface/semantics':
+        specifier: workspace:*
+        version: link:../semantics
+      ajv:
+        specifier: ^8.18.0
+        version: 8.18.0
+      ajv-formats:
+        specifier: ^3.0.1
+        version: 3.0.1(ajv@8.18.0)
+
   modules/io:
     dependencies:
       '@audio-language-interface/core':
@@ -120,6 +141,9 @@ importers:
       '@audio-language-interface/history':
         specifier: workspace:*
         version: link:../history
+      '@audio-language-interface/interpretation':
+        specifier: workspace:*
+        version: link:../interpretation
       '@audio-language-interface/io':
         specifier: workspace:*
         version: link:../io
@@ -208,6 +232,9 @@ importers:
       '@audio-language-interface/compare':
         specifier: workspace:*
         version: link:../compare
+      '@audio-language-interface/interpretation':
+        specifier: workspace:*
+        version: link:../interpretation
       '@audio-language-interface/io':
         specifier: workspace:*
         version: link:../io
