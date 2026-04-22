@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the tool envelope for running the full orchestration editing cycle, including explicit session-aware follow-up requests such as `more`, `less`, `undo`, `revert to previous version`, and `try another version`.
+Defines the tool envelope for running the full orchestration editing cycle, including explicit session-aware follow-up requests such as `more`, `less`, `undo`, `revert to previous version`, and `try another version`, plus clarification-required request interpretation flows.
 
 This tool is the adapter-layer entrypoint for one-shot and iterative request-cycle execution. It delegates workflow logic to `modules/orchestration` while keeping session history explicit at the tool boundary.
 
@@ -35,6 +35,7 @@ Important session-aware constraint:
 - the tool layer does not maintain hidden session state or resolve historical versions by id
 - follow-up requests against `kind = "existing"` therefore require callers to provide the current `SessionGraph`
 - revert-style and alternate-version flows also require any needed historical `AudioVersion` artifacts to be materialized explicitly in `arguments.input.available_versions`
+- clarification-resume flows also reuse the caller-provided `SessionGraph`; orchestration records pending clarification state there instead of inventing hidden adapter state
 
 When `arguments.interpretation` is present, it is an explicit opt-in object:
 
@@ -65,7 +66,9 @@ Request provenance must stay explicit:
 
 ## Success response
 
-On success, `result` contains the completed request-cycle artifacts:
+On success, `result` contains one of two success shapes.
+
+Applied or reverted cycles return the completed request-cycle artifacts:
 
 - `result_kind`
 - `asset`
@@ -83,22 +86,41 @@ On success, `result` contains the completed request-cycle artifacts:
 - `baseline_render`
 - `candidate_render`
 - `render_comparison_report`
+- `comparison_report`
 - `session_graph`
 - optional `revision`
 - optional `iterations`
+- `trace`
+
+Clarification-required cycles return:
+
+- `result_kind = "clarification_required"`
+- `asset`
+- `input_version`
+- `input_analysis`
+- `follow_up_resolution`
+- optional `semantic_profile`
+- optional `intent_interpretation`
+- `clarification`
+  - `question`
+  - `pending_clarification`
+- `session_graph`
 - `trace`
 
 Important response semantics:
 
 - `version_comparison_report` is the authoritative version-to-version quality signal for the completed cycle
 - `render_comparison_report` remains the final render-to-render comparison artifact
+- `comparison_report` is preserved as a backward-compatible alias of `render_comparison_report`
 - `follow_up_resolution` makes the resolved request explicit so callers can see whether the tool:
   - applied the direct request
+  - treated the current request as a clarification answer
   - repeated the last request for `more`
   - branched and replayed the prior request for `try another version`
   - reverted to a concrete historical version for `less`, `undo`, or `revert`
 - when interpretation is enabled, `intent_interpretation` makes the normalized planner-facing request and any ambiguity flags explicit without bypassing deterministic planning
 - the richer interpretation artifact may also expose `next_action`, descriptor hypotheses, constraints, region-intent proposals, alternate candidates, and follow-up interpretation metadata
+- when `result_kind = "clarification_required"`, `session_graph.metadata.pending_clarification` becomes the explicit resume token for the next request-cycle call
 
 ## Failure behavior
 

@@ -2,7 +2,11 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-import { defaultOrchestrationDependencies } from "@audio-language-interface/orchestration";
+import {
+  defaultOrchestrationDependencies,
+  isAppliedOrRevertedRequestCycleResult,
+  type RequestCycleResult,
+} from "@audio-language-interface/orchestration";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -62,6 +66,17 @@ function getRequestCycleCase(caseId: string) {
   }
 
   return benchmarkCase;
+}
+
+function expectAppliedRequestCycleResult(
+  result: RequestCycleResult | undefined,
+): Extract<RequestCycleResult, { result_kind: "applied" | "reverted" }> {
+  expect(result).toBeDefined();
+  expect(result && isAppliedOrRevertedRequestCycleResult(result)).toBe(true);
+  if (!result || !isAppliedOrRevertedRequestCycleResult(result)) {
+    throw new Error("Expected applied or reverted request-cycle result.");
+  }
+  return result;
 }
 
 function getCompareCase(caseId: string) {
@@ -141,6 +156,106 @@ function readWavMetadata(relativePath: string) {
   };
 }
 
+async function benchmarkInterpretRequestMock(input: {
+  userRequest: string;
+  audioVersion: { asset_id: string; version_id: string };
+  analysisReport: { report_id: string };
+  semanticProfile: { profile_id: string };
+  policy?: "conservative" | "best_effort";
+  sessionContext?: {
+    pending_clarification?: {
+      original_user_request: string;
+      clarification_question: string;
+      source_version_id: string;
+      source_interpretation_id?: string;
+    };
+  };
+}) {
+  const normalizedRequest = input.userRequest.trim().toLowerCase();
+
+  if (normalizedRequest === "clean it") {
+    return {
+      schema_version: "1.0.0" as const,
+      interpretation_id: "interpret_benchmarkclarify",
+      interpretation_policy: input.policy ?? "conservative",
+      asset_id: input.audioVersion.asset_id,
+      version_id: input.audioVersion.version_id,
+      analysis_report_id: input.analysisReport.report_id,
+      semantic_profile_id: input.semanticProfile.profile_id,
+      user_request: input.userRequest,
+      normalized_request: "clean it",
+      request_classification: "supported_but_underspecified" as const,
+      next_action: "clarify" as const,
+      normalized_objectives: [],
+      candidate_descriptors: [],
+      ambiguities: ["cleanup target is underspecified"],
+      clarification_question: "Do you mean reduce noise, tame harshness, or make the tone darker?",
+      rationale: "Broad cleanup wording needs one explicit supported direction.",
+      confidence: 0.39,
+      provider: {
+        kind: "openai" as const,
+        model: "gpt-5-mini",
+        prompt_version: "intent_v1",
+      },
+      generated_at: "2026-04-22T15:00:00Z",
+    };
+  }
+
+  if (
+    input.sessionContext?.pending_clarification !== undefined &&
+    normalizedRequest === "make it darker and less harsh"
+  ) {
+    return {
+      schema_version: "1.0.0" as const,
+      interpretation_id: "interpret_benchmarkanswer",
+      interpretation_policy: input.policy ?? "conservative",
+      asset_id: input.audioVersion.asset_id,
+      version_id: input.audioVersion.version_id,
+      analysis_report_id: input.analysisReport.report_id,
+      semantic_profile_id: input.semanticProfile.profile_id,
+      user_request: input.userRequest,
+      normalized_request: "make it darker and less harsh",
+      request_classification: "supported" as const,
+      next_action: "plan" as const,
+      normalized_objectives: ["darker", "less_harsh"],
+      candidate_descriptors: ["dark"],
+      grounding_notes: ["resolved from pending clarification context"],
+      rationale: "The clarification answer resolved the earlier cleanup ambiguity.",
+      confidence: 0.83,
+      provider: {
+        kind: "openai" as const,
+        model: "gpt-5-mini",
+        prompt_version: "intent_v1",
+      },
+      generated_at: "2026-04-22T15:00:01Z",
+    };
+  }
+
+  return {
+    schema_version: "1.0.0" as const,
+    interpretation_id: "interpret_benchmarkdefault",
+    interpretation_policy: input.policy ?? "conservative",
+    asset_id: input.audioVersion.asset_id,
+    version_id: input.audioVersion.version_id,
+    analysis_report_id: input.analysisReport.report_id,
+    semantic_profile_id: input.semanticProfile.profile_id,
+    user_request: input.userRequest,
+    normalized_request: input.userRequest,
+    request_classification: "supported" as const,
+    next_action: "plan" as const,
+    normalized_objectives: [],
+    candidate_descriptors: [],
+    rationale: "Default benchmark interpretation passthrough.",
+    confidence: 0.7,
+    provider: {
+      kind: "openai" as const,
+      model: "gpt-5-mini",
+      prompt_version: "intent_v1",
+    },
+    generated_at: "2026-04-22T15:00:02Z",
+  };
+}
+
 describe("firstPromptFamilyFixtureCorpus", () => {
   it("keeps the committed fixture manifest and audio files aligned", () => {
     const fixtureManifest = readFixtureManifest();
@@ -189,7 +304,7 @@ describe("firstPromptFamilyFixtureCorpus", () => {
     expect(firstPromptFamilyRequestCycleCorpus.fixtureManifestPath).toBe(
       FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
     );
-    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(31);
+    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(33);
     expect(firstPromptFamilyRequestCycleSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
         "request_cycle_warmer_and_airier",
@@ -215,6 +330,8 @@ describe("firstPromptFamilyFixtureCorpus", () => {
         "request_cycle_control_peaks_without_crushing",
         "request_cycle_louder_and_more_controlled",
         "request_cycle_more_controlled_and_darker",
+        "request_cycle_clean_it_llm_clarification_loop",
+        "request_cycle_clean_it_llm_clarification_answer",
         "request_cycle_brighter_and_darker_contradiction",
         "request_cycle_speed_up_and_slow_down_contradiction",
         "request_cycle_wider_and_narrower_contradiction",
@@ -469,6 +586,8 @@ describe("runRequestCycleBenchmarks", () => {
     const louderControlled = getRequestCycleCase("request_cycle_louder_and_more_controlled");
     const moreControlledAndDarker = getRequestCycleCase("request_cycle_more_controlled_and_darker");
     const cleanIt = getRequestCycleCase("request_cycle_clean_it_clarification");
+    const cleanItLlmClarify = getRequestCycleCase("request_cycle_clean_it_llm_clarification_loop");
+    const cleanItLlmAnswer = getRequestCycleCase("request_cycle_clean_it_llm_clarification_answer");
     const brighterAndDarker = getRequestCycleCase(
       "request_cycle_brighter_and_darker_contradiction",
     );
@@ -480,47 +599,56 @@ describe("runRequestCycleBenchmarks", () => {
       "request_cycle_clean_this_sample_up_a_bit_underspecified",
     );
 
-    const result = await runRequestCycleBenchmarks({
-      corpusId: "request_cycle_test_subset",
-      suiteId: "first_prompt_family",
-      fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
-      description: "Targeted request-cycle benchmark smoke suite.",
-      cases: [
-        darkerLessHarsh,
-        warmerAndAirier,
-        darkerLessHarshLessMuddy,
-        tameSibilance,
-        speedUpAndTameSibilance,
-        tameSibilanceAndDarker,
-        removeHum,
-        cleanUpClicks,
-        trimBoundarySilence,
-        speedUp,
-        pitchUp,
-        makeWider,
-        narrowIt,
-        centerMore,
-        fixImbalance,
-        centerMoreAndWider,
-        followUpMore,
-        tryAnother,
-        followUpLess,
-        followUpUndo,
-        followUpRevert,
-        controlPeaks,
-        louderControlled,
-        moreControlledAndDarker,
-        cleanIt,
-        brighterAndDarker,
-        speedUpAndSlowDown,
-        widerAndNarrower,
-        cleanThisSample,
-      ],
-    });
+    const result = await runRequestCycleBenchmarks(
+      {
+        corpusId: "request_cycle_test_subset",
+        suiteId: "first_prompt_family",
+        fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
+        description: "Targeted request-cycle benchmark smoke suite.",
+        cases: [
+          darkerLessHarsh,
+          warmerAndAirier,
+          darkerLessHarshLessMuddy,
+          tameSibilance,
+          speedUpAndTameSibilance,
+          tameSibilanceAndDarker,
+          removeHum,
+          cleanUpClicks,
+          trimBoundarySilence,
+          speedUp,
+          pitchUp,
+          makeWider,
+          narrowIt,
+          centerMore,
+          fixImbalance,
+          centerMoreAndWider,
+          followUpMore,
+          tryAnother,
+          followUpLess,
+          followUpUndo,
+          followUpRevert,
+          controlPeaks,
+          louderControlled,
+          moreControlledAndDarker,
+          cleanIt,
+          cleanItLlmClarify,
+          cleanItLlmAnswer,
+          brighterAndDarker,
+          speedUpAndSlowDown,
+          widerAndNarrower,
+          cleanThisSample,
+        ],
+      },
+      {
+        dependencies: {
+          interpretRequest: benchmarkInterpretRequestMock,
+        },
+      },
+    );
 
     expect(result.suiteId).toBe("first_prompt_family");
     expect(result.corpusId).toBe("request_cycle_test_subset");
-    expect(result.caseResults).toHaveLength(29);
+    expect(result.caseResults).toHaveLength(31);
     expect(result.totalChecks).toBeGreaterThan(0);
     expect(result.totalPassedChecks).toBe(result.totalChecks);
     expect(result.overallScore).toBe(1);
@@ -529,17 +657,20 @@ describe("runRequestCycleBenchmarks", () => {
       (caseResult) => caseResult.caseId === darkerLessHarsh.caseId,
     );
     expect(successCase?.status).toBe("ok");
-    expect(successCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation)).toEqual([
-      "notch_filter",
-      "tilt_eq",
-    ]);
+    expect(
+      expectAppliedRequestCycleResult(successCase?.requestCycleResult).editPlan?.steps.map(
+        (step) => step.operation,
+      ),
+    ).toEqual(["notch_filter", "tilt_eq"]);
 
     const warmerAndAirierCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === warmerAndAirier.caseId,
     );
     expect(warmerAndAirierCase?.status).toBe("ok");
     expect(
-      warmerAndAirierCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation),
+      expectAppliedRequestCycleResult(warmerAndAirierCase?.requestCycleResult).editPlan?.steps.map(
+        (step) => step.operation,
+      ),
     ).toEqual(["low_shelf", "high_shelf"]);
 
     const darkerLessHarshLessMuddyCase = result.caseResults.find(
@@ -547,9 +678,9 @@ describe("runRequestCycleBenchmarks", () => {
     );
     expect(darkerLessHarshLessMuddyCase?.status).toBe("ok");
     expect(
-      darkerLessHarshLessMuddyCase?.requestCycleResult?.editPlan?.steps.map(
-        (step) => step.operation,
-      ),
+      expectAppliedRequestCycleResult(
+        darkerLessHarshLessMuddyCase?.requestCycleResult,
+      ).editPlan?.steps.map((step) => step.operation),
     ).toEqual(["notch_filter", "tilt_eq", "low_shelf"]);
 
     const sibilanceCase = result.caseResults.find(
@@ -557,7 +688,9 @@ describe("runRequestCycleBenchmarks", () => {
     );
     expect(sibilanceCase?.status).toBe("ok");
     expect(
-      sibilanceCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation),
+      expectAppliedRequestCycleResult(sibilanceCase?.requestCycleResult).editPlan?.steps.map(
+        (step) => step.operation,
+      ),
     ).toEqual(["de_esser"]);
 
     const speedUpAndTameSibilanceCase = result.caseResults.find(
@@ -565,9 +698,9 @@ describe("runRequestCycleBenchmarks", () => {
     );
     expect(speedUpAndTameSibilanceCase?.status).toBe("ok");
     expect(
-      speedUpAndTameSibilanceCase?.requestCycleResult?.editPlan?.steps.map(
-        (step) => step.operation,
-      ),
+      expectAppliedRequestCycleResult(
+        speedUpAndTameSibilanceCase?.requestCycleResult,
+      ).editPlan?.steps.map((step) => step.operation),
     ).toEqual(["time_stretch", "de_esser"]);
 
     const tameSibilanceAndDarkerCase = result.caseResults.find(
@@ -575,46 +708,58 @@ describe("runRequestCycleBenchmarks", () => {
     );
     expect(tameSibilanceAndDarkerCase?.status).toBe("ok");
     expect(
-      tameSibilanceAndDarkerCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation),
+      expectAppliedRequestCycleResult(
+        tameSibilanceAndDarkerCase?.requestCycleResult,
+      ).editPlan?.steps.map((step) => step.operation),
     ).toEqual(["de_esser", "tilt_eq"]);
 
     const humCase = result.caseResults.find((caseResult) => caseResult.caseId === removeHum.caseId);
     expect(humCase?.status).toBe("ok");
-    expect(humCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation)).toEqual([
-      "dehum",
-    ]);
+    expect(
+      expectAppliedRequestCycleResult(humCase?.requestCycleResult).editPlan?.steps.map(
+        (step) => step.operation,
+      ),
+    ).toEqual(["dehum"]);
 
     const clicksCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === cleanUpClicks.caseId,
     );
     expect(clicksCase?.status).toBe("ok");
-    expect(clicksCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation)).toEqual([
-      "declick",
-    ]);
+    expect(
+      expectAppliedRequestCycleResult(clicksCase?.requestCycleResult).editPlan?.steps.map(
+        (step) => step.operation,
+      ),
+    ).toEqual(["declick"]);
 
     const trimSilenceCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === trimBoundarySilence.caseId,
     );
     expect(trimSilenceCase?.status).toBe("ok");
     expect(
-      trimSilenceCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation),
+      expectAppliedRequestCycleResult(trimSilenceCase?.requestCycleResult).editPlan?.steps.map(
+        (step) => step.operation,
+      ),
     ).toEqual(["trim_silence"]);
 
     const speedUpCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === speedUp.caseId,
     );
     expect(speedUpCase?.status).toBe("ok");
-    expect(speedUpCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation)).toEqual([
-      "time_stretch",
-    ]);
+    expect(
+      expectAppliedRequestCycleResult(speedUpCase?.requestCycleResult).editPlan?.steps.map(
+        (step) => step.operation,
+      ),
+    ).toEqual(["time_stretch"]);
 
     const pitchUpCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === pitchUp.caseId,
     );
     expect(pitchUpCase?.status).toBe("ok");
-    expect(pitchUpCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation)).toEqual([
-      "pitch_shift",
-    ]);
+    expect(
+      expectAppliedRequestCycleResult(pitchUpCase?.requestCycleResult).editPlan?.steps.map(
+        (step) => step.operation,
+      ),
+    ).toEqual(["pitch_shift"]);
 
     const followUpMoreCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === followUpMore.caseId,
@@ -673,16 +818,20 @@ describe("runRequestCycleBenchmarks", () => {
       (caseResult) => caseResult.caseId === controlPeaks.caseId,
     );
     expect(peaksCase?.status).toBe("ok");
-    expect(peaksCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation)).toEqual([
-      "limiter",
-    ]);
+    expect(
+      expectAppliedRequestCycleResult(peaksCase?.requestCycleResult).editPlan?.steps.map(
+        (step) => step.operation,
+      ),
+    ).toEqual(["limiter"]);
 
     const louderControlledCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === louderControlled.caseId,
     );
     expect(louderControlledCase?.status).toBe("ok");
     expect(
-      louderControlledCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation),
+      expectAppliedRequestCycleResult(louderControlledCase?.requestCycleResult).editPlan?.steps.map(
+        (step) => step.operation,
+      ),
     ).toEqual(["compressor", "normalize"]);
 
     const moreControlledAndDarkerCase = result.caseResults.find(
@@ -690,9 +839,9 @@ describe("runRequestCycleBenchmarks", () => {
     );
     expect(moreControlledAndDarkerCase?.status).toBe("ok");
     expect(
-      moreControlledAndDarkerCase?.requestCycleResult?.editPlan?.steps.map(
-        (step) => step.operation,
-      ),
+      expectAppliedRequestCycleResult(
+        moreControlledAndDarkerCase?.requestCycleResult,
+      ).editPlan?.steps.map((step) => step.operation),
     ).toEqual(["tilt_eq", "compressor"]);
 
     const centerMoreAndWiderCase = result.caseResults.find(
@@ -700,7 +849,9 @@ describe("runRequestCycleBenchmarks", () => {
     );
     expect(centerMoreAndWiderCase?.status).toBe("ok");
     expect(
-      centerMoreAndWiderCase?.requestCycleResult?.editPlan?.steps.map((step) => step.operation),
+      expectAppliedRequestCycleResult(
+        centerMoreAndWiderCase?.requestCycleResult,
+      ).editPlan?.steps.map((step) => step.operation),
     ).toEqual(["stereo_balance_correction", "stereo_width"]);
 
     const unsupportedCase = result.caseResults.find(
@@ -737,6 +888,34 @@ describe("runRequestCycleBenchmarks", () => {
     expect(underspecifiedCase?.status).toBe("error");
     expect(underspecifiedCase?.error?.stage).toBe("plan");
     expect(underspecifiedCase?.error?.failureClass).toBe("supported_but_underspecified");
+
+    const llmClarifyCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === cleanItLlmClarify.caseId,
+    );
+    expect(llmClarifyCase?.status).toBe("ok");
+    expect(llmClarifyCase?.requestCycleResult?.result_kind).toBe("clarification_required");
+    expect(
+      llmClarifyCase?.requestCycleResult?.sessionGraph.metadata?.pending_clarification,
+    ).toMatchObject({
+      original_user_request: "clean it",
+    });
+
+    const llmAnswerCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === cleanItLlmAnswer.caseId,
+    );
+    expect(llmAnswerCase?.status).toBe("ok");
+    expect(llmAnswerCase?.requestCycleResult?.followUpResolution).toMatchObject({
+      kind: "apply",
+      source: "clarification_answer",
+    });
+    expect(
+      expectAppliedRequestCycleResult(llmAnswerCase?.requestCycleResult).editPlan?.steps.map(
+        (step) => step.operation,
+      ),
+    ).toEqual(["notch_filter", "tilt_eq"]);
+    expect(
+      llmAnswerCase?.requestCycleResult?.sessionGraph.metadata?.pending_clarification,
+    ).toBeUndefined();
   }, 120_000);
 
   it("preserves follow-up version loading when import/apply dependencies are overridden", async () => {

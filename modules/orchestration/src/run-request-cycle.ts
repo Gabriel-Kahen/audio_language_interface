@@ -1,15 +1,29 @@
 import { createSessionId } from "@audio-language-interface/core";
+import {
+  clearPendingClarification,
+  getPendingClarification,
+  setPendingClarification,
+} from "@audio-language-interface/history";
 import { executeWithFailurePolicy, OrchestrationStageError } from "./failure-policy.js";
 import { importAndAnalyze } from "./flows/import-and-analyze.js";
 import { planApplyComparePass } from "./flows/plan-apply-compare.js";
 import { renderAndCompare } from "./flows/render-and-compare.js";
 import { resolveFollowUpRequest } from "./follow-up-request.js";
 import type {
+  ApplyTransformsResult,
+  AudioAsset,
+  AudioVersion,
+  ClarificationRequiredRequestCycleResult,
+  ComparisonReport,
+  EditPlan,
   FollowUpResolution,
+  IntentInterpretation,
   IterationResult,
+  RenderArtifact,
   RequestCycleResult,
   RevisionDecision,
   RunRequestCycleOptions,
+  SemanticProfile,
 } from "./types.js";
 
 /** Runs one explicit request cycle from import or current version through comparison. */
@@ -132,7 +146,7 @@ export async function runRequestCycle(
   if (!sessionGraph) {
     throw new Error("Request cycle could not initialize a session graph.");
   }
-  const initializedSessionGraph = sessionGraph;
+  let initializedSessionGraph = sessionGraph;
 
   if (options.input.kind === "existing") {
     sessionGraph = options.dependencies.recordAnalysisReport(
@@ -143,6 +157,7 @@ export async function runRequestCycle(
 
   if (options.input.kind === "existing") {
     const resolvedExistingInputVersion = inputVersion;
+    const pendingClarification = getPendingClarification(initializedSessionGraph);
     const followUp = await executeWithFailurePolicy({
       stage: "resolve_follow_up",
       operation: async () => {
@@ -167,6 +182,9 @@ export async function runRequestCycle(
     followUpResolution = followUp;
 
     if (followUp.kind === "revert") {
+      if (pendingClarification !== undefined) {
+        sessionGraph = clearPendingClarification(sessionGraph, new Date().toISOString());
+      }
       return runRevertRequestCycle({
         options,
         asset,
@@ -179,6 +197,12 @@ export async function runRequestCycle(
     }
 
     resolvedUserRequest = followUp.resolvedUserRequest;
+    if (pendingClarification !== undefined && followUp.source === "direct_request") {
+      followUpResolution = {
+        ...followUp,
+        source: "clarification_answer",
+      };
+    }
 
     if (followUp.inputVersionId && followUp.inputVersionId !== inputVersion.version_id) {
       const followUpInputVersionId = followUp.inputVersionId;
@@ -237,6 +261,8 @@ export async function runRequestCycle(
       sessionGraph = options.dependencies.recordAnalysisReport(sessionGraph, inputAnalysis);
     }
 
+    initializedSessionGraph = sessionGraph;
+
     if (followUp.source === "try_another_version") {
       const currentSessionGraph = sessionGraph;
       const followUpBaseVersion = inputVersion;
@@ -277,6 +303,7 @@ export async function runRequestCycle(
 
   let currentVersion = inputVersion;
   let currentAnalysis = inputAnalysis;
+  const activePendingClarification = getPendingClarification(sessionGraph);
 
   try {
     const firstIteration = await planApplyComparePass({
@@ -287,6 +314,22 @@ export async function runRequestCycle(
       version: currentVersion,
       analysisReport: currentAnalysis,
       analysisOptions: options.analysisOptions,
+      ...(activePendingClarification === undefined
+        ? {}
+        : {
+            interpretationSessionContext: {
+              pending_clarification: {
+                original_user_request: activePendingClarification.original_user_request,
+                clarification_question: activePendingClarification.clarification_question,
+                source_version_id: activePendingClarification.source_version_id,
+                ...(activePendingClarification.source_interpretation_id === undefined
+                  ? {}
+                  : {
+                      source_interpretation_id: activePendingClarification.source_interpretation_id,
+                    }),
+              },
+            },
+          }),
       ...(options.interpretation === undefined
         ? {}
         : { requestInterpretation: options.interpretation }),
@@ -315,6 +358,23 @@ export async function runRequestCycle(
         version: currentVersion,
         analysisReport: currentAnalysis,
         analysisOptions: options.analysisOptions,
+        ...(activePendingClarification === undefined
+          ? {}
+          : {
+              interpretationSessionContext: {
+                pending_clarification: {
+                  original_user_request: activePendingClarification.original_user_request,
+                  clarification_question: activePendingClarification.clarification_question,
+                  source_version_id: activePendingClarification.source_version_id,
+                  ...(activePendingClarification.source_interpretation_id === undefined
+                    ? {}
+                    : {
+                        source_interpretation_id:
+                          activePendingClarification.source_interpretation_id,
+                      }),
+                },
+              },
+            }),
         ...(options.interpretation === undefined
           ? {}
           : { requestInterpretation: options.interpretation }),
@@ -336,6 +396,20 @@ export async function runRequestCycle(
   } catch (error) {
     if (!(error instanceof OrchestrationStageError)) {
       throw error;
+    }
+
+    const clarificationResult = buildClarificationResult({
+      error,
+      asset,
+      inputVersion,
+      inputAnalysis,
+      followUpResolution,
+      sessionGraph,
+      trace,
+      dependencies: options.dependencies,
+    });
+    if (clarificationResult !== undefined) {
+      return clarificationResult;
     }
 
     sessionGraph = recordAppliedIterationPartial(
@@ -377,9 +451,9 @@ export async function runRequestCycle(
   const versionComparisonReport = finalIteration.comparisonReport;
   const cycleEditPlan = iterations[0]?.editPlan;
 
-  let baselineRender: RequestCycleResult["baselineRender"] | undefined;
-  let candidateRender: RequestCycleResult["candidateRender"] | undefined;
-  let renderComparisonReport: RequestCycleResult["renderComparisonReport"] | undefined;
+  let baselineRender: RenderArtifact | undefined;
+  let candidateRender: RenderArtifact | undefined;
+  let renderComparisonReport: ComparisonReport | undefined;
 
   try {
     const renderCompareResult = await renderAndCompare({
@@ -443,6 +517,7 @@ export async function runRequestCycle(
   sessionGraph = options.dependencies.recordRenderArtifact(sessionGraph, baselineRender);
   sessionGraph = options.dependencies.recordRenderArtifact(sessionGraph, candidateRender);
   sessionGraph = options.dependencies.recordComparisonReport(sessionGraph, renderComparisonReport);
+  sessionGraph = clearPendingClarification(sessionGraph, new Date().toISOString());
 
   return {
     result_kind: "applied",
@@ -538,6 +613,7 @@ async function runRevertRequestCycle(input: {
     new Date().toISOString(),
     `follow_up_${input.followUp.source}`,
   );
+  sessionGraph = clearPendingClarification(sessionGraph, new Date().toISOString());
 
   const outputAnalysis = await executeWithFailurePolicy({
     stage: "analyze_output",
@@ -587,9 +663,9 @@ async function runRevertRequestCycle(input: {
     versionComparisonReport,
   );
 
-  let baselineRender: RequestCycleResult["baselineRender"] | undefined;
-  let candidateRender: RequestCycleResult["candidateRender"] | undefined;
-  let renderComparisonReport: RequestCycleResult["renderComparisonReport"] | undefined;
+  let baselineRender: RenderArtifact | undefined;
+  let candidateRender: RenderArtifact | undefined;
+  let renderComparisonReport: ComparisonReport | undefined;
 
   try {
     const renderCompareResult = await renderAndCompare({
@@ -670,10 +746,81 @@ async function runRevertRequestCycle(input: {
   };
 }
 
+function buildClarificationResult(input: {
+  error: OrchestrationStageError<Record<string, unknown>>;
+  asset: AudioAsset;
+  inputVersion: AudioVersion;
+  inputAnalysis: RequestCycleResult["inputAnalysis"];
+  followUpResolution: FollowUpResolution;
+  sessionGraph: RequestCycleResult["sessionGraph"];
+  trace: RequestCycleResult["trace"];
+  dependencies: RunRequestCycleOptions["dependencies"];
+}): ClarificationRequiredRequestCycleResult | undefined {
+  if (input.error.stage !== "plan") {
+    return undefined;
+  }
+
+  const partialResult = input.error.partialResult;
+  if (!partialResult) {
+    return undefined;
+  }
+
+  const semanticProfile =
+    "semanticProfile" in partialResult
+      ? (partialResult.semanticProfile as SemanticProfile | undefined)
+      : undefined;
+  const intentInterpretation =
+    "intentInterpretation" in partialResult
+      ? (partialResult.intentInterpretation as IntentInterpretation | undefined)
+      : undefined;
+
+  if (!semanticProfile || !intentInterpretation || intentInterpretation.next_action !== "clarify") {
+    return undefined;
+  }
+
+  const clarificationQuestion =
+    intentInterpretation.clarification_question ??
+    "Please clarify the intended supported direction before planning continues.";
+  const clarificationCreatedAt = new Date().toISOString();
+  const pendingClarification = {
+    original_user_request: intentInterpretation.user_request,
+    clarification_question: clarificationQuestion,
+    source_version_id: input.inputVersion.version_id,
+    created_at: clarificationCreatedAt,
+    ...(intentInterpretation.interpretation_id === undefined
+      ? {}
+      : { source_interpretation_id: intentInterpretation.interpretation_id }),
+  };
+
+  let sessionGraph = recordPlanningArtifacts(
+    input.dependencies,
+    input.sessionGraph,
+    semanticProfile,
+    undefined,
+  );
+  sessionGraph = setPendingClarification(sessionGraph, pendingClarification);
+
+  return {
+    result_kind: "clarification_required",
+    asset: input.asset,
+    inputVersion: input.inputVersion,
+    inputAnalysis: input.inputAnalysis,
+    followUpResolution: input.followUpResolution,
+    semanticProfile,
+    intentInterpretation,
+    clarification: {
+      question: clarificationQuestion,
+      pendingClarification,
+    },
+    sessionGraph,
+    trace: input.trace,
+  };
+}
+
 function initializeSessionGraph(input: {
   sessionGraph: RequestCycleResult["sessionGraph"] | undefined;
-  asset: RequestCycleResult["asset"];
-  version: RequestCycleResult["inputVersion"];
+  asset: AudioAsset;
+  version: AudioVersion;
   sessionId: string | undefined;
   branchId: string | undefined;
   dependencies: RunRequestCycleOptions["dependencies"];
@@ -701,8 +848,8 @@ function initializeSessionGraph(input: {
 function recordPlanningArtifacts(
   dependencies: RunRequestCycleOptions["dependencies"],
   sessionGraph: RequestCycleResult["sessionGraph"],
-  semanticProfile: RequestCycleResult["semanticProfile"] | undefined,
-  editPlan: RequestCycleResult["editPlan"] | undefined,
+  semanticProfile: SemanticProfile | undefined,
+  editPlan: EditPlan | undefined,
 ): RequestCycleResult["sessionGraph"] {
   let nextGraph = sessionGraph;
 
@@ -755,17 +902,15 @@ function recordAppliedIterationPartial(
     dependencies,
     sessionGraph,
     "semanticProfile" in partialResult
-      ? (partialResult.semanticProfile as RequestCycleResult["semanticProfile"])
+      ? (partialResult.semanticProfile as SemanticProfile | undefined)
       : undefined,
-    "editPlan" in partialResult
-      ? (partialResult.editPlan as RequestCycleResult["editPlan"])
-      : undefined,
+    "editPlan" in partialResult ? (partialResult.editPlan as EditPlan | undefined) : undefined,
   );
 
   if ("outputVersion" in partialResult && partialResult.outputVersion) {
     nextGraph = dependencies.recordAudioVersion(
       nextGraph,
-      partialResult.outputVersion as RequestCycleResult["outputVersion"],
+      partialResult.outputVersion as AudioVersion,
       {
         ...(branchId === undefined ? {} : { branch_id: branchId }),
       },
@@ -773,9 +918,7 @@ function recordAppliedIterationPartial(
   }
 
   if ("transformResult" in partialResult && partialResult.transformResult) {
-    const transformResult = partialResult.transformResult as
-      | RequestCycleResult["transformResult"]
-      | undefined;
+    const transformResult = partialResult.transformResult as ApplyTransformsResult | undefined;
     if (transformResult) {
       nextGraph = dependencies.recordTransformRecord(nextGraph, transformResult.transformRecord);
     }
@@ -784,14 +927,14 @@ function recordAppliedIterationPartial(
   if ("outputAnalysis" in partialResult && partialResult.outputAnalysis) {
     nextGraph = dependencies.recordAnalysisReport(
       nextGraph,
-      partialResult.outputAnalysis as RequestCycleResult["outputAnalysis"],
+      partialResult.outputAnalysis as RequestCycleResult["inputAnalysis"],
     );
   }
 
   if ("comparisonReport" in partialResult && partialResult.comparisonReport) {
     nextGraph = dependencies.recordComparisonReport(
       nextGraph,
-      partialResult.comparisonReport as RequestCycleResult["comparisonReport"],
+      partialResult.comparisonReport as ComparisonReport,
     );
   }
 
@@ -800,10 +943,10 @@ function recordAppliedIterationPartial(
 
 async function loadSessionVersion(input: {
   options: RunRequestCycleOptions;
-  asset: RequestCycleResult["asset"];
+  asset: AudioAsset;
   sessionGraph: RequestCycleResult["sessionGraph"];
   versionId: string;
-}): Promise<RequestCycleResult["inputVersion"]> {
+}): Promise<AudioVersion> {
   const loadVersion = input.options.dependencies.getAudioVersionById;
   if (!loadVersion) {
     throw new Error(
@@ -845,7 +988,7 @@ async function loadSessionVersion(input: {
 
 function createAlternateBranchId(
   sessionGraph: RequestCycleResult["sessionGraph"],
-  version: RequestCycleResult["inputVersion"],
+  version: AudioVersion,
 ): string {
   const existingBranchIds = new Set(
     sessionGraph.metadata?.branches?.map((branch) => branch.branch_id) ?? [],

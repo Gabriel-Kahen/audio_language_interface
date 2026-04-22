@@ -3,8 +3,11 @@ import os from "node:os";
 import path from "node:path";
 
 import {
+  type AppliedOrRevertedRequestCycleResult,
   type AudioVersion,
+  type ClarificationRequiredRequestCycleResult,
   defaultOrchestrationDependencies,
+  isAppliedOrRevertedRequestCycleResult,
   type OrchestrationDependencies,
   OrchestrationStageError,
   type RequestCycleResult,
@@ -258,6 +261,8 @@ async function executeBenchmarkCycle(input: {
   workspaceRoot: string;
   options: RunRequestCycleBenchmarkCaseOptions;
 }): Promise<RequestCycleResult> {
+  const interpretation = input.benchmarkCase.interpretation ?? input.options.interpretation;
+
   if (input.executionSurface === "tool") {
     return executeToolSurfaceCycle(input);
   }
@@ -284,13 +289,14 @@ async function executeBenchmarkCycle(input: {
         : {
             kind: "existing",
             asset: input.priorResult.asset,
-            version: input.priorResult.outputVersion,
+            version: getRequestCycleActiveVersion(input.priorResult),
             sessionGraph: input.priorResult.sessionGraph,
           },
     ...(input.options.analysisOptions === undefined
       ? {}
       : { analysisOptions: input.options.analysisOptions }),
     ...(input.options.renderKind === undefined ? {} : { renderKind: input.options.renderKind }),
+    ...(interpretation === undefined ? {} : { interpretation }),
     ...(input.options.revision === undefined ? {} : { revision: input.options.revision }),
     ...(input.options.sessionId === undefined ? {} : { sessionId: input.options.sessionId }),
     ...(input.options.branchId === undefined ? {} : { branchId: input.options.branchId }),
@@ -312,6 +318,7 @@ async function executeToolSurfaceCycle(input: {
   workspaceRoot: string;
   options: RunRequestCycleBenchmarkCaseOptions;
 }): Promise<RequestCycleResult> {
+  const interpretation = input.benchmarkCase.interpretation ?? input.options.interpretation;
   const request: ToolRequest = {
     schema_version: "1.0.0",
     request_id: createToolRequestId(
@@ -326,7 +333,7 @@ async function executeToolSurfaceCycle(input: {
       : {
           session_id: input.options.sessionId ?? input.priorResult.sessionGraph.session_id,
           asset_id: input.priorResult.asset.asset_id,
-          version_id: input.priorResult.outputVersion.version_id,
+          version_id: getRequestCycleActiveVersion(input.priorResult).version_id,
         }),
     arguments: {
       user_request: input.prompt,
@@ -363,11 +370,39 @@ async function executeToolSurfaceCycle(input: {
           : {
               kind: "existing",
               asset: input.priorResult.asset,
-              audio_version: input.priorResult.outputVersion,
+              audio_version: getRequestCycleActiveVersion(input.priorResult),
               session_graph: input.priorResult.sessionGraph,
               available_versions: [...input.versionStore.values()],
             },
       ...(input.options.renderKind === undefined ? {} : { render_kind: input.options.renderKind }),
+      ...(interpretation === undefined
+        ? {}
+        : {
+            interpretation: {
+              mode: "llm_assisted",
+              api_key: interpretation.apiKey,
+              ...(interpretation.policy === undefined ? {} : { policy: interpretation.policy }),
+              ...(interpretation.promptVersion === undefined
+                ? {}
+                : { prompt_version: interpretation.promptVersion }),
+              provider: {
+                kind: interpretation.provider.kind,
+                model: interpretation.provider.model,
+                ...(interpretation.provider.apiBaseUrl === undefined
+                  ? {}
+                  : { api_base_url: interpretation.provider.apiBaseUrl }),
+                ...(interpretation.provider.temperature === undefined
+                  ? {}
+                  : { temperature: interpretation.provider.temperature }),
+                ...(interpretation.provider.timeoutMs === undefined
+                  ? {}
+                  : { timeout_ms: interpretation.provider.timeoutMs }),
+                ...(interpretation.provider.maxRetries === undefined
+                  ? {}
+                  : { max_retries: interpretation.provider.maxRetries }),
+              },
+            },
+          }),
       ...(input.options.revision === undefined
         ? {}
         : { revision: { enabled: input.options.revision.enabled ?? true } }),
@@ -404,6 +439,64 @@ function normalizeToolRequestCycleResult(
   response: Awaited<ReturnType<typeof executeToolRequest>>,
 ): RequestCycleResult {
   const result = response.result as Record<string, unknown>;
+  if (result.result_kind === "clarification_required") {
+    const followUpResolutionRecord = result.follow_up_resolution as Record<string, unknown>;
+    return {
+      result_kind: "clarification_required",
+      asset: result.asset as RequestCycleResult["asset"],
+      inputVersion: result.input_version as RequestCycleResult["inputVersion"],
+      inputAnalysis: result.input_analysis as RequestCycleResult["inputAnalysis"],
+      followUpResolution: {
+        kind: "apply",
+        resolvedUserRequest: String(followUpResolutionRecord.resolved_user_request),
+        source: followUpResolutionRecord.source as Extract<
+          RequestCycleResult["followUpResolution"],
+          { kind: "apply" }
+        >["source"],
+        ...(followUpResolutionRecord.input_version_id === undefined
+          ? {}
+          : { inputVersionId: String(followUpResolutionRecord.input_version_id) }),
+        ...(followUpResolutionRecord.branch_id === undefined
+          ? {}
+          : { branchId: String(followUpResolutionRecord.branch_id) }),
+      },
+      ...(result.semantic_profile === undefined
+        ? {}
+        : {
+            semanticProfile: result.semantic_profile as NonNullable<
+              RequestCycleResult["semanticProfile"]
+            >,
+          }),
+      ...(result.intent_interpretation === undefined
+        ? {}
+        : {
+            intentInterpretation: result.intent_interpretation as NonNullable<
+              RequestCycleResult["intentInterpretation"]
+            >,
+          }),
+      clarification: {
+        question: String((result.clarification as Record<string, unknown>).question),
+        pendingClarification: (result.clarification as Record<string, unknown>)
+          .pending_clarification as unknown as ClarificationRequiredRequestCycleResult["clarification"]["pendingClarification"],
+      },
+      sessionGraph: result.session_graph as RequestCycleResult["sessionGraph"],
+      trace: Array.isArray(result.trace)
+        ? result.trace.map((entry) => {
+            const traceEntry = entry as Record<string, unknown>;
+            return {
+              stage: traceEntry.stage as RequestCycleResult["trace"][number]["stage"],
+              status: traceEntry.status as RequestCycleResult["trace"][number]["status"],
+              started_at: String(traceEntry.started_at),
+              completed_at: String(traceEntry.completed_at),
+              attempts: Number(traceEntry.attempts),
+              ...(traceEntry.pass === undefined ? {} : { pass: Number(traceEntry.pass) }),
+              ...(traceEntry.message === undefined ? {} : { message: String(traceEntry.message) }),
+            };
+          })
+        : [],
+    };
+  }
+
   const iterations = Array.isArray(result.iterations)
     ? result.iterations.map((iteration) => {
         const iterationRecord = iteration as Record<string, unknown>;
@@ -423,26 +516,31 @@ function normalizeToolRequestCycleResult(
         return {
           iteration: Number(iterationRecord.iteration),
           inputVersion: iterationRecord.input_version as RequestCycleResult["inputVersion"],
-          outputVersion: iterationRecord.output_version as RequestCycleResult["outputVersion"],
+          outputVersion:
+            iterationRecord.output_version as AppliedOrRevertedRequestCycleResult["outputVersion"],
           inputAnalysis: iterationRecord.input_analysis as RequestCycleResult["inputAnalysis"],
-          outputAnalysis: iterationRecord.output_analysis as RequestCycleResult["outputAnalysis"],
+          outputAnalysis:
+            iterationRecord.output_analysis as AppliedOrRevertedRequestCycleResult["outputAnalysis"],
           ...(iterationRecord.semantic_profile === undefined
             ? {}
             : {
                 semanticProfile: iterationRecord.semantic_profile as NonNullable<
-                  NonNullable<RequestCycleResult["iterations"]>[number]["semanticProfile"]
+                  NonNullable<
+                    AppliedOrRevertedRequestCycleResult["iterations"]
+                  >[number]["semanticProfile"]
                 >,
               }),
           editPlan: iterationRecord.edit_plan as NonNullable<
-            RequestCycleResult["iterations"]
+            AppliedOrRevertedRequestCycleResult["iterations"]
           >[number]["editPlan"],
           comparisonReport: iterationRecord.comparison_report as NonNullable<
-            RequestCycleResult["iterations"]
+            AppliedOrRevertedRequestCycleResult["iterations"]
           >[number]["comparisonReport"],
           transformResult: {
-            outputVersion: iterationRecord.output_version as RequestCycleResult["outputVersion"],
+            outputVersion:
+              iterationRecord.output_version as AppliedOrRevertedRequestCycleResult["outputVersion"],
             transformRecord: iterationRecord.transform_record as NonNullable<
-              RequestCycleResult["iterations"]
+              AppliedOrRevertedRequestCycleResult["iterations"]
             >[number]["transformResult"]["transformRecord"],
             commands,
             warnings: [],
@@ -491,7 +589,7 @@ function normalizeToolRequestCycleResult(
         };
 
   return {
-    result_kind: result.result_kind as RequestCycleResult["result_kind"],
+    result_kind: result.result_kind as AppliedOrRevertedRequestCycleResult["result_kind"],
     asset: result.asset as RequestCycleResult["asset"],
     inputVersion: result.input_version as RequestCycleResult["inputVersion"],
     inputAnalysis: result.input_analysis as RequestCycleResult["inputAnalysis"],
@@ -504,7 +602,7 @@ function normalizeToolRequestCycleResult(
             shouldRevise: Boolean((result.revision as Record<string, unknown>).should_revise),
             rationale: String((result.revision as Record<string, unknown>).rationale),
             source: (result.revision as Record<string, unknown>).source as NonNullable<
-              RequestCycleResult["revision"]
+              AppliedOrRevertedRequestCycleResult["revision"]
             >["source"],
           },
         }),
@@ -517,28 +615,35 @@ function normalizeToolRequestCycleResult(
         }),
     ...(result.edit_plan === undefined
       ? {}
-      : { editPlan: result.edit_plan as NonNullable<RequestCycleResult["editPlan"]> }),
-    outputVersion: result.output_version as RequestCycleResult["outputVersion"],
+      : {
+          editPlan: result.edit_plan as NonNullable<
+            AppliedOrRevertedRequestCycleResult["editPlan"]
+          >,
+        }),
+    outputVersion: result.output_version as AppliedOrRevertedRequestCycleResult["outputVersion"],
     ...(result.transform_record === undefined
       ? {}
       : {
           transformResult: {
-            outputVersion: result.output_version as RequestCycleResult["outputVersion"],
+            outputVersion:
+              result.output_version as AppliedOrRevertedRequestCycleResult["outputVersion"],
             transformRecord: result.transform_record as NonNullable<
-              RequestCycleResult["transformResult"]
+              AppliedOrRevertedRequestCycleResult["transformResult"]
             >["transformRecord"],
             commands,
             warnings: [],
           },
         }),
-    outputAnalysis: result.output_analysis as RequestCycleResult["outputAnalysis"],
+    outputAnalysis: result.output_analysis as AppliedOrRevertedRequestCycleResult["outputAnalysis"],
     versionComparisonReport:
-      result.version_comparison_report as RequestCycleResult["versionComparisonReport"],
-    baselineRender: result.baseline_render as RequestCycleResult["baselineRender"],
-    candidateRender: result.candidate_render as RequestCycleResult["candidateRender"],
+      result.version_comparison_report as AppliedOrRevertedRequestCycleResult["versionComparisonReport"],
+    baselineRender: result.baseline_render as AppliedOrRevertedRequestCycleResult["baselineRender"],
+    candidateRender:
+      result.candidate_render as AppliedOrRevertedRequestCycleResult["candidateRender"],
     renderComparisonReport:
-      result.render_comparison_report as RequestCycleResult["renderComparisonReport"],
-    comparisonReport: result.render_comparison_report as RequestCycleResult["comparisonReport"],
+      result.render_comparison_report as AppliedOrRevertedRequestCycleResult["renderComparisonReport"],
+    comparisonReport:
+      result.render_comparison_report as AppliedOrRevertedRequestCycleResult["comparisonReport"],
     sessionGraph: result.session_graph as RequestCycleResult["sessionGraph"],
     trace: Array.isArray(result.trace)
       ? result.trace.map((entry) => {
@@ -562,12 +667,25 @@ function rememberRequestCycleVersions(
   versionStore: Map<string, AudioVersion>,
 ): void {
   versionStore.set(result.inputVersion.version_id, result.inputVersion);
-  versionStore.set(result.outputVersion.version_id, result.outputVersion);
+
+  if (result.result_kind !== "clarification_required") {
+    versionStore.set(result.outputVersion.version_id, result.outputVersion);
+  }
+
+  if (!isAppliedOrRevertedRequestCycleResult(result)) {
+    return;
+  }
 
   for (const iteration of result.iterations ?? []) {
     versionStore.set(iteration.inputVersion.version_id, iteration.inputVersion);
     versionStore.set(iteration.outputVersion.version_id, iteration.outputVersion);
   }
+}
+
+function getRequestCycleActiveVersion(result: RequestCycleResult): AudioVersion {
+  return result.result_kind === "clarification_required"
+    ? result.inputVersion
+    : result.outputVersion;
 }
 
 function createBenchmarkDependencies(

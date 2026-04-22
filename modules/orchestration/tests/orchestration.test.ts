@@ -17,13 +17,17 @@ import { buildSemanticProfile } from "@audio-language-interface/semantics";
 import { describe, expect, it, vi } from "vitest";
 import {
   type AnalysisReport,
+  type AppliedOrRevertedRequestCycleResult,
   type ApplyTransformsResult,
   type AudioAsset,
   type AudioVersion,
+  type ClarificationRequiredRequestCycleResult,
   type ComparisonReport,
   type EditPlan,
   type ImportAudioResult,
   importAndAnalyze,
+  isAppliedOrRevertedRequestCycleResult,
+  isClarificationRequiredRequestCycleResult,
   iterativeRefine,
   type OrchestrationDependencies,
   type OrchestrationStageError,
@@ -33,6 +37,30 @@ import {
   resolveFollowUpRequest,
   runRequestCycle,
 } from "../src/index.js";
+
+function expectAppliedRequestCycleResult(
+  result: Awaited<ReturnType<typeof runRequestCycle>>,
+): AppliedOrRevertedRequestCycleResult {
+  expect(isAppliedOrRevertedRequestCycleResult(result)).toBe(true);
+  if (!isAppliedOrRevertedRequestCycleResult(result)) {
+    throw new Error(
+      `Expected applied or reverted request cycle result, got ${result.result_kind}.`,
+    );
+  }
+  return result;
+}
+
+function expectClarificationRequestCycleResult(
+  result: Awaited<ReturnType<typeof runRequestCycle>>,
+): ClarificationRequiredRequestCycleResult {
+  expect(isClarificationRequiredRequestCycleResult(result)).toBe(true);
+  if (!isClarificationRequiredRequestCycleResult(result)) {
+    throw new Error(
+      `Expected clarification-required request cycle result, got ${result.result_kind}.`,
+    );
+  }
+  return result;
+}
 
 describe("importAndAnalyze", () => {
   it("composes import and analysis explicitly", async () => {
@@ -154,16 +182,18 @@ describe("runRequestCycle", () => {
       dependencies,
     });
 
-    expect(result.result_kind).toBe("applied");
-    expect(result.editPlan?.user_request).toBe("Make it darker");
-    expect(result.outputVersion.version_id).toBe("ver_output");
-    expect(result.versionComparisonReport.baseline.ref_type).toBe("version");
-    expect(result.versionComparisonReport.candidate.ref_id).toBe("ver_output");
-    expect(result.renderComparisonReport.candidate.ref_id).toBe("render_ver_output");
-    expect(result.comparisonReport.candidate.ref_id).toBe("render_ver_output");
-    expect(result.comparisonReport).toEqual(result.renderComparisonReport);
-    expect(validateSessionGraph(result.sessionGraph).valid).toBe(true);
-    expect(result.sessionGraph.nodes.map((node) => node.node_type)).toEqual(
+    const appliedResult = expectAppliedRequestCycleResult(result);
+
+    expect(appliedResult.result_kind).toBe("applied");
+    expect(appliedResult.editPlan?.user_request).toBe("Make it darker");
+    expect(appliedResult.outputVersion.version_id).toBe("ver_output");
+    expect(appliedResult.versionComparisonReport.baseline.ref_type).toBe("version");
+    expect(appliedResult.versionComparisonReport.candidate.ref_id).toBe("ver_output");
+    expect(appliedResult.renderComparisonReport.candidate.ref_id).toBe("render_ver_output");
+    expect(appliedResult.comparisonReport.candidate.ref_id).toBe("render_ver_output");
+    expect(appliedResult.comparisonReport).toEqual(appliedResult.renderComparisonReport);
+    expect(validateSessionGraph(appliedResult.sessionGraph).valid).toBe(true);
+    expect(appliedResult.sessionGraph.nodes.map((node) => node.node_type)).toEqual(
       expect.arrayContaining([
         "audio_asset",
         "audio_version",
@@ -240,7 +270,9 @@ describe("runRequestCycle", () => {
         }),
       }),
     );
-    expect(result.intentInterpretation).toMatchObject({
+    const appliedResult = expectAppliedRequestCycleResult(result);
+
+    expect(appliedResult.intentInterpretation).toMatchObject({
       interpretation_id: "interpret_test123",
       interpretation_policy: "best_effort",
       provider: {
@@ -249,12 +281,190 @@ describe("runRequestCycle", () => {
       },
       normalized_request: "Make it darker with a gentle high-shelf cut.",
     });
-    expect(result.editPlan?.user_request).toBe("Make it darker");
-    expect(result.editPlan?.interpreted_user_request).toBe(
+    expect(appliedResult.editPlan?.user_request).toBe("Make it darker");
+    expect(appliedResult.editPlan?.interpreted_user_request).toBe(
       "Make it darker with a gentle high-shelf cut.",
     );
-    expect(result.iterations?.[0]?.intentInterpretation).toMatchObject({
+    expect(appliedResult.iterations?.[0]?.intentInterpretation).toMatchObject({
       normalized_request: "Make it darker with a gentle high-shelf cut.",
+    });
+  });
+
+  it("returns a first-class clarification result when conservative interpretation asks for clarity", async () => {
+    const asset = createAsset();
+    const inputVersion = createVersion("ver_input");
+    const interpretRequest = vi.fn().mockResolvedValue({
+      schema_version: "1.0.0",
+      interpretation_id: "interpret_clarify123",
+      interpretation_policy: "conservative",
+      asset_id: inputVersion.asset_id,
+      version_id: inputVersion.version_id,
+      analysis_report_id: "analysis_input",
+      semantic_profile_id: "semantic_input",
+      user_request: "clean it",
+      normalized_request: "clean it",
+      request_classification: "supported_but_underspecified",
+      next_action: "clarify",
+      normalized_objectives: [],
+      candidate_descriptors: [],
+      clarification_question: "Do you mean reduce noise, tame harshness, or make it darker?",
+      rationale: "Broad cleanup wording needs one explicit supported direction.",
+      confidence: 0.42,
+      provider: {
+        kind: "openai",
+        model: "gpt-5-mini",
+        prompt_version: "intent_v1",
+      },
+      generated_at: "2026-04-22T16:00:00Z",
+    });
+    const dependencies = createDependencies({ interpretRequest });
+
+    const result = await runRequestCycle({
+      workspaceRoot: "/workspace",
+      userRequest: "clean it",
+      input: {
+        kind: "existing",
+        asset,
+        version: inputVersion,
+      },
+      interpretation: {
+        mode: "llm_assisted",
+        apiKey: "test-key",
+        policy: "conservative",
+        provider: {
+          kind: "openai",
+          model: "gpt-5-mini",
+        },
+      },
+      dependencies,
+    });
+
+    const clarificationResult = expectClarificationRequestCycleResult(result);
+
+    expect(clarificationResult.result_kind).toBe("clarification_required");
+    expect(clarificationResult.clarification.question).toContain("Do you mean");
+    expect(clarificationResult.sessionGraph.metadata?.pending_clarification).toMatchObject({
+      original_user_request: "clean it",
+      source_version_id: inputVersion.version_id,
+    });
+    expect(clarificationResult.trace.map((entry) => entry.stage)).toEqual(
+      expect.arrayContaining(["analyze_input", "resolve_follow_up"]),
+    );
+  });
+
+  it("uses pending clarification context to resume the request cycle on the next answer", async () => {
+    const asset = createAsset();
+    const inputVersion = createVersion("ver_input");
+    const interpretRequest = vi.fn().mockImplementation(async ({ userRequest, sessionContext }) => {
+      if (userRequest === "clean it") {
+        return {
+          schema_version: "1.0.0",
+          interpretation_id: "interpret_clarify123",
+          interpretation_policy: "conservative",
+          asset_id: inputVersion.asset_id,
+          version_id: inputVersion.version_id,
+          analysis_report_id: "analysis_input",
+          semantic_profile_id: "semantic_input",
+          user_request: "clean it",
+          normalized_request: "clean it",
+          request_classification: "supported_but_underspecified",
+          next_action: "clarify",
+          normalized_objectives: [],
+          candidate_descriptors: [],
+          clarification_question: "Do you mean reduce noise, tame harshness, or make it darker?",
+          rationale: "Broad cleanup wording needs one explicit supported direction.",
+          confidence: 0.42,
+          provider: {
+            kind: "openai",
+            model: "gpt-5-mini",
+            prompt_version: "intent_v1",
+          },
+          generated_at: "2026-04-22T16:00:00Z",
+        };
+      }
+
+      expect(sessionContext?.pending_clarification).toMatchObject({
+        original_user_request: "clean it",
+      });
+      return {
+        schema_version: "1.0.0",
+        interpretation_id: "interpret_answer123",
+        interpretation_policy: "conservative",
+        asset_id: inputVersion.asset_id,
+        version_id: inputVersion.version_id,
+        analysis_report_id: "analysis_input",
+        semantic_profile_id: "semantic_input",
+        user_request: userRequest,
+        normalized_request: "Make it darker.",
+        request_classification: "supported",
+        next_action: "plan",
+        normalized_objectives: ["darker"],
+        candidate_descriptors: ["dark"],
+        rationale: "The follow-up answer resolved the earlier cleanup ambiguity.",
+        confidence: 0.82,
+        provider: {
+          kind: "openai",
+          model: "gpt-5-mini",
+          prompt_version: "intent_v1",
+        },
+        generated_at: "2026-04-22T16:00:01Z",
+      };
+    });
+    const dependencies = createDependencies({ interpretRequest });
+
+    const firstCycle = await runRequestCycle({
+      workspaceRoot: "/workspace",
+      userRequest: "clean it",
+      input: {
+        kind: "existing",
+        asset,
+        version: inputVersion,
+      },
+      interpretation: {
+        mode: "llm_assisted",
+        apiKey: "test-key",
+        policy: "conservative",
+        provider: {
+          kind: "openai",
+          model: "gpt-5-mini",
+        },
+      },
+      dependencies,
+    });
+
+    const clarificationResult = expectClarificationRequestCycleResult(firstCycle);
+
+    const secondCycle = await runRequestCycle({
+      workspaceRoot: "/workspace",
+      userRequest: "Make it darker.",
+      input: {
+        kind: "existing",
+        asset,
+        version: clarificationResult.inputVersion,
+        sessionGraph: clarificationResult.sessionGraph,
+      },
+      interpretation: {
+        mode: "llm_assisted",
+        apiKey: "test-key",
+        policy: "conservative",
+        provider: {
+          kind: "openai",
+          model: "gpt-5-mini",
+        },
+      },
+      dependencies,
+    });
+
+    const resumedCycle = expectAppliedRequestCycleResult(secondCycle);
+
+    expect(resumedCycle.result_kind).toBe("applied");
+    expect(resumedCycle.followUpResolution).toMatchObject({
+      kind: "apply",
+      source: "clarification_answer",
+    });
+    expect(resumedCycle.sessionGraph.metadata?.pending_clarification).toBeUndefined();
+    expect(resumedCycle.intentInterpretation).toMatchObject({
+      normalized_request: "Make it darker.",
     });
   });
 
@@ -323,28 +533,32 @@ describe("runRequestCycle", () => {
     const inputVersion = createVersion("ver_input");
     const dependencies = createDependencies();
 
-    const firstCycle = await runRequestCycle({
-      workspaceRoot: "/workspace",
-      userRequest: "Make it darker",
-      input: {
-        kind: "existing",
-        asset,
-        version: inputVersion,
-      },
-      dependencies,
-    });
+    const firstCycle = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "Make it darker",
+        input: {
+          kind: "existing",
+          asset,
+          version: inputVersion,
+        },
+        dependencies,
+      }),
+    );
 
-    const secondCycle = await runRequestCycle({
-      workspaceRoot: "/workspace",
-      userRequest: "more",
-      input: {
-        kind: "existing",
-        asset,
-        version: firstCycle.outputVersion,
-        sessionGraph: firstCycle.sessionGraph,
-      },
-      dependencies,
-    });
+    const secondCycle = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "more",
+        input: {
+          kind: "existing",
+          asset,
+          version: firstCycle.outputVersion,
+          sessionGraph: firstCycle.sessionGraph,
+        },
+        dependencies,
+      }),
+    );
 
     expect(secondCycle.result_kind).toBe("applied");
     expect(secondCycle.editPlan?.user_request).toBe("Make it darker");
@@ -355,28 +569,32 @@ describe("runRequestCycle", () => {
     const inputVersion = createVersion("ver_input");
     const dependencies = createDependencies();
 
-    const firstCycle = await runRequestCycle({
-      workspaceRoot: "/workspace",
-      userRequest: "Make it darker",
-      input: {
-        kind: "existing",
-        asset,
-        version: inputVersion,
-      },
-      dependencies,
-    });
+    const firstCycle = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "Make it darker",
+        input: {
+          kind: "existing",
+          asset,
+          version: inputVersion,
+        },
+        dependencies,
+      }),
+    );
 
-    const alternateCycle = await runRequestCycle({
-      workspaceRoot: "/workspace",
-      userRequest: "try another version",
-      input: {
-        kind: "existing",
-        asset: firstCycle.asset,
-        version: firstCycle.outputVersion,
-        sessionGraph: firstCycle.sessionGraph,
-      },
-      dependencies,
-    });
+    const alternateCycle = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "try another version",
+        input: {
+          kind: "existing",
+          asset: firstCycle.asset,
+          version: firstCycle.outputVersion,
+          sessionGraph: firstCycle.sessionGraph,
+        },
+        dependencies,
+      }),
+    );
 
     expect(alternateCycle.result_kind).toBe("applied");
     expect(alternateCycle.followUpResolution).toMatchObject({
@@ -432,37 +650,38 @@ describe("runRequestCycle", () => {
       dependencies,
     });
 
-    expect(result.result_kind).toBe("applied");
-    expect(result.iterations).toHaveLength(2);
-    expect(result.revision).toEqual({
+    const appliedResult = expectAppliedRequestCycleResult(result);
+
+    expect(appliedResult.result_kind).toBe("applied");
+    expect(appliedResult.iterations).toHaveLength(2);
+    expect(appliedResult.revision).toEqual({
       shouldRevise: true,
       rationale: "One explicit follow-up pass is required for this test.",
       source: "caller",
     });
-    expect(result.outputVersion.version_id).toBe("ver_output2");
-    expect(result.versionComparisonReport.baseline.ref_id).toBe("ver_output");
-    expect(result.versionComparisonReport.candidate.ref_id).toBe("ver_output2");
-    expect(result.renderComparisonReport.baseline.ref_type).toBe("render");
-    expect(result.iterations?.map((iteration) => iteration.outputVersion.version_id)).toEqual([
-      "ver_output",
-      "ver_output2",
-    ]);
+    expect(appliedResult.outputVersion.version_id).toBe("ver_output2");
+    expect(appliedResult.versionComparisonReport.baseline.ref_id).toBe("ver_output");
+    expect(appliedResult.versionComparisonReport.candidate.ref_id).toBe("ver_output2");
+    expect(appliedResult.renderComparisonReport.baseline.ref_type).toBe("render");
     expect(
-      result.iterations?.map((iteration) => iteration.comparisonReport.baseline.ref_id),
+      appliedResult.iterations?.map((iteration) => iteration.outputVersion.version_id),
+    ).toEqual(["ver_output", "ver_output2"]);
+    expect(
+      appliedResult.iterations?.map((iteration) => iteration.comparisonReport.baseline.ref_id),
     ).toEqual(["ver_input", "ver_output"]);
     expect(
-      result.trace.filter((entry) => entry.stage === "plan").map((entry) => entry.pass),
+      appliedResult.trace.filter((entry) => entry.stage === "plan").map((entry) => entry.pass),
     ).toEqual([1, 2]);
-    expect(result.semanticProfile).toBeUndefined();
-    expect(result.editPlan).toBeUndefined();
-    expect(result.transformResult).toBeUndefined();
+    expect(appliedResult.semanticProfile).toBeUndefined();
+    expect(appliedResult.editPlan).toBeUndefined();
+    expect(appliedResult.transformResult).toBeUndefined();
     expect(compareRenderEditPlans).toEqual([
       expect.objectContaining({ version_id: inputVersion.version_id }),
     ]);
-    expect(result.comparisonReport.goal_alignment?.map((goal) => goal.goal)).toEqual(
-      result.iterations?.[0]?.editPlan.goals,
+    expect(appliedResult.comparisonReport.goal_alignment?.map((goal) => goal.goal)).toEqual(
+      appliedResult.iterations?.[0]?.editPlan.goals,
     );
-    expect(validateSessionGraph(result.sessionGraph).valid).toBe(true);
+    expect(validateSessionGraph(appliedResult.sessionGraph).valid).toBe(true);
   });
 
   it("executes undo follow-ups by reverting to the prior active version", async () => {
@@ -470,28 +689,32 @@ describe("runRequestCycle", () => {
     const inputVersion = createVersion("ver_input");
     const dependencies = createDependencies();
 
-    const firstCycle = await runRequestCycle({
-      workspaceRoot: "/workspace",
-      userRequest: "Make it darker",
-      input: {
-        kind: "existing",
-        asset,
-        version: inputVersion,
-      },
-      dependencies,
-    });
+    const firstCycle = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "Make it darker",
+        input: {
+          kind: "existing",
+          asset,
+          version: inputVersion,
+        },
+        dependencies,
+      }),
+    );
 
-    const secondCycle = await runRequestCycle({
-      workspaceRoot: "/workspace",
-      userRequest: "more",
-      input: {
-        kind: "existing",
-        asset,
-        version: firstCycle.outputVersion,
-        sessionGraph: firstCycle.sessionGraph,
-      },
-      dependencies,
-    });
+    const secondCycle = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "more",
+        input: {
+          kind: "existing",
+          asset,
+          version: firstCycle.outputVersion,
+          sessionGraph: firstCycle.sessionGraph,
+        },
+        dependencies,
+      }),
+    );
 
     const undoCycle = await runRequestCycle({
       workspaceRoot: "/workspace",
@@ -505,18 +728,22 @@ describe("runRequestCycle", () => {
       dependencies,
     });
 
-    expect(undoCycle.result_kind).toBe("reverted");
-    expect(undoCycle.followUpResolution).toEqual({
+    const revertedCycle = expectAppliedRequestCycleResult(undoCycle);
+
+    expect(revertedCycle.result_kind).toBe("reverted");
+    expect(revertedCycle.followUpResolution).toEqual({
       kind: "revert",
       targetVersionId: firstCycle.outputVersion.version_id,
       source: "undo",
     });
-    expect(undoCycle.outputVersion.version_id).toBe(firstCycle.outputVersion.version_id);
-    expect(undoCycle.versionComparisonReport.baseline.ref_type).toBe("version");
-    expect(undoCycle.renderComparisonReport.baseline.ref_type).toBe("render");
-    expect(undoCycle.comparisonReport).toEqual(undoCycle.renderComparisonReport);
-    expect(undoCycle.sessionGraph.active_refs.version_id).toBe(firstCycle.outputVersion.version_id);
-    expect(validateSessionGraph(undoCycle.sessionGraph).valid).toBe(true);
+    expect(revertedCycle.outputVersion.version_id).toBe(firstCycle.outputVersion.version_id);
+    expect(revertedCycle.versionComparisonReport.baseline.ref_type).toBe("version");
+    expect(revertedCycle.renderComparisonReport.baseline.ref_type).toBe("render");
+    expect(revertedCycle.comparisonReport).toEqual(revertedCycle.renderComparisonReport);
+    expect(revertedCycle.sessionGraph.active_refs.version_id).toBe(
+      firstCycle.outputVersion.version_id,
+    );
+    expect(validateSessionGraph(revertedCycle.sessionGraph).valid).toBe(true);
   });
 
   it("rejects revert execution when getAudioVersionById returns the wrong version payload", async () => {
@@ -526,16 +753,18 @@ describe("runRequestCycle", () => {
       getAudioVersionById: async () => createVersion("ver_wrong"),
     });
 
-    const firstCycle = await runRequestCycle({
-      workspaceRoot: "/workspace",
-      userRequest: "Make it darker",
-      input: {
-        kind: "existing",
-        asset,
-        version: inputVersion,
-      },
-      dependencies,
-    });
+    const firstCycle = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "Make it darker",
+        input: {
+          kind: "existing",
+          asset,
+          version: inputVersion,
+        },
+        dependencies,
+      }),
+    );
 
     await expect(
       runRequestCycle({
@@ -596,16 +825,18 @@ describe("resolveFollowUpRequest", () => {
     const asset = createAsset();
     const inputVersion = createVersion("ver_input");
     const dependencies = createDependencies();
-    const result = await runRequestCycle({
-      workspaceRoot: "/workspace",
-      userRequest: "Make it darker",
-      input: {
-        kind: "existing",
-        asset,
-        version: inputVersion,
-      },
-      dependencies,
-    });
+    const result = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "Make it darker",
+        input: {
+          kind: "existing",
+          asset,
+          version: inputVersion,
+        },
+        dependencies,
+      }),
+    );
 
     expect(
       resolveFollowUpRequest({
@@ -624,16 +855,18 @@ describe("resolveFollowUpRequest", () => {
     const asset = createAsset();
     const inputVersion = createVersion("ver_input");
     const dependencies = createDependencies();
-    const result = await runRequestCycle({
-      workspaceRoot: "/workspace",
-      userRequest: "Make it darker",
-      input: {
-        kind: "existing",
-        asset,
-        version: inputVersion,
-      },
-      dependencies,
-    });
+    const result = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "Make it darker",
+        input: {
+          kind: "existing",
+          asset,
+          version: inputVersion,
+        },
+        dependencies,
+      }),
+    );
 
     expect(
       resolveFollowUpRequest({
@@ -652,16 +885,18 @@ describe("resolveFollowUpRequest", () => {
     const asset = createAsset();
     const inputVersion = createVersion("ver_input");
     const dependencies = createDependencies();
-    const result = await runRequestCycle({
-      workspaceRoot: "/workspace",
-      userRequest: "Make it darker",
-      input: {
-        kind: "existing",
-        asset,
-        version: inputVersion,
-      },
-      dependencies,
-    });
+    const result = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "Make it darker",
+        input: {
+          kind: "existing",
+          asset,
+          version: inputVersion,
+        },
+        dependencies,
+      }),
+    );
 
     expect(
       resolveFollowUpRequest({

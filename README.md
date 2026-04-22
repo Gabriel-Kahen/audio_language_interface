@@ -57,6 +57,7 @@ There is now also an optional interpretation layer for open-ended language:
 - callers can choose `conservative` or `best_effort` ambiguity handling when they opt into the interpretation layer
 - the richer interpretation artifact now includes explicit `interpretation_policy`, `next_action`, evidence-linked descriptor hypotheses, structured constraints, optional region-intent proposals, alternate candidates, and follow-up interpretation metadata
 - deterministic planning remains authoritative and may still reject unsupported or weakly grounded interpretations
+- in `conservative` mode, orchestration can now return a first-class clarification result and carry the pending clarification state forward explicitly in `SessionGraph.metadata.pending_clarification`
 - callers can use the standalone `interpret_request` tool or enable LLM-assisted interpretation inside `run_request_cycle`
 
 On top of the one-shot loop, orchestration now supports early iterative follow-up behavior for:
@@ -74,6 +75,7 @@ The published tool surface now also exposes a first-class orchestration entrypoi
 - `run_request_cycle` supports both initial import-driven runs and session-aware follow-up requests
 - follow-up calls stay explicit at the adapter boundary by requiring the caller to provide the current `SessionGraph`
 - revert-style and alternate-version flows also require any needed historical `AudioVersion` artifacts to be materialized explicitly instead of being resolved from hidden tool-layer state
+- clarification answers use that same explicit session graph path: the next request can resume from `pending_clarification` without any hidden adapter-managed conversation state
 
 The current cleanup slice is now analysis-backed instead of purely prompt-driven:
 

@@ -302,7 +302,7 @@ export type RequestCycleBenchmarkCategory =
 export type RequestCycleBenchmarkExecutionSurface = "orchestration" | "tool";
 
 export interface RequestCycleBenchmarkPlannerExpectation {
-  expected_result_kind?: "applied" | "reverted";
+  expected_result_kind?: "applied" | "reverted" | "clarification_required";
   expected_follow_up_source?: FollowUpResolution["source"];
   required_operations?: RuntimeOperationName[];
   forbidden_operations?: RuntimeOperationName[];
@@ -312,6 +312,8 @@ export interface RequestCycleBenchmarkPlannerExpectation {
   expected_input_setup_index?: number;
   expected_output_setup_index?: number;
   require_active_branch?: boolean;
+  require_pending_clarification?: boolean;
+  clarification_question_includes?: string;
 }
 
 export interface RequestCycleBenchmarkOutcomeExpectation {
@@ -342,6 +344,7 @@ export interface RequestCycleBenchmarkCase {
   description: string;
   fixtureId: string;
   setup_sequence?: string[];
+  interpretation?: RunRequestCycleOptions["interpretation"];
   expectation: {
     planner?: RequestCycleBenchmarkPlannerExpectation;
     outcome?: RequestCycleBenchmarkOutcomeExpectation;
@@ -446,6 +449,7 @@ export interface RunRequestCycleBenchmarkCaseOptions {
   fixtureManifestPath?: string;
   analysisOptions?: RunRequestCycleOptions["analysisOptions"];
   renderKind?: RunRequestCycleOptions["renderKind"];
+  interpretation?: RunRequestCycleOptions["interpretation"];
   revision?: RunRequestCycleOptions["revision"];
   sessionId?: string;
   branchId?: string;

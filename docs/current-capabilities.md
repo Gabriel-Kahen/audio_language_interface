@@ -165,7 +165,7 @@ Current tool-surface caveats:
 - `plan_edits` only chooses operations marked as `planner_supported` in the runtime capability manifest
 - `plan_edits` can accept an optional `intent_interpretation` artifact, but still validates that proposal against current audio evidence and planner support
 - `compare_versions` returns `evaluation_basis` so callers can see whether structured verification or fallback goal alignment is authoritative
-- `run_request_cycle` exposes the full orchestration editing loop, including session-aware follow-up behavior and optional LLM-assisted request interpretation with explicit timeout and retry settings, while still requiring callers to provide explicit `session_graph` and `available_versions` inputs for historical execution
+- `run_request_cycle` exposes the full orchestration editing loop, including session-aware follow-up behavior, optional LLM-assisted request interpretation with explicit timeout and retry settings, and first-class clarification-required results that record `pending_clarification` in the returned `session_graph`
 - explicit technical callers can still submit runtime-only Layer 1 effect steps when they stay inside the published contract surface
 
 ## Important Current Limitations
@@ -177,6 +177,7 @@ Current tool-surface caveats:
 - the optional interpretation layer broadens language handling, but it does not make unsupported descriptors or transforms safe automatically
 - planning fails on unsupported requests instead of trying to generalize broadly
 - iterative editing now supports `more`, `less`, `undo`, `revert to previous version`, and `try another version` through both orchestration and the published `run_request_cycle` tool; those follow-up flows still require explicit historical version materialization rather than hidden adapter-managed state
+- conservative interpretation can now stop at a first-class clarification result instead of a planner error, and the next caller-supplied `session_graph` can resume that clarification path explicitly
 - the baseline planner still does not choose `pan`, channel remapping, `mid_side_eq`, broader Layer 1 runtime effects, or the creative-effect surface automatically
 - render preview is MP3-only
 - final render export is limited to WAV and FLAC

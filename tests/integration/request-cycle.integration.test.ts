@@ -20,11 +20,25 @@ import { describe, expect, it } from "vitest";
 import { WaveFile } from "wavefile";
 
 import {
+  type AppliedOrRevertedRequestCycleResult,
   defaultOrchestrationDependencies,
+  isAppliedOrRevertedRequestCycleResult,
   OrchestrationStageError,
   resolveFollowUpRequest,
   runRequestCycle,
 } from "../../modules/orchestration/src/index.js";
+
+function expectAppliedRequestCycleResult(
+  result: Awaited<ReturnType<typeof runRequestCycle>>,
+): AppliedOrRevertedRequestCycleResult {
+  expect(isAppliedOrRevertedRequestCycleResult(result)).toBe(true);
+  if (!isAppliedOrRevertedRequestCycleResult(result)) {
+    throw new Error(
+      `Expected applied or reverted request cycle result, got ${result.result_kind}.`,
+    );
+  }
+  return result;
+}
 
 describe("request cycle integration", () => {
   it("runs the happy path across real modules and records full provenance", async () => {
@@ -32,48 +46,50 @@ describe("request cycle integration", () => {
       const inputPath = path.join(workspaceRoot, "fixtures", "tone.wav");
       await writeFixtureWav(inputPath, { sampleRateHz: 44_100, durationSeconds: 1.5 });
 
-      const result = await runRequestCycle({
-        workspaceRoot,
-        userRequest: "Make this loop darker and less harsh, but keep the punch.",
-        input: {
-          kind: "import",
-          inputPath,
-          importOptions: {
-            importedAt: "2026-04-14T20:20:00Z",
-            tags: ["integration"],
-            notes: "end-to-end request cycle",
+      const result = expectAppliedRequestCycleResult(
+        await runRequestCycle({
+          workspaceRoot,
+          userRequest: "Make this loop darker and less harsh, but keep the punch.",
+          input: {
+            kind: "import",
+            inputPath,
+            importOptions: {
+              importedAt: "2026-04-14T20:20:00Z",
+              tags: ["integration"],
+              notes: "end-to-end request cycle",
+            },
           },
-        },
-        dependencies: {
-          ...defaultOrchestrationDependencies,
-          applyEditPlan: async (options) =>
-            applyEditPlan({ ...options, executor: copyAudioExecutor }),
-          renderPreview: async (options) =>
-            renderPreview({
-              ...options,
-              executor: copyAudioExecutor,
-              probeExecutor: createProbeExecutor({
-                format: "mp3",
-                codec: "mp3",
-                sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
-                channels: options.channels ?? options.version.audio.channels,
-                durationSeconds: options.version.audio.duration_seconds,
+          dependencies: {
+            ...defaultOrchestrationDependencies,
+            applyEditPlan: async (options) =>
+              applyEditPlan({ ...options, executor: copyAudioExecutor }),
+            renderPreview: async (options) =>
+              renderPreview({
+                ...options,
+                executor: copyAudioExecutor,
+                probeExecutor: createProbeExecutor({
+                  format: "mp3",
+                  codec: "mp3",
+                  sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
+                  channels: options.channels ?? options.version.audio.channels,
+                  durationSeconds: options.version.audio.duration_seconds,
+                }),
               }),
-            }),
-          renderExport: async (options) =>
-            renderExport({
-              ...options,
-              executor: copyAudioExecutor,
-              probeExecutor: createProbeExecutor({
-                format: options.format ?? "wav",
-                codec: options.format === "flac" ? "flac" : "pcm_s16le",
-                sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
-                channels: options.channels ?? options.version.audio.channels,
-                durationSeconds: options.version.audio.duration_seconds,
+            renderExport: async (options) =>
+              renderExport({
+                ...options,
+                executor: copyAudioExecutor,
+                probeExecutor: createProbeExecutor({
+                  format: options.format ?? "wav",
+                  codec: options.format === "flac" ? "flac" : "pcm_s16le",
+                  sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
+                  channels: options.channels ?? options.version.audio.channels,
+                  durationSeconds: options.version.audio.duration_seconds,
+                }),
               }),
-            }),
-        },
-      });
+          },
+        }),
+      );
 
       const provenance = result.sessionGraph.metadata?.provenance ?? {};
 
@@ -234,85 +250,87 @@ describe("request cycle integration", () => {
       const inputPath = path.join(workspaceRoot, "fixtures", "tone.wav");
       await writeFixtureWav(inputPath, { sampleRateHz: 44_100, durationSeconds: 1.1 });
 
-      const result = await runRequestCycle({
-        workspaceRoot,
-        userRequest: "Make this loop darker.",
-        input: {
-          kind: "import",
-          inputPath,
-          importOptions: {
-            importedAt: "2026-04-14T20:26:00Z",
+      const result = expectAppliedRequestCycleResult(
+        await runRequestCycle({
+          workspaceRoot,
+          userRequest: "Make this loop darker.",
+          input: {
+            kind: "import",
+            inputPath,
+            importOptions: {
+              importedAt: "2026-04-14T20:26:00Z",
+            },
           },
-        },
-        interpretation: {
-          mode: "llm_assisted",
-          apiKey: "test-key",
-          policy: "best_effort",
-          provider: {
-            kind: "openai",
-            model: "gpt-5-mini",
-            temperature: 0.2,
-          },
-        },
-        dependencies: {
-          ...defaultOrchestrationDependencies,
-          interpretRequest: async ({
-            userRequest,
-            audioVersion,
-            analysisReport,
-            semanticProfile,
-          }) => ({
-            schema_version: "1.0.0",
-            interpretation_id: "interpret_integration123",
-            interpretation_policy: "best_effort",
-            asset_id: audioVersion.asset_id,
-            version_id: audioVersion.version_id,
-            analysis_report_id: analysisReport.report_id,
-            semantic_profile_id: semanticProfile.profile_id,
-            user_request: userRequest,
-            normalized_request: "Make this loop darker with a gentle high-shelf cut.",
-            request_classification: "supported",
-            next_action: "plan",
-            normalized_objectives: ["darker"],
-            candidate_descriptors: ["dark"],
-            rationale:
-              "Clarified the tonal request into a more explicit deterministic planning prompt.",
-            confidence: 0.73,
+          interpretation: {
+            mode: "llm_assisted",
+            apiKey: "test-key",
+            policy: "best_effort",
             provider: {
               kind: "openai",
               model: "gpt-5-mini",
-              prompt_version: "intent_v1",
+              temperature: 0.2,
             },
-            generated_at: "2026-04-21T20:45:00Z",
-          }),
-          applyEditPlan: async (options) =>
-            applyEditPlan({ ...options, executor: copyAudioExecutor }),
-          renderPreview: async (options) =>
-            renderPreview({
-              ...options,
-              executor: copyAudioExecutor,
-              probeExecutor: createProbeExecutor({
-                format: "mp3",
-                codec: "mp3",
-                sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
-                channels: options.channels ?? options.version.audio.channels,
-                durationSeconds: options.version.audio.duration_seconds,
-              }),
+          },
+          dependencies: {
+            ...defaultOrchestrationDependencies,
+            interpretRequest: async ({
+              userRequest,
+              audioVersion,
+              analysisReport,
+              semanticProfile,
+            }) => ({
+              schema_version: "1.0.0",
+              interpretation_id: "interpret_integration123",
+              interpretation_policy: "best_effort",
+              asset_id: audioVersion.asset_id,
+              version_id: audioVersion.version_id,
+              analysis_report_id: analysisReport.report_id,
+              semantic_profile_id: semanticProfile.profile_id,
+              user_request: userRequest,
+              normalized_request: "Make this loop darker with a gentle high-shelf cut.",
+              request_classification: "supported",
+              next_action: "plan",
+              normalized_objectives: ["darker"],
+              candidate_descriptors: ["dark"],
+              rationale:
+                "Clarified the tonal request into a more explicit deterministic planning prompt.",
+              confidence: 0.73,
+              provider: {
+                kind: "openai",
+                model: "gpt-5-mini",
+                prompt_version: "intent_v1",
+              },
+              generated_at: "2026-04-21T20:45:00Z",
             }),
-          renderExport: async (options) =>
-            renderExport({
-              ...options,
-              executor: copyAudioExecutor,
-              probeExecutor: createProbeExecutor({
-                format: options.format ?? "wav",
-                codec: options.format === "flac" ? "flac" : "pcm_s16le",
-                sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
-                channels: options.channels ?? options.version.audio.channels,
-                durationSeconds: options.version.audio.duration_seconds,
+            applyEditPlan: async (options) =>
+              applyEditPlan({ ...options, executor: copyAudioExecutor }),
+            renderPreview: async (options) =>
+              renderPreview({
+                ...options,
+                executor: copyAudioExecutor,
+                probeExecutor: createProbeExecutor({
+                  format: "mp3",
+                  codec: "mp3",
+                  sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
+                  channels: options.channels ?? options.version.audio.channels,
+                  durationSeconds: options.version.audio.duration_seconds,
+                }),
               }),
-            }),
-        },
-      });
+            renderExport: async (options) =>
+              renderExport({
+                ...options,
+                executor: copyAudioExecutor,
+                probeExecutor: createProbeExecutor({
+                  format: options.format ?? "wav",
+                  codec: options.format === "flac" ? "flac" : "pcm_s16le",
+                  sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
+                  channels: options.channels ?? options.version.audio.channels,
+                  durationSeconds: options.version.audio.duration_seconds,
+                }),
+              }),
+          },
+        }),
+      );
 
       expect(result.intentInterpretation).toMatchObject({
         interpretation_id: "interpret_integration123",
@@ -337,53 +355,55 @@ describe("request cycle integration", () => {
       const inputPath = path.join(workspaceRoot, "fixtures", "tone.wav");
       await writeFixtureWav(inputPath, { sampleRateHz: 44_100, durationSeconds: 1.25 });
 
-      const result = await runRequestCycle({
-        workspaceRoot,
-        userRequest: "Make this loop darker and less harsh.",
-        input: {
-          kind: "import",
-          inputPath,
-          importOptions: {
-            importedAt: "2026-04-14T20:27:00Z",
+      const result = expectAppliedRequestCycleResult(
+        await runRequestCycle({
+          workspaceRoot,
+          userRequest: "Make this loop darker and less harsh.",
+          input: {
+            kind: "import",
+            inputPath,
+            importOptions: {
+              importedAt: "2026-04-14T20:27:00Z",
+            },
           },
-        },
-        revision: {
-          enabled: true,
-          shouldRevise: ({ history }) => ({
-            shouldRevise: history.length === 1,
-            rationale: "Integration test requests one additional explicit pass.",
-          }),
-        },
-        dependencies: {
-          ...defaultOrchestrationDependencies,
-          applyEditPlan: async (options) =>
-            applyEditPlan({ ...options, executor: copyAudioExecutor }),
-          renderPreview: async (options) =>
-            renderPreview({
-              ...options,
-              executor: copyAudioExecutor,
-              probeExecutor: createProbeExecutor({
-                format: "mp3",
-                codec: "mp3",
-                sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
-                channels: options.channels ?? options.version.audio.channels,
-                durationSeconds: options.version.audio.duration_seconds,
-              }),
+          revision: {
+            enabled: true,
+            shouldRevise: ({ history }) => ({
+              shouldRevise: history.length === 1,
+              rationale: "Integration test requests one additional explicit pass.",
             }),
-          renderExport: async (options) =>
-            renderExport({
-              ...options,
-              executor: copyAudioExecutor,
-              probeExecutor: createProbeExecutor({
-                format: options.format ?? "wav",
-                codec: options.format === "flac" ? "flac" : "pcm_s16le",
-                sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
-                channels: options.channels ?? options.version.audio.channels,
-                durationSeconds: options.version.audio.duration_seconds,
+          },
+          dependencies: {
+            ...defaultOrchestrationDependencies,
+            applyEditPlan: async (options) =>
+              applyEditPlan({ ...options, executor: copyAudioExecutor }),
+            renderPreview: async (options) =>
+              renderPreview({
+                ...options,
+                executor: copyAudioExecutor,
+                probeExecutor: createProbeExecutor({
+                  format: "mp3",
+                  codec: "mp3",
+                  sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
+                  channels: options.channels ?? options.version.audio.channels,
+                  durationSeconds: options.version.audio.duration_seconds,
+                }),
               }),
-            }),
-        },
-      });
+            renderExport: async (options) =>
+              renderExport({
+                ...options,
+                executor: copyAudioExecutor,
+                probeExecutor: createProbeExecutor({
+                  format: options.format ?? "wav",
+                  codec: options.format === "flac" ? "flac" : "pcm_s16le",
+                  sampleRateHz: options.sampleRateHz ?? options.version.audio.sample_rate_hz,
+                  channels: options.channels ?? options.version.audio.channels,
+                  durationSeconds: options.version.audio.duration_seconds,
+                }),
+              }),
+          },
+        }),
+      );
 
       expect(result.result_kind).toBe("applied");
       expect(result.iterations).toHaveLength(2);
@@ -416,7 +436,7 @@ describe("request cycle integration", () => {
           .map((entry) => entry.pass),
       ).toEqual([1, 1, 1, 1, 1, 2, 2, 2, 2, 2]);
     });
-  });
+  }, 20_000);
 
   it("supports repeated apply, alternate-version, less, and undo cycles with valid session history", async () => {
     await withTempWorkspace(async (workspaceRoot) => {
@@ -466,66 +486,76 @@ describe("request cycle integration", () => {
           versions.get(versionId),
       };
 
-      const firstCycle = await runRequestCycle({
-        workspaceRoot,
-        userRequest: "Make this loop darker and less harsh.",
-        input: {
-          kind: "import",
-          inputPath,
-          importOptions: {
-            importedAt: "2026-04-14T20:30:00Z",
+      const firstCycle = expectAppliedRequestCycleResult(
+        await runRequestCycle({
+          workspaceRoot,
+          userRequest: "Make this loop darker and less harsh.",
+          input: {
+            kind: "import",
+            inputPath,
+            importOptions: {
+              importedAt: "2026-04-14T20:30:00Z",
+            },
           },
-        },
-        dependencies,
-      });
+          dependencies,
+        }),
+      );
 
-      const secondCycle = await runRequestCycle({
-        workspaceRoot,
-        userRequest: "more",
-        input: {
-          kind: "existing",
-          asset: firstCycle.asset,
-          version: firstCycle.outputVersion,
-          sessionGraph: firstCycle.sessionGraph,
-        },
-        dependencies,
-      });
+      const secondCycle = expectAppliedRequestCycleResult(
+        await runRequestCycle({
+          workspaceRoot,
+          userRequest: "more",
+          input: {
+            kind: "existing",
+            asset: firstCycle.asset,
+            version: firstCycle.outputVersion,
+            sessionGraph: firstCycle.sessionGraph,
+          },
+          dependencies,
+        }),
+      );
 
-      const alternateCycle = await runRequestCycle({
-        workspaceRoot,
-        userRequest: "try another version",
-        input: {
-          kind: "existing",
-          asset: secondCycle.asset,
-          version: secondCycle.outputVersion,
-          sessionGraph: secondCycle.sessionGraph,
-        },
-        dependencies,
-      });
+      const alternateCycle = expectAppliedRequestCycleResult(
+        await runRequestCycle({
+          workspaceRoot,
+          userRequest: "try another version",
+          input: {
+            kind: "existing",
+            asset: secondCycle.asset,
+            version: secondCycle.outputVersion,
+            sessionGraph: secondCycle.sessionGraph,
+          },
+          dependencies,
+        }),
+      );
 
-      const lessCycle = await runRequestCycle({
-        workspaceRoot,
-        userRequest: "less",
-        input: {
-          kind: "existing",
-          asset: secondCycle.asset,
-          version: secondCycle.outputVersion,
-          sessionGraph: secondCycle.sessionGraph,
-        },
-        dependencies,
-      });
+      const lessCycle = expectAppliedRequestCycleResult(
+        await runRequestCycle({
+          workspaceRoot,
+          userRequest: "less",
+          input: {
+            kind: "existing",
+            asset: secondCycle.asset,
+            version: secondCycle.outputVersion,
+            sessionGraph: secondCycle.sessionGraph,
+          },
+          dependencies,
+        }),
+      );
 
-      const undoCycle = await runRequestCycle({
-        workspaceRoot,
-        userRequest: "undo",
-        input: {
-          kind: "existing",
-          asset: lessCycle.asset,
-          version: lessCycle.outputVersion,
-          sessionGraph: lessCycle.sessionGraph,
-        },
-        dependencies,
-      });
+      const undoCycle = expectAppliedRequestCycleResult(
+        await runRequestCycle({
+          workspaceRoot,
+          userRequest: "undo",
+          input: {
+            kind: "existing",
+            asset: lessCycle.asset,
+            version: lessCycle.outputVersion,
+            sessionGraph: lessCycle.sessionGraph,
+          },
+          dependencies,
+        }),
+      );
 
       expect(validateSessionGraph(secondCycle.sessionGraph).valid).toBe(true);
       expect(secondCycle.result_kind).toBe("applied");

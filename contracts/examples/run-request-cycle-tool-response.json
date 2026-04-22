@@ -330,6 +330,48 @@
         "plain_text": "The render comparison confirms the session returned to the previously active version."
       }
     },
+    "comparison_report": {
+      "schema_version": "1.0.0",
+      "comparison_id": "compare_01J0RUNREQUESTCYCLERENDER0001",
+      "baseline": {
+        "ref_type": "render",
+        "ref_id": "render_01J0RUNREQUESTCYCLEBASELINE0001"
+      },
+      "candidate": {
+        "ref_type": "render",
+        "ref_id": "render_01J0RUNREQUESTCYCLECANDIDATE001"
+      },
+      "generated_at": "2026-04-21T18:00:06Z",
+      "metric_deltas": [
+        {
+          "metric": "spectral_balance.high_band_db",
+          "direction": "increased",
+          "delta": 1.5
+        }
+      ],
+      "semantic_deltas": [
+        {
+          "label": "less_dark",
+          "confidence": 0.71,
+          "evidence": "reverting restored the brighter baseline spectral balance"
+        }
+      ],
+      "regressions": [],
+      "goal_alignment": [
+        {
+          "goal": "undo the most recent edit",
+          "status": "met"
+        }
+      ],
+      "evaluation_basis": {
+        "metric_source": "render_artifacts",
+        "goal_evaluation_source": "heuristic_goal_alignment",
+        "authoritative_signal": "goal_alignment"
+      },
+      "summary": {
+        "plain_text": "The render comparison confirms the session returned to the previously active version."
+      }
+    },
     "session_graph": {
       "schema_version": "1.0.0",
       "session_id": "session_01HZX8J7J2V3M4N5P6Q7R8S9T0",

@@ -1,5 +1,6 @@
 import type { AudioAsset, AudioVersion, NormalizationTarget } from "@audio-language-interface/io";
 import {
+  type AppliedOrRevertedRequestCycleResult,
   defaultOrchestrationDependencies,
   type LlmAssistedInterpretationOptions,
   type LlmInterpretationProviderConfig,
@@ -467,7 +468,7 @@ function toTraceShape(trace: RequestCycleResult["trace"]): Record<string, unknow
 }
 
 function toRevisionShape(
-  revision: RequestCycleResult["revision"],
+  revision: AppliedOrRevertedRequestCycleResult["revision"],
 ): Record<string, unknown> | undefined {
   if (!revision) {
     return undefined;
@@ -481,7 +482,7 @@ function toRevisionShape(
 }
 
 function toIterationShape(
-  iterations: RequestCycleResult["iterations"],
+  iterations: AppliedOrRevertedRequestCycleResult["iterations"],
 ): Record<string, unknown>[] | undefined {
   if (!iterations || iterations.length === 0) {
     return undefined;
@@ -565,6 +566,53 @@ function normalizeOrchestrationError(error: unknown, userRequest: string): never
 }
 
 function buildToolResult(result: RequestCycleResult): Record<string, unknown> {
+  if (result.result_kind === "clarification_required") {
+    return {
+      result_kind: result.result_kind,
+      asset: assertToolResultAudioAsset(result.asset, "result.asset") as unknown as Record<
+        string,
+        unknown
+      >,
+      input_version: assertToolResultAudioVersion(
+        result.inputVersion,
+        "result.input_version",
+      ) as unknown as Record<string, unknown>,
+      input_analysis: assertToolResultAnalysisReport(
+        result.inputAnalysis,
+        "result.input_analysis",
+      ) as unknown as Record<string, unknown>,
+      follow_up_resolution: toFollowUpResolutionShape(result.followUpResolution),
+      ...(result.semanticProfile === undefined
+        ? {}
+        : {
+            semantic_profile: assertToolResultSemanticProfile(
+              result.semanticProfile,
+              "result.semantic_profile",
+            ) as unknown as Record<string, unknown>,
+          }),
+      ...(result.intentInterpretation === undefined
+        ? {}
+        : {
+            intent_interpretation: result.intentInterpretation as unknown as Record<
+              string,
+              unknown
+            >,
+          }),
+      clarification: {
+        question: result.clarification.question,
+        pending_clarification: result.clarification.pendingClarification as unknown as Record<
+          string,
+          unknown
+        >,
+      },
+      session_graph: assertToolResultSessionGraph(
+        result.sessionGraph,
+        "result.session_graph",
+      ) as unknown as Record<string, unknown>,
+      trace: toTraceShape(result.trace),
+    };
+  }
+
   const topLevelTransformRecord = result.transformResult
     ? assertToolResultTransformRecord(
         result.transformResult.transformRecord,
@@ -637,6 +685,10 @@ function buildToolResult(result: RequestCycleResult): Record<string, unknown> {
     render_comparison_report: assertToolResultComparisonReport(
       result.renderComparisonReport,
       "result.render_comparison_report",
+    ) as unknown as Record<string, unknown>,
+    comparison_report: assertToolResultComparisonReport(
+      result.comparisonReport,
+      "result.comparison_report",
     ) as unknown as Record<string, unknown>,
     session_graph: assertToolResultSessionGraph(
       result.sessionGraph,

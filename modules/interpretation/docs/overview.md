@@ -56,3 +56,4 @@ See `docs/api.md` for the concrete API shape and failure behavior.
 - the artifact can now carry explicit `interpretation_policy`, `next_action`, descriptor hypotheses, constraints, region-intent proposals, alternate candidates, and follow-up interpretation metadata
 - `conservative` preserves `clarify` for grounded ambiguity, while `best_effort` prefers one planner-facing reading and keeps the ambiguity explicit through alternates and grounding notes
 - provider behavior is hardened with explicit timeout, retry, and optional cache support, but raw provider failures still surface instead of falling back silently
+- callers can pass explicit `session_context.pending_clarification` when a new user message should be interpreted as a possible answer to an earlier clarification question

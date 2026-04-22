@@ -106,7 +106,13 @@
       "current_version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
       "previous_request": "Make it brighter.",
       "original_user_request": "Make it a little darker and cleaner.",
-      "follow_up_source": "direct_request"
+      "follow_up_source": "direct_request",
+      "pending_clarification": {
+        "original_user_request": "clean it",
+        "clarification_question": "Do you mean reduce noise, tame harshness, or make it darker?",
+        "source_version_id": "ver_01HZX8B7J2V3M4N5P6Q7R8S9T0",
+        "source_interpretation_id": "interpret_01J0CLARIFYEXAMPLE000001"
+      }
     },
     "provider": {
       "kind": "openai",

@@ -51,6 +51,7 @@ export function buildSystemInstruction(policy: InterpretationPolicy): string {
     "Use constraints to preserve important intent like subtlety, preserve punch, avoid added harshness, or similar safety and preservation language.",
     "Use region_intents only when the user wording clearly scopes the request to a part of the file. Otherwise omit region_intents.",
     "If the request is a fuzzy follow-up relative to an earlier request, use follow_up_intent and constraints to explain the relationship instead of inventing unsupported transforms.",
+    "If session_context.pending_clarification is present, treat the current user_request as a possible answer to that clarification question. Use the prior request and clarification question to resolve the user's intent when that is grounded.",
     "candidate_interpretations may contain a few alternate grounded readings when the request is ambiguous; keep the top-level fields as the best current interpretation.",
     "If the request is ambiguous, contradictory, unsupported, or only runtime-available, set request_classification accordingly.",
     "Do not invent support for terms or effects that are not grounded by the current capabilities and evidence.",
@@ -90,6 +91,24 @@ export function buildUserPrompt(input: InterpretationProviderRequest): string {
             ...(input.sessionContext.follow_up_source === undefined
               ? {}
               : { follow_up_source: input.sessionContext.follow_up_source }),
+            ...(input.sessionContext.pending_clarification === undefined
+              ? {}
+              : {
+                  pending_clarification: {
+                    original_user_request:
+                      input.sessionContext.pending_clarification.original_user_request,
+                    clarification_question:
+                      input.sessionContext.pending_clarification.clarification_question,
+                    source_version_id: input.sessionContext.pending_clarification.source_version_id,
+                    ...(input.sessionContext.pending_clarification.source_interpretation_id ===
+                    undefined
+                      ? {}
+                      : {
+                          source_interpretation_id:
+                            input.sessionContext.pending_clarification.source_interpretation_id,
+                        }),
+                  },
+                }),
           },
         }),
   };

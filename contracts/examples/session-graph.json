@@ -103,6 +103,13 @@
         "transform_record_id": "transform_01HZX8F7J2V3M4N5P6Q7R8S9T0"
       }
     },
+    "pending_clarification": {
+      "original_user_request": "clean it",
+      "clarification_question": "Do you mean reduce noise, tame harshness, or make it darker?",
+      "source_version_id": "ver_01HZX8G7J2V3M4N5P6Q7R8S9T0",
+      "created_at": "2026-04-22T16:45:00Z",
+      "source_interpretation_id": "interpret_01J0CLARIFYEXAMPLE000001"
+    },
     "label": "snare darkening session"
   }
 }

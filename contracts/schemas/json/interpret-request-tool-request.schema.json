@@ -50,6 +50,25 @@
                 "revert",
                 "try_another_version"
               ]
+            },
+            "pending_clarification": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["original_user_request", "clarification_question", "source_version_id"],
+              "properties": {
+                "original_user_request": {
+                  "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                },
+                "clarification_question": {
+                  "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                },
+                "source_version_id": {
+                  "$ref": "./common.schema.json#/$defs/versionId"
+                },
+                "source_interpretation_id": {
+                  "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                }
+              }
             }
           }
         },

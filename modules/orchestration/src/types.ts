@@ -1,10 +1,11 @@
 import type { AnalysisReport, AnalyzeAudioOptions } from "@audio-language-interface/analysis";
 import type { ComparisonReport } from "@audio-language-interface/compare";
 import type { AudioAsset, AudioVersion } from "@audio-language-interface/core";
-import type { SessionGraph } from "@audio-language-interface/history";
+import type { PendingClarification, SessionGraph } from "@audio-language-interface/history";
 import type {
   IntentInterpretation,
   InterpretationPolicy,
+  InterpretationSessionContext,
 } from "@audio-language-interface/interpretation";
 import type { ImportAudioOptions, ImportAudioResult } from "@audio-language-interface/io";
 import type { EditPlan } from "@audio-language-interface/planning";
@@ -40,6 +41,7 @@ export type WorkflowStage =
   | "import"
   | "analyze_input"
   | "resolve_follow_up"
+  | "resolve_clarification"
   | "prepare_follow_up_branch"
   | "load_follow_up_input"
   | "load_revert_target"
@@ -149,6 +151,7 @@ export interface PlanAndApplyOptions {
   pass?: number;
   semanticProfile?: SemanticProfile;
   requestInterpretation?: LlmAssistedInterpretationOptions;
+  interpretationSessionContext?: InterpretationSessionContext;
   sessionGraph?: SessionGraph;
   outputDir?: string;
   outputVersionId?: string;
@@ -291,7 +294,7 @@ export interface RunRequestCycleOptions {
 export interface FollowUpApplyResolution {
   kind: "apply";
   resolvedUserRequest: string;
-  source: "direct_request" | "repeat_last_request" | "try_another_version";
+  source: "direct_request" | "clarification_answer" | "repeat_last_request" | "try_another_version";
   inputVersionId?: string;
   branchId?: string;
 }
@@ -304,16 +307,27 @@ export interface FollowUpRevertResolution {
 
 export type FollowUpResolution = FollowUpApplyResolution | FollowUpRevertResolution;
 
-export interface RequestCycleResult {
-  result_kind: "applied" | "reverted";
+export interface ClarificationResult {
+  question: string;
+  pendingClarification: PendingClarification;
+}
+
+interface BaseRequestCycleResult {
+  result_kind: "applied" | "reverted" | "clarification_required";
   asset: AudioAsset;
   inputVersion: AudioVersion;
   inputAnalysis: AnalysisReport;
   followUpResolution: FollowUpResolution;
-  iterations?: IterationResult[];
-  revision?: RevisionDecision;
   semanticProfile?: SemanticProfile;
   intentInterpretation?: IntentInterpretation;
+  sessionGraph: SessionGraph;
+  trace: WorkflowTraceEntry[];
+}
+
+export interface AppliedOrRevertedRequestCycleResult extends BaseRequestCycleResult {
+  result_kind: "applied" | "reverted";
+  iterations?: IterationResult[];
+  revision?: RevisionDecision;
   editPlan?: EditPlan;
   outputVersion: AudioVersion;
   transformResult?: ApplyTransformsResult;
@@ -323,6 +337,25 @@ export interface RequestCycleResult {
   candidateRender: RenderArtifact;
   renderComparisonReport: ComparisonReport;
   comparisonReport: ComparisonReport;
-  sessionGraph: SessionGraph;
-  trace: WorkflowTraceEntry[];
+}
+
+export interface ClarificationRequiredRequestCycleResult extends BaseRequestCycleResult {
+  result_kind: "clarification_required";
+  clarification: ClarificationResult;
+}
+
+export type RequestCycleResult =
+  | AppliedOrRevertedRequestCycleResult
+  | ClarificationRequiredRequestCycleResult;
+
+export function isClarificationRequiredRequestCycleResult(
+  result: RequestCycleResult,
+): result is ClarificationRequiredRequestCycleResult {
+  return result.result_kind === "clarification_required";
+}
+
+export function isAppliedOrRevertedRequestCycleResult(
+  result: RequestCycleResult,
+): result is AppliedOrRevertedRequestCycleResult {
+  return result.result_kind !== "clarification_required";
 }

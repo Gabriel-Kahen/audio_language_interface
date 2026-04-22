@@ -76,6 +76,8 @@ This tool does not emit an `EditPlan`. It exists so callers can inspect or cache
 
 When omitted, the interpretation layer defaults to `conservative`.
 
+`session_context` can also carry `pending_clarification` so callers can interpret a new answer against an earlier clarification question without hidden adapter state.
+
 The returned artifact can now expose:
 
 - `interpretation_policy`
@@ -207,9 +209,25 @@ Returns the completed request-cycle artifact set:
 - `baseline_render`
 - `candidate_render`
 - `render_comparison_report`
+- `comparison_report`
 - `session_graph`
 - optional `revision`
 - optional `iterations`
+- `trace`
+
+When orchestration needs clarification in conservative interpretation mode, `run_request_cycle` instead returns:
+
+- `result_kind = "clarification_required"`
+- `asset`
+- `input_version`
+- `input_analysis`
+- `follow_up_resolution`
+- optional `semantic_profile`
+- optional `intent_interpretation`
+- `clarification`
+  - `question`
+  - `pending_clarification`
+- `session_graph`
 - `trace`
 
 `arguments.interpretation` is currently an explicit opt-in object:
@@ -232,9 +250,11 @@ When present, the tool forwards that configuration into orchestration and requir
 Important follow-up behavior:
 
 - `run_request_cycle` exposes session-aware follow-up requests through the published tool surface, including `more`, `less`, `undo`, `revert to previous version`, and `try another version`
+- `run_request_cycle` also exposes the clarification loop explicitly: ambiguous conservative interpretation can return `result_kind = "clarification_required"`, and the next request can resume from `session_graph.metadata.pending_clarification`
 - the tool remains explicit and stateless: it does not maintain hidden session state or resolve historical versions by id
 - callers using `input.kind = "existing"` must provide the current `session_graph`
 - revert-style and alternate-version flows must also provide any required historical `AudioVersion` artifacts in `arguments.input.available_versions`
+- clarification-resume flows reuse that same explicit `session_graph`; the tool does not store clarification state privately
 
 If orchestration cannot resolve a follow-up safely because required historical versions were not provided, the tool returns `invalid_arguments`, typically pointing at `arguments.input.available_versions`.
 

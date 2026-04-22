@@ -1,3 +1,5 @@
+import type { RequestCycleResult } from "@audio-language-interface/orchestration";
+
 import type {
   ComparisonBenchmarkCaseResult,
   ComparisonBenchmarkRunResult,
@@ -11,6 +13,18 @@ import type {
   RequestCycleFailureBucket,
   RequestCycleScoreBreakdown,
 } from "./types.js";
+
+function getRequestCyclePlannedOperations(result: RequestCycleResult | undefined): string[] {
+  if (result === undefined || result.result_kind === "clarification_required") {
+    return [];
+  }
+
+  return (
+    result.editPlan?.steps
+      .map((step) => step.operation)
+      .filter((operation) => operation.length > 0) ?? []
+  );
+}
 
 export function formatBenchmarkMarkdownReport(
   result:
@@ -203,10 +217,7 @@ function formatRequestCycleCase(caseResult: RequestCycleBenchmarkCaseResult): st
     lines.push(`- error: ${caseResult.error.message}`);
   }
 
-  const plannedOperations =
-    requestCycleResult?.editPlan?.steps
-      ?.map((step) => step.operation)
-      .filter((operation) => operation.length > 0) ?? [];
+  const plannedOperations = getRequestCyclePlannedOperations(requestCycleResult);
   lines.push(
     `- planned operations: ${plannedOperations.length === 0 ? "none" : plannedOperations.join(", ")}`,
   );
@@ -214,6 +225,10 @@ function formatRequestCycleCase(caseResult: RequestCycleBenchmarkCaseResult): st
   const outcomeSignal = describeOutcomeSignal(caseResult);
   if (outcomeSignal !== undefined) {
     lines.push(`- outcome signal: ${outcomeSignal}`);
+  }
+
+  if (requestCycleResult?.result_kind === "clarification_required") {
+    lines.push(`- clarification question: ${requestCycleResult.clarification.question}`);
   }
 
   const regressionSummary = describeRegressionSummary(caseResult);
@@ -368,6 +383,10 @@ function describeOutcomeSignal(caseResult: RequestCycleBenchmarkCaseResult): str
     return undefined;
   }
 
+  if (requestCycleResult.result_kind === "clarification_required") {
+    return undefined;
+  }
+
   const versionBasis = requestCycleResult.versionComparisonReport?.evaluation_basis;
   if (versionBasis !== undefined) {
     return `${versionBasis.goal_evaluation_source} via version comparison (${versionBasis.authoritative_signal})`;
@@ -385,7 +404,10 @@ function describeOutcomeSignal(caseResult: RequestCycleBenchmarkCaseResult): str
 
 function describeRegressionSummary(caseResult: RequestCycleBenchmarkCaseResult): string {
   const requestCycleResult = caseResult.requestCycleResult;
-  if (requestCycleResult === undefined) {
+  if (
+    requestCycleResult === undefined ||
+    requestCycleResult.result_kind === "clarification_required"
+  ) {
     return "none";
   }
 

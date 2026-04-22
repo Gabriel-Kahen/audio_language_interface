@@ -22,167 +22,249 @@
       }
     },
     "result": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "result_kind",
-        "asset",
-        "input_version",
-        "input_analysis",
-        "follow_up_resolution",
-        "output_version",
-        "output_analysis",
-        "version_comparison_report",
-        "baseline_render",
-        "candidate_render",
-        "render_comparison_report",
-        "session_graph",
-        "trace"
-      ],
-      "properties": {
-        "result_kind": {
-          "type": "string",
-          "enum": ["applied", "reverted"]
-        },
-        "asset": { "$ref": "./audio-asset.schema.json" },
-        "input_version": { "$ref": "./audio-version.schema.json" },
-        "input_analysis": { "$ref": "./analysis-report.schema.json" },
-        "follow_up_resolution": {
-          "oneOf": [
-            {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "result_kind",
+            "asset",
+            "input_version",
+            "input_analysis",
+            "follow_up_resolution",
+            "clarification",
+            "session_graph",
+            "trace"
+          ],
+          "properties": {
+            "result_kind": {
+              "const": "clarification_required"
+            },
+            "asset": { "$ref": "./audio-asset.schema.json" },
+            "input_version": { "$ref": "./audio-version.schema.json" },
+            "input_analysis": { "$ref": "./analysis-report.schema.json" },
+            "follow_up_resolution": {
+              "$ref": "#/$defs/followUpResolution"
+            },
+            "semantic_profile": { "$ref": "./semantic-profile.schema.json" },
+            "intent_interpretation": { "$ref": "./intent-interpretation.schema.json" },
+            "clarification": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["kind", "resolved_user_request", "source"],
+              "required": ["question", "pending_clarification"],
               "properties": {
-                "kind": { "const": "apply" },
-                "resolved_user_request": {
-                  "$ref": "./common.schema.json#/$defs/nonEmptyString"
-                },
-                "source": {
-                  "type": "string",
-                  "enum": ["direct_request", "repeat_last_request", "try_another_version"]
-                },
-                "input_version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
-                "branch_id": {
-                  "type": "string",
-                  "pattern": "^branch_[A-Za-z0-9_]+$"
+                "question": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                "pending_clarification": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "original_user_request",
+                    "clarification_question",
+                    "source_version_id",
+                    "created_at"
+                  ],
+                  "properties": {
+                    "original_user_request": {
+                      "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                    },
+                    "clarification_question": {
+                      "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                    },
+                    "source_version_id": {
+                      "$ref": "./common.schema.json#/$defs/versionId"
+                    },
+                    "created_at": {
+                      "$ref": "./common.schema.json#/$defs/isoTimestamp"
+                    },
+                    "source_interpretation_id": {
+                      "$ref": "./common.schema.json#/$defs/nonEmptyString"
+                    }
+                  }
                 }
               }
             },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["kind", "target_version_id", "source"],
-              "properties": {
-                "kind": { "const": "revert" },
-                "target_version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
-                "source": {
-                  "type": "string",
-                  "enum": ["less", "undo", "revert"]
-                }
-              }
-            }
-          ]
+            "session_graph": { "$ref": "./session-graph.schema.json" },
+            "trace": { "$ref": "#/$defs/workflowTrace" }
+          }
         },
-        "semantic_profile": { "$ref": "./semantic-profile.schema.json" },
-        "intent_interpretation": { "$ref": "./intent-interpretation.schema.json" },
-        "edit_plan": { "$ref": "./edit-plan.schema.json" },
-        "output_version": { "$ref": "./audio-version.schema.json" },
-        "transform_record": { "$ref": "./transform-record.schema.json" },
-        "commands": {
-          "type": "array",
-          "items": { "$ref": "./common.schema.json#/$defs/toolCommand" }
-        },
-        "output_analysis": { "$ref": "./analysis-report.schema.json" },
-        "version_comparison_report": { "$ref": "./comparison-report.schema.json" },
-        "baseline_render": { "$ref": "./render-artifact.schema.json" },
-        "candidate_render": { "$ref": "./render-artifact.schema.json" },
-        "render_comparison_report": { "$ref": "./comparison-report.schema.json" },
-        "session_graph": { "$ref": "./session-graph.schema.json" },
-        "revision": {
+        {
           "type": "object",
           "additionalProperties": false,
-          "required": ["should_revise", "rationale", "source"],
+          "required": [
+            "result_kind",
+            "asset",
+            "input_version",
+            "input_analysis",
+            "follow_up_resolution",
+            "output_version",
+            "output_analysis",
+            "version_comparison_report",
+            "baseline_render",
+            "candidate_render",
+            "render_comparison_report",
+            "comparison_report",
+            "session_graph",
+            "trace"
+          ],
           "properties": {
-            "should_revise": { "type": "boolean" },
-            "rationale": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+            "result_kind": {
+              "type": "string",
+              "enum": ["applied", "reverted"]
+            },
+            "asset": { "$ref": "./audio-asset.schema.json" },
+            "input_version": { "$ref": "./audio-version.schema.json" },
+            "input_analysis": { "$ref": "./analysis-report.schema.json" },
+            "follow_up_resolution": {
+              "$ref": "#/$defs/followUpResolution"
+            },
+            "semantic_profile": { "$ref": "./semantic-profile.schema.json" },
+            "intent_interpretation": { "$ref": "./intent-interpretation.schema.json" },
+            "edit_plan": { "$ref": "./edit-plan.schema.json" },
+            "output_version": { "$ref": "./audio-version.schema.json" },
+            "transform_record": { "$ref": "./transform-record.schema.json" },
+            "commands": {
+              "type": "array",
+              "items": { "$ref": "./common.schema.json#/$defs/toolCommand" }
+            },
+            "output_analysis": { "$ref": "./analysis-report.schema.json" },
+            "version_comparison_report": { "$ref": "./comparison-report.schema.json" },
+            "baseline_render": { "$ref": "./render-artifact.schema.json" },
+            "candidate_render": { "$ref": "./render-artifact.schema.json" },
+            "render_comparison_report": { "$ref": "./comparison-report.schema.json" },
+            "comparison_report": { "$ref": "./comparison-report.schema.json" },
+            "session_graph": { "$ref": "./session-graph.schema.json" },
+            "revision": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["should_revise", "rationale", "source"],
+              "properties": {
+                "should_revise": { "type": "boolean" },
+                "rationale": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                "source": {
+                  "type": "string",
+                  "enum": ["disabled", "default_policy", "caller"]
+                }
+              }
+            },
+            "iterations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "iteration",
+                  "input_version",
+                  "output_version",
+                  "input_analysis",
+                  "output_analysis",
+                  "edit_plan",
+                  "comparison_report",
+                  "transform_record",
+                  "commands"
+                ],
+                "properties": {
+                  "iteration": { "type": "integer", "minimum": 1 },
+                  "input_version": { "$ref": "./audio-version.schema.json" },
+                  "output_version": { "$ref": "./audio-version.schema.json" },
+                  "input_analysis": { "$ref": "./analysis-report.schema.json" },
+                  "output_analysis": { "$ref": "./analysis-report.schema.json" },
+                  "semantic_profile": { "$ref": "./semantic-profile.schema.json" },
+                  "intent_interpretation": { "$ref": "./intent-interpretation.schema.json" },
+                  "edit_plan": { "$ref": "./edit-plan.schema.json" },
+                  "comparison_report": { "$ref": "./comparison-report.schema.json" },
+                  "transform_record": { "$ref": "./transform-record.schema.json" },
+                  "commands": {
+                    "type": "array",
+                    "items": { "$ref": "./common.schema.json#/$defs/toolCommand" }
+                  }
+                }
+              }
+            },
+            "trace": { "$ref": "#/$defs/workflowTrace" }
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "followUpResolution": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "resolved_user_request", "source"],
+          "properties": {
+            "kind": { "const": "apply" },
+            "resolved_user_request": {
+              "$ref": "./common.schema.json#/$defs/nonEmptyString"
+            },
             "source": {
               "type": "string",
-              "enum": ["disabled", "default_policy", "caller"]
+              "enum": [
+                "direct_request",
+                "clarification_answer",
+                "repeat_last_request",
+                "try_another_version"
+              ]
+            },
+            "input_version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+            "branch_id": {
+              "type": "string",
+              "pattern": "^branch_[A-Za-z0-9_]+$"
             }
           }
         },
-        "iterations": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "iteration",
-              "input_version",
-              "output_version",
-              "input_analysis",
-              "output_analysis",
-              "edit_plan",
-              "comparison_report",
-              "transform_record",
-              "commands"
-            ],
-            "properties": {
-              "iteration": { "type": "integer", "minimum": 1 },
-              "input_version": { "$ref": "./audio-version.schema.json" },
-              "output_version": { "$ref": "./audio-version.schema.json" },
-              "input_analysis": { "$ref": "./analysis-report.schema.json" },
-              "output_analysis": { "$ref": "./analysis-report.schema.json" },
-              "semantic_profile": { "$ref": "./semantic-profile.schema.json" },
-              "intent_interpretation": { "$ref": "./intent-interpretation.schema.json" },
-              "edit_plan": { "$ref": "./edit-plan.schema.json" },
-              "comparison_report": { "$ref": "./comparison-report.schema.json" },
-              "transform_record": { "$ref": "./transform-record.schema.json" },
-              "commands": {
-                "type": "array",
-                "items": { "$ref": "./common.schema.json#/$defs/toolCommand" }
-              }
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target_version_id", "source"],
+          "properties": {
+            "kind": { "const": "revert" },
+            "target_version_id": { "$ref": "./common.schema.json#/$defs/versionId" },
+            "source": {
+              "type": "string",
+              "enum": ["less", "undo", "revert"]
             }
           }
-        },
-        "trace": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["stage", "status", "started_at", "completed_at", "attempts"],
-            "properties": {
-              "stage": {
-                "type": "string",
-                "enum": [
-                  "import",
-                  "analyze_input",
-                  "resolve_follow_up",
-                  "prepare_follow_up_branch",
-                  "load_follow_up_input",
-                  "load_revert_target",
-                  "semantic_profile",
-                  "interpret_request",
-                  "plan",
-                  "apply",
-                  "analyze_output",
-                  "render_baseline",
-                  "render_candidate",
-                  "compare"
-                ]
-              },
-              "status": {
-                "type": "string",
-                "enum": ["ok", "error"]
-              },
-              "started_at": { "$ref": "./common.schema.json#/$defs/isoTimestamp" },
-              "completed_at": { "$ref": "./common.schema.json#/$defs/isoTimestamp" },
-              "attempts": { "type": "integer", "minimum": 1 },
-              "pass": { "type": "integer", "minimum": 1 },
-              "message": { "$ref": "./common.schema.json#/$defs/nonEmptyString" }
-            }
-          }
+        }
+      ]
+    },
+    "workflowTrace": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stage", "status", "started_at", "completed_at", "attempts"],
+        "properties": {
+          "stage": {
+            "type": "string",
+            "enum": [
+              "import",
+              "analyze_input",
+              "resolve_follow_up",
+              "resolve_clarification",
+              "prepare_follow_up_branch",
+              "load_follow_up_input",
+              "load_revert_target",
+              "semantic_profile",
+              "interpret_request",
+              "plan",
+              "apply",
+              "analyze_output",
+              "render_baseline",
+              "render_candidate",
+              "compare"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ok", "error"]
+          },
+          "started_at": { "$ref": "./common.schema.json#/$defs/isoTimestamp" },
+          "completed_at": { "$ref": "./common.schema.json#/$defs/isoTimestamp" },
+          "attempts": { "type": "integer", "minimum": 1 },
+          "pass": { "type": "integer", "minimum": 1 },
+          "message": { "$ref": "./common.schema.json#/$defs/nonEmptyString" }
         }
       }
     }

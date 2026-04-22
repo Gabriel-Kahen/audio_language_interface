@@ -130,6 +130,12 @@ export interface InterpretationSessionContext {
     | "undo"
     | "revert"
     | "try_another_version";
+  pending_clarification?: {
+    original_user_request: string;
+    clarification_question: string;
+    source_version_id: string;
+    source_interpretation_id?: string;
+  };
 }
 
 export interface InterpretationCacheStore {

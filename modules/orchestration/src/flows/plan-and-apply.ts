@@ -46,6 +46,14 @@ export async function planAndApply(options: PlanAndApplyOptions): Promise<PlanAn
         options.sessionGraph === undefined
           ? undefined
           : getVersionFollowUpRequest(options.sessionGraph, options.version.version_id);
+      const sessionContext = {
+        ...(options.interpretationSessionContext ?? {}),
+        current_version_id: options.version.version_id,
+        ...(previousRequest === undefined ? {} : { previous_request: previousRequest }),
+        ...(options.originalUserRequest === undefined
+          ? {}
+          : { original_user_request: options.originalUserRequest }),
+      };
 
       intentInterpretation =
         options.requestInterpretation === undefined
@@ -59,19 +67,7 @@ export async function planAndApply(options: PlanAndApplyOptions): Promise<PlanAn
                 ? {}
                 : { originalUserRequest: options.originalUserRequest }),
               interpretation: options.requestInterpretation,
-              ...(options.sessionGraph === undefined
-                ? {}
-                : {
-                    sessionContext: {
-                      current_version_id: options.version.version_id,
-                      ...(previousRequest === undefined
-                        ? {}
-                        : { previous_request: previousRequest }),
-                      ...(options.originalUserRequest === undefined
-                        ? {}
-                        : { original_user_request: options.originalUserRequest }),
-                    },
-                  }),
+              ...(Object.keys(sessionContext).length === 0 ? {} : { sessionContext }),
               interpretRequest: options.dependencies.interpretRequest,
             });
 
@@ -157,7 +153,10 @@ export async function planAndApply(options: PlanAndApplyOptions): Promise<PlanAn
       };
     },
     failurePolicy: options.failurePolicy,
-    getPartialResult: () => ({ semanticProfile }),
+    getPartialResult: () => ({
+      ...(semanticProfile === undefined ? {} : { semanticProfile }),
+      ...(intentInterpretation === undefined ? {} : { intentInterpretation }),
+    }),
     pass: options.pass,
     trace,
   });

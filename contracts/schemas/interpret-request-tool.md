@@ -36,6 +36,11 @@ The tool requires an explicit provider config. It does not read API keys from hi
 - `previous_request`
 - `original_user_request`
 - `follow_up_source`
+- `pending_clarification`
+  - `original_user_request`
+  - `clarification_question`
+  - `source_version_id`
+  - optional `source_interpretation_id`
 
 `interpretation_policy` is optional:
 

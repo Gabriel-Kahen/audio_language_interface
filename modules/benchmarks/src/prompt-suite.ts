@@ -25,6 +25,15 @@ export const INTERPRETATION_CORPUS_ID = "intent_interpretation_v1";
 export const LIVE_INTERPRETATION_CORPUS_ID = "intent_interpretation_live_v1";
 export const FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH = "fixtures/audio/manifest.json";
 export const FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID = "fixture_phase1_first_slice_loop_synthetic";
+const CONSERVATIVE_REQUEST_CYCLE_INTERPRETATION = {
+  mode: "llm_assisted" as const,
+  apiKey: "benchmark-key",
+  policy: "conservative" as const,
+  provider: {
+    kind: "openai" as const,
+    model: "gpt-5-mini",
+  },
+};
 
 export const firstPromptFamilyFixtureCorpus: ComparisonBenchmarkCorpus = {
   corpusId: FIRST_PROMPT_FAMILY_CORPUS_ID,
@@ -1579,6 +1588,50 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
           stage: "plan",
           failure_class: "supported_but_underspecified",
           message_includes: "could not derive an executable plan",
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_clean_it_llm_clarification_loop",
+      family: "first_prompt_family",
+      prompt: "clean it",
+      description:
+        "Conservative LLM-assisted interpretation should surface a first-class clarification result instead of a planning error.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      interpretation: CONSERVATIVE_REQUEST_CYCLE_INTERPRETATION,
+      expectation: {
+        planner: {
+          expected_result_kind: "clarification_required",
+          expected_follow_up_source: "direct_request",
+          require_pending_clarification: true,
+          clarification_question_includes: "Do you mean",
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_clean_it_llm_clarification_answer",
+      family: "first_prompt_family",
+      prompt: "make it darker and less harsh",
+      description:
+        "A clarification answer should resume the session-backed request cycle, clear the pending question, and continue planning.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      interpretation: CONSERVATIVE_REQUEST_CYCLE_INTERPRETATION,
+      setup_sequence: ["clean it"],
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          expected_follow_up_source: "clarification_answer",
+          required_operations: ["notch_filter", "tilt_eq"],
+          expected_operation_order: ["notch_filter", "tilt_eq"],
+          require_pending_clarification: false,
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "reduce upper-mid harshness": "met",
+            "tilt the overall balance slightly darker": "met",
+          },
         },
       },
     },

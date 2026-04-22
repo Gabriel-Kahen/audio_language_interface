@@ -59,7 +59,7 @@ Callers may still override any dependency for testing or alternate runtimes, but
 
 The returned result includes:
 
-- `result_kind = "applied" | "reverted"`
+- `result_kind = "applied" | "reverted" | "clarification_required"`
 - input and output versions
 - input and output analyses
 - follow-up resolution metadata
@@ -75,6 +75,13 @@ The returned result includes:
 - updated `SessionGraph`
 - stage-level workflow trace entries
 
+For clarification-required results, `runRequestCycle()` returns the current `inputVersion` and `inputAnalysis` plus a `clarification` object instead of output/render/comparison artifacts. That clarification object carries:
+
+- `question`
+- `pendingClarification`
+
+The same pending clarification state is also written to `sessionGraph.metadata.pending_clarification` so the next explicit request-cycle call can resume without hidden orchestration state.
+
 ## Failure behavior
 
 Each public flow uses stage-aware error wrapping.
@@ -84,6 +91,7 @@ Each public flow uses stage-aware error wrapping.
 - `error.partialResult` contains the latest safe partial artifacts when available
 - follow-up resolution inside `runRequestCycle` is its own `resolve_follow_up` stage, so failures there still include analyzed input context and a partial `sessionGraph`
 - `runRequestCycle` attempts to persist any already-established history into `error.partialResult.sessionGraph`, including imported inputs, completed analysis, completed planning artifacts, and any renders produced before the failure
+- when conservative interpretation asks for clarification, `runRequestCycle()` now returns a success result with `result_kind = "clarification_required"` instead of throwing a planner failure
 - `FailurePolicy` can increase per-stage attempts and add retry decisions
 
 The default behavior is one attempt with no retries.
@@ -158,8 +166,10 @@ That interpretation step stays above deterministic planning:
 - orchestration records the original and resolved user requests in the returned artifact
 - the interpreter returns a contract-valid `IntentInterpretation` explicitly
 - the returned artifact records whether the interpretation used `conservative` or `best_effort` ambiguity handling
-- orchestration passes explicit session context such as the current version id, original user request, and prior request when that context exists
+- orchestration passes explicit session context such as the current version id, original user request, prior request, and any pending clarification when that context exists
 - `modules/planning` still receives one concrete planner-facing request string plus the usual validated `SemanticProfile`
+- if conservative interpretation returns `next_action = "clarify"`, orchestration records `pending_clarification` in the session graph and returns a first-class clarification result instead of silently failing planning
+- when the next explicit request arrives against the same session graph, orchestration forwards that pending clarification context back into interpretation and marks `followUpResolution.source = "clarification_answer"` when the request resumes from that state
 
 Orchestration now verifies that the loaded historical `AudioVersion` matches:
 

@@ -81,6 +81,14 @@ export interface ProvenanceRecord {
   candidate_ref_type?: "version" | "render";
 }
 
+export interface PendingClarification {
+  original_user_request: string;
+  clarification_question: string;
+  source_version_id: string;
+  created_at: string;
+  source_interpretation_id?: string;
+}
+
 export interface SessionMetadata {
   branches?: SessionBranch[];
   snapshots?: SessionSnapshot[];
@@ -88,6 +96,7 @@ export interface SessionMetadata {
   active_ref_history_index?: number;
   provenance?: Record<string, ProvenanceRecord>;
   plan_requests?: Record<string, string>;
+  pending_clarification?: PendingClarification;
   [key: string]: unknown;
 }
 
@@ -533,6 +542,10 @@ export function normalizeMetadata(metadata?: SessionMetadata): SessionMetadata {
     normalized.active_ref_history_index = metadata.active_ref_history_index;
   }
 
+  if (metadata?.pending_clarification !== undefined) {
+    normalized.pending_clarification = { ...metadata.pending_clarification };
+  }
+
   return normalized;
 }
 
@@ -558,6 +571,38 @@ export function getVersionFollowUpRequest(
   }
 
   return metadata.plan_requests?.[planId];
+}
+
+export function getPendingClarification(graph: SessionGraph): PendingClarification | undefined {
+  return normalizeMetadata(graph.metadata).pending_clarification;
+}
+
+export function setPendingClarification(
+  graph: SessionGraph,
+  pendingClarification: PendingClarification,
+): SessionGraph {
+  return {
+    ...graph,
+    updated_at: pendingClarification.created_at,
+    metadata: {
+      ...normalizeMetadata(graph.metadata),
+      pending_clarification: { ...pendingClarification },
+    },
+  };
+}
+
+export function clearPendingClarification(graph: SessionGraph, clearedAt: string): SessionGraph {
+  const metadata = normalizeMetadata(graph.metadata);
+  if (metadata.pending_clarification === undefined) {
+    return graph;
+  }
+
+  const { pending_clarification: _pendingClarification, ...restMetadata } = metadata;
+  return {
+    ...graph,
+    updated_at: clearedAt,
+    metadata: restMetadata,
+  };
 }
 
 function formatAjvErrors(errors: ErrorObject[]): ValidationIssue[] {

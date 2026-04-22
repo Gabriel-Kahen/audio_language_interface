@@ -7,8 +7,9 @@ import {
   type SessionGraph,
 } from "@audio-language-interface/history";
 import {
+  type AppliedOrRevertedRequestCycleResult,
+  type ClarificationRequiredRequestCycleResult,
   OrchestrationStageError,
-  type RequestCycleResult,
 } from "@audio-language-interface/orchestration";
 import { describe, expect, it, vi } from "vitest";
 import { ToolInputError } from "../src/errors.js";
@@ -150,7 +151,7 @@ function buildRequest(overrides: Partial<ToolRequest>): ToolRequest {
   };
 }
 
-function buildRequestCycleResult(): RequestCycleResult {
+function buildRequestCycleResult(): AppliedOrRevertedRequestCycleResult {
   const asset = buildAudioAsset();
   const inputVersion = buildAudioVersion("ver_input");
   const outputVersion = buildAudioVersion("ver_output", inputVersion.version_id);
@@ -173,9 +174,9 @@ function buildRequestCycleResult(): RequestCycleResult {
 
   return {
     result_kind: "applied",
-    asset: asset as unknown as RequestCycleResult["asset"],
-    inputVersion: inputVersion as unknown as RequestCycleResult["inputVersion"],
-    inputAnalysis: inputAnalysis as unknown as RequestCycleResult["inputAnalysis"],
+    asset: asset as unknown as AppliedOrRevertedRequestCycleResult["asset"],
+    inputVersion: inputVersion as unknown as AppliedOrRevertedRequestCycleResult["inputVersion"],
+    inputAnalysis: inputAnalysis as unknown as AppliedOrRevertedRequestCycleResult["inputAnalysis"],
     followUpResolution: {
       kind: "apply",
       resolvedUserRequest: "Make it darker.",
@@ -186,12 +187,16 @@ function buildRequestCycleResult(): RequestCycleResult {
     iterations: [
       {
         iteration: 1,
-        inputVersion: inputVersion as unknown as RequestCycleResult["inputVersion"],
-        outputVersion: outputVersion as unknown as RequestCycleResult["outputVersion"],
-        inputAnalysis: inputAnalysis as unknown as RequestCycleResult["inputAnalysis"],
-        outputAnalysis: outputAnalysis as unknown as RequestCycleResult["outputAnalysis"],
+        inputVersion:
+          inputVersion as unknown as AppliedOrRevertedRequestCycleResult["inputVersion"],
+        outputVersion:
+          outputVersion as unknown as AppliedOrRevertedRequestCycleResult["outputVersion"],
+        inputAnalysis:
+          inputAnalysis as unknown as AppliedOrRevertedRequestCycleResult["inputAnalysis"],
+        outputAnalysis:
+          outputAnalysis as unknown as AppliedOrRevertedRequestCycleResult["outputAnalysis"],
         semanticProfile: semanticProfile as unknown as NonNullable<
-          RequestCycleResult["semanticProfile"]
+          AppliedOrRevertedRequestCycleResult["semanticProfile"]
         >,
         intentInterpretation: {
           schema_version: "1.0.0",
@@ -218,13 +223,16 @@ function buildRequestCycleResult(): RequestCycleResult {
           },
           generated_at: "2026-04-21T20:25:00Z",
         },
-        editPlan: editPlan as unknown as NonNullable<RequestCycleResult["editPlan"]>,
+        editPlan: editPlan as unknown as NonNullable<
+          AppliedOrRevertedRequestCycleResult["editPlan"]
+        >,
         comparisonReport:
-          comparisonReport as unknown as RequestCycleResult["versionComparisonReport"],
+          comparisonReport as unknown as AppliedOrRevertedRequestCycleResult["versionComparisonReport"],
         transformResult: {
-          outputVersion: outputVersion as unknown as RequestCycleResult["outputVersion"],
+          outputVersion:
+            outputVersion as unknown as AppliedOrRevertedRequestCycleResult["outputVersion"],
           transformRecord: transformRecord as unknown as NonNullable<
-            RequestCycleResult["transformResult"]
+            AppliedOrRevertedRequestCycleResult["transformResult"]
           >["transformRecord"],
           commands: [
             {
@@ -243,7 +251,7 @@ function buildRequestCycleResult(): RequestCycleResult {
       source: "default_policy",
     },
     semanticProfile: semanticProfile as unknown as NonNullable<
-      RequestCycleResult["semanticProfile"]
+      AppliedOrRevertedRequestCycleResult["semanticProfile"]
     >,
     intentInterpretation: {
       schema_version: "1.0.0",
@@ -270,12 +278,13 @@ function buildRequestCycleResult(): RequestCycleResult {
       },
       generated_at: "2026-04-21T20:25:00Z",
     },
-    editPlan: editPlan as unknown as NonNullable<RequestCycleResult["editPlan"]>,
-    outputVersion: outputVersion as unknown as RequestCycleResult["outputVersion"],
+    editPlan: editPlan as unknown as NonNullable<AppliedOrRevertedRequestCycleResult["editPlan"]>,
+    outputVersion: outputVersion as unknown as AppliedOrRevertedRequestCycleResult["outputVersion"],
     transformResult: {
-      outputVersion: outputVersion as unknown as RequestCycleResult["outputVersion"],
+      outputVersion:
+        outputVersion as unknown as AppliedOrRevertedRequestCycleResult["outputVersion"],
       transformRecord: transformRecord as unknown as NonNullable<
-        RequestCycleResult["transformResult"]
+        AppliedOrRevertedRequestCycleResult["transformResult"]
       >["transformRecord"],
       commands: [
         {
@@ -286,15 +295,19 @@ function buildRequestCycleResult(): RequestCycleResult {
       ],
       warnings: [],
     },
-    outputAnalysis: outputAnalysis as unknown as RequestCycleResult["outputAnalysis"],
+    outputAnalysis:
+      outputAnalysis as unknown as AppliedOrRevertedRequestCycleResult["outputAnalysis"],
     versionComparisonReport:
-      comparisonReport as unknown as RequestCycleResult["versionComparisonReport"],
-    baselineRender: renderArtifact as unknown as RequestCycleResult["baselineRender"],
-    candidateRender: renderArtifact as unknown as RequestCycleResult["candidateRender"],
+      comparisonReport as unknown as AppliedOrRevertedRequestCycleResult["versionComparisonReport"],
+    baselineRender:
+      renderArtifact as unknown as AppliedOrRevertedRequestCycleResult["baselineRender"],
+    candidateRender:
+      renderArtifact as unknown as AppliedOrRevertedRequestCycleResult["candidateRender"],
     renderComparisonReport:
-      comparisonReport as unknown as RequestCycleResult["renderComparisonReport"],
-    comparisonReport: comparisonReport as unknown as RequestCycleResult["comparisonReport"],
-    sessionGraph,
+      comparisonReport as unknown as AppliedOrRevertedRequestCycleResult["renderComparisonReport"],
+    comparisonReport:
+      comparisonReport as unknown as AppliedOrRevertedRequestCycleResult["comparisonReport"],
+    sessionGraph: sessionGraph as AppliedOrRevertedRequestCycleResult["sessionGraph"],
     trace: [
       {
         stage: "resolve_follow_up",
@@ -308,6 +321,89 @@ function buildRequestCycleResult(): RequestCycleResult {
         status: "ok",
         started_at: "2026-04-21T20:20:01Z",
         completed_at: "2026-04-21T20:20:02Z",
+        attempts: 1,
+      },
+    ],
+  };
+}
+
+function buildClarificationRequestCycleResult(): ClarificationRequiredRequestCycleResult {
+  const asset = buildAudioAsset();
+  const inputVersion = buildAudioVersion("ver_input");
+  const inputAnalysis = buildAnalysis("analysis_input", inputVersion.version_id);
+  const semanticProfile = readExample<Record<string, unknown>>(
+    "contracts/examples/semantic-profile.json",
+  );
+  const sessionGraph = buildSessionGraph(asset, [inputVersion]);
+  sessionGraph.metadata = {
+    ...(sessionGraph.metadata ?? {}),
+    pending_clarification: {
+      original_user_request: "clean it",
+      clarification_question: "Do you mean reduce noise, tame harshness, or make it darker?",
+      source_version_id: inputVersion.version_id,
+      created_at: "2026-04-22T16:45:00Z",
+      source_interpretation_id: "interpret_clarify123",
+    },
+  };
+
+  return {
+    result_kind: "clarification_required",
+    asset: asset as unknown as ClarificationRequiredRequestCycleResult["asset"],
+    inputVersion:
+      inputVersion as unknown as ClarificationRequiredRequestCycleResult["inputVersion"],
+    inputAnalysis:
+      inputAnalysis as unknown as ClarificationRequiredRequestCycleResult["inputAnalysis"],
+    followUpResolution: {
+      kind: "apply",
+      resolvedUserRequest: "clean it",
+      source: "direct_request",
+    },
+    semanticProfile: semanticProfile as unknown as NonNullable<
+      ClarificationRequiredRequestCycleResult["semanticProfile"]
+    >,
+    intentInterpretation: {
+      schema_version: "1.0.0",
+      interpretation_id: "interpret_clarify123",
+      interpretation_policy: "conservative",
+      asset_id: asset.asset_id,
+      version_id: inputVersion.version_id,
+      analysis_report_id: inputAnalysis.report_id,
+      semantic_profile_id: String(
+        (semanticProfile as Record<string, unknown>).profile_id ?? "semantic_profile_id",
+      ),
+      user_request: "clean it",
+      normalized_request: "clean it",
+      request_classification: "supported_but_underspecified",
+      next_action: "clarify",
+      normalized_objectives: [],
+      candidate_descriptors: [],
+      clarification_question: "Do you mean reduce noise, tame harshness, or make it darker?",
+      rationale: "Broad cleanup wording needs a more explicit supported direction.",
+      confidence: 0.41,
+      provider: {
+        kind: "openai",
+        model: "gpt-5-mini",
+        prompt_version: "intent_v1",
+      },
+      generated_at: "2026-04-22T16:45:00Z",
+    },
+    clarification: {
+      question: "Do you mean reduce noise, tame harshness, or make it darker?",
+      pendingClarification: {
+        original_user_request: "clean it",
+        clarification_question: "Do you mean reduce noise, tame harshness, or make it darker?",
+        source_version_id: inputVersion.version_id,
+        created_at: "2026-04-22T16:45:00Z",
+        source_interpretation_id: "interpret_clarify123",
+      },
+    },
+    sessionGraph: sessionGraph as ClarificationRequiredRequestCycleResult["sessionGraph"],
+    trace: [
+      {
+        stage: "plan",
+        status: "error",
+        started_at: "2026-04-22T16:45:00Z",
+        completed_at: "2026-04-22T16:45:00Z",
         attempts: 1,
       },
     ],
@@ -367,6 +463,10 @@ describe("run_request_cycle tool", () => {
       branch_id: "branch_alt_example_1",
       input_version_id: "ver_input",
     });
+    expect(response.result?.comparison_report).toMatchObject({
+      comparison_id: "compare_01HZX8I7J2V3M4N5P6Q7R8S9T0",
+    });
+    expect(response.result?.comparison_report).toEqual(response.result?.render_comparison_report);
     expect(response.result?.session_graph).toBeDefined();
     expect(response.result?.trace).toEqual(expect.any(Array));
 
@@ -463,6 +563,55 @@ describe("run_request_cycle tool", () => {
         }),
       ]),
     );
+  });
+
+  it("returns clarification-required results as a success response with explicit pending state", async () => {
+    const asset = buildAudioAsset();
+    const currentVersion = buildAudioVersion("ver_current");
+    const sessionGraph = buildSessionGraph(asset, [currentVersion]);
+    const requestCycleResult = buildClarificationRequestCycleResult();
+    const runRequestCycle = vi.fn().mockResolvedValue(requestCycleResult);
+
+    const response = await executeToolRequest(
+      buildRequest({
+        session_id: sessionGraph.session_id,
+        asset_id: asset.asset_id,
+        version_id: currentVersion.version_id,
+        arguments: {
+          user_request: "clean it",
+          interpretation: {
+            mode: "llm_assisted",
+            api_key: "test-key",
+            policy: "conservative",
+            provider: {
+              kind: "openai",
+              model: "gpt-5-mini",
+            },
+          },
+          input: {
+            kind: "existing",
+            asset,
+            audio_version: currentVersion,
+            session_graph: sessionGraph,
+          },
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/ali-tools",
+        runtime: { runRequestCycle } satisfies Partial<ToolsRuntime>,
+      },
+    );
+
+    expect(response.status).toBe("ok");
+    expect(response.result).toMatchObject({
+      result_kind: "clarification_required",
+      clarification: {
+        question: expect.stringContaining("Do you mean"),
+        pending_clarification: {
+          original_user_request: "clean it",
+        },
+      },
+    });
   });
 
   it("rejects existing-input requests when the request session id does not match the session graph", async () => {

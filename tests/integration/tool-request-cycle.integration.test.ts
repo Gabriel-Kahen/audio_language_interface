@@ -286,6 +286,201 @@ describe("run_request_cycle tool integration", () => {
     });
   });
 
+  it("surfaces clarification-required results and resumes from the next answer through the tool surface", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const inputPath = path.join(workspaceRoot, "fixtures", "tone.wav");
+      await writeFixtureWav(inputPath, { sampleRateHz: 44_100, durationSeconds: 1 });
+
+      const runtime = {
+        runRequestCycle: (options: Parameters<typeof runRequestCycle>[0]) =>
+          runRequestCycle({
+            ...options,
+            dependencies: {
+              ...options.dependencies,
+              interpretRequest: async ({
+                userRequest,
+                sessionContext,
+                audioVersion,
+                analysisReport,
+                semanticProfile,
+              }) => {
+                if (userRequest === "clean it") {
+                  return {
+                    schema_version: "1.0.0",
+                    interpretation_id: "interpret_toolclarify1",
+                    interpretation_policy: "conservative",
+                    asset_id: audioVersion.asset_id,
+                    version_id: audioVersion.version_id,
+                    analysis_report_id: analysisReport.report_id,
+                    semantic_profile_id: semanticProfile.profile_id,
+                    user_request: userRequest,
+                    normalized_request: "clean it",
+                    request_classification: "supported_but_underspecified",
+                    next_action: "clarify",
+                    normalized_objectives: [],
+                    candidate_descriptors: [],
+                    clarification_question:
+                      "Do you mean reduce noise, tame harshness, or make it darker?",
+                    rationale: "Broad cleanup wording needs one explicit supported direction.",
+                    confidence: 0.41,
+                    provider: {
+                      kind: "openai",
+                      model: "gpt-5-mini",
+                      prompt_version: "intent_v1",
+                    },
+                    generated_at: "2026-04-22T16:30:00Z",
+                  };
+                }
+
+                expect(sessionContext?.pending_clarification).toMatchObject({
+                  original_user_request: "clean it",
+                });
+                return {
+                  schema_version: "1.0.0",
+                  interpretation_id: "interpret_toolclarify2",
+                  interpretation_policy: "conservative",
+                  asset_id: audioVersion.asset_id,
+                  version_id: audioVersion.version_id,
+                  analysis_report_id: analysisReport.report_id,
+                  semantic_profile_id: semanticProfile.profile_id,
+                  user_request: userRequest,
+                  normalized_request: "Make this loop darker.",
+                  request_classification: "supported",
+                  next_action: "plan",
+                  normalized_objectives: ["darker"],
+                  candidate_descriptors: ["dark"],
+                  rationale: "The clarification answer resolved the earlier cleanup ambiguity.",
+                  confidence: 0.82,
+                  provider: {
+                    kind: "openai",
+                    model: "gpt-5-mini",
+                    prompt_version: "intent_v1",
+                  },
+                  generated_at: "2026-04-22T16:30:01Z",
+                };
+              },
+              applyEditPlan: async (applyOptions) =>
+                defaultOrchestrationDependencies.applyEditPlan({
+                  ...applyOptions,
+                  executor: copyAudioExecutor,
+                }),
+              renderPreview: async (renderOptions) =>
+                defaultOrchestrationDependencies.renderPreview({
+                  ...renderOptions,
+                  executor: copyAudioExecutor,
+                  probeExecutor: createProbeExecutor({
+                    format: "mp3",
+                    codec: "mp3",
+                    sampleRateHz:
+                      renderOptions.sampleRateHz ?? renderOptions.version.audio.sample_rate_hz,
+                    channels: renderOptions.channels ?? renderOptions.version.audio.channels,
+                    durationSeconds: renderOptions.version.audio.duration_seconds,
+                  }),
+                }),
+              renderExport: async (renderOptions) =>
+                defaultOrchestrationDependencies.renderExport({
+                  ...renderOptions,
+                  executor: copyAudioExecutor,
+                  probeExecutor: createProbeExecutor({
+                    format: renderOptions.format ?? "wav",
+                    codec: renderOptions.format === "flac" ? "flac" : "pcm_s16le",
+                    sampleRateHz:
+                      renderOptions.sampleRateHz ?? renderOptions.version.audio.sample_rate_hz,
+                    channels: renderOptions.channels ?? renderOptions.version.audio.channels,
+                    durationSeconds: renderOptions.version.audio.duration_seconds,
+                  }),
+                }),
+            },
+          }),
+      };
+
+      const first = await executeToolRequest(
+        {
+          schema_version: "1.0.0",
+          request_id: "toolreq_cycleclarify1",
+          tool_name: "run_request_cycle",
+          requested_at: "2026-04-22T16:30:00Z",
+          session_id: "session_toolclarify",
+          arguments: {
+            user_request: "clean it",
+            interpretation: {
+              mode: "llm_assisted",
+              api_key: "test-key",
+              policy: "conservative",
+              provider: {
+                kind: "openai",
+                model: "gpt-5-mini",
+              },
+            },
+            input: {
+              kind: "import",
+              input_path: inputPath,
+            },
+          },
+        },
+        {
+          workspaceRoot,
+          runtime,
+        },
+      );
+
+      expect(first.status).toBe("ok");
+      expect(first.result).toMatchObject({
+        result_kind: "clarification_required",
+        clarification: {
+          question: expect.stringContaining("Do you mean"),
+        },
+      });
+      const firstResult = extractSuccessfulResult(first);
+
+      const second = await executeToolRequest(
+        {
+          schema_version: "1.0.0",
+          request_id: "toolreq_cycleclarify2",
+          tool_name: "run_request_cycle",
+          requested_at: "2026-04-22T16:30:01Z",
+          session_id: "session_toolclarify",
+          asset_id: String((firstResult.asset as Record<string, unknown>).asset_id),
+          version_id: String((firstResult.input_version as Record<string, unknown>).version_id),
+          arguments: {
+            user_request: "Make it darker.",
+            interpretation: {
+              mode: "llm_assisted",
+              api_key: "test-key",
+              policy: "conservative",
+              provider: {
+                kind: "openai",
+                model: "gpt-5-mini",
+              },
+            },
+            input: {
+              kind: "existing",
+              asset: firstResult.asset,
+              audio_version: firstResult.input_version,
+              session_graph: firstResult.session_graph,
+              available_versions: [firstResult.input_version],
+            },
+          },
+        },
+        {
+          workspaceRoot,
+          runtime,
+        },
+      );
+
+      expect(second.status).toBe("ok");
+      const secondResult = extractSuccessfulResult(second);
+      expect(secondResult.result_kind).toBe("applied");
+      expect(secondResult.follow_up_resolution).toMatchObject({
+        kind: "apply",
+        source: "clarification_answer",
+      });
+      expect((secondResult.session_graph as Record<string, unknown>).metadata).not.toMatchObject({
+        pending_clarification: expect.anything(),
+      });
+    });
+  }, 20_000);
+
   it("returns an explicit error when follow-up history is not materialized through available_versions", async () => {
     await withTempWorkspace(async (workspaceRoot) => {
       const inputPath = path.join(workspaceRoot, "fixtures", "tone.wav");

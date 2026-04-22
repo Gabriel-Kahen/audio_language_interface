@@ -50,6 +50,12 @@ interface InterpretRequestArguments {
       | "undo"
       | "revert"
       | "try_another_version";
+    pendingClarification?: {
+      originalUserRequest: string;
+      clarificationQuestion: string;
+      sourceVersionId: string;
+      sourceInterpretationId?: string;
+    };
   };
 }
 
@@ -178,6 +184,35 @@ function validateArguments(value: unknown, request: ToolRequest): InterpretReque
       >;
     }
 
+    if (sessionContextRecord.pending_clarification !== undefined) {
+      const pendingClarification = expectRecord(
+        sessionContextRecord.pending_clarification,
+        "arguments.session_context.pending_clarification",
+      );
+      parsedSessionContext.pendingClarification = {
+        originalUserRequest: expectString(
+          pendingClarification.original_user_request,
+          "arguments.session_context.pending_clarification.original_user_request",
+        ),
+        clarificationQuestion: expectString(
+          pendingClarification.clarification_question,
+          "arguments.session_context.pending_clarification.clarification_question",
+        ),
+        sourceVersionId: expectString(
+          pendingClarification.source_version_id,
+          "arguments.session_context.pending_clarification.source_version_id",
+        ),
+        ...(pendingClarification.source_interpretation_id === undefined
+          ? {}
+          : {
+              sourceInterpretationId: expectString(
+                pendingClarification.source_interpretation_id,
+                "arguments.session_context.pending_clarification.source_interpretation_id",
+              ),
+            }),
+      };
+    }
+
     sessionContext = parsedSessionContext;
   }
 
@@ -259,6 +294,24 @@ export const interpretRequestTool: ToolDefinition<
               ...(args.sessionContext.followUpSource === undefined
                 ? {}
                 : { follow_up_source: args.sessionContext.followUpSource }),
+              ...(args.sessionContext.pendingClarification === undefined
+                ? {}
+                : {
+                    pending_clarification: {
+                      original_user_request:
+                        args.sessionContext.pendingClarification.originalUserRequest,
+                      clarification_question:
+                        args.sessionContext.pendingClarification.clarificationQuestion,
+                      source_version_id: args.sessionContext.pendingClarification.sourceVersionId,
+                      ...(args.sessionContext.pendingClarification.sourceInterpretationId ===
+                      undefined
+                        ? {}
+                        : {
+                            source_interpretation_id:
+                              args.sessionContext.pendingClarification.sourceInterpretationId,
+                          }),
+                    },
+                  }),
             },
           }),
       ...(args.promptVersion === undefined ? {} : { promptVersion: args.promptVersion }),

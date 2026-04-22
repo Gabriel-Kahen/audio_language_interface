@@ -71,13 +71,16 @@ It may also consume the optional `interpretation` adapter when callers opt into 
 - `runRequestCycle` now exposes the final version-level comparison directly as `result.versionComparisonReport`, while preserving the final render-to-render comparison as `result.renderComparisonReport` and the legacy compatibility alias `result.comparisonReport`.
 - `resolveFollowUpRequest` can safely expand `more` to the last recorded request, resolve `less` and explicit revert wording against version ancestry, resolve `undo` against explicit active-ref history, and branch `try another version` from the prior baseline when the required session provenance exists.
 - LLM-assisted interpretation stays explicit and opt-in: callers must provide `options.interpretation` plus an `interpretRequest` dependency, and orchestration returns `intentInterpretation` artifacts so the normalized planner request and the chosen `conservative` vs `best_effort` policy stay inspectable.
+- When conservative interpretation returns `next_action = "clarify"`, `runRequestCycle` now returns `result_kind = "clarification_required"` instead of throwing a planner failure, and it records `metadata.pending_clarification` in the returned `SessionGraph`.
+- The next explicit request-cycle call can resume from that state by passing the updated `SessionGraph` back in through `input.kind = "existing"`. Orchestration forwards that pending clarification context into interpretation and marks the resumed apply flow as `followUpResolution.source = "clarification_answer"`.
 
 ## Current limitations
 
 - Orchestration depends on the same current module capabilities as the underlying runtime and intent layers. It does not add hidden planning breadth, hidden transform support, or alternate capability discovery on top of them.
 - Revert-like and alternate-version follow-ups are fully executable when the caller provides `getAudioVersionById`, which lets orchestration materialize the referenced historical `AudioVersion` artifact explicitly before re-analyzing, branching, re-rendering, or reverting it.
 - When `runRequestCycle` performs a second pass, the final render comparison still compares the original input against the final output. The final version comparison is also surfaced at `result.versionComparisonReport`, while the per-pass version comparisons remain available in `result.iterations` and are also recorded into session history.
-- Interpretation artifacts are not persisted into `SessionGraph` today. They are returned explicitly in `RequestCycleResult` and `iterations[]`, and callers must opt into interpretation again on later request-cycle invocations.
+- Interpretation artifacts themselves are not persisted into `SessionGraph` today. They are returned explicitly in `RequestCycleResult` and `iterations[]`, and callers must opt into interpretation again on later request-cycle invocations.
+- Clarification state is persisted explicitly in `SessionGraph.metadata.pending_clarification`, but only as the minimal resume token needed to ask and answer a clarification question safely.
 - When interpretation is enabled, orchestration now passes explicit session context such as `previous_request`, `original_user_request`, and the current version id into the interpretation layer so fuzzy follow-up language can be normalized without moving follow-up resolution out of `history` and orchestration.
 - It does not provide hidden persistence, job scheduling, or service hosting behavior.
 - There is no dedicated CLI or app entrypoint that wraps these orchestration APIs yet.

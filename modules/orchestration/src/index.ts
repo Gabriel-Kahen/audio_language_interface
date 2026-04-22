@@ -67,9 +67,11 @@ export const defaultOrchestrationDependencies: OrchestrationDependencies = {
 
 export type {
   AnalysisReport,
+  AppliedOrRevertedRequestCycleResult,
   ApplyTransformsResult,
   AudioAsset,
   AudioVersion,
+  ClarificationRequiredRequestCycleResult,
   ComparisonReport,
   EditPlan,
   FailurePolicy,
@@ -99,4 +101,8 @@ export type {
   SessionGraph,
   WorkflowStage,
   WorkflowTraceEntry,
+} from "./types.js";
+export {
+  isAppliedOrRevertedRequestCycleResult,
+  isClarificationRequiredRequestCycleResult,
 } from "./types.js";
