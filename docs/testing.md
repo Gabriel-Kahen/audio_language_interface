@@ -112,7 +112,7 @@ The benchmark layer now has four distinct uses:
 
 - compare-only benchmark cases for direct `ComparisonReport` evaluation
 - interpretation-only benchmark cases for direct `IntentInterpretation` evaluation
-- live interpretation benchmark execution for real OpenAI/Google `interpretRequest(...)` calls against the curated interpretation corpus
+- live interpretation benchmark execution for real OpenAI/Google/Codex CLI `interpretRequest(...)` calls against the curated interpretation corpus
 - request-cycle benchmark execution plus scoring/reporting for full orchestration-cycle evaluation
 
 The request-cycle benchmark mode should be read conservatively. Its scores are useful because they separate:
@@ -146,8 +146,11 @@ OPENAI_API_KEY=... GOOGLE_API_KEY=... pnpm run bench:interpretation:live
 
 Optional environment controls:
 
-- `LIVE_INTERPRETATION_PROVIDERS=openai,google`
+- `LIVE_INTERPRETATION_PROVIDERS=openai,google,codex_cli`
 - `OPENAI_MODEL=...`
+- `CODEX_CLI_MODEL=...`
+- `CODEX_CLI_PROFILE=...`
+- `CODEX_CLI_PATH=...`
 - `GOOGLE_MODEL=...`
 - `LIVE_INTERPRETATION_CASES=live_interpret_clean_it_conservative,live_interpret_clean_it_best_effort`
 

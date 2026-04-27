@@ -40,14 +40,17 @@ Important session-aware constraint:
 When `arguments.interpretation` is present, it is an explicit opt-in object:
 
 - `mode = "llm_assisted"`
-- `api_key`
 - optional `policy`
 - `provider.kind`
-- `provider.model`
-- optional `provider.api_base_url`
-- optional `provider.temperature`
+- `api_key` for `openai` and `google`
+- `provider.model` for `openai` and `google`
+- optional `provider.model` for `codex_cli`
+- optional `provider.api_base_url` for `openai` and `google`
+- optional `provider.temperature` for `openai` and `google`
 - optional `provider.timeout_ms`
 - optional `provider.max_retries`
+- optional `provider.codex_path` for `codex_cli`
+- optional `provider.profile` for `codex_cli`
 - optional `prompt_version`
 
 `arguments.interpretation.policy` accepts:

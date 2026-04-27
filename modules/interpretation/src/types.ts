@@ -7,7 +7,8 @@ export const CONTRACT_SCHEMA_VERSION = "1.0.0" as const;
 export const DEFAULT_PROMPT_VERSION = "intent_v1" as const;
 export const DEFAULT_INTERPRETATION_POLICY = "conservative" as const;
 
-export type InterpretationProviderKind = "openai" | "google";
+export type RemoteInterpretationProviderKind = "openai" | "google";
+export type InterpretationProviderKind = RemoteInterpretationProviderKind | "codex_cli";
 export type InterpretationNextAction = "plan" | "clarify" | "refuse";
 export type InterpretationPolicy = "conservative" | "best_effort";
 export type DescriptorHypothesisStatus = "supported" | "weak" | "contradicted" | "unresolved";
@@ -109,8 +110,8 @@ export interface IntentInterpretation {
   generated_at: string;
 }
 
-export interface InterpretationProviderConfig {
-  kind: InterpretationProviderKind;
+export interface RemoteInterpretationProviderConfig {
+  kind: RemoteInterpretationProviderKind;
   apiKey: string;
   model: string;
   baseUrl?: string;
@@ -118,6 +119,19 @@ export interface InterpretationProviderConfig {
   timeoutMs?: number;
   maxRetries?: number;
 }
+
+export interface CodexCliInterpretationProviderConfig {
+  kind: "codex_cli";
+  model?: string;
+  codexPath?: string;
+  profile?: string;
+  timeoutMs?: number;
+  maxRetries?: number;
+}
+
+export type InterpretationProviderConfig =
+  | RemoteInterpretationProviderConfig
+  | CodexCliInterpretationProviderConfig;
 
 export interface InterpretationSessionContext {
   current_version_id?: string;

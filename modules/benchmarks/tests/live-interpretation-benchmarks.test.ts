@@ -273,7 +273,10 @@ function createInterpretation(
     confidence: 0.78,
     provider: {
       kind: options.provider.kind,
-      model: options.provider.model,
+      model:
+        options.provider.kind === "codex_cli"
+          ? (options.provider.model ?? options.provider.profile ?? "codex-cli-default")
+          : options.provider.model,
       prompt_version: options.promptVersion ?? "intent_v2",
       cached: false,
       response_ms: 42,

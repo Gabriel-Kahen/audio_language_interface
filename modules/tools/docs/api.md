@@ -67,7 +67,10 @@ Returns an `intent_interpretation` artifact containing a provider-backed but con
 
 This tool does not emit an `EditPlan`. It exists so callers can inspect or cache request interpretation separately from deterministic planning.
 
-`provider` also accepts optional `api_base_url`, `temperature`, `timeout_ms`, and `max_retries`.
+`provider` supports three explicit kinds:
+
+- `openai` and `google`: require `api_key` and `model`, and also accept optional `api_base_url`, `temperature`, `timeout_ms`, and `max_retries`
+- `codex_cli`: uses local Codex auth state and accepts optional `model`, `codex_path`, `profile`, `timeout_ms`, and `max_retries`
 
 `interpretation_policy` accepts:
 
@@ -233,14 +236,17 @@ When orchestration needs clarification in conservative interpretation mode, `run
 `arguments.interpretation` is currently an explicit opt-in object:
 
 - `mode = "llm_assisted"`
-- `api_key`
 - optional `policy`
 - `provider.kind`
-- `provider.model`
-- optional `provider.api_base_url`
-- optional `provider.temperature`
+- `api_key` for `openai` and `google`
+- `provider.model` for `openai` and `google`
+- optional `provider.model` for `codex_cli`
+- optional `provider.api_base_url` for `openai` and `google`
+- optional `provider.temperature` for `openai` and `google`
 - optional `provider.timeout_ms`
 - optional `provider.max_retries`
+- optional `provider.codex_path` for `codex_cli`
+- optional `provider.profile` for `codex_cli`
 - optional `prompt_version`
 
 `arguments.interpretation.policy` forwards the same `conservative` vs `best_effort` switch used by `interpret_request`.

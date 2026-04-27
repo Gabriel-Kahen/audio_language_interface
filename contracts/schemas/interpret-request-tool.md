@@ -21,7 +21,10 @@ This tool does not plan or execute edits. It exists so callers can inspect the i
   - `prompt_version`
   - `session_context`
 
-The tool requires an explicit provider config. It does not read API keys from hidden environment state.
+The tool requires an explicit provider config.
+
+- `openai` and `google` require an explicit `api_key`
+- `codex_cli` uses the caller's local Codex CLI auth state instead of an `api_key`
 
 `provider` now also accepts optional runtime hardening fields:
 
@@ -29,6 +32,8 @@ The tool requires an explicit provider config. It does not read API keys from hi
 - `temperature`
 - `timeout_ms`
 - `max_retries`
+- `codex_path`
+- `profile`
 
 `session_context` lets callers provide explicit prior-request context for fuzzy follow-up interpretation without introducing hidden tool-layer state. Supported fields are:
 

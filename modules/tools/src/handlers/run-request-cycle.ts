@@ -312,20 +312,36 @@ function parseInterpretationProvider(
 ): LlmInterpretationProviderConfig {
   const record = expectRecord(value, fieldName);
   const kind = expectString(record.kind, `${fieldName}.kind`);
-  if (kind !== "openai" && kind !== "google") {
+  if (kind !== "openai" && kind !== "google" && kind !== "codex_cli") {
     throw new ToolInputError(
       "invalid_arguments",
-      `${fieldName}.kind must be either 'openai' or 'google'.`,
+      `${fieldName}.kind must be one of 'openai', 'google', or 'codex_cli'.`,
       {
         field: `${fieldName}.kind`,
       },
     );
   }
+  const timeoutMs = expectOptionalNumber(record.timeout_ms, `${fieldName}.timeout_ms`);
+  const maxRetries = expectOptionalNumber(record.max_retries, `${fieldName}.max_retries`);
+
+  if (kind === "codex_cli") {
+    const model = expectOptionalString(record.model, `${fieldName}.model`);
+    const codexPath = expectOptionalString(record.codex_path, `${fieldName}.codex_path`);
+    const profile = expectOptionalString(record.profile, `${fieldName}.profile`);
+
+    return {
+      kind: "codex_cli",
+      ...(model === undefined ? {} : { model }),
+      ...(codexPath === undefined ? {} : { codexPath }),
+      ...(profile === undefined ? {} : { profile }),
+      ...(timeoutMs === undefined ? {} : { timeoutMs }),
+      ...(maxRetries === undefined ? {} : { maxRetries }),
+    };
+  }
+
   const model = expectString(record.model, `${fieldName}.model`);
   const apiBaseUrl = expectOptionalString(record.api_base_url, `${fieldName}.api_base_url`);
   const temperature = expectOptionalNumber(record.temperature, `${fieldName}.temperature`);
-  const timeoutMs = expectOptionalNumber(record.timeout_ms, `${fieldName}.timeout_ms`);
-  const maxRetries = expectOptionalNumber(record.max_retries, `${fieldName}.max_retries`);
 
   return {
     kind,
@@ -372,10 +388,19 @@ function parseInterpretation(value: unknown): LlmAssistedInterpretationOptions |
     );
   }
 
+  const provider = parseInterpretationProvider(
+    record.provider,
+    "arguments.interpretation.provider",
+  );
+  const apiKey =
+    provider.kind === "codex_cli"
+      ? undefined
+      : expectString(record.api_key, "arguments.interpretation.api_key");
+
   return {
     mode: "llm_assisted",
-    apiKey: expectString(record.api_key, "arguments.interpretation.api_key"),
-    provider: parseInterpretationProvider(record.provider, "arguments.interpretation.provider"),
+    ...(apiKey === undefined ? {} : { apiKey }),
+    provider,
     ...(record.policy === undefined
       ? {}
       : {

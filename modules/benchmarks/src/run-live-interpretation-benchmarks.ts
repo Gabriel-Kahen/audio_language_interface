@@ -164,7 +164,7 @@ function buildProviderResult(input: {
 
   return {
     provider: input.providerTarget.kind,
-    model: input.providerTarget.model,
+    model: getProviderTargetModelLabel(input.providerTarget),
     ...(input.providerTarget.label === undefined ? {} : { label: input.providerTarget.label }),
     policy: input.benchmarkCase.input.policy,
     startedAt: input.startedAt,
@@ -192,7 +192,7 @@ function buildProviderErrorResult(input: {
 
   return {
     provider: input.providerTarget.kind,
-    model: input.providerTarget.model,
+    model: getProviderTargetModelLabel(input.providerTarget),
     ...(input.providerTarget.label === undefined ? {} : { label: input.providerTarget.label }),
     policy: input.benchmarkCase.input.policy,
     startedAt: input.startedAt,
@@ -203,6 +203,14 @@ function buildProviderErrorResult(input: {
     error: input.error,
     ...scored,
   };
+}
+
+function getProviderTargetModelLabel(providerTarget: LiveInterpretationBenchmarkProviderTarget) {
+  if (providerTarget.kind === "codex_cli") {
+    return providerTarget.model ?? providerTarget.profile ?? "codex-cli-default";
+  }
+
+  return providerTarget.model;
 }
 
 function summarizeProviders(

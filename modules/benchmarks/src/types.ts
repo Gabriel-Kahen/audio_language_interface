@@ -220,11 +220,13 @@ export interface LiveInterpretationBenchmarkCorpus {
   cases: LiveInterpretationBenchmarkCase[];
 }
 
-export interface LiveInterpretationBenchmarkProviderTarget
-  extends Omit<InterpretationProviderConfig, "apiKey"> {
-  apiKey: string;
-  label?: string;
-}
+export type LiveInterpretationBenchmarkProviderTarget =
+  | (Extract<InterpretationProviderConfig, { kind: "openai" | "google" }> & {
+      label?: string;
+    })
+  | (Extract<InterpretationProviderConfig, { kind: "codex_cli" }> & {
+      label?: string;
+    });
 
 export interface LiveInterpretationBenchmarkError {
   name: string;

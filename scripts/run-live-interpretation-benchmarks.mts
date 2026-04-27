@@ -41,9 +41,28 @@ function readProviderTargets() {
     }
   }
 
+  if (requestedProviders.has("codex_cli")) {
+    providerTargets.push({
+      kind: "codex_cli" as const,
+      ...(process.env.CODEX_CLI_MODEL === undefined ? {} : { model: process.env.CODEX_CLI_MODEL }),
+      ...(process.env.CODEX_CLI_PATH === undefined
+        ? {}
+        : { codexPath: process.env.CODEX_CLI_PATH }),
+      ...(process.env.CODEX_CLI_PROFILE === undefined
+        ? {}
+        : { profile: process.env.CODEX_CLI_PROFILE }),
+      ...(process.env.CODEX_CLI_TIMEOUT_MS === undefined
+        ? {}
+        : { timeoutMs: Number(process.env.CODEX_CLI_TIMEOUT_MS) }),
+      ...(process.env.CODEX_CLI_MAX_RETRIES === undefined
+        ? {}
+        : { maxRetries: Number(process.env.CODEX_CLI_MAX_RETRIES) }),
+    });
+  }
+
   if (providerTargets.length === 0) {
     throw new Error(
-      "No live interpretation providers configured. Set OPENAI_API_KEY and/or GOOGLE_API_KEY.",
+      "No live interpretation providers configured. Set OPENAI_API_KEY, GOOGLE_API_KEY, and/or enable codex_cli with local Codex auth.",
     );
   }
 

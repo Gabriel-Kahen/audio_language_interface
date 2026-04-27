@@ -290,6 +290,65 @@ describe("runRequestCycle", () => {
     });
   });
 
+  it("forwards codex_cli interpretation config without requiring an api key", async () => {
+    const asset = createAsset();
+    const inputVersion = createVersion("ver_input");
+    const interpretRequest = vi.fn().mockResolvedValue({
+      schema_version: "1.0.0",
+      interpretation_id: "interpret_codex123",
+      interpretation_policy: "best_effort",
+      asset_id: inputVersion.asset_id,
+      version_id: inputVersion.version_id,
+      analysis_report_id: "analysis_input",
+      semantic_profile_id: "semantic_input",
+      user_request: "Make it darker",
+      normalized_request: "Make it darker with a gentle high-shelf cut.",
+      request_classification: "supported",
+      next_action: "plan",
+      normalized_objectives: ["darker"],
+      candidate_descriptors: ["dark"],
+      rationale: "Pick the strongest grounded darker move.",
+      confidence: 0.64,
+      provider: {
+        kind: "codex_cli",
+        model: "chatgpt",
+        prompt_version: "intent_v2",
+      },
+      generated_at: "2026-04-27T20:45:00Z",
+    });
+    const dependencies = createDependencies({
+      interpretRequest,
+    });
+
+    await runRequestCycle({
+      workspaceRoot: "/workspace",
+      userRequest: "Make it darker",
+      input: {
+        kind: "existing",
+        asset,
+        version: inputVersion,
+      },
+      interpretation: {
+        mode: "llm_assisted",
+        policy: "best_effort",
+        provider: {
+          kind: "codex_cli",
+          profile: "chatgpt",
+        },
+      },
+      dependencies,
+    });
+
+    expect(interpretRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: {
+          kind: "codex_cli",
+          profile: "chatgpt",
+        },
+      }),
+    );
+  });
+
   it("returns a first-class clarification result when conservative interpretation asks for clarity", async () => {
     const asset = createAsset();
     const inputVersion = createVersion("ver_input");

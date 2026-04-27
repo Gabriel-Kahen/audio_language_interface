@@ -21,13 +21,15 @@ import {
 } from "../validation.js";
 
 interface InterpretRequestProviderArguments {
-  kind: "openai" | "google";
-  apiKey: string;
-  model: string;
+  kind: "openai" | "google" | "codex_cli";
+  apiKey?: string;
+  model?: string;
   apiBaseUrl?: string;
   temperature?: number;
   timeoutMs?: number;
   maxRetries?: number;
+  codexPath?: string;
+  profile?: string;
 }
 
 interface InterpretRequestArguments {
@@ -98,16 +100,31 @@ function validateVersionConsistency(request: ToolRequest, audioVersion: AudioVer
 function parseProvider(value: unknown): InterpretRequestProviderArguments {
   const record = expectRecord(value, "arguments.provider");
   const kind = expectString(record.kind, "arguments.provider.kind");
-  if (kind !== "openai" && kind !== "google") {
-    throw new Error("arguments.provider.kind must be either 'openai' or 'google'.");
+  if (kind !== "openai" && kind !== "google" && kind !== "codex_cli") {
+    throw new Error("arguments.provider.kind must be `openai`, `google`, or `codex_cli`.");
+  }
+
+  const apiBaseUrl = expectOptionalString(record.api_base_url, "arguments.provider.api_base_url");
+  const codexPath = expectOptionalString(record.codex_path, "arguments.provider.codex_path");
+  const profile = expectOptionalString(record.profile, "arguments.provider.profile");
+  const temperatureValue = record.temperature;
+  const timeoutValue = record.timeout_ms;
+  const maxRetriesValue = record.max_retries;
+
+  if (kind === "codex_cli") {
+    const model = expectOptionalString(record.model, "arguments.provider.model");
+    return {
+      kind: "codex_cli",
+      ...(typeof model === "string" ? { model } : {}),
+      ...(typeof codexPath === "string" ? { codexPath } : {}),
+      ...(typeof profile === "string" ? { profile } : {}),
+      ...(typeof timeoutValue === "number" ? { timeoutMs: timeoutValue } : {}),
+      ...(typeof maxRetriesValue === "number" ? { maxRetries: maxRetriesValue } : {}),
+    };
   }
 
   const apiKey = expectString(record.api_key, "arguments.provider.api_key");
   const model = expectString(record.model, "arguments.provider.model");
-  const apiBaseUrl = expectOptionalString(record.api_base_url, "arguments.provider.api_base_url");
-  const temperatureValue = record.temperature;
-  const timeoutValue = record.timeout_ms;
-  const maxRetriesValue = record.max_retries;
 
   return {
     kind,
@@ -266,17 +283,39 @@ export const interpretRequestTool: ToolDefinition<
       analysisReport: args.analysisReport,
       semanticProfile: args.semanticProfile,
       capabilityManifest: args.capabilityManifest ?? defaultRuntimeCapabilityManifest,
-      provider: {
-        kind: args.provider.kind,
-        apiKey: args.provider.apiKey,
-        model: args.provider.model,
-        ...(args.provider.apiBaseUrl === undefined ? {} : { baseUrl: args.provider.apiBaseUrl }),
-        ...(args.provider.temperature === undefined
-          ? {}
-          : { temperature: args.provider.temperature }),
-        ...(args.provider.timeoutMs === undefined ? {} : { timeoutMs: args.provider.timeoutMs }),
-        ...(args.provider.maxRetries === undefined ? {} : { maxRetries: args.provider.maxRetries }),
-      },
+      provider:
+        args.provider.kind === "codex_cli"
+          ? {
+              kind: "codex_cli",
+              ...(args.provider.model === undefined ? {} : { model: args.provider.model }),
+              ...(args.provider.codexPath === undefined
+                ? {}
+                : { codexPath: args.provider.codexPath }),
+              ...(args.provider.profile === undefined ? {} : { profile: args.provider.profile }),
+              ...(args.provider.timeoutMs === undefined
+                ? {}
+                : { timeoutMs: args.provider.timeoutMs }),
+              ...(args.provider.maxRetries === undefined
+                ? {}
+                : { maxRetries: args.provider.maxRetries }),
+            }
+          : {
+              kind: args.provider.kind,
+              apiKey: args.provider.apiKey ?? "",
+              model: args.provider.model ?? "",
+              ...(args.provider.apiBaseUrl === undefined
+                ? {}
+                : { baseUrl: args.provider.apiBaseUrl }),
+              ...(args.provider.temperature === undefined
+                ? {}
+                : { temperature: args.provider.temperature }),
+              ...(args.provider.timeoutMs === undefined
+                ? {}
+                : { timeoutMs: args.provider.timeoutMs }),
+              ...(args.provider.maxRetries === undefined
+                ? {}
+                : { maxRetries: args.provider.maxRetries }),
+            },
       ...(args.interpretationPolicy === undefined ? {} : { policy: args.interpretationPolicy }),
       ...(args.sessionContext === undefined
         ? {}

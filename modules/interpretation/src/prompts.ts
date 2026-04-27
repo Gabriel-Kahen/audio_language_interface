@@ -131,6 +131,16 @@ export function buildUserPrompt(input: InterpretationProviderRequest): string {
   );
 }
 
+export function buildCodexPrompt(input: InterpretationProviderRequest): string {
+  return [
+    "Return exactly one JSON object that matches the provided output schema.",
+    "Do not include markdown fences, prose before the JSON, or any extra commentary.",
+    buildSystemInstruction(input.policy),
+    "Structured interpretation input:",
+    buildUserPrompt(input),
+  ].join("\n\n");
+}
+
 export function buildCandidateSchema(): object {
   return {
     type: "object",

@@ -1,5 +1,9 @@
 import { buildCandidateSchema, buildSystemInstruction, buildUserPrompt } from "../prompts.js";
-import type { InterpretationProvider, InterpretationProviderRequest } from "../types.js";
+import type {
+  InterpretationProvider,
+  InterpretationProviderRequest,
+  RemoteInterpretationProviderConfig,
+} from "../types.js";
 import {
   isRetryableInterpretationStatus,
   parseInterpretationCandidate,
@@ -10,22 +14,27 @@ import {
 
 export class OpenAIInterpretationProvider implements InterpretationProvider {
   async interpret(input: InterpretationProviderRequest) {
+    if (input.provider.kind !== "openai") {
+      throw new Error("OpenAIInterpretationProvider requires an openai provider config.");
+    }
+
+    const provider: RemoteInterpretationProviderConfig = input.provider;
     const fetchImpl = resolveFetchImpl(input.fetchImpl);
-    const maxAttempts = (input.provider.maxRetries ?? 1) + 1;
+    const maxAttempts = (provider.maxRetries ?? 1) + 1;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
         const response = await fetchImpl(
-          `${input.provider.baseUrl ?? "https://api.openai.com"}/v1/chat/completions`,
+          `${provider.baseUrl ?? "https://api.openai.com"}/v1/chat/completions`,
           {
             method: "POST",
             headers: {
               "content-type": "application/json",
-              authorization: `Bearer ${input.provider.apiKey}`,
+              authorization: `Bearer ${provider.apiKey}`,
             },
             body: JSON.stringify({
-              model: input.provider.model,
-              temperature: input.provider.temperature ?? 0,
+              model: provider.model,
+              temperature: provider.temperature ?? 0,
               messages: [
                 {
                   role: "system",
@@ -45,9 +54,9 @@ export class OpenAIInterpretationProvider implements InterpretationProvider {
                 },
               },
             }),
-            ...(input.provider.timeoutMs === undefined
+            ...(provider.timeoutMs === undefined
               ? {}
-              : { signal: AbortSignal.timeout(input.provider.timeoutMs) }),
+              : { signal: AbortSignal.timeout(provider.timeoutMs) }),
           },
         );
 

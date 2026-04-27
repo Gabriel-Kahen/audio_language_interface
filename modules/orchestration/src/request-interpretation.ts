@@ -28,23 +28,43 @@ export async function resolveRequestInterpretation(options: ResolveRequestInterp
     analysisReport: options.analysisReport,
     semanticProfile: options.semanticProfile,
     ...(options.sessionContext === undefined ? {} : { sessionContext: options.sessionContext }),
-    provider: {
-      kind: options.interpretation.provider.kind,
-      apiKey: options.interpretation.apiKey,
-      model: options.interpretation.provider.model,
-      ...(options.interpretation.provider.apiBaseUrl === undefined
-        ? {}
-        : { baseUrl: options.interpretation.provider.apiBaseUrl }),
-      ...(options.interpretation.provider.temperature === undefined
-        ? {}
-        : { temperature: options.interpretation.provider.temperature }),
-      ...(options.interpretation.provider.timeoutMs === undefined
-        ? {}
-        : { timeoutMs: options.interpretation.provider.timeoutMs }),
-      ...(options.interpretation.provider.maxRetries === undefined
-        ? {}
-        : { maxRetries: options.interpretation.provider.maxRetries }),
-    },
+    provider:
+      options.interpretation.provider.kind === "codex_cli"
+        ? {
+            kind: "codex_cli",
+            ...(options.interpretation.provider.model === undefined
+              ? {}
+              : { model: options.interpretation.provider.model }),
+            ...(options.interpretation.provider.codexPath === undefined
+              ? {}
+              : { codexPath: options.interpretation.provider.codexPath }),
+            ...(options.interpretation.provider.profile === undefined
+              ? {}
+              : { profile: options.interpretation.provider.profile }),
+            ...(options.interpretation.provider.timeoutMs === undefined
+              ? {}
+              : { timeoutMs: options.interpretation.provider.timeoutMs }),
+            ...(options.interpretation.provider.maxRetries === undefined
+              ? {}
+              : { maxRetries: options.interpretation.provider.maxRetries }),
+          }
+        : {
+            kind: options.interpretation.provider.kind,
+            apiKey: requireInterpretationApiKey(options.interpretation),
+            model: options.interpretation.provider.model,
+            ...(options.interpretation.provider.apiBaseUrl === undefined
+              ? {}
+              : { baseUrl: options.interpretation.provider.apiBaseUrl }),
+            ...(options.interpretation.provider.temperature === undefined
+              ? {}
+              : { temperature: options.interpretation.provider.temperature }),
+            ...(options.interpretation.provider.timeoutMs === undefined
+              ? {}
+              : { timeoutMs: options.interpretation.provider.timeoutMs }),
+            ...(options.interpretation.provider.maxRetries === undefined
+              ? {}
+              : { maxRetries: options.interpretation.provider.maxRetries }),
+          },
     ...(options.interpretation.policy === undefined
       ? {}
       : { policy: options.interpretation.policy }),
@@ -52,4 +72,14 @@ export async function resolveRequestInterpretation(options: ResolveRequestInterp
       ? {}
       : { promptVersion: options.interpretation.promptVersion }),
   });
+}
+
+function requireInterpretationApiKey(options: LlmAssistedInterpretationOptions): string {
+  if (options.apiKey && options.apiKey.length > 0) {
+    return options.apiKey;
+  }
+
+  throw new Error(
+    `LLM-assisted interpretation provider '${options.provider.kind}' requires an apiKey.`,
+  );
 }

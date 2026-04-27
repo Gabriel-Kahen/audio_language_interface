@@ -321,7 +321,10 @@ export function buildInterpretationArtifact(
     confidence: candidate.confidence,
     provider: {
       kind: input.provider.kind,
-      model: input.provider.model,
+      model:
+        input.provider.kind === "codex_cli"
+          ? (input.provider.model ?? input.provider.profile ?? "codex-cli-default")
+          : input.provider.model,
       prompt_version: input.promptVersion,
     },
     generated_at: input.generatedAt ?? nowTimestamp(),

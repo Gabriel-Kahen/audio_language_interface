@@ -105,6 +105,8 @@ function buildInterpretationCacheKey(
         semantic_profile_id: options.semanticProfile.profile_id,
         provider_kind: options.provider.kind,
         provider_model: options.provider.model,
+        provider_profile:
+          options.provider.kind === "codex_cli" ? options.provider.profile : undefined,
         prompt_version: promptVersion,
         interpretation_policy: options.policy ?? DEFAULT_INTERPRETATION_POLICY,
         capability_manifest_id: capabilityManifest.manifest_id,

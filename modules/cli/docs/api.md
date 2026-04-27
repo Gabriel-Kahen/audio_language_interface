@@ -13,13 +13,15 @@ Supported options:
 - `--session-dir <path>`: explicit session directory. Defaults to a new timestamped directory under the current working directory.
 - `--output <path>`: optional convenience copy of the final rendered output.
 - `--json`: print a machine-readable summary instead of human text.
-- `--llm-provider <openai|google>`
-- `--llm-model <model>`
-- `--llm-api-key <key>`
+- `--llm-provider <openai|google|codex_cli>`
+- `--llm-model <model>`: required for `openai` and `google`, optional for `codex_cli`
+- `--llm-api-key <key>`: required for `openai` and `google`
 - `--llm-policy <conservative|best_effort>`
 - `--llm-timeout-ms <milliseconds>`
 - `--llm-max-retries <count>`
 - `--llm-api-base-url <url>`
+- `--llm-codex-path <path>`
+- `--llm-codex-profile <profile>`
 - `--llm-prompt-version <id>`
 
 ### `ali follow-up <session-dir> <request>`

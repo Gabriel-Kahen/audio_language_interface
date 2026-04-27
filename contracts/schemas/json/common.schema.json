@@ -155,7 +155,7 @@
     },
     "interpretationProvider": {
       "type": "string",
-      "enum": ["openai", "google"]
+      "enum": ["openai", "google", "codex_cli"]
     },
     "interpretationPolicy": {
       "type": "string",

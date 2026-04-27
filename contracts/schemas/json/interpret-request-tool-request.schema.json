@@ -73,18 +73,38 @@
           }
         },
         "provider": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind", "api_key", "model"],
-          "properties": {
-            "kind": { "$ref": "./common.schema.json#/$defs/interpretationProvider" },
-            "api_key": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
-            "model": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
-            "api_base_url": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
-            "temperature": { "type": "number" },
-            "timeout_ms": { "type": "integer", "minimum": 1 },
-            "max_retries": { "type": "integer", "minimum": 0 }
-          }
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "api_key", "model"],
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": ["openai", "google"]
+                },
+                "api_key": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                "model": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                "api_base_url": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                "temperature": { "type": "number" },
+                "timeout_ms": { "type": "integer", "minimum": 1 },
+                "max_retries": { "type": "integer", "minimum": 0 }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind"],
+              "properties": {
+                "kind": { "const": "codex_cli" },
+                "model": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                "codex_path": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                "profile": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                "timeout_ms": { "type": "integer", "minimum": 1 },
+                "max_retries": { "type": "integer", "minimum": 0 }
+              }
+            }
+          ]
         }
       }
     }

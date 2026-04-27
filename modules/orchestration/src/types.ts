@@ -125,7 +125,7 @@ export interface ImportAndAnalyzeResult {
   trace: WorkflowTraceEntry[];
 }
 
-export interface LlmInterpretationProviderConfig {
+export interface RemoteLlmInterpretationProviderConfig {
   kind: "openai" | "google";
   model: string;
   apiBaseUrl?: string;
@@ -134,10 +134,23 @@ export interface LlmInterpretationProviderConfig {
   maxRetries?: number;
 }
 
+export interface CodexCliLlmInterpretationProviderConfig {
+  kind: "codex_cli";
+  model?: string;
+  codexPath?: string;
+  profile?: string;
+  timeoutMs?: number;
+  maxRetries?: number;
+}
+
+export type LlmInterpretationProviderConfig =
+  | RemoteLlmInterpretationProviderConfig
+  | CodexCliLlmInterpretationProviderConfig;
+
 export interface LlmAssistedInterpretationOptions {
   mode: "llm_assisted";
   provider: LlmInterpretationProviderConfig;
-  apiKey: string;
+  apiKey?: string;
   policy?: InterpretationPolicy;
   promptVersion?: string;
 }

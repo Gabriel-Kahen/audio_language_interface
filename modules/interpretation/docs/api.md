@@ -15,7 +15,7 @@ Builds a validated `IntentInterpretation` from:
 - `analysisReport`
 - `semanticProfile`
 - optional `capabilityManifest`
-- provider config for `openai` or `google`
+- provider config for `openai`, `google`, or `codex_cli`
 - optional `policy`
 - optional `promptVersion`
 - optional `sessionContext`
@@ -71,6 +71,6 @@ Returns `true` when a payload satisfies the published `IntentInterpretation` con
 
 - this module interprets request text only; it does not inspect raw audio directly
 - the module does not emit executable transform parameters or `EditPlan` steps
-- provider support is currently limited to fetch-based OpenAI and Google calls
+- provider support currently includes fetch-based OpenAI and Google calls plus a local `codex_cli` path that depends on the caller's Codex CLI installation and auth state
 - determinism applies to prompt shaping, validation, and artifact normalization, not to remote model behavior
 - alternate `candidate_interpretations` are for inspection only; deterministic planning still consumes one selected interpretation

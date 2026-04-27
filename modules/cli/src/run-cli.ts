@@ -148,19 +148,31 @@ function parseCliLlmOptions(options: Map<string, string | true>): CliLlmOptions 
   const provider = options.get("--llm-provider");
   const model = options.get("--llm-model");
   const apiKey = options.get("--llm-api-key");
+  const codexPath = options.get("--llm-codex-path");
+  const profile = options.get("--llm-codex-profile");
 
-  if (provider === undefined && model === undefined && apiKey === undefined) {
+  if (
+    provider === undefined &&
+    model === undefined &&
+    apiKey === undefined &&
+    codexPath === undefined &&
+    profile === undefined
+  ) {
     return undefined;
   }
 
-  if (provider !== "openai" && provider !== "google") {
-    throw new Error("`--llm-provider` must be either `openai` or `google`.");
+  if (provider !== "openai" && provider !== "google" && provider !== "codex_cli") {
+    throw new Error("`--llm-provider` must be `openai`, `google`, or `codex_cli`.");
   }
-  if (typeof model !== "string" || model.length === 0) {
-    throw new Error("`--llm-model` is required when LLM interpretation is enabled.");
+  if (provider !== "codex_cli" && (typeof model !== "string" || model.length === 0)) {
+    throw new Error(
+      "`--llm-model` is required for `openai` and `google` interpretation providers.",
+    );
   }
-  if (typeof apiKey !== "string" || apiKey.length === 0) {
-    throw new Error("`--llm-api-key` is required when LLM interpretation is enabled.");
+  if (provider !== "codex_cli" && (typeof apiKey !== "string" || apiKey.length === 0)) {
+    throw new Error(
+      "`--llm-api-key` is required for `openai` and `google` interpretation providers.",
+    );
   }
 
   const policyValue = options.get("--llm-policy");
@@ -174,8 +186,8 @@ function parseCliLlmOptions(options: Map<string, string | true>): CliLlmOptions 
 
   return {
     provider,
-    model,
-    apiKey,
+    ...(typeof model === "string" ? { model } : {}),
+    ...(typeof apiKey === "string" ? { apiKey } : {}),
     ...(typeof policyValue === "string" ? { policy: policyValue } : {}),
     ...(typeof options.get("--llm-api-base-url") === "string"
       ? { apiBaseUrl: String(options.get("--llm-api-base-url")) }
@@ -199,6 +211,8 @@ function parseCliLlmOptions(options: Map<string, string | true>): CliLlmOptions 
           ),
         }
       : {}),
+    ...(typeof codexPath === "string" ? { codexPath } : {}),
+    ...(typeof profile === "string" ? { profile } : {}),
   };
 }
 
@@ -381,12 +395,28 @@ async function loadOrchestrationRuntime(): Promise<{
 }
 
 function toInterpretationOptions(llm: CliLlmOptions): LlmAssistedInterpretationOptions {
+  if (llm.provider === "codex_cli") {
+    return {
+      mode: "llm_assisted",
+      provider: {
+        kind: "codex_cli",
+        ...(llm.model === undefined ? {} : { model: llm.model }),
+        ...(llm.codexPath === undefined ? {} : { codexPath: llm.codexPath }),
+        ...(llm.profile === undefined ? {} : { profile: llm.profile }),
+        ...(llm.timeoutMs === undefined ? {} : { timeoutMs: llm.timeoutMs }),
+        ...(llm.maxRetries === undefined ? {} : { maxRetries: llm.maxRetries }),
+      },
+      ...(llm.policy === undefined ? {} : { policy: llm.policy }),
+      ...(llm.promptVersion === undefined ? {} : { promptVersion: llm.promptVersion }),
+    };
+  }
+
   return {
     mode: "llm_assisted",
-    apiKey: llm.apiKey,
+    apiKey: llm.apiKey ?? "",
     provider: {
       kind: llm.provider,
-      model: llm.model,
+      model: llm.model ?? "",
       ...(llm.apiBaseUrl === undefined ? {} : { apiBaseUrl: llm.apiBaseUrl }),
       ...(llm.timeoutMs === undefined ? {} : { timeoutMs: llm.timeoutMs }),
       ...(llm.maxRetries === undefined ? {} : { maxRetries: llm.maxRetries }),
@@ -540,7 +570,7 @@ function buildHelpText(): string {
     "  ali follow-up <session-dir> <request> [--output <path>] [--json]",
     "",
     "Optional LLM flags:",
-    "  --llm-provider <openai|google>",
+    "  --llm-provider <openai|google|codex_cli>",
     "  --llm-model <model>",
     "  --llm-api-key <key>",
     "  --llm-policy <conservative|best_effort>",
@@ -548,6 +578,8 @@ function buildHelpText(): string {
     "  --llm-max-retries <count>",
     "  --llm-api-base-url <url>",
     "  --llm-prompt-version <id>",
+    "  --llm-codex-path <path>",
+    "  --llm-codex-profile <profile>",
   ].join("\n");
 }
 

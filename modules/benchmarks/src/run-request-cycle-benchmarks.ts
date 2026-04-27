@@ -380,27 +380,47 @@ async function executeToolSurfaceCycle(input: {
         : {
             interpretation: {
               mode: "llm_assisted",
-              api_key: interpretation.apiKey,
+              ...(interpretation.apiKey === undefined ? {} : { api_key: interpretation.apiKey }),
               ...(interpretation.policy === undefined ? {} : { policy: interpretation.policy }),
               ...(interpretation.promptVersion === undefined
                 ? {}
                 : { prompt_version: interpretation.promptVersion }),
-              provider: {
-                kind: interpretation.provider.kind,
-                model: interpretation.provider.model,
-                ...(interpretation.provider.apiBaseUrl === undefined
-                  ? {}
-                  : { api_base_url: interpretation.provider.apiBaseUrl }),
-                ...(interpretation.provider.temperature === undefined
-                  ? {}
-                  : { temperature: interpretation.provider.temperature }),
-                ...(interpretation.provider.timeoutMs === undefined
-                  ? {}
-                  : { timeout_ms: interpretation.provider.timeoutMs }),
-                ...(interpretation.provider.maxRetries === undefined
-                  ? {}
-                  : { max_retries: interpretation.provider.maxRetries }),
-              },
+              provider:
+                interpretation.provider.kind === "codex_cli"
+                  ? {
+                      kind: "codex_cli",
+                      ...(interpretation.provider.model === undefined
+                        ? {}
+                        : { model: interpretation.provider.model }),
+                      ...(interpretation.provider.codexPath === undefined
+                        ? {}
+                        : { codex_path: interpretation.provider.codexPath }),
+                      ...(interpretation.provider.profile === undefined
+                        ? {}
+                        : { profile: interpretation.provider.profile }),
+                      ...(interpretation.provider.timeoutMs === undefined
+                        ? {}
+                        : { timeout_ms: interpretation.provider.timeoutMs }),
+                      ...(interpretation.provider.maxRetries === undefined
+                        ? {}
+                        : { max_retries: interpretation.provider.maxRetries }),
+                    }
+                  : {
+                      kind: interpretation.provider.kind,
+                      model: interpretation.provider.model,
+                      ...(interpretation.provider.apiBaseUrl === undefined
+                        ? {}
+                        : { api_base_url: interpretation.provider.apiBaseUrl }),
+                      ...(interpretation.provider.temperature === undefined
+                        ? {}
+                        : { temperature: interpretation.provider.temperature }),
+                      ...(interpretation.provider.timeoutMs === undefined
+                        ? {}
+                        : { timeout_ms: interpretation.provider.timeoutMs }),
+                      ...(interpretation.provider.maxRetries === undefined
+                        ? {}
+                        : { max_retries: interpretation.provider.maxRetries }),
+                    },
             },
           }),
       ...(input.options.revision === undefined

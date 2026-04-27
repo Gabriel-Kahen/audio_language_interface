@@ -1,8 +1,18 @@
+import { writeFile } from "node:fs/promises";
+
 import type { AnalysisReport } from "@audio-language-interface/analysis";
 import { defaultRuntimeCapabilityManifest } from "@audio-language-interface/capabilities";
 import type { AudioVersion } from "@audio-language-interface/core";
 import type { SemanticProfile } from "@audio-language-interface/semantics";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+const { execaMock } = vi.hoisted(() => ({
+  execaMock: vi.fn(),
+}));
+
+vi.mock("execa", () => ({
+  execa: execaMock,
+}));
 
 import {
   assertValidIntentInterpretation,
@@ -248,6 +258,59 @@ describe("interpretRequest", () => {
     expect(interpretation.normalized_request).toBe("Center this more and make it wider.");
     expect(interpretation.interpretation_policy).toBe("conservative");
     expect(interpretation.provider.kind).toBe("google");
+    expect(interpretation.next_action).toBe("plan");
+  });
+
+  it("builds a validated interpretation artifact through Codex CLI using local auth state", async () => {
+    execaMock.mockImplementationOnce(async (_command, args: string[]) => {
+      const outputIndex = args.indexOf("-o");
+      const outputPath = args[outputIndex + 1];
+      if (outputPath === undefined) {
+        throw new Error("Expected Codex CLI test invocation to include an output path.");
+      }
+      await writeFile(
+        outputPath,
+        JSON.stringify({
+          normalized_request: "Make it darker and more controlled.",
+          request_classification: "supported",
+          next_action: "plan",
+          normalized_objectives: ["darker", "more_controlled"],
+          candidate_descriptors: ["bright", "uncontrolled"],
+          rationale: "The request maps to a darker tonal move plus dynamics control.",
+          confidence: 0.73,
+        }),
+      );
+
+      return {
+        exitCode: 0,
+        stderr: "",
+        stdout: "",
+      };
+    });
+
+    const interpretation = await interpretRequest({
+      userRequest: "Make it darker and more controlled.",
+      audioVersion: createAudioVersion(),
+      analysisReport: createAnalysisReport(),
+      semanticProfile: createSemanticProfile(),
+      capabilityManifest: defaultRuntimeCapabilityManifest,
+      provider: {
+        kind: "codex_cli",
+        profile: "chatgpt",
+      },
+    });
+
+    expect(execaMock).toHaveBeenCalledTimes(1);
+    expect(execaMock).toHaveBeenCalledWith(
+      "codex",
+      expect.arrayContaining(["exec", "-p", "chatgpt", "-"]),
+      expect.objectContaining({
+        input: expect.stringContaining("Make it darker and more controlled."),
+        reject: false,
+      }),
+    );
+    expect(interpretation.provider.kind).toBe("codex_cli");
+    expect(interpretation.provider.model).toBe("chatgpt");
     expect(interpretation.next_action).toBe("plan");
   });
 

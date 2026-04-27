@@ -64,7 +64,7 @@ There is now also a narrow alpha CLI surface over that same validated path:
 
 There is now also an optional interpretation layer for open-ended language:
 
-- `modules/interpretation` can call OpenAI or Google APIs to normalize a raw request into a bounded `IntentInterpretation`
+- `modules/interpretation` can call OpenAI, Google, or the local Codex CLI to normalize a raw request into a bounded `IntentInterpretation`
 - callers can choose `conservative` or `best_effort` ambiguity handling when they opt into the interpretation layer
 - the richer interpretation artifact now includes explicit `interpretation_policy`, `next_action`, evidence-linked descriptor hypotheses, structured constraints, optional region-intent proposals, alternate candidates, and follow-up interpretation metadata
 - deterministic planning remains authoritative and may still reject unsupported or weakly grounded interpretations
@@ -107,7 +107,7 @@ The current benchmarked planner surface also includes conservative compound-edit
 
 The benchmark layer now also has an opt-in live interpretation evaluation path:
 
-- `modules/benchmarks` can call OpenAI or Google through the real `interpretRequest(...)` surface and score the returned `IntentInterpretation` against the curated interpretation corpus
+- `modules/benchmarks` can call OpenAI, Google, or Codex CLI through the real `interpretRequest(...)` surface and score the returned `IntentInterpretation` against the curated interpretation corpus
 - that live eval path is intentionally separate from `pnpm run ci` because it depends on real provider keys, network behavior, latency, and API cost
 
 ## Architecture

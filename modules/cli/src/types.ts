@@ -8,14 +8,16 @@ import type {
 } from "@audio-language-interface/orchestration";
 
 export interface CliLlmOptions {
-  provider: "openai" | "google";
-  model: string;
-  apiKey: string;
+  provider: "openai" | "google" | "codex_cli";
+  model?: string;
+  apiKey?: string;
   policy?: InterpretationPolicy;
   timeoutMs?: number;
   maxRetries?: number;
   apiBaseUrl?: string;
   promptVersion?: string;
+  codexPath?: string;
+  profile?: string;
 }
 
 export interface EditCliCommand {

@@ -21,30 +21,62 @@
         "user_request": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
         "render_kind": { "$ref": "./common.schema.json#/$defs/renderKind" },
         "interpretation": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["mode", "api_key", "provider"],
-          "properties": {
-            "mode": { "const": "llm_assisted" },
-            "api_key": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
-            "policy": {
-              "$ref": "./common.schema.json#/$defs/interpretationPolicy"
-            },
-            "prompt_version": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
-            "provider": {
+          "oneOf": [
+            {
               "type": "object",
               "additionalProperties": false,
-              "required": ["kind", "model"],
+              "required": ["mode", "api_key", "provider"],
               "properties": {
-                "kind": { "$ref": "./common.schema.json#/$defs/interpretationProvider" },
-                "model": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
-                "api_base_url": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
-                "temperature": { "type": "number" },
-                "timeout_ms": { "type": "integer", "minimum": 1 },
-                "max_retries": { "type": "integer", "minimum": 0 }
+                "mode": { "const": "llm_assisted" },
+                "api_key": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                "policy": {
+                  "$ref": "./common.schema.json#/$defs/interpretationPolicy"
+                },
+                "prompt_version": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                "provider": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["kind", "model"],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": ["openai", "google"]
+                    },
+                    "model": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                    "api_base_url": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                    "temperature": { "type": "number" },
+                    "timeout_ms": { "type": "integer", "minimum": 1 },
+                    "max_retries": { "type": "integer", "minimum": 0 }
+                  }
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["mode", "provider"],
+              "properties": {
+                "mode": { "const": "llm_assisted" },
+                "policy": {
+                  "$ref": "./common.schema.json#/$defs/interpretationPolicy"
+                },
+                "prompt_version": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                "provider": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["kind"],
+                  "properties": {
+                    "kind": { "const": "codex_cli" },
+                    "model": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                    "codex_path": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                    "profile": { "$ref": "./common.schema.json#/$defs/nonEmptyString" },
+                    "timeout_ms": { "type": "integer", "minimum": 1 },
+                    "max_retries": { "type": "integer", "minimum": 0 }
+                  }
+                }
               }
             }
-          }
+          ]
         },
         "revision": {
           "type": "object",

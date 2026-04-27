@@ -565,6 +565,62 @@ describe("run_request_cycle tool", () => {
     );
   });
 
+  it("accepts codex_cli interpretation config without an api key", async () => {
+    const asset = buildAudioAsset();
+    const currentVersion = buildAudioVersion("ver_current");
+    const sessionGraph = buildSessionGraph(asset, [currentVersion]);
+    const requestCycleResult = buildRequestCycleResult();
+    const runRequestCycle = vi.fn().mockImplementation(async (options) => {
+      expect(options.interpretation).toMatchObject({
+        mode: "llm_assisted",
+        policy: "best_effort",
+        provider: {
+          kind: "codex_cli",
+          profile: "chatgpt",
+          maxRetries: 1,
+        },
+      });
+      expect(options.interpretation).not.toHaveProperty("apiKey");
+      return requestCycleResult;
+    });
+
+    const response = await executeToolRequest(
+      buildRequest({
+        session_id: sessionGraph.session_id,
+        asset_id: asset.asset_id,
+        version_id: currentVersion.version_id,
+        arguments: {
+          user_request: "Clean it up a bit.",
+          interpretation: {
+            mode: "llm_assisted",
+            policy: "best_effort",
+            provider: {
+              kind: "codex_cli",
+              profile: "chatgpt",
+              max_retries: 1,
+            },
+          },
+          input: {
+            kind: "existing",
+            asset,
+            audio_version: currentVersion,
+            session_graph: sessionGraph,
+          },
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/ali-tools",
+        runtime: { runRequestCycle } satisfies Partial<ToolsRuntime>,
+      },
+    );
+
+    expect(response.status).toBe("ok");
+    expect(runRequestCycle).toHaveBeenCalledTimes(1);
+    expect(response.result?.intent_interpretation).toMatchObject({
+      interpretation_id: "interpret_cycle123",
+    });
+  });
+
   it("returns clarification-required results as a success response with explicit pending state", async () => {
     const asset = buildAudioAsset();
     const currentVersion = buildAudioVersion("ver_current");

@@ -1,5 +1,9 @@
 import { buildCandidateSchema, buildSystemInstruction, buildUserPrompt } from "../prompts.js";
-import type { InterpretationProvider, InterpretationProviderRequest } from "../types.js";
+import type {
+  InterpretationProvider,
+  InterpretationProviderRequest,
+  RemoteInterpretationProviderConfig,
+} from "../types.js";
 import {
   isRetryableInterpretationStatus,
   parseInterpretationCandidate,
@@ -10,14 +14,19 @@ import {
 
 export class GoogleInterpretationProvider implements InterpretationProvider {
   async interpret(input: InterpretationProviderRequest) {
+    if (input.provider.kind !== "google") {
+      throw new Error("GoogleInterpretationProvider requires a google provider config.");
+    }
+
+    const provider: RemoteInterpretationProviderConfig = input.provider;
     const fetchImpl = resolveFetchImpl(input.fetchImpl);
-    const baseUrl = input.provider.baseUrl ?? "https://generativelanguage.googleapis.com";
+    const baseUrl = provider.baseUrl ?? "https://generativelanguage.googleapis.com";
     const url = new URL(
-      `/v1beta/models/${input.provider.model}:generateContent`,
+      `/v1beta/models/${provider.model}:generateContent`,
       baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`,
     );
-    url.searchParams.set("key", input.provider.apiKey);
-    const maxAttempts = (input.provider.maxRetries ?? 1) + 1;
+    url.searchParams.set("key", provider.apiKey);
+    const maxAttempts = (provider.maxRetries ?? 1) + 1;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
@@ -37,14 +46,14 @@ export class GoogleInterpretationProvider implements InterpretationProvider {
               },
             ],
             generationConfig: {
-              temperature: input.provider.temperature ?? 0,
+              temperature: provider.temperature ?? 0,
               responseMimeType: "application/json",
               responseSchema: buildCandidateSchema(),
             },
           }),
-          ...(input.provider.timeoutMs === undefined
+          ...(provider.timeoutMs === undefined
             ? {}
-            : { signal: AbortSignal.timeout(input.provider.timeoutMs) }),
+            : { signal: AbortSignal.timeout(provider.timeoutMs) }),
         });
 
         if (!response.ok) {

@@ -158,8 +158,13 @@ For revert-style and alternate-version execution, callers must provide `dependen
 
 For opt-in LLM assistance, callers must also provide:
 
-- `options.interpretation = { mode: "llm_assisted", apiKey, policy?, provider: ... }`
+- `options.interpretation = { mode: "llm_assisted", policy?, provider: ... }`
 - `dependencies.interpretRequest(...)`
+
+Provider requirements are explicit:
+
+- `openai` and `google` require `apiKey`
+- `codex_cli` uses local Codex CLI auth state and does not require `apiKey`
 
 That interpretation step stays above deterministic planning:
 
