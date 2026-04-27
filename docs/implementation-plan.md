@@ -74,6 +74,7 @@ Every implementation agent should read, in order:
 
 ### Adapters
 
+- `cli` depends on `orchestration`, `core`, and `history`
 - `tools` depends on stable contracts plus the published runtime and intent entrypoints
 - `orchestration` depends on nearly all runtime and intent modules and must stay thin
 
@@ -120,6 +121,7 @@ Start when runtime artifacts and capability metadata are stable:
 
 Start when runtime and intent APIs are stable:
 
+- `modules/cli`
 - `modules/tools`
 - `modules/orchestration`
 

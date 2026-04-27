@@ -91,7 +91,14 @@ Programmatic entrypoints worth starting from:
 
 - `modules/orchestration/src/index.ts` for composed workflows
 - `modules/tools/src/index.ts` for the LLM-facing tool surface
+- `modules/cli/src/index.ts` for the narrow local user surface
 - `modules/capabilities/src/index.ts` for the runtime capability manifest
+
+The repo now also has one obvious local entrypoint for try-it flows:
+
+```bash
+pnpm ali -- help
+```
 
 ## Extension Points
 
@@ -120,4 +127,4 @@ If a behavior is not implemented yet, document it as a limitation rather than im
 - semantic descriptor coverage is intentionally small
 - not every runtime operation is baseline-planner-supported
 - benchmarks now include committed fixture-backed compare and request-cycle coverage for the current cleanup and control slice, including compare-only hum/click isolation cases that validate direct-evidence and fallback scoring separately, but the corpus is still intentionally small
-- there is no dedicated demo CLI or app entrypoint yet
+- the alpha CLI surface is intentionally narrow: it supports local `edit` and `follow-up` flows with explicit session directories, but it is not a broad app surface yet

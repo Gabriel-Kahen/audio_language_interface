@@ -85,6 +85,7 @@ The current repository state includes expanded coverage around:
 - provider-backed request interpretation, contract validation, and tool/orchestration integration for `IntentInterpretation`
 - interpretation-only benchmark scoring for richer `IntentInterpretation` artifacts, including conservative vs best-effort policy behavior, clarification, constraints, region-intent proposals, and follow-up interpretation
 - end-to-end clarification-loop orchestration, tool, and request-cycle benchmark coverage for `clarify -> answer -> resume`
+- alpha CLI coverage for explicit session-directory persistence, first-run editing, and history-aware follow-up reuse
 - planner-facing request-cycle checks for the first explicit numeric region-targeting slice, including exact `time_range` target assertions on emitted `EditPlan` steps
 - tool-surface request-cycle execution, including explicit `SessionGraph` and `available_versions` handling for follow-up requests
 - compare-layer regression logic and structured verification provenance

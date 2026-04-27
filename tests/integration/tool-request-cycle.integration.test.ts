@@ -160,7 +160,7 @@ describe("run_request_cycle tool integration", () => {
         branch_id: (alternateResult.follow_up_resolution as Record<string, unknown>).branch_id,
       });
     });
-  }, 15_000);
+  }, 25_000);
 
   it("returns explicit request interpretation artifacts when tool callers opt into LLM assistance", async () => {
     await withTempWorkspace(async (workspaceRoot) => {

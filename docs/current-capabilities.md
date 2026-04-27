@@ -185,7 +185,7 @@ Current tool-surface caveats:
 - compare now prefers planner-emitted structured verification targets and still keeps heuristic goal alignment only as a legacy fallback
 - compare now preserves compound-goal tradeoff detail through `goal_alignment[].verification_rollup` when structured verification rolls multiple targets into one goal
 - hum and click analysis evidence now exists in the baseline `AnalysisReport`, and compare now prefers those direct artifact fields before falling back to conservative low-band or clipped-sample proxies
-- the repository does not yet provide a dedicated demo CLI or application entrypoint
+- the repository now provides a narrow alpha CLI entrypoint through `pnpm ali -- ...` for local `edit` and `follow-up` flows, with explicit session directories and no hidden persistence
 - benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, tonal and cross-family compound edits, restoration, timing edits, stereo/spatial edits, the first explicit numeric region-targeting slice, iterative follow-up flows, peak-control, dedicated louder-and-controlled prompts, and clarification/failure controls
 - live provider evaluation exists for the interpretation layer, but it is intentionally opt-in and narrower than the deterministic benchmark/reporting path because provider drift, key management, latency, and API cost are part of what that harness is meant to measure
 

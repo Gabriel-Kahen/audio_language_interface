@@ -9,6 +9,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
+    "ali": "node scripts/ali.mjs",
     "bench:interpretation:live": "node --experimental-strip-types scripts/run-live-interpretation-benchmarks.mts",
     "ci": "pnpm validate:schemas && pnpm lint && pnpm typecheck && pnpm test",
     "lint": "biome check .",
@@ -18,10 +19,15 @@
     "test:watch": "vitest",
     "validate:schemas": "node scripts/validate-schemas.mjs"
   },
+  "bin": {
+    "ali": "./scripts/ali.mjs"
+  },
   "dependencies": {
+    "@audio-language-interface/cli": "workspace:*",
     "execa": "^9.6.1",
     "meyda": "^5.6.3",
     "music-metadata": "^11.12.3",
+    "tsx": "^4.20.6",
     "wavefile": "^11.0.0"
   },
   "devDependencies": {

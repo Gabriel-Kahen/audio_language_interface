@@ -83,4 +83,4 @@ It may also consume the optional `interpretation` adapter when callers opt into 
 - Clarification state is persisted explicitly in `SessionGraph.metadata.pending_clarification`, but only as the minimal resume token needed to ask and answer a clarification question safely.
 - When interpretation is enabled, orchestration now passes explicit session context such as `previous_request`, `original_user_request`, and the current version id into the interpretation layer so fuzzy follow-up language can be normalized without moving follow-up resolution out of `history` and orchestration.
 - It does not provide hidden persistence, job scheduling, or service hosting behavior.
-- There is no dedicated CLI or app entrypoint that wraps these orchestration APIs yet.
+- A dedicated alpha CLI now wraps these APIs through `modules/cli`, but orchestration still does not own that user-surface state model.

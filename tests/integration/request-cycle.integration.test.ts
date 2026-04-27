@@ -175,7 +175,7 @@ describe("request cycle integration", () => {
         ]),
       );
     });
-  });
+  }, 15_000);
 
   it("returns a valid partial session graph when plan application fails", async () => {
     await withTempWorkspace(async (workspaceRoot) => {

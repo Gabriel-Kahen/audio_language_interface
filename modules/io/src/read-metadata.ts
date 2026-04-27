@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { execa } from "execa";
 import { parseFile } from "music-metadata";
-import { WaveFile } from "wavefile";
+import wavefile from "wavefile";
 
 import { ExternalToolError, UnsupportedAudioFormatError } from "./errors.js";
 
@@ -148,7 +148,7 @@ export async function runFfprobe(filePath: string): Promise<FfprobeResult | unde
 
 /** Reads WAV-specific codec, bit depth, and frame count details. */
 export async function readWavMetadata(filePath: string): Promise<WavMetadata> {
-  const wav = new WaveFile(await readFile(filePath));
+  const wav = new wavefile.WaveFile(await readFile(filePath));
   const wavFormat = wav.fmt as {
     audioFormat?: number;
     bitsPerSample?: number;

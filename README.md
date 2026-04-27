@@ -51,6 +51,17 @@ Today, the repository supports a real single-file editing loop:
 
 That loop is exposed both through modules and through a thin tool surface.
 
+There is now also a narrow alpha CLI surface over that same validated path:
+
+- `pnpm ali -- edit ./path/to/input.wav "Make this darker and less harsh."`
+- `pnpm ali -- follow-up ./ali-session-2026-04-27T18-00-00 "Undo."`
+- each run writes an explicit session directory with:
+  - a reusable `workspace/`
+  - numbered `runs/run-0001/`, `runs/run-0002/`, ...
+  - `session.json`
+  - rendered output copies plus `EditPlan`, comparison, interpretation, and session-graph artifacts
+- the CLI keeps state explicit and local; it does not add hidden persistence or extra planner breadth
+
 There is now also an optional interpretation layer for open-ended language:
 
 - `modules/interpretation` can call OpenAI or Google APIs to normalize a raw request into a bounded `IntentInterpretation`
@@ -131,6 +142,7 @@ This layer owns interpretation of measurable audio evidence and conversion of us
 
 ### Adapters
 
+- `modules/cli`
 - `modules/interpretation`
 - `modules/tools`
 - `modules/orchestration`
@@ -292,7 +304,7 @@ This repo is usable today for technical experimentation and module-level integra
 - semantic coverage is intentionally conservative
 - compare now prefers structured verification targets, with heuristic goal alignment kept only as a backward-compatible fallback
 - hum and click comparison now prefers direct `AnalysisReport.artifacts` evidence when it exists, with low-band or clipped-sample proxies kept only as conservative fallbacks
-- there is no dedicated demo CLI or app entrypoint yet
+- there is now a narrow alpha CLI entrypoint for local single-file editing and explicit follow-ups, but there is still no broader GUI or service surface
 - the baseline planner does not yet auto-select `pan`, `mid_side_eq`, channel remapping, or the broader Layer 1 runtime-effect surface
 - benchmark coverage now includes a tiny committed cleanup, timing, stereo/spatial, and control corpus, but it is still light compared with the long-term goal
 

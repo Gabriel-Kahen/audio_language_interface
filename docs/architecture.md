@@ -68,6 +68,10 @@ Owns conversion from user intent plus current audio state into an ordered, param
 
 ### Adapters
 
+#### `modules/cli`
+
+Owns the thin local command-line entrypoint and explicit session-directory surface.
+
 #### `modules/interpretation`
 
 Owns optional provider-backed request normalization. It turns open-ended user language into a bounded `IntentInterpretation` artifact without replacing deterministic planning, semantics, or verification.
