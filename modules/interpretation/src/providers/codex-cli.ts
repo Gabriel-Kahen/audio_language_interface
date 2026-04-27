@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { execa } from "execa";
 
-import { buildCandidateSchema, buildCodexPrompt } from "../prompts.js";
+import { buildCodexCandidateSchema, buildCodexPrompt } from "../prompts.js";
 import type {
   CodexCliInterpretationProviderConfig,
   InterpretationProvider,
@@ -46,7 +46,7 @@ async function runCodexCliInterpretation(
   const outputPath = path.join(tempDir, "interpretation-output.json");
 
   try {
-    await writeFile(schemaPath, `${JSON.stringify(buildCandidateSchema(), null, 2)}\n`);
+    await writeFile(schemaPath, `${JSON.stringify(buildCodexCandidateSchema(), null, 2)}\n`);
     const prompt = buildCodexPrompt(input);
     const args = [
       "exec",

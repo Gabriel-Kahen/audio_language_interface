@@ -355,6 +355,51 @@ export function buildCandidateSchema(): object {
   };
 }
 
+export function buildCodexCandidateSchema(): object {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "normalized_request",
+      "request_classification",
+      "next_action",
+      "normalized_objectives",
+      "candidate_descriptors",
+      "rationale",
+      "confidence",
+    ],
+    properties: {
+      normalized_request: { type: "string", minLength: 1 },
+      request_classification: {
+        type: "string",
+        enum: [
+          "supported",
+          "supported_but_underspecified",
+          "unsupported",
+          "supported_runtime_only_but_not_planner_enabled",
+        ],
+      },
+      next_action: {
+        type: "string",
+        enum: ["plan", "clarify", "refuse"],
+      },
+      normalized_objectives: {
+        type: "array",
+        items: { type: "string", minLength: 1 },
+      },
+      candidate_descriptors: {
+        type: "array",
+        items: {
+          type: "string",
+          enum: [...SUPPORTED_DESCRIPTOR_LABELS],
+        },
+      },
+      rationale: { type: "string", minLength: 1 },
+      confidence: { type: "number", minimum: 0, maximum: 1 },
+    },
+  };
+}
+
 function summarizeAnalysis(report: AnalysisReport) {
   return {
     summary: report.summary.plain_text,
