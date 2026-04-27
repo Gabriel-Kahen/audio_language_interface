@@ -623,6 +623,17 @@ function applyInterpretationObjectiveHints(
     return;
   }
 
+  for (const objective of interpretation.normalizedObjectives ?? []) {
+    const parsedObjective = parseUserRequest(objective);
+
+    if (parsedObjective.wants_pitch_shift) {
+      objectives.wants_pitch_shift = true;
+      if (parsedObjective.pitch_shift_semitones !== undefined) {
+        objectives.pitch_shift_semitones = parsedObjective.pitch_shift_semitones;
+      }
+    }
+  }
+
   for (const constraint of interpretation.constraints ?? []) {
     if (constraint.kind === "intensity") {
       if (

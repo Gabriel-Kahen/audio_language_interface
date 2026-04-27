@@ -83,6 +83,7 @@ export async function planAndApply(options: PlanAndApplyOptions): Promise<PlanAn
                 intentInterpretation: {
                   interpretationId: intentInterpretation.interpretation_id,
                   normalizedRequest: intentInterpretation.normalized_request,
+                  normalizedObjectives: intentInterpretation.normalized_objectives,
                   requestClassification: intentInterpretation.request_classification,
                   ...(intentInterpretation.ambiguities === undefined
                     ? {}

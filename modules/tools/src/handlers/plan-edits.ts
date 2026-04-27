@@ -113,6 +113,7 @@ export const planEditsTool: ToolDefinition<PlanEditsArguments, Record<string, un
               intentInterpretation: {
                 interpretationId: args.intentInterpretation.interpretation_id,
                 normalizedRequest: args.intentInterpretation.normalized_request,
+                normalizedObjectives: args.intentInterpretation.normalized_objectives,
                 requestClassification: args.intentInterpretation.request_classification,
                 ...(args.intentInterpretation.ambiguities === undefined
                   ? {}

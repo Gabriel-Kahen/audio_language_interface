@@ -88,6 +88,8 @@ describe("parseUserRequest", () => {
     const trimSilence = parseUserRequest("Trim the silence at the beginning and end.");
     const speedUp = parseUserRequest("Speed up by 10%.");
     const pitchUp = parseUserRequest("Pitch up by 2 semitones.");
+    const pitchItUp = parseUserRequest("Pitch it up a bit.");
+    const octaveUp = parseUserRequest("Pitch it up like a whole octave.");
 
     expect(trimSilence.wants_trim_silence).toBe(true);
     expect(trimSilence.trim_leading_silence).toBe(true);
@@ -98,6 +100,10 @@ describe("parseUserRequest", () => {
 
     expect(pitchUp.wants_pitch_shift).toBe(true);
     expect(pitchUp.pitch_shift_semitones).toBe(2);
+    expect(pitchItUp.wants_pitch_shift).toBe(true);
+    expect(pitchItUp.pitch_shift_semitones).toBe(1);
+    expect(octaveUp.wants_pitch_shift).toBe(true);
+    expect(octaveUp.pitch_shift_semitones).toBe(12);
   });
 
   it("parses explicit time-range region phrases for supported local edits", () => {
@@ -848,6 +854,39 @@ describe("planEdits", () => {
       ]),
     );
     expect(validateAgainstSchema(editPlanSchema, plan)).toBe(true);
+  });
+
+  it("keeps pitch_shift when an interpreted compound request uses `pitch it up` wording", () => {
+    const plan = planEdits({
+      userRequest: "pitch it up a bit and make it less harsh",
+      workspaceRoot: repoRoot,
+      audioVersion: createPitchedAudioVersionFixture(),
+      analysisReport: createPitchedAnalysisReportFixture(),
+      semanticProfile: createVersionScopedNeutralSemanticProfile("ver_pitchedTimingFixture"),
+      intentInterpretation: {
+        normalizedRequest: "pitch it up a bit and make it less harsh",
+        normalizedObjectives: ["pitch it up slightly", "make it less harsh"],
+        requestClassification: "supported",
+        nextAction: "plan",
+      },
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["pitch_shift", "notch_filter"]);
+    expect(plan.steps[0]?.parameters).toEqual({ semitones: 1 });
+  });
+
+  it("maps octave wording to a 12-semitone pitch_shift", () => {
+    const plan = planEdits({
+      userRequest: "Pitch it up like a whole octave.",
+      workspaceRoot: repoRoot,
+      audioVersion: createPitchedAudioVersionFixture(),
+      analysisReport: createPitchedAnalysisReportFixture(),
+      semanticProfile: createVersionScopedNeutralSemanticProfile("ver_pitchedTimingFixture"),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["pitch_shift"]);
+    expect(plan.steps[0]?.parameters).toEqual({ semitones: 12 });
+    expect(plan.goals).toContain("raise the pitch by 12 semitones");
   });
 
   it("orders compound timing prompts explicitly and composes duration verification", () => {

@@ -31,7 +31,7 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - `make the first 0.5 seconds darker`, `remove 60 Hz hum only in the last 0.5 seconds`, `make it less harsh from 0.2s to 0.7s` -> keep the same supported operation family, but ground the steps to one explicit `time_range` target instead of `full_file`
 - `trim the silence`, `remove silence at the beginning and end` -> full-file `trim_silence` using a conservative threshold derived from the measured noise floor
 - `speed up by 10%`, `slow down by 10%`, `faster`, `slower` -> conservative `time_stretch` with explicit `stretch_ratio` and pitch-preservation verification
-- `pitch up by 2 semitones`, `pitch down by 2 semitones`, `transpose` -> conservative `pitch_shift` only when analysis says the source is pitched
+- `pitch up by 2 semitones`, `pitch it up a bit`, `pitch it up like a whole octave`, `pitch down by 2 semitones`, `up an octave`, `down an octave`, `transpose` -> conservative `pitch_shift` only when analysis says the source is pitched
 - `fade in Xs`, `fade out Xs` -> `fade` step with explicit durations
 
 ## Compound prompt ordering

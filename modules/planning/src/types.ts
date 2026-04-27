@@ -120,6 +120,7 @@ export interface EditPlan {
 export interface PlannerIntentInterpretationInput {
   interpretationId?: string;
   normalizedRequest: string;
+  normalizedObjectives?: string[];
   requestClassification?: PlannerRequestClass;
   nextAction?: InterpretationNextAction;
   ambiguities?: string[];

@@ -209,9 +209,16 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
     wants_pitch_shift: containsAny(normalizedRequest, [
       "pitch shift",
       "pitch up",
+      "pitch it up",
       "pitch down",
+      "pitch it down",
       "transpose",
       "shift the pitch",
+      "raise the pitch",
+      "lower the pitch",
+      "up an octave",
+      "down an octave",
+      "whole octave",
     ]),
     preserve_punch: containsAny(normalizedRequest, [
       "keep the punch",
@@ -741,10 +748,21 @@ function parsePitchShiftSemitones(
     return Number.isFinite(semitones) ? semitones : undefined;
   }
 
+  const octaveMatcher = value.match(
+    /\b(?:pitch (?:it )?(up|down)|transpose(?: it)? (up|down)?|raise the pitch|lower the pitch|up|down)\b(?:[^.]*?)\b(?:(a|an|one|1|two|2)\s+)?(?:whole\s+)?octaves?\b/,
+  );
+  if (octaveMatcher) {
+    const direction =
+      octaveMatcher[1] ?? octaveMatcher[2] ?? (value.includes("down") ? "down" : "up");
+    const octaveCountToken = octaveMatcher[3];
+    const octaveCount = octaveCountToken === "two" || octaveCountToken === "2" ? 2 : 1;
+    return direction === "down" ? -12 * octaveCount : 12 * octaveCount;
+  }
+
   const defaultMagnitude =
     parsed.intensity === "subtle" ? 1 : parsed.intensity === "strong" ? 4 : 2;
 
-  if (containsAny(value, ["pitch down", "transpose down"])) {
+  if (containsAny(value, ["pitch down", "pitch it down", "transpose down", "lower the pitch"])) {
     return -defaultMagnitude;
   }
 
