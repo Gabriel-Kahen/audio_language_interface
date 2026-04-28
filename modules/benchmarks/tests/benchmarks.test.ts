@@ -323,7 +323,7 @@ describe("firstPromptFamilyFixtureCorpus", () => {
     expect(firstPromptFamilyRequestCycleCorpus.fixtureManifestPath).toBe(
       FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
     );
-    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(46);
+    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(47);
     expect(firstPromptFamilyRequestCycleSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
         "request_cycle_more_relaxed",
@@ -354,6 +354,7 @@ describe("firstPromptFamilyFixtureCorpus", () => {
         "request_cycle_limit_peaks_phrase_stress",
         "request_cycle_louder_and_more_controlled",
         "request_cycle_louder_keep_controlled_stress",
+        "request_cycle_louder_controlled_already_tight_stress",
         "request_cycle_more_controlled_and_darker",
         "request_cycle_faster_keep_pitch_stress",
         "request_cycle_raise_pitch_two_semitones_word_stress",
@@ -959,7 +960,7 @@ describe("runRequestCycleBenchmarks", () => {
       expectAppliedRequestCycleResult(
         moreControlledAndDarkerCase?.requestCycleResult,
       ).editPlan?.steps.map((step) => step.operation),
-    ).toEqual(["tilt_eq", "compressor"]);
+    ).toEqual(["tilt_eq"]);
 
     const centerMoreAndWiderCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === centerMoreAndWider.caseId,
@@ -1041,6 +1042,7 @@ describe("runRequestCycleBenchmarks", () => {
       getRequestCycleCase("request_cycle_high_pass_low_end_rumble_stress"),
       getRequestCycleCase("request_cycle_limit_peaks_phrase_stress"),
       getRequestCycleCase("request_cycle_louder_keep_controlled_stress"),
+      getRequestCycleCase("request_cycle_louder_controlled_already_tight_stress"),
       getRequestCycleCase("request_cycle_faster_keep_pitch_stress"),
       getRequestCycleCase("request_cycle_raise_pitch_two_semitones_word_stress"),
       getRequestCycleCase("request_cycle_move_stereo_image_center_stress"),
@@ -1076,6 +1078,7 @@ describe("runRequestCycleBenchmarks", () => {
       ["request_cycle_high_pass_low_end_rumble_stress", "ok", "applied", ["high_pass_filter"]],
       ["request_cycle_limit_peaks_phrase_stress", "ok", "applied", ["limiter"]],
       ["request_cycle_louder_keep_controlled_stress", "ok", "applied", ["compressor", "normalize"]],
+      ["request_cycle_louder_controlled_already_tight_stress", "ok", "applied", ["limiter"]],
       ["request_cycle_faster_keep_pitch_stress", "ok", "applied", ["time_stretch"]],
       ["request_cycle_raise_pitch_two_semitones_word_stress", "ok", "applied", ["pitch_shift"]],
       [

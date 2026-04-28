@@ -412,11 +412,8 @@ function resolvePlannerObjectives(
     effectiveObjectives.wants_less_harsh = false;
   }
 
-  if (
-    isAlreadyTightlyControlled(analysisReport) &&
-    hasExplicitControlledNormalizationIntent(effectiveObjectives)
-  ) {
-    effectiveObjectives.wants_more_controlled_dynamics = false;
+  if (isAlreadyTightlyControlled(analysisReport)) {
+    preserveAlreadyControlledDynamics(effectiveObjectives);
   }
 
   if (
@@ -830,15 +827,46 @@ function isAlreadyTightlyControlled(analysisReport: AnalysisReport): boolean {
   );
 }
 
-function hasExplicitControlledNormalizationIntent(
-  objectives: ReturnType<typeof parseUserRequest>,
-): boolean {
-  return (
+function preserveAlreadyControlledDynamics(objectives: ReturnType<typeof parseUserRequest>): void {
+  if (!objectives.wants_more_controlled_dynamics) {
+    return;
+  }
+
+  if (
     objectives.wants_louder &&
-    objectives.wants_more_even_level &&
-    (objectives.normalized_request.includes("keep it controlled") ||
-      objectives.normalized_request.includes("keep this controlled"))
-  );
+    !objectives.wants_more_even_level &&
+    !objectives.wants_quieter &&
+    !objectives.wants_peak_control
+  ) {
+    objectives.wants_more_controlled_dynamics = false;
+    objectives.controlled_loudness_limiter_gain_db = resolveAlreadyControlledLimiterInputGainDb(
+      objectives.intensity,
+    );
+    return;
+  }
+
+  if (
+    objectives.wants_more_even_level ||
+    objectives.wants_quieter ||
+    objectives.wants_peak_control ||
+    hasCompanionNonDynamicsIntent(objectives)
+  ) {
+    objectives.wants_more_controlled_dynamics = false;
+  }
+}
+
+function resolveAlreadyControlledLimiterInputGainDb(
+  intensity: ReturnType<typeof parseUserRequest>["intensity"],
+): number {
+  if (intensity === "subtle") {
+    return 0.8;
+  }
+
+  if (intensity === "strong") {
+    return 1.5;
+  }
+
+  return 1;
 }
 
 function hasCompanionNonDynamicsIntent(objectives: ReturnType<typeof parseUserRequest>): boolean {
@@ -1110,6 +1138,9 @@ function buildGoals(objectives: ReturnType<typeof parseUserRequest>): string[] {
   if (objectives.wants_more_controlled_dynamics) {
     goals.push("make dynamics more controlled without over-compressing");
   }
+  if (objectives.controlled_loudness_limiter_gain_db !== undefined) {
+    goals.push("control peak excursions conservatively");
+  }
   if (objectives.wants_denoise) {
     goals.push("reduce steady background noise conservatively");
   }
@@ -1190,8 +1221,20 @@ function buildConstraints(
     constraints.push("prefer measured loudness staging over raw post-compression gain boosts");
   }
 
-  if (objectives.wants_peak_control) {
+  if (
+    objectives.wants_peak_control ||
+    objectives.controlled_loudness_limiter_gain_db !== undefined
+  ) {
     constraints.push("keep output ceiling conservative and avoid audible limiting artifacts");
+  }
+
+  if (
+    objectives.wants_louder &&
+    (objectives.wants_more_even_level ||
+      objectives.controlled_loudness_limiter_gain_db !== undefined) &&
+    objectives.normalized_request.includes("more controlled")
+  ) {
+    constraints.push("preserve the source's already-controlled dynamics while raising level");
   }
 
   if (objectives.wants_denoise) {

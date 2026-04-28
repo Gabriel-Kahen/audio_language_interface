@@ -1050,15 +1050,60 @@ describe("planEdits", () => {
     ).toThrow(/already measures as tightly controlled/i);
   });
 
-  it("refuses louder-and-controlled requests on already tightly controlled material", () => {
-    expect(() =>
-      planEdits({
-        userRequest: "Make it louder and more controlled.",
-        audioVersion: createAudioVersionFixture(),
-        analysisReport: createAlreadyControlledAnalysisReportFixture(),
-        semanticProfile: createSemanticProfileFixture(),
-      }),
-    ).toThrow(/already measures as tightly controlled/i);
+  it("uses peak-limited input gain for louder-and-controlled requests on already controlled material", () => {
+    const plan = planEdits({
+      userRequest: "Make it louder and more controlled.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAlreadyControlledAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["limiter"]);
+    expect(plan.steps[0]?.parameters).toEqual({
+      ceiling_dbtp: -1,
+      input_gain_db: 1,
+      release_ms: 80,
+      lookahead_ms: 5,
+    });
+    expect(plan.goals).toEqual([
+      "control peak excursions conservatively",
+      "increase output level conservatively",
+    ]);
+    expect(plan.constraints).toEqual(
+      expect.arrayContaining([
+        "respect measured peak headroom",
+        "preserve the source's already-controlled dynamics while raising level",
+      ]),
+    );
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_louder_integrated_lufs",
+          goal: "increase output level conservatively",
+          threshold: 0.8,
+        }),
+        expect.objectContaining({
+          target_id: "target_peak_control_true_peak",
+          goal: "control peak excursions conservatively",
+        }),
+        expect.objectContaining({
+          target_id: "target_peak_control_no_regression",
+          regression_kind: "peak_control_regression",
+        }),
+      ]),
+    );
+  });
+
+  it("drops redundant compression but keeps companion tonal objectives on already controlled material", () => {
+    const plan = planEdits({
+      userRequest: "Make it darker and more controlled.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAlreadyControlledAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["tilt_eq"]);
+    expect(plan.goals).toEqual(["tilt the overall balance slightly darker"]);
   });
 
   it("keeps pure peak-control prompts from adding loudness-maximizing limiter gain on low-peak sources", () => {

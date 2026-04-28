@@ -657,7 +657,10 @@ export function buildVerificationTargets(
     });
   }
 
-  if (objectives.wants_peak_control) {
+  if (
+    objectives.wants_peak_control ||
+    objectives.controlled_loudness_limiter_gain_db !== undefined
+  ) {
     targets.push({
       target_id: "target_peak_control_true_peak",
       goal: "control peak excursions conservatively",
@@ -760,7 +763,10 @@ export function buildVerificationTargets(
       kind: "analysis_metric",
       comparison: "increase_by",
       metric: "levels.integrated_lufs",
-      threshold: thresholdByIntensity(objectives.intensity, 0.8, 1.5, 2.5),
+      threshold:
+        objectives.controlled_loudness_limiter_gain_db === undefined
+          ? thresholdByIntensity(objectives.intensity, 0.8, 1.5, 2.5)
+          : thresholdByIntensity(objectives.intensity, 0.4, 0.8, 1.2),
       rationale: "A louder result should move integrated loudness upward.",
     });
     targets.push({

@@ -1472,31 +1472,69 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
       },
     },
     {
-      caseId: "request_cycle_more_controlled_and_darker",
+      caseId: "request_cycle_louder_controlled_already_tight_stress",
       family: "first_prompt_family",
-      prompt: "Make this a little tighter and more controlled, and darker.",
-      description: "Control-plus-tonal compound on the shared first-slice fixture.",
+      prompt: "Make it louder and more controlled.",
+      description:
+        "Already-controlled material should use peak-limited input gain rather than refusing or adding redundant compression.",
       fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
       expectation: {
         planner: {
           expected_result_kind: "applied",
-          required_operations: ["tilt_eq", "compressor"],
-          expected_operation_order: ["tilt_eq", "compressor"],
+          required_operations: ["limiter"],
+          forbidden_operations: ["compressor", "normalize", "gain"],
+          expected_operation_order: ["limiter"],
           required_goals: [
-            "tilt the overall balance slightly darker",
-            "make dynamics more controlled without over-compressing",
+            "control peak excursions conservatively",
+            "increase output level conservatively",
           ],
         },
         outcome: {
           report_scope: "version",
           require_structured_verification: true,
           goal_statuses: {
+            "control peak excursions conservatively": "met",
+            "increase output level conservatively": "met",
+          },
+          verification_statuses: {
+            target_peak_control_true_peak: "met",
+            target_peak_control_no_regression: "met",
+            target_louder_integrated_lufs: "met",
+            target_louder_no_headroom_loss: "met",
+          },
+        },
+        regressions: {
+          forbidden_regression_kinds: [
+            "peak_control_regression",
+            "loudness_headroom_loss",
+            "over_compression",
+          ],
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_more_controlled_and_darker",
+      family: "first_prompt_family",
+      prompt: "Make this a little tighter and more controlled, and darker.",
+      description:
+        "Control-plus-tonal compound on already-controlled material should omit redundant compression and keep the safe tonal move.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["tilt_eq"],
+          forbidden_operations: ["compressor"],
+          expected_operation_order: ["tilt_eq"],
+          required_goals: ["tilt the overall balance slightly darker"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
             "tilt the overall balance slightly darker": "met",
-            "make dynamics more controlled without over-compressing": "not_met",
           },
           verification_statuses: {
             target_darker_brightness_tilt: "met",
-            target_control_dynamics_no_overcompression: "met",
           },
         },
         regressions: {

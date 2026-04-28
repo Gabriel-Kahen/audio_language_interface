@@ -595,7 +595,11 @@ function buildGainStep(
   objectives: ParsedEditObjectives,
   analysisReport: AnalysisReport,
 ): EditPlanStep | undefined {
-  if (objectives.wants_more_even_level || objectives.wants_louder === objectives.wants_quieter) {
+  if (
+    objectives.wants_more_even_level ||
+    objectives.controlled_loudness_limiter_gain_db !== undefined ||
+    objectives.wants_louder === objectives.wants_quieter
+  ) {
     return undefined;
   }
 
@@ -785,9 +789,14 @@ function buildLimiterStep(
   objectives: ParsedEditObjectives,
   _analysisReport: AnalysisReport,
 ): EditPlanStep | undefined {
-  if (!objectives.wants_peak_control) {
+  if (
+    !objectives.wants_peak_control &&
+    objectives.controlled_loudness_limiter_gain_db === undefined
+  ) {
     return undefined;
   }
+
+  const inputGainDb = objectives.controlled_loudness_limiter_gain_db ?? 0;
 
   return {
     ...assertPlannerStepSupport("limiter", "full_file"),
@@ -796,11 +805,15 @@ function buildLimiterStep(
     target: { scope: "full_file" },
     parameters: {
       ceiling_dbtp: -1,
-      input_gain_db: 0,
+      input_gain_db: inputGainDb,
       release_ms: 80,
       lookahead_ms: 5,
     },
-    expected_effects: ["catch short peak excursions without broad loudness maximization"],
+    expected_effects: [
+      inputGainDb > 0
+        ? "raise level into an explicit peak ceiling without adding compression"
+        : "catch short peak excursions without broad loudness maximization",
+    ],
     safety_limits: buildLimiterSafetyLimits(),
   };
 }
