@@ -99,7 +99,11 @@ importers:
         specifier: workspace:*
         version: link:../orchestration
 
-  modules/compare: {}
+  modules/compare:
+    dependencies:
+      wavefile:
+        specifier: ^11.0.0
+        version: 11.0.0
 
   modules/core:
     dependencies:

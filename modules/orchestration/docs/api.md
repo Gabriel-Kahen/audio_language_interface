@@ -156,6 +156,8 @@ Important comparison behavior:
 
 For revert-style and alternate-version execution, callers must provide `dependencies.getAudioVersionById({ asset, sessionGraph, versionId })`.
 
+For opt-in planner best-effort behavior, callers may pass `options.planningPolicy = "best_effort"`. This keeps deterministic planning authoritative, but allows subjective texture wording to choose a conservative tonal-softening proxy instead of refusing when direct artifact evidence is missing. The default is strict behavior.
+
 For opt-in LLM assistance, callers must also provide:
 
 - `options.interpretation = { mode: "llm_assisted", policy?, provider: ... }`

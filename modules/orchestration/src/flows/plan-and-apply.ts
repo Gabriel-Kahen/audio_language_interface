@@ -145,6 +145,9 @@ export async function planAndApply(options: PlanAndApplyOptions): Promise<PlanAn
                 },
               }),
           workspaceRoot: options.workspaceRoot,
+          ...(options.planningPolicy === undefined
+            ? {}
+            : { planningPolicy: options.planningPolicy }),
         }),
       );
 

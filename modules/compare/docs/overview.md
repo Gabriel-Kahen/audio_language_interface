@@ -230,7 +230,7 @@ For structured compound goals with multiple requested sub-targets, compare now r
 
 Guard-only structured goals do not prove that requested cleanup happened. If a goal only contains regression guards and those guards pass, the goal-level status is `unknown` while the guard result remains visible as `met`.
 
-Time-range, segment, and channel-scoped `analysis_metric` targets are not scored from whole-file analysis metrics. Until matching local analysis evidence is available, compare reports those target results as `unknown` rather than incorrectly applying whole-file deltas to a local slice. Frequency-region targets remain scoreable from already band-specific whole-file metrics.
+Time-range, segment, and channel-scoped `analysis_metric` targets are not scored from whole-file analysis metrics. When `compareVersions()` receives `workspaceRoot` and workspace-local WAV versions, compare can now score the first local evidence slice: explicit trim duration, fade-in/fade-out boundary envelope ratios, and time-range level or spectral-balance movement. If that local evidence is unavailable, compare still reports those target results as `unknown` rather than incorrectly applying whole-file deltas to a local slice. Frequency-region targets remain scoreable from already band-specific whole-file metrics.
 
 ## Legacy goal alignment fallback
 

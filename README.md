@@ -54,13 +54,15 @@ That loop is exposed both through modules and through a thin tool surface.
 There is now also a narrow alpha CLI surface over that same validated path:
 
 - `pnpm ali -- edit ./path/to/input.wav "Make this darker and less harsh."`
+- `pnpm ali -- edit ./path/to/input.wav "Make this less distorted." --best-effort`
 - `pnpm ali -- follow-up ./ali-session-2026-04-27T18-00-00 "Undo."`
 - each run writes an explicit session directory with:
   - a reusable `workspace/`
   - numbered `runs/run-0001/`, `runs/run-0002/`, ...
   - `session.json`
   - rendered output copies plus `EditPlan`, comparison, interpretation, and session-graph artifacts
-- the CLI keeps state explicit and local; it does not add hidden persistence or extra planner breadth
+- the CLI keeps state explicit and local; it does not add hidden persistence or extra planner breadth by default
+- `--best-effort` is an explicit opt-in planner policy for CLI calls that lets subjective texture wording fall back to a conservative tonal-softening proxy instead of refusing when direct artifact evidence is missing
 
 There is now also an optional interpretation layer for open-ended language:
 
@@ -295,6 +297,7 @@ The current system is strongest on conservative editing requests such as:
 - explicit loudness normalization
 - airier, warmer, or less muddy through conservative surgical EQ
 - texture wording such as `more relaxed` or `less aggressive` when it can be grounded honestly as a conservative tonal-softening move
+- CLI-only `--best-effort` texture fallbacks for subjective phrases such as `less distorted`, `less aggressive`, `less sharp`, `less gritty`, `less fuzzy`, or `less intense`; these stay labeled as proxy tonal-softening edits rather than claimed artifact repair
 - tame sibilance, remove explicitly specified `50 Hz` or `60 Hz` hum, and clean up clicks
 - explicit `less distorted`, `repair clipping`, or `declip` wording when the source has direct clipping evidence; this is narrow hard-clipping repair, not general distortion removal
 - more controlled
@@ -311,6 +314,7 @@ This repo is usable today for technical experimentation and module-level integra
 - analysis currently requires WAV files on disk
 - semantic coverage is intentionally conservative
 - compare now prefers structured verification targets, with heuristic goal alignment kept only as a backward-compatible fallback
+- compare can verify explicit trim duration, fade boundary envelopes, and the first numeric `time_range` level/spectral checks from workspace-local WAV evidence
 - hum and click comparison now prefers direct `AnalysisReport.artifacts` evidence when it exists, with low-band or clipped-sample proxies kept only as conservative fallbacks
 - there is now a narrow alpha CLI entrypoint for local single-file editing and explicit follow-ups, but there is still no broader GUI or service surface
 - the baseline planner does not yet auto-select `pan`, `mid_side_eq`, channel remapping, or the broader Layer 1 runtime-effect surface

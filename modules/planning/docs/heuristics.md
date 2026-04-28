@@ -8,8 +8,9 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 
 - `darker`, `less bright` -> gentle `tilt_eq` darkening around `1200 Hz`
 - `less harsh`, `smoother` -> `notch_filter` centered on the analysis harshness annotation midpoint, or `3750 Hz` fallback
-- `more relaxed`, `less aggressive` -> conservative tonal softening only when deterministic evidence supports that grounded reading; harshness/aggressive evidence may use `notch_filter + tilt_eq`, while brightness-only evidence uses darker `tilt_eq` without inventing harshness repair
+- `more relaxed`, `less aggressive`, `less intense`, `less sharp`, `less gritty`, `less fuzzy` -> conservative tonal softening only when deterministic evidence supports that grounded reading; harshness/aggressive evidence may use `notch_filter + tilt_eq`, while brightness-only evidence uses darker `tilt_eq` without inventing harshness repair
 - `less distorted`, `repair clipping`, `declip` -> conservative `declip` only when analysis shows direct clipping evidence
+- with `planningPolicy = "best_effort"`, subjective texture repair or softening wording without direct artifact evidence falls back to conservative tonal softening and records a best-effort constraint note instead of claiming hard artifact repair
 - `less crunchy` -> conservative `less harsh` proxy only when the request does not already read as explicit clipping or distortion repair
 - `cleaner`, `clean up a bit` -> conservative tonal cleanup only when analysis or semantics show harshness or muddiness; otherwise reject as underspecified
 - `brighter`, `more presence` -> gentle `tilt_eq` brightening around `1200 Hz`

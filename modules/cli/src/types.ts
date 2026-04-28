@@ -27,6 +27,7 @@ export interface EditCliCommand {
   sessionDir?: string;
   outputPath?: string;
   llm?: CliLlmOptions;
+  bestEffort: boolean;
   json: boolean;
 }
 
@@ -36,6 +37,7 @@ export interface FollowUpCliCommand {
   request: string;
   outputPath?: string;
   llm?: CliLlmOptions;
+  bestEffort: boolean;
   json: boolean;
 }
 

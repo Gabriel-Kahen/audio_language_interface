@@ -23,6 +23,7 @@ export type PlannerRequestClass =
   | "unsupported"
   | "supported_runtime_only_but_not_planner_enabled";
 export type PlannerFailureClass = Exclude<PlannerRequestClass, "supported">;
+export type PlanningPolicy = "strict" | "best_effort";
 export type InterpretationNextAction = "plan" | "clarify" | "refuse";
 export type DescriptorHypothesisStatus = "supported" | "weak" | "contradicted" | "unresolved";
 
@@ -215,6 +216,7 @@ export interface ParsedEditObjectives {
   stretch_ratio?: number;
   pitch_shift_semitones?: number;
   intensity: "subtle" | "default" | "strong";
+  best_effort_notes?: string[];
 }
 
 export interface PlanEditsOptions {
@@ -223,6 +225,7 @@ export interface PlanEditsOptions {
   analysisReport: AnalysisReport;
   semanticProfile: SemanticProfile;
   intentInterpretation?: PlannerIntentInterpretationInput;
+  planningPolicy?: PlanningPolicy;
   workspaceRoot?: string;
   generatedAt?: string;
   constraints?: string[];

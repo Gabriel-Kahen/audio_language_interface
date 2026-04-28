@@ -47,6 +47,51 @@ export function buildVerificationTargets(
     trailingSilenceSeconds,
   );
 
+  if (objectives.trim_range !== undefined) {
+    targets.push({
+      target_id: "target_trim_explicit_duration",
+      goal: "trim the file to the explicitly requested time range",
+      label: "match the explicit trim range duration",
+      kind: "analysis_metric",
+      comparison: "within",
+      metric: "derived.duration_seconds",
+      threshold: Number(
+        (objectives.trim_range.end_seconds - objectives.trim_range.start_seconds).toFixed(3),
+      ),
+      tolerance: 0.02,
+      rationale:
+        "Explicit trim-point requests should produce an output duration matching the requested range.",
+    });
+  }
+
+  if (objectives.fade_in_seconds !== undefined) {
+    targets.push({
+      target_id: `target_fade_in_${Math.round(objectives.fade_in_seconds * 1000)}ms_envelope`,
+      goal: "smooth file boundaries with explicit fades",
+      label: "attenuate the beginning of the requested fade-in span",
+      kind: "analysis_metric",
+      comparison: "at_most",
+      metric: "derived.fade_in_boundary_ratio",
+      threshold: 0.65,
+      tolerance: 0.2,
+      rationale: `The requested fade-in span is ${objectives.fade_in_seconds} seconds; the beginning should be quieter than the end of that span.`,
+    });
+  }
+
+  if (objectives.fade_out_seconds !== undefined) {
+    targets.push({
+      target_id: `target_fade_out_${Math.round(objectives.fade_out_seconds * 1000)}ms_envelope`,
+      goal: "smooth file boundaries with explicit fades",
+      label: "attenuate the end of the requested fade-out span",
+      kind: "analysis_metric",
+      comparison: "at_most",
+      metric: "derived.fade_out_boundary_ratio",
+      threshold: 0.65,
+      tolerance: 0.2,
+      rationale: `The requested fade-out span is ${objectives.fade_out_seconds} seconds; the end should be quieter than the start of that span.`,
+    });
+  }
+
   if (objectives.wants_trim_silence) {
     if (objectives.trim_leading_silence) {
       targets.push({
@@ -803,15 +848,37 @@ function applyRegionTargetToVerificationTargets(
       return target;
     }
 
+    const localRegionTarget = {
+      scope: "time_range" as const,
+      start_seconds: objectives.region_target?.start_seconds ?? 0,
+      end_seconds: objectives.region_target?.end_seconds ?? 0,
+    };
+
+    if (target.target_id === "target_normalize_integrated_lufs") {
+      return {
+        ...target,
+        comparison: "increase_by",
+        threshold: normalizeLocalLoudnessDeltaThreshold(objectives),
+        tolerance: 0.25,
+        target: localRegionTarget,
+        rationale:
+          "Region-scoped normalization uses local loudness movement because a whole-file LUFS target is not directly comparable to a short local window.",
+      };
+    }
+
     return {
       ...target,
-      target: {
-        scope: "time_range",
-        start_seconds: objectives.region_target?.start_seconds ?? 0,
-        end_seconds: objectives.region_target?.end_seconds ?? 0,
-      },
+      target: localRegionTarget,
     };
   });
+}
+
+function normalizeLocalLoudnessDeltaThreshold(objectives: ParsedEditObjectives): number {
+  if (objectives.wants_louder) {
+    return objectives.intensity === "subtle" ? 1 : objectives.intensity === "strong" ? 2 : 1.5;
+  }
+
+  return objectives.intensity === "strong" ? 1 : 0.5;
 }
 
 function getLeadingSilenceSeconds(analysisReport: AnalysisReport): number {

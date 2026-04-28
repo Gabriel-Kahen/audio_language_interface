@@ -24,6 +24,7 @@ export async function iterativeRefine(
       ...(options.requestInterpretation === undefined
         ? {}
         : { requestInterpretation: options.requestInterpretation }),
+      ...(options.planningPolicy === undefined ? {} : { planningPolicy: options.planningPolicy }),
       ...(options.sessionGraph === undefined ? {} : { sessionGraph: options.sessionGraph }),
       dependencies: options.dependencies,
       failurePolicy: options.failurePolicy,

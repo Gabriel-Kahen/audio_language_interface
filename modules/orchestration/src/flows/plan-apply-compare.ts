@@ -16,6 +16,7 @@ export async function planApplyComparePass(options: {
   version: IterationResult["inputVersion"];
   analysisReport: IterationResult["inputAnalysis"];
   requestInterpretation?: import("../types.js").LlmAssistedInterpretationOptions;
+  planningPolicy?: import("@audio-language-interface/planning").PlanningPolicy;
   interpretationSessionContext?: import("@audio-language-interface/interpretation").InterpretationSessionContext;
   sessionGraph?: import("../types.js").SessionGraph;
   dependencies: Pick<
@@ -42,6 +43,7 @@ export async function planApplyComparePass(options: {
     ...(options.requestInterpretation === undefined
       ? {}
       : { requestInterpretation: options.requestInterpretation }),
+    ...(options.planningPolicy === undefined ? {} : { planningPolicy: options.planningPolicy }),
     ...(options.interpretationSessionContext === undefined
       ? {}
       : { interpretationSessionContext: options.interpretationSessionContext }),

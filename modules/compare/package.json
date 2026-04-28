@@ -6,6 +6,9 @@
   "description": "Deterministic before/after comparison for Audio Language Interface.",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
+  "dependencies": {
+    "wavefile": "^11.0.0"
+  },
   "exports": {
     ".": "./src/index.ts"
   }

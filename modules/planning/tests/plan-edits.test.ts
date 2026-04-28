@@ -79,6 +79,7 @@ describe("parseUserRequest", () => {
   it("parses grounded texture wording into conservative tonal cleanup and declipping objectives", () => {
     const relaxed = parseUserRequest("Make it more relaxed.");
     const lessDistorted = parseUserRequest("Make it less distorted.");
+    const lessSharp = parseUserRequest("Make it less sharp.");
 
     expect(relaxed.wants_darker).toBe(true);
     expect(relaxed.wants_less_harsh).toBe(true);
@@ -88,6 +89,9 @@ describe("parseUserRequest", () => {
     expect(lessDistorted.wants_less_harsh).toBe(false);
     expect(lessDistorted.request_classification).toBe("supported");
     expect(lessDistorted.supported_runtime_only_but_not_planner_enabled_requests).toEqual([]);
+
+    expect(lessSharp.wants_less_harsh).toBe(true);
+    expect(lessSharp.request_classification).toBe("supported");
   });
 
   it("does not double-classify declip distortion synonyms as runtime-only distortion", () => {
@@ -473,6 +477,21 @@ describe("planEdits", () => {
       end_seconds: 1.2,
     });
     expect(plan.steps[1]?.parameters).toEqual({ fade_out_seconds: 0.1 });
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_trim_explicit_duration",
+          goal: "trim the file to the explicitly requested time range",
+          metric: "derived.duration_seconds",
+          threshold: 1,
+        }),
+        expect.objectContaining({
+          target_id: "target_fade_out_100ms_envelope",
+          goal: "smooth file boundaries with explicit fades",
+          metric: "derived.fade_out_boundary_ratio",
+        }),
+      ]),
+    );
     expect(validateAgainstSchema(editPlanSchema, plan)).toBe(true);
   });
 
@@ -492,10 +511,28 @@ describe("planEdits", () => {
 
     expect(fadeInPlan.steps.map((step) => step.operation)).toEqual(["fade"]);
     expect(fadeInPlan.steps[0]?.parameters).toEqual({ fade_in_seconds: 0.2 });
+    expect(fadeInPlan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_fade_in_200ms_envelope",
+          goal: "smooth file boundaries with explicit fades",
+          metric: "derived.fade_in_boundary_ratio",
+        }),
+      ]),
+    );
     expect(validateAgainstSchema(editPlanSchema, fadeInPlan)).toBe(true);
 
     expect(fadeOutPlan.steps.map((step) => step.operation)).toEqual(["fade"]);
     expect(fadeOutPlan.steps[0]?.parameters).toEqual({ fade_out_seconds: 0.2 });
+    expect(fadeOutPlan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_fade_out_200ms_envelope",
+          goal: "smooth file boundaries with explicit fades",
+          metric: "derived.fade_out_boundary_ratio",
+        }),
+      ]),
+    );
     expect(validateAgainstSchema(editPlanSchema, fadeOutPlan)).toBe(true);
   });
 
@@ -1520,6 +1557,41 @@ describe("planEdits", () => {
     ).toThrow(/does not show direct clipping evidence/i);
   });
 
+  it("uses best-effort tonal softening for less-distorted wording without clipping evidence", () => {
+    const plan = planEdits({
+      userRequest: "Make it less distorted.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+      planningPolicy: "best_effort",
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["notch_filter", "tilt_eq"]);
+    expect(plan.goals).toEqual([
+      "reduce upper-mid harshness",
+      "tilt the overall balance slightly darker",
+    ]);
+    expect(plan.constraints).toContain(
+      "best_effort: texture wording had weak or missing direct artifact evidence, so the planner chose a conservative tonal-softening proxy instead of refusing",
+    );
+  });
+
+  it("uses best-effort tonal softening for weakly grounded texture adjectives", () => {
+    const plan = planEdits({
+      userRequest: "Make it less sharp.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createRelaxedLikeAnalysisReportFixture(),
+      semanticProfile: createNeutralSemanticProfileFixture(),
+      planningPolicy: "best_effort",
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["notch_filter"]);
+    expect(plan.goals).toEqual(["reduce upper-mid harshness"]);
+    expect(plan.constraints).toContain(
+      "best_effort: texture wording had weak or missing direct artifact evidence, so the planner chose a conservative tonal-softening proxy instead of refusing",
+    );
+  });
+
   it("drops unsupported declipping from compounds when safe tonal objectives remain", () => {
     const plan = planEdits({
       userRequest: "Make it more relaxed and less distorted.",
@@ -1530,6 +1602,22 @@ describe("planEdits", () => {
 
     expect(plan.steps.map((step) => step.operation)).toEqual(["tilt_eq"]);
     expect(plan.goals).toEqual(["tilt the overall balance slightly darker"]);
+  });
+
+  it("keeps best-effort compound texture fallbacks explicit instead of silently dropping them", () => {
+    const plan = planEdits({
+      userRequest: "Make it more relaxed and less distorted.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createBrightNotHarshAnalysisReportFixture(),
+      semanticProfile: createBrightSemanticProfileFixture(),
+      planningPolicy: "best_effort",
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["tilt_eq"]);
+    expect(plan.goals).toEqual(["tilt the overall balance slightly darker"]);
+    expect(plan.constraints).toContain(
+      "best_effort: texture wording had weak or missing direct artifact evidence, so the planner chose a conservative tonal-softening proxy instead of refusing",
+    );
   });
 
   it("requires direct analysis evidence before trusting semantic clipping labels for declipping", () => {

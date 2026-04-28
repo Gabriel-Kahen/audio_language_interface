@@ -13,6 +13,7 @@ Supported options:
 - `--session-dir <path>`: explicit session directory. Defaults to a new timestamped directory under the current working directory.
 - `--output <path>`: optional convenience copy of the final rendered output.
 - `--json`: print a machine-readable summary instead of human text.
+- `--best-effort`: opt into planner best-effort mode for subjective texture wording. This can produce a conservative tonal-softening proxy instead of refusing phrases such as `less distorted` when direct clipping evidence is missing.
 - `--llm-provider <openai|google|codex_cli>`
 - `--llm-model <model>`: required for `openai` and `google`, optional for `codex_cli`
 - `--llm-api-key <key>`: required for `openai` and `google`
@@ -33,6 +34,7 @@ Supported options:
 
 - `--output <path>`
 - `--json`
+- `--best-effort`
 - the same `--llm-*` interpretation flags supported by `edit`
 
 Follow-up requests can include:

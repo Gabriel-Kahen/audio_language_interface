@@ -15,6 +15,7 @@ export type {
   PlannerFailureClass,
   PlannerIntentInterpretationInput,
   PlannerRequestClass,
+  PlanningPolicy,
   SemanticDescriptor,
   SemanticProfile,
   TargetScope,

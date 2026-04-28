@@ -1,6 +1,8 @@
 import type { CompareMeasurementContext } from "./deltas.js";
 import { combineGoalStatuses } from "./goal-alignment.js";
+import { createLocalAudioMetricReader } from "./local-audio-metrics.js";
 import type {
+  AudioVersion,
   GoalAlignment,
   GoalAlignmentVerificationRollup,
   GoalStatus,
@@ -16,6 +18,12 @@ export interface StructuredVerificationEvaluation {
   goalAlignment: GoalAlignment[];
 }
 
+export interface StructuredVerificationLocalAudioContext {
+  workspaceRoot: string;
+  baselineVersion: AudioVersion;
+  candidateVersion: AudioVersion;
+}
+
 export function evaluateStructuredVerification(
   verificationTargets: Array<string | VerificationTarget>,
   baseline: CompareMeasurementContext,
@@ -23,6 +31,7 @@ export function evaluateStructuredVerification(
   metricDeltas: MetricDelta[],
   semanticDeltas: SemanticDelta[],
   regressions: RegressionWarning[],
+  localAudioContext?: StructuredVerificationLocalAudioContext,
 ): StructuredVerificationEvaluation | undefined {
   const structuredTargets = verificationTargets.filter(isStructuredVerificationTarget);
 
@@ -30,6 +39,7 @@ export function evaluateStructuredVerification(
     return undefined;
   }
 
+  const localMetricReader = createLocalAudioMetricReader(localAudioContext);
   const verificationResults = structuredTargets.map((target) =>
     evaluateVerificationTarget(
       target,
@@ -38,6 +48,7 @@ export function evaluateStructuredVerification(
       metricDeltas,
       semanticDeltas,
       regressions,
+      localMetricReader,
     ),
   );
 
@@ -49,15 +60,22 @@ export function evaluateStructuredVerification(
 
 function evaluateVerificationTarget(
   target: VerificationTarget,
-  _baseline: CompareMeasurementContext,
+  baseline: CompareMeasurementContext,
   candidate: CompareMeasurementContext,
   metricDeltas: MetricDelta[],
   semanticDeltas: SemanticDelta[],
   regressions: RegressionWarning[],
+  localMetricReader: ReturnType<typeof createLocalAudioMetricReader>,
 ): VerificationTargetResult {
   switch (target.kind) {
     case "analysis_metric":
-      return evaluateAnalysisMetricTarget(target, candidate, metricDeltas);
+      return evaluateAnalysisMetricTarget(
+        target,
+        baseline,
+        candidate,
+        metricDeltas,
+        localMetricReader,
+      );
     case "semantic_delta":
       return evaluateSemanticTarget(target, semanticDeltas);
     case "regression_guard":
@@ -67,8 +85,10 @@ function evaluateVerificationTarget(
 
 function evaluateAnalysisMetricTarget(
   target: VerificationTarget,
+  _baseline: CompareMeasurementContext,
   candidate: CompareMeasurementContext,
   metricDeltas: MetricDelta[],
+  localMetricReader: ReturnType<typeof createLocalAudioMetricReader>,
 ): VerificationTargetResult {
   if (target.metric === undefined) {
     return {
@@ -79,11 +99,65 @@ function evaluateAnalysisMetricTarget(
   }
 
   if (requiresRegionLocalEvidence(target)) {
+    const localObservation = localMetricReader.readTargetObservation(target);
+    if (localObservation !== undefined) {
+      if (target.comparison === "increase_by" || target.comparison === "decrease_by") {
+        const status = classifyDirectionalMetric(
+          target.comparison,
+          localObservation.observedDelta,
+          target.threshold,
+          target.tolerance,
+        );
+
+        return {
+          ...target,
+          status,
+          ...(localObservation.observedDelta === undefined
+            ? {}
+            : { observed_delta: localObservation.observedDelta }),
+          evidence: localObservation.evidence,
+        };
+      }
+
+      const status = classifyAbsoluteMetric(
+        target.comparison,
+        localObservation.observedValue,
+        target.threshold,
+        target.tolerance,
+      );
+
+      return {
+        ...target,
+        status,
+        ...(localObservation.observedValue === undefined
+          ? {}
+          : { observed_value: localObservation.observedValue }),
+        evidence: localObservation.evidence,
+      };
+    }
+
     return {
       ...target,
       status: "unknown",
       evidence:
-        "Structured verification target is scoped to a region, but compare only has whole-file analysis evidence for this metric.",
+        "Structured verification target is scoped to a region, but local audio evidence was unavailable for this metric.",
+    };
+  }
+
+  const localObservation = localMetricReader.readTargetObservation(target);
+  if (localObservation?.observedValue !== undefined) {
+    const status = classifyAbsoluteMetric(
+      target.comparison,
+      localObservation.observedValue,
+      target.threshold,
+      target.tolerance,
+    );
+
+    return {
+      ...target,
+      status,
+      observed_value: localObservation.observedValue,
+      evidence: localObservation.evidence,
     };
   }
 

@@ -4,12 +4,28 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { loadCliSessionState, runCli } from "../src/index.js";
+import { loadCliSessionState, parseCliArgs, runCli } from "../src/index.js";
 
 const repoRoot = path.resolve(import.meta.dirname, "../../..");
 const firstSliceFixturePath = path.join(repoRoot, "fixtures/audio/phase-1/first-slice-loop.wav");
 
 describe("runCli", () => {
+  it("parses the explicit best-effort planner flag without requiring LLM options", () => {
+    const command = parseCliArgs([
+      "edit",
+      firstSliceFixturePath,
+      "Make it less distorted.",
+      "--best-effort",
+    ]);
+
+    expect(command.kind).toBe("edit");
+    if (command.kind !== "edit") {
+      throw new Error("Expected edit command.");
+    }
+    expect(command.bestEffort).toBe(true);
+    expect(command.llm).toBeUndefined();
+  });
+
   it("creates a self-contained session directory for a first edit", async () => {
     const sessionDir = await mkdtemp(path.join(os.tmpdir(), "ali-cli-edit-"));
     const stdout = createBufferWriter();
@@ -45,6 +61,46 @@ describe("runCli", () => {
       await access(path.join(sessionDir, "runs", "run-0001", "version-comparison-report.json"));
       await access(path.join(sessionDir, "runs", "run-0001", "render-comparison-report.json"));
       await access(path.join(sessionDir, "runs", "run-0001", "output.wav"));
+    } finally {
+      await rm(sessionDir, { recursive: true, force: true });
+    }
+  }, 10_000);
+
+  it("uses --best-effort to apply a conservative proxy for texture wording", async () => {
+    const sessionDir = await mkdtemp(path.join(os.tmpdir(), "ali-cli-best-effort-"));
+    const stdout = createBufferWriter();
+    const stderr = createBufferWriter();
+
+    try {
+      const result = await runCli(
+        [
+          "edit",
+          firstSliceFixturePath,
+          "Make it less distorted.",
+          "--session-dir",
+          sessionDir,
+          "--best-effort",
+          "--json",
+        ],
+        { stdout, stderr },
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(stderr.value).toBe("");
+
+      const summary = JSON.parse(stdout.value) as {
+        result_kind: string;
+        plan_operations?: string[];
+      };
+      expect(summary.result_kind).toBe("applied");
+      expect(summary.plan_operations).toContain("notch_filter");
+
+      const editPlan = JSON.parse(
+        await readFile(path.join(sessionDir, "runs", "run-0001", "edit-plan.json"), "utf8"),
+      ) as { constraints?: string[] };
+      expect(editPlan.constraints).toContain(
+        "best_effort: texture wording had weak or missing direct artifact evidence, so the planner chose a conservative tonal-softening proxy instead of refusing",
+      );
     } finally {
       await rm(sessionDir, { recursive: true, force: true });
     }

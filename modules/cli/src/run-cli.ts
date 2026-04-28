@@ -97,6 +97,7 @@ export function parseCliArgs(argv: string[], options: { cwd?: string } = {}): Cl
   }
 
   const llm = parseCliLlmOptions(optionsRecord);
+  const bestEffort = parseCliBestEffortOption(optionsRecord);
   const json = optionsRecord.has("--json");
   const cwd = path.resolve(options.cwd ?? process.cwd());
 
@@ -105,7 +106,7 @@ export function parseCliArgs(argv: string[], options: { cwd?: string } = {}): Cl
     const request = rest[1];
     if (!inputPath || !request) {
       throw new Error(
-        "Usage: ali edit <input-path> <request> [--session-dir <path>] [--output <path>] [--json] [--llm-*]",
+        "Usage: ali edit <input-path> <request> [--session-dir <path>] [--output <path>] [--json] [--best-effort] [--llm-*]",
       );
     }
 
@@ -120,6 +121,7 @@ export function parseCliArgs(argv: string[], options: { cwd?: string } = {}): Cl
         ? { outputPath: path.resolve(cwd, String(optionsRecord.get("--output"))) }
         : {}),
       ...(llm === undefined ? {} : { llm }),
+      bestEffort,
       json,
     };
   }
@@ -128,7 +130,7 @@ export function parseCliArgs(argv: string[], options: { cwd?: string } = {}): Cl
   const request = rest[1];
   if (!sessionDir || !request) {
     throw new Error(
-      "Usage: ali follow-up <session-dir> <request> [--output <path>] [--json] [--llm-*]",
+      "Usage: ali follow-up <session-dir> <request> [--output <path>] [--json] [--best-effort] [--llm-*]",
     );
   }
 
@@ -140,8 +142,18 @@ export function parseCliArgs(argv: string[], options: { cwd?: string } = {}): Cl
       ? { outputPath: path.resolve(cwd, String(optionsRecord.get("--output"))) }
       : {}),
     ...(llm === undefined ? {} : { llm }),
+    bestEffort,
     json,
   };
+}
+
+function parseCliBestEffortOption(options: Map<string, string | true>): boolean {
+  const value = options.get("--best-effort");
+  if (value !== undefined && value !== true) {
+    throw new Error("`--best-effort` does not accept a value.");
+  }
+
+  return value === true;
 }
 
 function parseCliLlmOptions(options: Map<string, string | true>): CliLlmOptions | undefined {
@@ -250,6 +262,7 @@ async function runEditCommand(
       enabled: false,
     },
     ...(command.llm === undefined ? {} : { interpretation: toInterpretationOptions(command.llm) }),
+    ...(command.bestEffort ? { planningPolicy: "best_effort" as const } : {}),
     dependencies: createCliDependencies(undefined, options, defaultOrchestrationDependencies),
   });
 
@@ -318,6 +331,7 @@ async function runFollowUpCommand(
       enabled: false,
     },
     ...(command.llm === undefined ? {} : { interpretation: toInterpretationOptions(command.llm) }),
+    ...(command.bestEffort ? { planningPolicy: "best_effort" as const } : {}),
     dependencies: createCliDependencies(
       sessionState.available_versions,
       options,
@@ -566,8 +580,11 @@ function buildHelpText(): string {
     "Audio Language Interface CLI",
     "",
     "Commands:",
-    "  ali edit <input-path> <request> [--session-dir <path>] [--output <path>] [--json]",
-    "  ali follow-up <session-dir> <request> [--output <path>] [--json]",
+    "  ali edit <input-path> <request> [--session-dir <path>] [--output <path>] [--json] [--best-effort]",
+    "  ali follow-up <session-dir> <request> [--output <path>] [--json] [--best-effort]",
+    "",
+    "Planner flags:",
+    "  --best-effort",
     "",
     "Optional LLM flags:",
     "  --llm-provider <openai|google|codex_cli>",

@@ -8,7 +8,7 @@ import type {
   InterpretationSessionContext,
 } from "@audio-language-interface/interpretation";
 import type { ImportAudioOptions, ImportAudioResult } from "@audio-language-interface/io";
-import type { EditPlan } from "@audio-language-interface/planning";
+import type { EditPlan, PlanningPolicy } from "@audio-language-interface/planning";
 import type {
   FinalRenderOptions,
   PreviewRenderOptions,
@@ -164,6 +164,7 @@ export interface PlanAndApplyOptions {
   pass?: number;
   semanticProfile?: SemanticProfile;
   requestInterpretation?: LlmAssistedInterpretationOptions;
+  planningPolicy?: PlanningPolicy;
   interpretationSessionContext?: InterpretationSessionContext;
   sessionGraph?: SessionGraph;
   outputDir?: string;
@@ -252,6 +253,7 @@ export interface IterativeRefineOptions {
   analysisReport: AnalysisReport;
   analysisOptions?: AnalyzeAudioOptions;
   requestInterpretation?: LlmAssistedInterpretationOptions;
+  planningPolicy?: PlanningPolicy;
   sessionGraph?: SessionGraph;
   maxIterations: number;
   dependencies: Pick<
@@ -297,6 +299,7 @@ export interface RunRequestCycleOptions {
   analysisOptions?: AnalyzeAudioOptions;
   renderKind?: "preview" | "final" | undefined;
   interpretation?: LlmAssistedInterpretationOptions;
+  planningPolicy?: PlanningPolicy;
   revision?: RequestCycleRevisionOptions;
   sessionId?: string;
   branchId?: string;

@@ -26,6 +26,7 @@ Both commands:
 - write explicit run artifacts to disk
 - keep the orchestration workspace inside the session directory
 - can opt into LLM interpretation with explicit provider settings
+- can opt into planner best-effort texture fallbacks with `--best-effort`
 - return machine-readable JSON summaries when `--json` is set
 
 ## Session model
@@ -41,6 +42,7 @@ That keeps follow-up editing reproducible without hidden global persistence.
 ## Current limitations
 
 - the CLI only exposes the current narrow request-cycle surface; it does not widen planner support
+- `--best-effort` only changes planner refusal behavior for subjective texture wording that can be proxied by conservative tonal softening; it does not enable runtime-only effects or unsafe restoration guesses
 - the command set is intentionally small and currently focused on initial edits plus session-aware follow-ups
 - output rendering is currently fixed to the existing orchestration final-render path
 - the CLI is local-first and does not provide service hosting, job queues, or multi-user persistence

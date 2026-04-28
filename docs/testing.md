@@ -78,7 +78,7 @@ The current repository state includes expanded coverage around:
 - dynamics and control transforms (`compressor`, `limiter`, `transient_shaper`, `clipper`, `gate`)
 - stereo and routing behavior (`stereo_width`, `pan`, `channel_swap`, `channel_remap`, `mid_side_eq`)
 - restoration behavior (`denoise`, `de_esser`, `declick`, `declip`, `dehum`)
-- conservative timing behavior (`trim_silence`, `time_stretch`, `pitch_shift`)
+- conservative timing behavior (`trim_silence`, explicit trim duration, `time_stretch`, `pitch_shift`, and fade-boundary envelope checks)
 - conservative stereo/spatial behavior (`stereo_width`, `stereo_balance_correction`)
 - measurement-aware normalization and target-scope execution behavior
 - repeated request-cycle behavior, including alternate-version branching and revert-style follow-ups

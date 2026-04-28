@@ -1,6 +1,11 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
 import Ajv2020Import from "ajv/dist/2020.js";
 import addFormatsImport from "ajv-formats";
 import { describe, expect, it } from "vitest";
+import wavefile from "wavefile";
 
 import commonSchema from "../../../contracts/schemas/json/common.schema.json" with { type: "json" };
 import comparisonReportSchema from "../../../contracts/schemas/json/comparison-report.schema.json" with {
@@ -17,6 +22,8 @@ import {
   isValidComparisonReport,
   type RenderArtifact,
 } from "../src/index.js";
+
+const { WaveFile } = wavefile;
 
 describe("compareVersions", () => {
   it("builds a contract-aligned report from paired analysis reports", () => {
@@ -595,6 +602,219 @@ describe("compareVersions", () => {
         }),
       ]),
     );
+  });
+
+  it("uses explicit trim duration targets for trim-range verification", () => {
+    const baselineVersion = createVersion("ver_trimrangebase", { durationSeconds: 4.8 });
+    const candidateVersion = createVersion("ver_trimrangecand", { durationSeconds: 2 });
+
+    const report = compareVersions({
+      baselineVersion,
+      candidateVersion,
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_trim_range_base",
+        versionId: baselineVersion.version_id,
+        integratedLufs: -16,
+        truePeakDbtp: -2,
+        crestFactorDb: 10,
+        transientDensity: 1,
+        lowBandDb: -13,
+        midBandDb: -11,
+        highBandDb: -10,
+        spectralCentroidHz: 2200,
+        stereoWidth: 0.4,
+        stereoCorrelation: 0.5,
+        noiseFloorDbfs: -70,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_trim_range_cand",
+        versionId: candidateVersion.version_id,
+        integratedLufs: -16,
+        truePeakDbtp: -2,
+        crestFactorDb: 10,
+        transientDensity: 1,
+        lowBandDb: -13,
+        midBandDb: -11,
+        highBandDb: -10,
+        spectralCentroidHz: 2200,
+        stereoWidth: 0.4,
+        stereoCorrelation: 0.5,
+        noiseFloorDbfs: -70,
+        clippingDetected: false,
+      }),
+      editPlan: {
+        ...createEditPlan(),
+        version_id: baselineVersion.version_id,
+        goals: ["trim the file to the explicitly requested time range"],
+        verification_targets: [
+          {
+            target_id: "target_trim_explicit_duration",
+            goal: "trim the file to the explicitly requested time range",
+            label: "match the explicit trim range duration",
+            kind: "analysis_metric",
+            comparison: "within",
+            metric: "derived.duration_seconds",
+            threshold: 2,
+            tolerance: 0.02,
+          },
+        ],
+      },
+      generatedAt: "2026-04-21T18:35:22Z",
+    });
+
+    expect(report.verification_results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_trim_explicit_duration",
+          status: "met",
+          observed_value: 2,
+        }),
+      ]),
+    );
+    expect(report.goal_alignment).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          goal: "trim the file to the explicitly requested time range",
+          status: "met",
+        }),
+      ]),
+    );
+  });
+
+  it("uses local WAV evidence for fade-envelope and time-range verification", () => {
+    const workspaceRoot = mkdtempSync(path.join(os.tmpdir(), "ali-compare-local-"));
+    try {
+      mkdirSync(path.join(workspaceRoot, "audio"), { recursive: true });
+      const sampleRateHz = 8000;
+      const baselineSamples = createSineSamples(sampleRateHz, 1, { frequencyHz: 440, gain: 0.6 });
+      const candidateSamples = applyGainWindow(
+        applyFadeIn(baselineSamples, sampleRateHz, 0.2),
+        sampleRateHz,
+        0,
+        0.5,
+        0.25,
+      );
+      writeWav(path.join(workspaceRoot, "audio", "baseline.wav"), sampleRateHz, baselineSamples);
+      writeWav(path.join(workspaceRoot, "audio", "candidate.wav"), sampleRateHz, candidateSamples);
+
+      const baselineVersion = createVersion("ver_localbase", {
+        storageRef: "audio/baseline.wav",
+        channels: 1,
+        sampleRateHz,
+        durationSeconds: 1,
+        channelLayout: "mono",
+      });
+      const candidateVersion = createVersion("ver_localcand", {
+        storageRef: "audio/candidate.wav",
+        channels: 1,
+        sampleRateHz,
+        durationSeconds: 1,
+        channelLayout: "mono",
+      });
+
+      const report = compareVersions({
+        workspaceRoot,
+        baselineVersion,
+        candidateVersion,
+        baselineAnalysis: createAnalysisReport({
+          reportId: "analysis_local_base",
+          versionId: baselineVersion.version_id,
+          integratedLufs: -9,
+          truePeakDbtp: -4,
+          crestFactorDb: 3,
+          transientDensity: 1,
+          lowBandDb: -20,
+          midBandDb: -9,
+          highBandDb: -50,
+          spectralCentroidHz: 440,
+          stereoWidth: 0,
+          stereoCorrelation: 1,
+          noiseFloorDbfs: -90,
+          clippingDetected: false,
+        }),
+        candidateAnalysis: createAnalysisReport({
+          reportId: "analysis_local_cand",
+          versionId: candidateVersion.version_id,
+          integratedLufs: -11,
+          truePeakDbtp: -4,
+          crestFactorDb: 3,
+          transientDensity: 1,
+          lowBandDb: -20,
+          midBandDb: -11,
+          highBandDb: -50,
+          spectralCentroidHz: 440,
+          stereoWidth: 0,
+          stereoCorrelation: 1,
+          noiseFloorDbfs: -90,
+          clippingDetected: false,
+        }),
+        editPlan: {
+          ...createEditPlan(),
+          version_id: baselineVersion.version_id,
+          goals: [
+            "smooth file boundaries with explicit fades",
+            "reduce output level conservatively",
+          ],
+          verification_targets: [
+            {
+              target_id: "target_fade_in_200ms_envelope",
+              goal: "smooth file boundaries with explicit fades",
+              label: "attenuate the beginning of the requested fade-in span",
+              kind: "analysis_metric",
+              comparison: "at_most",
+              metric: "derived.fade_in_boundary_ratio",
+              threshold: 0.65,
+              tolerance: 0.2,
+              rationale:
+                "The requested fade-in span is 0.2 seconds; the beginning should be quieter than the end of that span.",
+            },
+            {
+              target_id: "target_region_quieter",
+              goal: "reduce output level conservatively",
+              label: "reduce local loudness in the requested region",
+              kind: "analysis_metric",
+              comparison: "decrease_by",
+              metric: "levels.integrated_lufs",
+              threshold: 4,
+              target: {
+                scope: "time_range",
+                start_seconds: 0,
+                end_seconds: 0.5,
+              },
+            },
+          ],
+        },
+        generatedAt: "2026-04-21T18:40:22Z",
+      });
+
+      expect(report.verification_results).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            target_id: "target_fade_in_200ms_envelope",
+            status: "met",
+          }),
+          expect.objectContaining({
+            target_id: "target_region_quieter",
+            status: "met",
+          }),
+        ]),
+      );
+      expect(report.goal_alignment).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            goal: "smooth file boundaries with explicit fades",
+            status: "met",
+          }),
+          expect.objectContaining({
+            goal: "reduce output level conservatively",
+            status: "met",
+          }),
+        ]),
+      );
+    } finally {
+      rmSync(workspaceRoot, { recursive: true, force: true });
+    }
   });
 
   it("surfaces requested-target success separately from regression-guard tradeoffs for compound goals", () => {
@@ -3096,6 +3316,55 @@ function createRenderArtifact(options: RenderFixtureOptions): RenderArtifact {
     },
     warnings: [],
   };
+}
+
+function createSineSamples(
+  sampleRateHz: number,
+  durationSeconds: number,
+  options: { frequencyHz: number; gain: number },
+): Float32Array {
+  const frameCount = Math.round(sampleRateHz * durationSeconds);
+  const samples = new Float32Array(frameCount);
+  for (let frame = 0; frame < frameCount; frame += 1) {
+    samples[frame] =
+      Math.sin((2 * Math.PI * options.frequencyHz * frame) / sampleRateHz) * options.gain;
+  }
+  return samples;
+}
+
+function applyFadeIn(
+  input: Float32Array,
+  sampleRateHz: number,
+  durationSeconds: number,
+): Float32Array {
+  const output = Float32Array.from(input);
+  const fadeFrames = Math.round(sampleRateHz * durationSeconds);
+  for (let frame = 0; frame < Math.min(fadeFrames, output.length); frame += 1) {
+    output[frame] = (output[frame] ?? 0) * (frame / Math.max(1, fadeFrames - 1));
+  }
+  return output;
+}
+
+function applyGainWindow(
+  input: Float32Array,
+  sampleRateHz: number,
+  startSeconds: number,
+  endSeconds: number,
+  gain: number,
+): Float32Array {
+  const output = Float32Array.from(input);
+  const startFrame = Math.max(0, Math.floor(startSeconds * sampleRateHz));
+  const endFrame = Math.min(output.length, Math.ceil(endSeconds * sampleRateHz));
+  for (let frame = startFrame; frame < endFrame; frame += 1) {
+    output[frame] = (output[frame] ?? 0) * gain;
+  }
+  return output;
+}
+
+function writeWav(filePath: string, sampleRateHz: number, samples: Float32Array): void {
+  const wav = new WaveFile();
+  wav.fromScratch(1, sampleRateHz, "32f", [samples]);
+  writeFileSync(filePath, wav.toBuffer());
 }
 
 function validateComparisonReport(payload: unknown): boolean {

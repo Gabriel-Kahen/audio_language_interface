@@ -47,7 +47,7 @@ The runtime capability surface is now also published explicitly through `Runtime
 
 - `interpretation`: optional provider-backed request normalization that emits richer `IntentInterpretation` artifacts for OpenAI API, Google API, or local Codex CLI callers, including an explicit `conservative` vs `best_effort` policy, `next_action`, descriptor hypotheses, constraints, region-intent proposals, alternate candidates, and follow-up interpretation metadata
 - `tools`: callable tool registry and request execution for the published tool set
-- `orchestration`: composed happy-path workflows and iterative refinement helpers
+- `orchestration`: composed happy-path workflows and iterative refinement helpers, including an explicit planner policy hook used by the CLI for opt-in best-effort texture fallbacks
 
 ### Evaluation
 
@@ -60,6 +60,7 @@ The runtime capability surface is now also published explicitly through `Runtime
 - darker
 - less harsh
 - more relaxed
+- opt-in CLI `--best-effort` fallback for subjective texture softening phrases when the user wants the tool to try a conservative tonal proxy instead of refusing
 - slightly cleaner
 - preserve punch
 - more controlled
@@ -191,6 +192,7 @@ Current tool-surface caveats:
 - final render export is limited to WAV and FLAC
 - compare now prefers planner-emitted structured verification targets and still keeps heuristic goal alignment only as a legacy fallback
 - compare now preserves compound-goal tradeoff detail through `goal_alignment[].verification_rollup` when structured verification rolls multiple targets into one goal
+- compare can now use workspace-local WAV evidence for explicit trim duration, fade-in/fade-out boundary envelopes, and first-cohort numeric `time_range` level or spectral-balance checks instead of reporting those local edits as unverifiable
 - hum and click analysis evidence now exists in the baseline `AnalysisReport`, and compare now prefers those direct artifact fields before falling back to conservative low-band or clipped-sample proxies
 - the repository now provides a narrow alpha CLI entrypoint through `pnpm ali -- ...` for local `edit` and `follow-up` flows, with explicit session directories and no hidden persistence
 - benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, grounded texture wording, tonal and cross-family compound edits, restoration, timing edits, stereo/spatial edits, the first explicit numeric region-targeting slice, iterative follow-up flows, peak-control, dedicated louder-and-controlled prompts, and clarification/failure controls

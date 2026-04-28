@@ -16,10 +16,13 @@ import { assertValidSemanticProfile } from "@audio-language-interface/semantics"
 import { createPlanningFailure } from "./failures.js";
 import { parseUserRequest } from "./parse-request.js";
 import { buildPlannedSteps } from "./step-builders.js";
-import type { EditPlan, PlanEditsOptions, RegionTarget } from "./types.js";
+import type { EditPlan, PlanEditsOptions, PlanningPolicy, RegionTarget } from "./types.js";
 import { CONTRACT_SCHEMA_VERSION } from "./types.js";
 import { assertValidEditPlan } from "./utils/schema.js";
 import { buildVerificationTargets } from "./verification-targets.js";
+
+const BEST_EFFORT_TEXTURE_PROXY_NOTE =
+  "best_effort: texture wording had weak or missing direct artifact evidence, so the planner chose a conservative tonal-softening proxy instead of refusing";
 
 /**
  * Builds a deterministic baseline edit plan from natural-language intent and
@@ -61,6 +64,7 @@ export function planEdits(options: PlanEditsOptions): EditPlan {
     options.analysisReport,
     options.semanticProfile,
     options.intentInterpretation,
+    options.planningPolicy ?? "strict",
   );
   const steps = buildPlannedSteps({
     objectives,
@@ -130,6 +134,7 @@ function resolvePlannerObjectives(
   analysisReport: PlanEditsOptions["analysisReport"],
   semanticProfile: PlanEditsOptions["semanticProfile"],
   intentInterpretation?: PlanEditsOptions["intentInterpretation"],
+  planningPolicy: PlanningPolicy = "strict",
 ): ReturnType<typeof parseUserRequest> {
   if (intentInterpretation?.requestClassification) {
     if (
@@ -355,18 +360,31 @@ function resolvePlannerObjectives(
       analysisReport.measurements.artifacts.clipping_detected) &&
     !effectiveObjectives.wants_declip
   ) {
-    throw createPlanningFailure(
-      "unsupported",
-      "The request asks to reduce explicit distortion-like texture, but the current baseline planner only repairs direct clipping when the request maps to declip. Ask for declip/repair clipping when clipping is the issue, or ask for less harshness/darker tone when the issue is tonal.",
-      {
-        matched_requests: ["distortion repair"],
-      },
-    );
+    if (planningPolicy === "best_effort") {
+      applyBestEffortTextureProxy(effectiveObjectives, {
+        preferDarker: hasBrightnessEvidence,
+      });
+    } else {
+      throw createPlanningFailure(
+        "unsupported",
+        "The request asks to reduce explicit distortion-like texture, but the current baseline planner only repairs direct clipping when the request maps to declip. Ask for declip/repair clipping when clipping is the issue, or ask for less harshness/darker tone when the issue is tonal.",
+        {
+          matched_requests: ["distortion repair"],
+        },
+      );
+    }
   }
 
   if (effectiveObjectives.wants_declip) {
     if (!hasClippingEvidence(analysisReport)) {
-      if (hasCompanionNonDeclipIntent(effectiveObjectives)) {
+      if (planningPolicy === "best_effort") {
+        effectiveObjectives.wants_declip = false;
+        applyBestEffortTextureProxy(effectiveObjectives, {
+          preferDarker:
+            hasBrightnessEvidence ||
+            normalizedContainsRelaxedTexture(effectiveObjectives.normalized_request),
+        });
+      } else if (hasCompanionNonDeclipIntent(effectiveObjectives)) {
         effectiveObjectives.wants_declip = false;
       } else {
         throw createPlanningFailure(
@@ -388,6 +406,9 @@ function resolvePlannerObjectives(
     hasBrightnessEvidence &&
     effectiveObjectives.wants_less_harsh
   ) {
+    if (planningPolicy === "best_effort") {
+      effectiveObjectives.wants_darker = true;
+    }
     effectiveObjectives.wants_less_harsh = false;
   }
 
@@ -432,26 +453,40 @@ function resolvePlannerObjectives(
     !effectiveObjectives.wants_declip &&
     !hasCompanionNonDeclipIntent(effectiveObjectives)
   ) {
-    throw createPlanningFailure(
-      "supported_but_underspecified",
-      "The request asks to reduce clipping or clipping-like distortion, but the current source does not show direct clipping evidence. Ask for less harshness or darker tone if the issue is tonal rather than clipping.",
-      {
-        matched_requests: ["clipping repair"],
-      },
-    );
+    if (planningPolicy === "best_effort") {
+      applyBestEffortTextureProxy(effectiveObjectives, {
+        preferDarker: hasBrightnessEvidence,
+      });
+    } else {
+      throw createPlanningFailure(
+        "supported_but_underspecified",
+        "The request asks to reduce clipping or clipping-like distortion, but the current source does not show direct clipping evidence. Ask for less harshness or darker tone if the issue is tonal rather than clipping.",
+        {
+          matched_requests: ["clipping repair"],
+        },
+      );
+    }
   }
 
   if (
     (requestedTextureSoftening || (requestedTextureRepair && !effectiveObjectives.wants_declip)) &&
     !hasTextureProxyEvidence
   ) {
-    throw createPlanningFailure(
-      "supported_but_underspecified",
-      "The request uses texture wording like relaxed, aggressive, distorted, or crunchy, but the current source does not show enough forward or harsh evidence for the baseline planner to ground that wording honestly. Ask for an explicit tonal direction such as less harsh or darker instead.",
-      {
-        matched_requests: ["texture wording"],
-      },
-    );
+    if (planningPolicy === "best_effort") {
+      applyBestEffortTextureProxy(effectiveObjectives, {
+        preferDarker:
+          hasBrightnessEvidence ||
+          normalizedContainsRelaxedTexture(effectiveObjectives.normalized_request),
+      });
+    } else {
+      throw createPlanningFailure(
+        "supported_but_underspecified",
+        "The request uses texture wording like relaxed, aggressive, distorted, or crunchy, but the current source does not show enough forward or harsh evidence for the baseline planner to ground that wording honestly. Ask for an explicit tonal direction such as less harsh or darker instead.",
+        {
+          matched_requests: ["texture wording"],
+        },
+      );
+    }
   }
 
   if (
@@ -858,8 +893,39 @@ function isTextureSofteningRequest(normalizedRequest: string): boolean {
     normalizedRequest.includes("more relaxed") ||
     normalizedRequest.includes("sound more relaxed") ||
     normalizedRequest.includes("feel more relaxed") ||
-    normalizedRequest.includes("less aggressive")
+    normalizedRequest.includes("less aggressive") ||
+    normalizedRequest.includes("less intense") ||
+    normalizedRequest.includes("less sharp") ||
+    normalizedRequest.includes("less gritty") ||
+    normalizedRequest.includes("less fuzzy") ||
+    normalizedRequest.includes("reduce sharp") ||
+    normalizedRequest.includes("reduce intensity")
   );
+}
+
+function normalizedContainsRelaxedTexture(normalizedRequest: string): boolean {
+  return (
+    normalizedRequest.includes("more relaxed") ||
+    normalizedRequest.includes("sound more relaxed") ||
+    normalizedRequest.includes("feel more relaxed")
+  );
+}
+
+function applyBestEffortTextureProxy(
+  objectives: ReturnType<typeof parseUserRequest>,
+  options: { preferDarker: boolean },
+): void {
+  objectives.wants_declip = false;
+  objectives.wants_less_harsh = true;
+
+  if (options.preferDarker) {
+    objectives.wants_darker = true;
+  }
+
+  objectives.best_effort_notes = dedupe([
+    ...(objectives.best_effort_notes ?? []),
+    BEST_EFFORT_TEXTURE_PROXY_NOTE,
+  ]);
 }
 
 function buildInterpretationFailureMessage(
@@ -1168,6 +1234,10 @@ function buildConstraints(
     constraints.push(
       `apply supported edits only within ${objectives.region_target.start_seconds}s to ${objectives.region_target.end_seconds}s`,
     );
+  }
+
+  for (const note of objectives.best_effort_notes ?? []) {
+    constraints.push(note);
   }
 
   for (const interpretationConstraint of interpretation?.constraints ?? []) {

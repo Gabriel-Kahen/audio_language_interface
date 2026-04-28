@@ -333,6 +333,7 @@ export async function runRequestCycle(
       ...(options.interpretation === undefined
         ? {}
         : { requestInterpretation: options.interpretation }),
+      ...(options.planningPolicy === undefined ? {} : { planningPolicy: options.planningPolicy }),
       sessionGraph,
       dependencies: options.dependencies,
       failurePolicy: options.failurePolicy,
@@ -378,6 +379,7 @@ export async function runRequestCycle(
         ...(options.interpretation === undefined
           ? {}
           : { requestInterpretation: options.interpretation }),
+        ...(options.planningPolicy === undefined ? {} : { planningPolicy: options.planningPolicy }),
         sessionGraph,
         dependencies: options.dependencies,
         failurePolicy: options.failurePolicy,

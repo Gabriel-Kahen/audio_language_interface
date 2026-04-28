@@ -75,6 +75,13 @@ export function compareVersions(options: CompareVersionsOptions): ComparisonRepo
           metricDeltas,
           semanticDeltas,
           regressions,
+          options.workspaceRoot === undefined
+            ? undefined
+            : {
+                workspaceRoot: options.workspaceRoot,
+                baselineVersion: options.baselineVersion,
+                candidateVersion: options.candidateVersion,
+              },
         );
   const goalAlignment =
     structuredVerification?.goalAlignment ??
