@@ -22,6 +22,7 @@ export function deriveSemanticDeltas(
   pushIfPresent(semanticDeltas, describeStereoShift(metricDeltas));
   pushIfPresent(semanticDeltas, describeCenteringShift(baseline, candidate, metricDeltas));
   pushIfPresent(semanticDeltas, describeNoiseShift(baseline, candidate, metricDeltas));
+  pushIfPresent(semanticDeltas, describeClippingShift(baseline, candidate, metricDeltas));
   pushIfPresent(semanticDeltas, describeDurationShift(metricDeltas));
   pushIfPresent(semanticDeltas, describePitchShift(metricDeltas));
 
@@ -417,6 +418,58 @@ function describeNoiseShift(
       label: "noisier",
       confidence: confidenceFromMagnitude(Math.abs(noiseFloorDelta) / 12),
       evidence: "estimated noise floor increased",
+    };
+  }
+
+  return undefined;
+}
+
+function describeClippingShift(
+  baseline: CompareMeasurementContext,
+  candidate: CompareMeasurementContext,
+  metricDeltas: MetricDelta[],
+): SemanticDelta | undefined {
+  const clippedSampleDelta = getDelta(metricDeltas, "artifacts.clipped_sample_count");
+  const clippedFrameDelta = getDelta(metricDeltas, "artifacts.clipped_frame_count");
+  const severityDelta = getDelta(metricDeltas, "artifacts.clipping_severity");
+  const strongestReduction = Math.min(
+    clippedSampleDelta ?? 0,
+    clippedFrameDelta ?? 0,
+    severityDelta === undefined ? 0 : severityDelta * 100,
+  );
+  const strongestIncrease = Math.max(
+    clippedSampleDelta ?? 0,
+    clippedFrameDelta ?? 0,
+    severityDelta === undefined ? 0 : severityDelta * 100,
+  );
+
+  if (
+    (baseline.artifacts.clipping_detected && !candidate.artifacts.clipping_detected) ||
+    (clippedSampleDelta !== undefined && clippedSampleDelta <= -8) ||
+    (clippedFrameDelta !== undefined && clippedFrameDelta <= -4) ||
+    (severityDelta !== undefined && severityDelta <= -0.1)
+  ) {
+    return {
+      label: "less_clipped",
+      confidence: confidenceFromMagnitude(
+        Math.max(Math.abs(strongestReduction) / 80, Math.abs(severityDelta ?? 0)),
+      ),
+      evidence: "direct clipped-sample, clipped-frame, or clipping-severity evidence decreased",
+    };
+  }
+
+  if (
+    (!baseline.artifacts.clipping_detected && candidate.artifacts.clipping_detected) ||
+    (clippedSampleDelta !== undefined && clippedSampleDelta >= 8) ||
+    (clippedFrameDelta !== undefined && clippedFrameDelta >= 4) ||
+    (severityDelta !== undefined && severityDelta >= 0.1)
+  ) {
+    return {
+      label: "more_clipped",
+      confidence: confidenceFromMagnitude(
+        Math.max(Math.abs(strongestIncrease) / 80, Math.abs(severityDelta ?? 0)),
+      ),
+      evidence: "direct clipped-sample, clipped-frame, or clipping-severity evidence increased",
     };
   }
 

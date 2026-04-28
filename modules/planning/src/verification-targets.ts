@@ -443,6 +443,56 @@ export function buildVerificationTargets(
     });
   }
 
+  if (objectives.wants_declip) {
+    const clippedSampleCount = analysisReport.measurements.artifacts.clipped_sample_count ?? 0;
+    const clippedFrameCount = analysisReport.measurements.artifacts.clipped_frame_count ?? 0;
+    const clippedFrameRatio = analysisReport.measurements.artifacts.clipped_frame_ratio ?? 0;
+    const clippedMetric =
+      clippedFrameCount > 0 ? "artifacts.clipped_frame_count" : "artifacts.clipped_sample_count";
+    const clippedCount = clippedFrameCount > 0 ? clippedFrameCount : clippedSampleCount;
+
+    targets.push({
+      target_id: "target_reduce_clipping_activity",
+      goal: "repair clipping artifacts conservatively",
+      label: "reduce direct clipped-frame or clipped-sample activity",
+      kind: "analysis_metric",
+      comparison: clippedCount > 0 ? "at_most" : "decrease_by",
+      metric: clippedMetric,
+      threshold:
+        clippedCount > 0
+          ? Math.max(0, clippedCount - thresholdByIntensity(objectives.intensity, 4, 8, 16))
+          : thresholdByIntensity(objectives.intensity, 4, 8, 16),
+      rationale:
+        "Declipping should reduce directly measured full-scale clipped activity rather than only darkening or softening the tone.",
+    });
+
+    if (clippedFrameRatio > 0) {
+      targets.push({
+        target_id: "target_reduce_clipping_ratio",
+        goal: "repair clipping artifacts conservatively",
+        label: "lower the clipped-frame ratio",
+        kind: "analysis_metric",
+        comparison: "decrease_by",
+        metric: "artifacts.clipped_frame_ratio",
+        threshold: Math.min(
+          clippedFrameRatio,
+          thresholdByIntensity(objectives.intensity, 0.0001, 0.0002, 0.0004),
+        ),
+        rationale:
+          "The clipped-frame ratio normalizes clipping evidence across clip lengths for request-cycle verification.",
+      });
+    }
+
+    targets.push({
+      target_id: "target_declip_no_new_clipping",
+      goal: "repair clipping artifacts conservatively",
+      label: "avoid introducing or worsening clipping during repair",
+      kind: "regression_guard",
+      comparison: "absent",
+      regression_kind: "introduced_or_worsened_clipping",
+    });
+  }
+
   if (objectives.wants_remove_clicks) {
     const clickCount = analysisReport.measurements.artifacts.click_count ?? 0;
     const clippedSampleCount = analysisReport.measurements.artifacts.clipped_sample_count ?? 0;

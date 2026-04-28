@@ -61,7 +61,7 @@ The interpretation benchmark corpus currently covers:
 - region-intent proposals
 - session-aware follow-up intensity reduction
 - alternate-version follow-up interpretation
-- explicit refusal of true distortion-repair wording when the evidence already reads as direct clipping or distortion
+- evidence-gated normalization of `less distorted` wording into `declip` when direct clipping evidence exists
 - runtime-only refusal behavior
 
 The live interpretation benchmark corpus covers the same prompt families, but stores executable `AudioVersion`, `AnalysisReport`, `SemanticProfile`, and optional session-context inputs instead of prebuilt interpretation artifacts so provider behavior can be measured directly. Its expectations are intentionally coarser than the offline interpretation corpus: it favors stable structured fields such as policy, request classification, next action, constraints, region scope, and follow-up kind over exact alternate counts or exact grounding-note strings.
@@ -154,7 +154,7 @@ The request-cycle overall score is the equal-weighted average of the non-empty c
 
 Request-cycle reports also aggregate failed checks into category-specific failure buckets so maintainers can see quickly whether a run is failing because the planner chose the wrong operation, the compare layer could not verify the intended outcome, or regressions were introduced during execution.
 
-For hum and click cleanup cases, outcome verification should anchor on direct `AnalysisReport.artifacts` evidence first: `hum_detected` / `hum_level_dbfs` for dehum-style checks and `click_detected` / `click_count` for declick-style checks. Low-band, noise-floor, and clipped-sample checks remain fallback coverage for analyses that do not expose those direct artifact fields.
+For clipping, hum, and click cleanup cases, outcome verification should anchor on direct `AnalysisReport.artifacts` evidence first: `clipped_frame_count` / `clipping_severity` for declip-style checks, `hum_detected` / `hum_level_dbfs` for dehum-style checks, and `click_detected` / `click_count` for declick-style checks. Low-band, noise-floor, and clipped-sample checks remain fallback coverage for analyses that do not expose those direct artifact fields.
 
 ## Current request-cycle corpus
 

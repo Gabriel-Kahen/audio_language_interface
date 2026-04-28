@@ -15,6 +15,9 @@ interface ArtifactAnalysisResult {
   clipping_detected: boolean;
   noise_floor_dbfs: number;
   clipped_sample_count: number;
+  clipped_frame_count: number;
+  clipped_frame_ratio: number;
+  clipping_severity: number;
   hum_detected: boolean;
   hum_fundamental_hz?: number;
   hum_harmonic_count: number;
@@ -101,6 +104,13 @@ export function analyzeArtifacts(audioData: NormalizedAudioData): ArtifactAnalys
   const noiseFloorDbfs = sorted[percentileIndex] ?? -120;
   const humDetection = detectHum(audioData);
   const clickDetection = detectClicks(audioData);
+  const clippedFrameRatio =
+    audioData.frameCount === 0 ? 0 : clippedFrameCount / audioData.frameCount;
+  const clippingSeverity = clamp(
+    clippedFrameCount / Math.max(audioData.frameCount * 0.01, 1),
+    0,
+    1,
+  );
 
   annotations.push(...buildNoiseAnnotations(windowMetrics, audioData.sampleRateHz, noiseFloorDbfs));
   annotations.push(...humDetection.annotations);
@@ -110,7 +120,7 @@ export function analyzeArtifacts(audioData: NormalizedAudioData): ArtifactAnalys
       kind: "clipping",
       start_seconds: firstClippedFrame / audioData.sampleRateHz,
       end_seconds: (lastClippedFrame + 1) / audioData.sampleRateHz,
-      severity: clamp(clippedFrameCount / Math.max(audioData.frameCount * 0.01, 1), 0, 1),
+      severity: clippingSeverity,
       evidence: `${clippedSampleCount} clipped samples across ${clippedFrameCount} frames at or above 0.999 full scale`,
     });
   }
@@ -121,6 +131,9 @@ export function analyzeArtifacts(audioData: NormalizedAudioData): ArtifactAnalys
     clipping_detected: clippedSampleCount > 0,
     noise_floor_dbfs: noiseFloorDbfs,
     clipped_sample_count: clippedSampleCount,
+    clipped_frame_count: clippedFrameCount,
+    clipped_frame_ratio: roundToSixDecimals(clippedFrameRatio),
+    clipping_severity: roundToSixDecimals(clippingSeverity),
     hum_detected: humDetection.detected,
     hum_harmonic_count: humDetection.harmonicCount,
     click_detected: clickDetection.clickCount > 0,
@@ -623,4 +636,8 @@ function computeZeroCrossingRatio(samples: Float32Array): number {
   }
 
   return crossings / (samples.length - 1);
+}
+
+function roundToSixDecimals(value: number): number {
+  return Number(value.toFixed(6));
 }

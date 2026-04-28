@@ -31,6 +31,7 @@ export type RuntimeOperationName =
   | "denoise"
   | "de_esser"
   | "declick"
+  | "declip"
   | "dehum"
   | "reverb"
   | "delay"

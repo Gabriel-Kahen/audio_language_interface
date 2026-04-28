@@ -87,9 +87,6 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "more relaxed",
       "sound more relaxed",
       "feel more relaxed",
-      "less distorted",
-      "reduce distortion",
-      "remove distortion",
       "less crunchy",
       "harsh ring",
       "ringing resonance",
@@ -156,6 +153,7 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "reduce pops",
       "repair pops",
     ]),
+    wants_declip: wantsDeclip(normalizedRequest),
     wants_remove_hum:
       containsAny(normalizedRequest, [
         "remove hum",
@@ -318,6 +316,32 @@ function containsAny(value: string, phrases: string[]): boolean {
   return phrases.some((phrase) => value.includes(phrase));
 }
 
+function wantsDeclip(normalizedRequest: string): boolean {
+  return (
+    containsAny(normalizedRequest, [
+      "declip",
+      "de clip",
+      "repair clipping",
+      "reduce clipping",
+      "remove clipping",
+      "less clipped",
+      "fix clipping",
+      "clean up clipping",
+      "reduce clipped",
+      "remove clipped",
+      "repair clipped",
+      "less distorted",
+      "less distortion",
+      "reduce distortion",
+      "remove distortion",
+      "clean up distortion",
+      "repair distortion",
+    ]) ||
+    (normalizedRequest.includes("distorted") &&
+      containsAny(normalizedRequest, ["less", "reduce", "remove", "repair", "fix"]))
+  );
+}
+
 function parseIntensity(value: string): ParsedEditObjectives["intensity"] {
   if (containsAny(value, ["slightly", "a little", "a bit", "subtle", "slight"])) {
     return "subtle";
@@ -334,9 +358,6 @@ function parseUnsupportedRequests(value: string): string[] {
   const matches = new Set<string>();
 
   collectMatchedPhrases(matches, value, [
-    "declip",
-    "de clip",
-    "repair clipping",
     "remove reverb",
     "reduce reverb",
     "de reverb",
@@ -388,12 +409,7 @@ function parseRuntimeOnlyRequests(value: string): RuntimeOnlyPhraseMatch[] {
 }
 
 function isTextureReductionRequest(value: string): boolean {
-  return containsAny(value, [
-    "less distorted",
-    "reduce distortion",
-    "remove distortion",
-    "less crunchy",
-  ]);
+  return wantsDeclip(value) || containsAny(value, ["less crunchy"]);
 }
 
 function classifyRequest(
@@ -440,6 +456,7 @@ function hasSupportedIntent(parsed: ParsedEditObjectives): boolean {
     parsed.wants_denoise ||
     parsed.wants_tame_sibilance ||
     parsed.wants_remove_clicks ||
+    parsed.wants_declip ||
     parsed.wants_remove_hum ||
     parsed.wants_wider ||
     parsed.wants_narrower ||
@@ -570,6 +587,7 @@ function hasRegionScopeCandidate(parsed: ParsedEditObjectives): boolean {
     parsed.wants_denoise ||
     parsed.wants_tame_sibilance ||
     parsed.wants_remove_clicks ||
+    parsed.wants_declip ||
     parsed.wants_remove_hum ||
     parsed.wants_wider ||
     parsed.wants_narrower ||

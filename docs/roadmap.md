@@ -40,7 +40,7 @@ The repository now already includes:
 2. planning grounded against capability metadata rather than transform internals
 3. a broad deterministic Layer 1 runtime surface spanning level, timing, tonal, dynamics/control, stereo/routing, restoration, and creative effect operations
 4. first-cohort `time_range` targeting for duration-preserving, channel-stable operations, now including a narrow planner-grounded numeric region slice
-5. measurement-aware `normalize` execution plus runtime restoration primitives such as `de_esser`, `declick`, and `dehum`
+5. measurement-aware `normalize` execution plus runtime restoration primitives such as `de_esser`, `declick`, `declip`, and `dehum`
 
 That means the next Phase 2 work is no longer "add the first serious transforms."
 It is to deepen reliability, comparison quality, and planner coverage around the much larger runtime surface that already exists.

@@ -14,6 +14,8 @@ export const SUPPORTED_NORMALIZATION_PHRASES = [
   "make it more relaxed",
   "make it less aggressive",
   "make it less distorted",
+  "repair clipping",
+  "declip",
   "make it less crunchy",
   "make it cleaner",
   "make it louder",

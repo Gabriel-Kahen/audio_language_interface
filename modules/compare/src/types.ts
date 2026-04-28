@@ -78,6 +78,9 @@ export interface AnalysisMeasurements {
     clipping_detected: boolean;
     noise_floor_dbfs: number;
     clipped_sample_count?: number;
+    clipped_frame_count?: number;
+    clipped_frame_ratio?: number;
+    clipping_severity?: number;
     hum_detected?: boolean;
     hum_fundamental_hz?: number;
     hum_harmonic_count?: number;

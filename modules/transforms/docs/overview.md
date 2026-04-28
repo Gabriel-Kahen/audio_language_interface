@@ -65,6 +65,7 @@ The implemented operation set is currently:
 - `denoise`
 - `de_esser`
 - `declick`
+- `declip`
 - `dehum`
 - `reverb`
 - `delay`
@@ -94,7 +95,7 @@ Target support is intentionally conservative in the current implementation:
 - `channel_swap` accepts `full_file` and `time_range`, and requires stereo 2-channel input
 - `channel_remap` only accepts `full_file`
 - `stereo_balance_correction`, `mid_side_eq`, and `stereo_width` accept `full_file` and `time_range`, and require stereo 2-channel input
-- `denoise`, `de_esser`, `declick`, and `dehum` accept `full_file` and `time_range`
+- `denoise`, `de_esser`, `declick`, and `dehum` accept `full_file` and `time_range`; `declip` is currently `full_file` only
 - `bitcrush`, `distortion`, `saturation`, `flanger`, and `phaser` accept `full_file` and `time_range`
 - `reverb`, `delay`, and `echo` only accept `full_file`
 - `trim_silence` only accepts `full_file`
@@ -197,6 +198,7 @@ This module consumes and emits repository contracts directly:
 - `denoise` uses FFmpeg `afftdn` with a fixed broadband profile, explicit reduction, explicit or defaulted noise floor, and adaptive tracking disabled. It is intentionally conservative and is best suited to steady broadband noise rather than clicks, hum removal, or profile-learned restoration.
 - `de_esser` is a thin FFmpeg `deesser` wrapper. It reduces sibilant energy deterministically, but it is not speech-aware, multiband, or source-selective.
 - `declick` is a thin FFmpeg `adeclick` wrapper. It is aimed at short impulsive clicks and pops, not broadband denoise or full declipping.
+- `declip` is a thin FFmpeg `adeclip` wrapper. It is aimed at measurable hard clipping, not broad distortion removal or creative de-saturation.
 - `dehum` is an explicit harmonic notch stack built from `bandreject`. It works best for steady mains hum and harmonics, not drifting buzz or complex electrical contamination.
 - `trim_silence` uses a fixed RMS detector with `start_mode=all`; callers control only threshold, optional analysis window, and whether to crop the head, tail, or both.
 - `pitch_shift` uses FFmpeg `asetrate`, `aresample`, and an explicit `atempo` compensation chain to keep duration close to the original. It is deterministic and inspectable, but it is not formant-preserving and is best suited to moderate shifts rather than transparent vocal correction.

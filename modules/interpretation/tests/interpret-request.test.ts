@@ -318,7 +318,7 @@ describe("interpretRequest", () => {
     });
   });
 
-  it("can still refuse explicit distortion-repair wording when clipping evidence is direct", async () => {
+  it("can normalize less-distorted wording to declipping when clipping evidence is direct", async () => {
     const interpretation = await interpretRequest({
       userRequest: "Make it less distorted.",
       audioVersion: createAudioVersion(),
@@ -337,13 +337,11 @@ describe("interpretRequest", () => {
               {
                 message: {
                   content: JSON.stringify({
-                    normalized_request:
-                      "Refuse explicit distortion repair and ask for a supported tonal proxy instead.",
-                    request_classification: "unsupported",
-                    next_action: "refuse",
-                    normalized_objectives: [],
+                    normalized_request: "Repair clipping artifacts conservatively.",
+                    request_classification: "supported",
+                    next_action: "plan",
+                    normalized_objectives: ["repair clipping artifacts conservatively"],
                     candidate_descriptors: ["distorted"],
-                    unsupported_phrases: ["less distorted"],
                     descriptor_hypotheses: [
                       {
                         label: "distorted",
@@ -352,7 +350,7 @@ describe("interpretRequest", () => {
                       },
                     ],
                     rationale:
-                      "Direct clipping evidence makes this a true distortion-repair request, which the baseline planner still does not support.",
+                      "Direct clipping evidence grounds less-distorted wording as declipping rather than tonal softening.",
                     confidence: 0.8,
                   }),
                 },
@@ -363,9 +361,11 @@ describe("interpretRequest", () => {
         ),
     });
 
-    expect(interpretation.request_classification).toBe("unsupported");
-    expect(interpretation.next_action).toBe("refuse");
-    expect(interpretation.unsupported_phrases).toEqual(["less distorted"]);
+    expect(interpretation.request_classification).toBe("supported");
+    expect(interpretation.next_action).toBe("plan");
+    expect(interpretation.normalized_objectives).toEqual([
+      "repair clipping artifacts conservatively",
+    ]);
   });
 
   it("builds a validated interpretation artifact through Codex CLI using local auth state", async () => {

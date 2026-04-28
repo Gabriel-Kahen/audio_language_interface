@@ -79,6 +79,7 @@ The current published contract allows these operation names in `steps[].operatio
 - `stereo_width`
 - `de_esser`
 - `declick`
+- `declip`
 - `dehum`
 - `reverb`
 - `delay`
@@ -116,6 +117,7 @@ The capability manifest still restricts these operations to `full_file`:
 
 - `trim_silence`
 - `time_stretch`
+- `declip`
 - `mono_sum`
 - `pan`
 - `channel_remap`
@@ -143,6 +145,7 @@ Current expanded parameter surfaces:
 - `denoise`: `reduction_db`, with optional `noise_floor_dbfs`
 - `de_esser`: `intensity`, with optional `max_reduction` and `frequency_hz`
 - `declick`: `window_ms`, with optional `overlap_percent`, `ar_order`, `threshold`, `burst_fusion`, and `method`
+- `declip`: `window_ms`, with optional `overlap_percent`, `ar_order`, `threshold`, `histogram_size`, and `method`
 - `dehum`: `fundamental_hz`, with optional `harmonics`, `q`, and `mix`
 - `high_shelf`: `frequency_hz`, `gain_db`, and `q`
 - `low_shelf`: `frequency_hz`, `gain_db`, and `q`
@@ -178,7 +181,7 @@ Published pitch-shift surface:
 
 `pitch_shift` is currently documented as a whole-file transform that keeps duration close to the original. The runtime may record optional derived fields such as FFmpeg rate and tempo-compensation factors in the emitted `TransformRecord`.
 
-The current baseline planner now includes a conservative timing-edit slice across `trim_silence`, `time_stretch`, and `pitch_shift` in addition to the surgical tone-shaping operations `high_shelf`, `low_shelf`, `notch_filter`, and `tilt_eq`, plus the restoration operations `de_esser`, `declick`, and `dehum`. Stereo-routing operations, transient/control operations, and most Layer 1 effect operations remain `runtime_only` and are still valid in the contract surface for explicit technical callers without being selected automatically by the baseline planner.
+The current baseline planner now includes a conservative timing-edit slice across `trim_silence`, `time_stretch`, and `pitch_shift` in addition to the surgical tone-shaping operations `high_shelf`, `low_shelf`, `notch_filter`, and `tilt_eq`, plus the restoration operations `de_esser`, `declick`, `declip`, and `dehum`. Stereo-routing operations, transient/control operations, and most Layer 1 effect operations remain `runtime_only` and are still valid in the contract surface for explicit technical callers without being selected automatically by the baseline planner.
 
 ## Optional fields
 

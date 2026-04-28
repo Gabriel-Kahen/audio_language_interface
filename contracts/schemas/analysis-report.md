@@ -64,6 +64,10 @@ The baseline analyzer also publishes explicit restoration-oriented artifact fiel
 - `artifacts.click_detected`
 - `artifacts.click_count`
 - `artifacts.click_rate_per_second`
+- `artifacts.clipped_sample_count`
+- `artifacts.clipped_frame_count`
+- `artifacts.clipped_frame_ratio`
+- `artifacts.clipping_severity`
 
 Additional fields may be added without breaking this baseline.
 

@@ -64,7 +64,7 @@ describe("parseUserRequest", () => {
     expect(parsed.intensity).toBe("subtle");
   });
 
-  it("parses grounded texture wording into conservative tonal-cleanup objectives", () => {
+  it("parses grounded texture wording into conservative tonal cleanup and declipping objectives", () => {
     const relaxed = parseUserRequest("Make it more relaxed.");
     const lessDistorted = parseUserRequest("Make it less distorted.");
 
@@ -72,9 +72,25 @@ describe("parseUserRequest", () => {
     expect(relaxed.wants_less_harsh).toBe(true);
     expect(relaxed.request_classification).toBe("supported");
 
-    expect(lessDistorted.wants_less_harsh).toBe(true);
+    expect(lessDistorted.wants_declip).toBe(true);
+    expect(lessDistorted.wants_less_harsh).toBe(false);
     expect(lessDistorted.request_classification).toBe("supported");
     expect(lessDistorted.supported_runtime_only_but_not_planner_enabled_requests).toEqual([]);
+  });
+
+  it("does not double-classify declip distortion synonyms as runtime-only distortion", () => {
+    for (const request of [
+      "Make it less distortion.",
+      "Repair distortion.",
+      "Clean up distortion.",
+    ]) {
+      const parsed = parseUserRequest(request);
+
+      expect(parsed.wants_declip).toBe(true);
+      expect(parsed.supported_runtime_only_but_not_planner_enabled_requests).toEqual([]);
+      expect(parsed.runtime_only_operations_requested).toEqual([]);
+      expect(parsed.request_classification).toBe("supported");
+    }
   });
 
   it("parses stereo-centering intent phrases conservatively", () => {
@@ -1287,15 +1303,50 @@ describe("planEdits", () => {
     ).toThrow(/only supports conservative denoise when analysis indicates steady noise/i);
   });
 
-  it("refuses explicit distortion-repair language when clipping evidence is already direct", () => {
+  it("plans explicit declipping for less-distorted wording when clipping evidence is direct", () => {
+    const plan = planEdits({
+      userRequest: "Make it less distorted.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createClippedAnalysisReportFixture(),
+      semanticProfile: createDistortedSemanticProfileFixture(),
+    });
+
+    expect(plan.goals).toContain("repair clipping artifacts conservatively");
+    expect(plan.steps.map((step) => step.operation)).toEqual(["declip"]);
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_reduce_clipping_activity",
+          metric: "artifacts.clipped_frame_count",
+        }),
+        expect.objectContaining({
+          target_id: "target_declip_no_new_clipping",
+          regression_kind: "introduced_or_worsened_clipping",
+        }),
+      ]),
+    );
+  });
+
+  it("does not guess declipping when less-distorted wording lacks clipping evidence", () => {
     expect(() =>
       planEdits({
         userRequest: "Make it less distorted.",
         audioVersion: createAudioVersionFixture(),
-        analysisReport: createClippedAnalysisReportFixture(),
+        analysisReport: createAnalysisReportFixture(),
+        semanticProfile: createSemanticProfileFixture(),
+      }),
+    ).toThrow(/does not show direct clipping evidence/i);
+  });
+
+  it("requires direct analysis evidence before trusting semantic clipping labels for declipping", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Repair clipping.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createAnalysisReportFixture(),
         semanticProfile: createDistortedSemanticProfileFixture(),
       }),
-    ).toThrow(/cannot repair distortion artifacts directly/i);
+    ).toThrow(/does not show direct clipping evidence/i);
   });
 
   it("fails clearly for width requests that would overreach current stereo state", () => {
@@ -1855,6 +1906,9 @@ function createClippedAnalysisReportFixture(): AnalysisReport {
         ...createAnalysisReportFixture().measurements.artifacts,
         clipping_detected: true,
         clipped_sample_count: 64,
+        clipped_frame_count: 48,
+        clipped_frame_ratio: 0.001,
+        clipping_severity: 0.1,
       },
     },
   };

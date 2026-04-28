@@ -74,10 +74,10 @@ pnpm exec biome check modules/transforms
 
 The current repository state includes expanded coverage around:
 
-- analysis-backed cleanup evidence (`hum`, `click`, and the corresponding `AnalysisReport` artifact fields)
+- analysis-backed cleanup evidence (`clipping`, `hum`, `click`, and the corresponding `AnalysisReport` artifact fields)
 - dynamics and control transforms (`compressor`, `limiter`, `transient_shaper`, `clipper`, `gate`)
 - stereo and routing behavior (`stereo_width`, `pan`, `channel_swap`, `channel_remap`, `mid_side_eq`)
-- restoration behavior (`denoise`, `de_esser`, `declick`, `dehum`)
+- restoration behavior (`denoise`, `de_esser`, `declick`, `declip`, `dehum`)
 - conservative timing behavior (`trim_silence`, `time_stretch`, `pitch_shift`)
 - conservative stereo/spatial behavior (`stereo_width`, `stereo_balance_correction`)
 - measurement-aware normalization and target-scope execution behavior
@@ -135,9 +135,9 @@ That corpus now also includes a narrow compound-edit slice:
 
 Those cases are meant to test planner decomposition, explicit operation ordering, multi-goal structured verification, and honest partial-success reporting without pretending the planner can already compose the whole runtime surface safely.
 
-For hum and click cleanup prompts, benchmark outcome checks should prefer direct `AnalysisReport.artifacts` signals such as `hum_detected`, `hum_level_dbfs`, `click_detected`, and `click_count`. Low-band, noise-floor, and clipped-sample checks remain conservative fallback coverage rather than the primary success signal.
+For clipping, hum, and click cleanup prompts, benchmark outcome checks should prefer direct `AnalysisReport.artifacts` signals such as `clipped_frame_count`, `clipping_severity`, `hum_detected`, `hum_level_dbfs`, `click_detected`, and `click_count`. Low-band, noise-floor, and clipped-sample checks remain conservative fallback coverage when more specific direct artifact fields are unavailable.
 
-The compare-only corpus now also includes isolated hum and click cases for both direct-artifact and fallback scoring paths. Use those cases when you need to debug compare behavior without involving planning or orchestration.
+The compare-only corpus now also includes isolated direct-clipping cases plus direct-artifact and fallback hum/click scoring paths. Use those cases when you need to debug compare behavior without involving planning or orchestration.
 
 The live interpretation benchmark mode is intentionally opt-in. Run it separately from the default CI loop with:
 

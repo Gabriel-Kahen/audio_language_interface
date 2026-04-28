@@ -1499,8 +1499,12 @@ describe("compareVersions", () => {
       expect.arrayContaining([
         expect.objectContaining({ label: "brighter" }),
         expect.objectContaining({ label: "more_sibilant" }),
+        expect.objectContaining({ label: "more_clipped", confidence: expect.any(Number) }),
       ]),
     );
+    expect(
+      report.semantic_deltas?.find((delta) => delta.label === "more_clipped")?.confidence,
+    ).toBeGreaterThan(0);
     expect(report.regressions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ kind: "loudness_headroom_loss" }),
@@ -2680,7 +2684,7 @@ function createEditPlan(): EditPlan {
   return {
     schema_version: "1.0.0",
     plan_id: "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0",
-    capability_manifest_id: "capmanifest_20260418C",
+    capability_manifest_id: "capmanifest_20260428A",
     asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T0",
     version_id: "ver_baseline123",
     user_request: "Make the loop a little darker and less harsh, but keep the punch.",

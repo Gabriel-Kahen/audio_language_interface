@@ -70,6 +70,9 @@ In the current baseline that includes the core level, dynamics, spectral, stereo
 - `spectral_balance.presence_band_db`
 - `spectral_balance.harshness_ratio_db`
 - `artifacts.clipped_sample_count`
+- `artifacts.clipped_frame_count`
+- `artifacts.clipped_frame_ratio`
+- `artifacts.clipping_severity`
 
 ### `computeRenderMetricDeltas(baseline, candidate)`
 

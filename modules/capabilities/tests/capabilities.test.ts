@@ -146,6 +146,7 @@ describe("capabilities module", () => {
       "full_file",
       "time_range",
     ]);
+    expect(getRuntimeOperationCapability("declip").supported_target_scopes).toEqual(["full_file"]);
     expect(getRuntimeOperationCapability("dehum").supported_target_scopes).toEqual([
       "full_file",
       "time_range",
@@ -163,6 +164,7 @@ describe("capabilities module", () => {
     expect(getRuntimeOperationCapability("tilt_eq").intent_support).toBe("planner_supported");
     expect(getRuntimeOperationCapability("de_esser").intent_support).toBe("planner_supported");
     expect(getRuntimeOperationCapability("declick").intent_support).toBe("planner_supported");
+    expect(getRuntimeOperationCapability("declip").intent_support).toBe("planner_supported");
     expect(getRuntimeOperationCapability("dehum").intent_support).toBe("planner_supported");
   });
 
@@ -198,6 +200,7 @@ describe("capabilities module", () => {
         "denoise",
         "de_esser",
         "declick",
+        "declip",
         "dehum",
       ]),
     );

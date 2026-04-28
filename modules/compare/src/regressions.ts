@@ -9,11 +9,29 @@ export function detectAnalysisRegressions(
 ): RegressionWarning[] {
   const regressions: RegressionWarning[] = [];
 
+  const baselineClippedSamples = baseline.artifacts.clipped_sample_count ?? 0;
+  const candidateClippedSamples = candidate.artifacts.clipped_sample_count ?? 0;
+  const baselineClippedFrames = baseline.artifacts.clipped_frame_count ?? 0;
+  const candidateClippedFrames = candidate.artifacts.clipped_frame_count ?? 0;
+
   if (!baseline.artifacts.clipping_detected && candidate.artifacts.clipping_detected) {
     regressions.push({
       kind: "introduced_clipping",
       severity: 1,
       description: "Candidate analysis reports clipping where the baseline did not.",
+    });
+  }
+
+  if (
+    (!baseline.artifacts.clipping_detected && candidate.artifacts.clipping_detected) ||
+    candidateClippedSamples >= baselineClippedSamples + Math.max(8, baselineClippedSamples) ||
+    candidateClippedFrames >= baselineClippedFrames + Math.max(4, baselineClippedFrames)
+  ) {
+    regressions.push({
+      kind: "introduced_or_worsened_clipping",
+      severity: 1,
+      description:
+        "Candidate analysis reports newly introduced or materially worsened clipped sample/frame activity.",
     });
   }
 

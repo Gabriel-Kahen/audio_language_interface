@@ -112,7 +112,7 @@ The current implementation emits deltas with `direction` set to `increased`, `de
 - `stereo.correlation`
 - `stereo.balance_db` when present in both reports
 - `artifacts.noise_floor_dbfs`
-- `artifacts.clipped_sample_count` when present in both reports
+- `artifacts.clipped_sample_count`, `artifacts.clipped_frame_count`, `artifacts.clipped_frame_ratio`, and `artifacts.clipping_severity` when present in both reports
 
 ### Render metrics
 
@@ -147,6 +147,8 @@ Semantic deltas are evidence-based labels, not free-form interpretations. The cu
 - `less_centered`
 - `cleaner`
 - `noisier`
+- `less_clipped`
+- `more_clipped`
 
 Each item includes:
 
@@ -169,6 +171,7 @@ The current regression warning kinds are:
 ### Analysis regressions
 
 - `introduced_clipping`
+- `introduced_or_worsened_clipping`
 - `excessive_loudness_shift`
 - `reduced_true_peak_headroom`
 - `stereo_collapse`
@@ -235,6 +238,7 @@ The fallback `evaluateGoalAlignment()` path is still heuristic and keyword-drive
 - sibilance reduction: matches fragments like `sibilance`, `sibilant`, `de-ess`, or `de-esser`
 - hum reduction: matches fragments like `hum`, `dehum`, or `mains`
 - click reduction: matches fragments like `click`, `clicks`, `declick`, or `pops`
+- clipping repair: prefers structured verification targets from the planner and can emit semantic `less_clipped` / `more_clipped` deltas from direct clipping fields
 - punch preservation: matches fragments like `punch`, `transient`, `attack`, or `impact`
 - peak control / tighter dynamics: matches phrases like `control peaks`, `control peak excursions`, `peak control`, `tighter`, `more controlled`, or `under control`
 - width increase: matches fragments like `wide` or `wider`

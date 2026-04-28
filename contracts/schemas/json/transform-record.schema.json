@@ -319,6 +319,14 @@
             }
           },
           {
+            "if": { "properties": { "operation": { "const": "declip" } } },
+            "then": {
+              "properties": {
+                "parameters": { "$ref": "./common.schema.json#/$defs/declipParameters" }
+              }
+            }
+          },
+          {
             "if": { "properties": { "operation": { "const": "dehum" } } },
             "then": {
               "properties": {

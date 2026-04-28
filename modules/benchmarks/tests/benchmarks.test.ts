@@ -111,6 +111,7 @@ function readWavMetadata(relativePath: string) {
   let bitsPerSample: number | undefined;
   let audioFormat: number | undefined;
   let codec = "unknown";
+  let dataOffset: number | undefined;
   let dataSize: number | undefined;
 
   while (offset + 8 <= buffer.length) {
@@ -127,6 +128,7 @@ function readWavMetadata(relativePath: string) {
     }
 
     if (chunkId === "data") {
+      dataOffset = chunkDataOffset;
       dataSize = chunkSize;
     }
 
@@ -137,6 +139,7 @@ function readWavMetadata(relativePath: string) {
     channels === undefined ||
     sampleRate === undefined ||
     bitsPerSample === undefined ||
+    dataOffset === undefined ||
     dataSize === undefined
   ) {
     throw new Error(`Incomplete WAV metadata for fixture ${relativePath}.`);
@@ -144,6 +147,19 @@ function readWavMetadata(relativePath: string) {
 
   const durationSeconds = dataSize / (sampleRate * channels * (bitsPerSample / 8));
   const checksumSha256 = createHash("sha256").update(buffer).digest("hex");
+  let clippedSampleCount = 0;
+  const clippedFrames = new Set<number>();
+
+  if (audioFormat === 1 && bitsPerSample === 16) {
+    const sampleCount = dataSize / 2;
+    for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex += 1) {
+      const sample = buffer.readInt16LE(dataOffset + sampleIndex * 2) / 32768;
+      if (Math.abs(sample) >= 0.999) {
+        clippedSampleCount += 1;
+        clippedFrames.add(Math.floor(sampleIndex / channels));
+      }
+    }
+  }
 
   return {
     codec,
@@ -153,6 +169,9 @@ function readWavMetadata(relativePath: string) {
     durationSeconds,
     fileSizeBytes: buffer.length,
     checksumSha256,
+    clippedSampleCount,
+    clippedFrameCount: clippedFrames.size,
+    clippedFrameRatio: Number((clippedFrames.size / (dataSize / (channels * 2))).toFixed(6)),
   };
 }
 
@@ -285,7 +304,7 @@ describe("firstPromptFamilyFixtureCorpus", () => {
   it("binds every benchmark case to committed fixture ids", () => {
     const fixtureIds = new Set(readFixtureManifest().fixtures.map((fixture) => fixture.fixture_id));
 
-    expect(firstPromptFamilyPromptSuite).toHaveLength(13);
+    expect(firstPromptFamilyPromptSuite).toHaveLength(14);
 
     for (const benchmarkCase of firstPromptFamilyPromptSuite) {
       expect(fixtureIds.has(benchmarkCase.fixtures.sourceFixtureId)).toBe(true);
@@ -304,7 +323,7 @@ describe("firstPromptFamilyFixtureCorpus", () => {
     expect(firstPromptFamilyRequestCycleCorpus.fixtureManifestPath).toBe(
       FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
     );
-    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(36);
+    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(37);
     expect(firstPromptFamilyRequestCycleSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
         "request_cycle_more_relaxed",
@@ -315,6 +334,7 @@ describe("firstPromptFamilyFixtureCorpus", () => {
         "request_cycle_tame_sibilance",
         "request_cycle_remove_60hz_hum",
         "request_cycle_clean_up_clicks",
+        "request_cycle_less_distorted_declip",
         "request_cycle_trim_boundary_silence",
         "request_cycle_speed_up_preserve_pitch",
         "request_cycle_pitch_up_two_semitones",
@@ -359,7 +379,7 @@ describe("firstPromptFamilyFixtureCorpus", () => {
         "interpret_follow_up_not_that_much",
         "interpret_try_another_version",
         "interpret_bitcrush_runtime_only",
-        "interpret_less_distorted_refuse_on_clipping",
+        "interpret_less_distorted_declip_on_clipping",
       ]),
     );
   });
@@ -377,15 +397,22 @@ describe("runComparisonBenchmarks", () => {
     expect(result.overallScore).toBe(1);
   });
 
-  it("covers direct and fallback hum/click compare cases in isolation", () => {
+  it("covers direct clipping and direct/fallback hum/click compare cases in isolation", () => {
     const directHum = getCompareCase("compare_reduce_hum_direct_evidence");
     const fallbackHum = getCompareCase("compare_reduce_hum_fallback_proxy");
     const directClicks = getCompareCase("compare_reduce_clicks_direct_evidence");
     const fallbackClicks = getCompareCase("compare_reduce_clicks_fallback_proxy");
+    const directClipping = getCompareCase("compare_repair_clipping_direct_evidence");
 
-    const result = runComparisonBenchmarks([directHum, fallbackHum, directClicks, fallbackClicks]);
+    const result = runComparisonBenchmarks([
+      directHum,
+      fallbackHum,
+      directClicks,
+      fallbackClicks,
+      directClipping,
+    ]);
 
-    expect(result.caseResults).toHaveLength(4);
+    expect(result.caseResults).toHaveLength(5);
 
     const directHumCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === directHum.caseId,
@@ -412,6 +439,46 @@ describe("runComparisonBenchmarks", () => {
     expect(fallbackClickCase?.report.goal_alignment).toEqual([
       { goal: "reduce clicks", status: "unknown" },
     ]);
+
+    const directClippingCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === directClipping.caseId,
+    );
+    expect(directClippingCase?.report.goal_alignment).toEqual([
+      expect.objectContaining({ goal: "repair clipping artifacts conservatively", status: "met" }),
+    ]);
+  });
+
+  it("binds the declip compare case to the committed fixture clipping measurements", () => {
+    const directClipping = getCompareCase("compare_repair_clipping_direct_evidence");
+    const baselineFixture = readFixtureManifest().fixtures.find(
+      (fixture) => fixture.fixture_id === directClipping.fixtures.baselineFixtureId,
+    );
+    const candidateFixture = readFixtureManifest().fixtures.find(
+      (fixture) => fixture.fixture_id === directClipping.fixtures.candidateFixtureId,
+    );
+
+    expect(baselineFixture).toBeDefined();
+    expect(candidateFixture).toBeDefined();
+    if (!baselineFixture || !candidateFixture) {
+      throw new Error("Expected declip benchmark fixtures to exist.");
+    }
+
+    const baselineMetadata = readWavMetadata(
+      path.posix.join("fixtures/audio", baselineFixture.relative_path),
+    );
+    const candidateMetadata = readWavMetadata(
+      path.posix.join("fixtures/audio", candidateFixture.relative_path),
+    );
+    const baselineArtifacts = directClipping.compareOptions.baselineAnalysis.measurements.artifacts;
+    const candidateArtifacts =
+      directClipping.compareOptions.candidateAnalysis.measurements.artifacts;
+
+    expect(baselineArtifacts.clipped_sample_count).toBe(baselineMetadata.clippedSampleCount);
+    expect(baselineArtifacts.clipped_frame_count).toBe(baselineMetadata.clippedFrameCount);
+    expect(baselineArtifacts.clipped_frame_ratio).toBe(baselineMetadata.clippedFrameRatio);
+    expect(candidateArtifacts.clipped_sample_count).toBe(candidateMetadata.clippedSampleCount);
+    expect(candidateArtifacts.clipped_frame_count).toBe(candidateMetadata.clippedFrameCount);
+    expect(candidateArtifacts.clipped_frame_ratio).toBe(candidateMetadata.clippedFrameRatio);
   });
 
   it("covers stereo width and centering compare cases in isolation", () => {
@@ -570,6 +637,7 @@ describe("runRequestCycleBenchmarks", () => {
     const tameSibilanceAndDarker = getRequestCycleCase("request_cycle_tame_sibilance_and_darker");
     const removeHum = getRequestCycleCase("request_cycle_remove_60hz_hum");
     const cleanUpClicks = getRequestCycleCase("request_cycle_clean_up_clicks");
+    const lessDistortedDeclip = getRequestCycleCase("request_cycle_less_distorted_declip");
     const trimBoundarySilence = getRequestCycleCase("request_cycle_trim_boundary_silence");
     const speedUp = getRequestCycleCase("request_cycle_speed_up_preserve_pitch");
     const pitchUp = getRequestCycleCase("request_cycle_pitch_up_two_semitones");
@@ -621,6 +689,7 @@ describe("runRequestCycleBenchmarks", () => {
           tameSibilanceAndDarker,
           removeHum,
           cleanUpClicks,
+          lessDistortedDeclip,
           trimBoundarySilence,
           speedUp,
           pitchUp,
@@ -657,7 +726,7 @@ describe("runRequestCycleBenchmarks", () => {
 
     expect(result.suiteId).toBe("first_prompt_family");
     expect(result.corpusId).toBe("request_cycle_test_subset");
-    expect(result.caseResults).toHaveLength(33);
+    expect(result.caseResults).toHaveLength(34);
     expect(result.totalChecks).toBeGreaterThan(0);
     expect(result.totalPassedChecks).toBe(result.totalChecks);
     expect(result.overallScore).toBe(1);
@@ -739,6 +808,16 @@ describe("runRequestCycleBenchmarks", () => {
         (step) => step.operation,
       ),
     ).toEqual(["declick"]);
+
+    const lessDistortedDeclipCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === lessDistortedDeclip.caseId,
+    );
+    expect(lessDistortedDeclipCase?.status).toBe("ok");
+    expect(
+      expectAppliedRequestCycleResult(
+        lessDistortedDeclipCase?.requestCycleResult,
+      ).editPlan?.steps.map((step) => step.operation),
+    ).toEqual(["declip"]);
 
     const trimSilenceCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === trimBoundarySilence.caseId,

@@ -6,7 +6,7 @@ import type {
 } from "./types.js";
 import { CONTRACT_SCHEMA_VERSION } from "./types.js";
 
-const MANIFEST_GENERATED_AT = "2026-04-18T23:30:00Z";
+const MANIFEST_GENERATED_AT = "2026-04-28T16:00:00Z";
 
 function defineOperation(capability: RuntimeOperationCapability): RuntimeOperationCapability {
   return capability;
@@ -14,7 +14,7 @@ function defineOperation(capability: RuntimeOperationCapability): RuntimeOperati
 
 export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
   schema_version: CONTRACT_SCHEMA_VERSION,
-  manifest_id: "capmanifest_20260418C",
+  manifest_id: "capmanifest_20260428A",
   generated_at: MANIFEST_GENERATED_AT,
   runtime_layer: "audio_runtime",
   summary:
@@ -22,7 +22,7 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
   limitations: [
     "Region targeting currently exposes explicit time_range support for a conservative first cohort of duration-preserving operations.",
     "The baseline planner now uses normalization, conservative timing edits, and a narrow surgical tone-shaping and restoration wave for explicit supported prompt families only.",
-    "Transient shaping, clipping, and gating are runtime-available but not yet selected by the baseline planner.",
+    "Transient shaping, intentional clipping, and gating are runtime-available but not yet selected by the baseline planner.",
     "Duration-changing operations, tail-bearing ambience effects, and channel-topology-changing operations remain full_file only in the current runtime.",
     "Stereo routing and broader Layer 1 effect operations remain runtime-available but not yet selected by the baseline planner.",
   ],
@@ -1041,6 +1041,74 @@ export const defaultRuntimeCapabilityManifest: RuntimeCapabilityManifest = {
           value_type: "enum",
           required: false,
           description: "Overlap method used by the repair pass.",
+          enum_values: ["add", "save"],
+          default_value: "add",
+          example_value: "add",
+        },
+      ],
+    }),
+    defineOperation({
+      name: "declip",
+      category: "restoration",
+      summary: "Repair measurable hard-clipping artifacts using deterministic FFmpeg declipping.",
+      intent_support: "planner_supported",
+      supported_target_scopes: ["full_file"],
+      planner_notes: [
+        "Chosen by the baseline planner only for explicit clipping or clipping-backed distortion-repair requests with direct clipping evidence.",
+      ],
+      parameters: [
+        {
+          name: "window_ms",
+          value_type: "number",
+          required: true,
+          description: "Analysis window size used by the declipping pass.",
+          minimum: 10,
+          maximum: 100,
+          unit: "ms",
+          example_value: 55,
+        },
+        {
+          name: "overlap_percent",
+          value_type: "number",
+          required: false,
+          description: "Window overlap used during clipped-peak reconstruction.",
+          minimum: 50,
+          maximum: 95,
+          unit: "percent",
+          example_value: 75,
+        },
+        {
+          name: "ar_order",
+          value_type: "integer",
+          required: false,
+          description: "Autoregression order used while reconstructing clipped regions.",
+          minimum: 0,
+          maximum: 25,
+          example_value: 8,
+        },
+        {
+          name: "threshold",
+          value_type: "number",
+          required: false,
+          description: "Declipping threshold used by the reconstruction detector.",
+          minimum: 1,
+          maximum: 100,
+          example_value: 10,
+        },
+        {
+          name: "histogram_size",
+          value_type: "integer",
+          required: false,
+          description: "Histogram size used by FFmpeg's declipping detector.",
+          minimum: 100,
+          maximum: 9999,
+          example_value: 1000,
+        },
+        {
+          name: "method",
+          value_type: "enum",
+          required: false,
+          description: "Overlap method used by the declipping pass.",
           enum_values: ["add", "save"],
           default_value: "add",
           example_value: "add",

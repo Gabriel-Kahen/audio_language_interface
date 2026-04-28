@@ -134,6 +134,20 @@
               "type": "integer",
               "minimum": 0
             },
+            "clipped_frame_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "clipped_frame_ratio": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "clipping_severity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
             "hum_detected": {
               "type": "boolean"
             },

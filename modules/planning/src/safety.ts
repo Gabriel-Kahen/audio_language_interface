@@ -80,6 +80,14 @@ export function buildDeclickSafetyLimits(): string[] {
   ];
 }
 
+export function buildDeclipSafetyLimits(): string[] {
+  return [
+    "use declipping only when analysis shows clipped samples or clipped frames",
+    "avoid broad distortion removal claims beyond measurable clipping repair",
+    "preserve peak headroom after reconstruction",
+  ];
+}
+
 export function buildDehumSafetyLimits(): string[] {
   return [
     "keep harmonic hum removal narrow enough to avoid thinning the wanted low end",

@@ -190,6 +190,7 @@ export interface ParsedEditObjectives {
   wants_denoise: boolean;
   wants_tame_sibilance: boolean;
   wants_remove_clicks: boolean;
+  wants_declip: boolean;
   wants_remove_hum: boolean;
   wants_wider: boolean;
   wants_narrower: boolean;

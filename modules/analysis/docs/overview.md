@@ -137,7 +137,7 @@ This baseline is intentionally simple and should be treated as a reproducible he
 - `click` annotations localize short impulsive events and are intentionally conservative so ordinary musical transients are not relabeled as restoration defects by default.
 - `stereo_width` and `stereo_ambiguity` annotations localize width-related evidence or conflict. They inspect only the first two channels, ignore very quiet windows, and should be treated as phase-risk heuristics rather than a full stereo imaging model.
 - Summary wording only calls material `wide stereo` when sustained `stereo_width` evidence supports it. Ambiguous or weakly supported spread is described more cautiously.
-- `artifacts.clipping_detected` flags frames where any channel reaches absolute amplitude `>= 0.999`, and `clipped_sample_count` counts the total clipped channel samples at that threshold.
+- `artifacts.clipping_detected` flags frames where any channel reaches absolute amplitude `>= 0.999`; `clipped_sample_count`, `clipped_frame_count`, `clipped_frame_ratio`, and `clipping_severity` expose direct hard-clipping evidence for downstream planning and verification.
 
 See `modules/analysis/docs/measurement-semantics.md` for thresholds, windows, and classification rules.
 

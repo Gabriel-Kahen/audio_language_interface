@@ -24,6 +24,17 @@ const DECLICK_THRESHOLD_MAX = 100;
 const DECLICK_BURST_MIN = 0;
 const DECLICK_BURST_MAX = 10;
 
+const DECLIP_WINDOW_MIN_MS = 10;
+const DECLIP_WINDOW_MAX_MS = 100;
+const DECLIP_OVERLAP_MIN_PERCENT = 50;
+const DECLIP_OVERLAP_MAX_PERCENT = 95;
+const DECLIP_AR_ORDER_MIN = 0;
+const DECLIP_AR_ORDER_MAX = 25;
+const DECLIP_THRESHOLD_MIN = 1;
+const DECLIP_THRESHOLD_MAX = 100;
+const DECLIP_HISTOGRAM_MIN = 100;
+const DECLIP_HISTOGRAM_MAX = 9999;
+
 const DEHUM_FUNDAMENTAL_MIN_HZ = 40;
 const DEHUM_FUNDAMENTAL_MAX_HZ = 120;
 const DEHUM_HARMONICS_MIN = 1;
@@ -150,6 +161,62 @@ export function buildDeclickOperation(
       ar_order: arOrder,
       threshold,
       burst_fusion: burstFusion,
+      method,
+    },
+    nextAudio: { ...audio },
+  };
+}
+
+export function buildDeclipOperation(
+  audio: AudioVersion["audio"],
+  parameters: Record<string, unknown>,
+  target?: EditTarget,
+): OperationBuildResult {
+  assertFullFileTarget("declip", target);
+  const windowMs = readBoundedNumber(
+    parameters.window_ms,
+    "declip.window_ms",
+    DECLIP_WINDOW_MIN_MS,
+    DECLIP_WINDOW_MAX_MS,
+  );
+  const overlapPercent =
+    readOptionalBoundedNumber(
+      parameters.overlap_percent,
+      "declip.overlap_percent",
+      DECLIP_OVERLAP_MIN_PERCENT,
+      DECLIP_OVERLAP_MAX_PERCENT,
+    ) ?? 75;
+  const arOrder =
+    readOptionalInteger(
+      parameters.ar_order,
+      "declip.ar_order",
+      DECLIP_AR_ORDER_MIN,
+      DECLIP_AR_ORDER_MAX,
+    ) ?? 8;
+  const threshold =
+    readOptionalBoundedNumber(
+      parameters.threshold,
+      "declip.threshold",
+      DECLIP_THRESHOLD_MIN,
+      DECLIP_THRESHOLD_MAX,
+    ) ?? 10;
+  const histogramSize =
+    readOptionalInteger(
+      parameters.histogram_size,
+      "declip.histogram_size",
+      DECLIP_HISTOGRAM_MIN,
+      DECLIP_HISTOGRAM_MAX,
+    ) ?? 1000;
+  const method = readMethod(parameters.method, "declip.method") ?? "add";
+
+  return {
+    filterChain: `adeclip=w=${formatNumber(windowMs)}:o=${formatNumber(overlapPercent)}:a=${arOrder}:t=${formatNumber(threshold)}:n=${histogramSize}:m=${method}`,
+    effectiveParameters: {
+      window_ms: windowMs,
+      overlap_percent: overlapPercent,
+      ar_order: arOrder,
+      threshold,
+      histogram_size: histogramSize,
       method,
     },
     nextAudio: { ...audio },

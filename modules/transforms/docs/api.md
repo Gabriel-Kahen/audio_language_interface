@@ -130,7 +130,7 @@ Validates one operation and converts it into an inspectable intermediate form:
 
 This function does not touch the filesystem and does not run FFmpeg.
 
-For the Layer 1 effect family (`reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, and `phaser`), the surgical tone-shaping family (`high_shelf`, `low_shelf`, `notch_filter`, and `tilt_eq`), the transient/control family (`transient_shaper`, `clipper`, and `gate`), and the restoration family (`denoise`, `de_esser`, `declick`, and `dehum`), the published contract surface is the caller-facing parameter object plus the recorded `TransformRecord` parameters. Some operations also record derived values such as generated reverb tap timings, normalized defaults, or applied notch frequencies when those values describe the exact applied result.
+For the Layer 1 effect family (`reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, and `phaser`), the surgical tone-shaping family (`high_shelf`, `low_shelf`, `notch_filter`, and `tilt_eq`), the transient/control family (`transient_shaper`, `clipper`, and `gate`), and the restoration family (`denoise`, `de_esser`, `declick`, `declip`, and `dehum`), the published contract surface is the caller-facing parameter object plus the recorded `TransformRecord` parameters. Some operations also record derived values such as generated reverb tap timings, normalized defaults, or applied notch frequencies when those values describe the exact applied result.
 
 For the current first-cohort `time_range` surface, region targeting is implemented by trimming the selected window, applying the existing deterministic full-file transform to that window, trimming the processed window back to the requested duration, and concatenating it with the untouched prefix and suffix. Duration-changing transforms, channel-topology changes, and tail-bearing ambience effects remain `full_file` only.
 
@@ -773,6 +773,35 @@ Fixed execution behavior:
 - FFmpeg filter: `adeclick`
 - overlap method maps directly to FFmpeg `m=add|save`
 - this is intended for short impulsive clicks and pops, not full declipping
+
+### `declip`
+
+Parameters:
+
+- `window_ms: number`
+- optional `overlap_percent: number`, default `75`
+- optional `ar_order: integer`, default `8`
+- optional `threshold: number`, default `10`
+- optional `histogram_size: integer`, default `1000`
+- optional `method: "add" | "save"`, default `"add"`
+
+Rules:
+
+- `window_ms` must stay between `10` and `100`
+- `overlap_percent` must stay between `50` and `95`
+- `ar_order` must stay between `0` and `25`
+- `threshold` must stay between `1` and `100`
+- `histogram_size` must stay between `100` and `9999`
+
+Target support:
+
+- `full_file`
+
+Fixed execution behavior:
+
+- FFmpeg filter: `adeclip`
+- overlap method maps directly to FFmpeg `m=add|save`
+- this is intended for direct hard-clipping repair, not broad distortion removal
 
 ### `dehum`
 

@@ -1,14 +1,13 @@
 {
   "schema_version": "1.0.0",
-  "manifest_id": "capmanifest_20260418C",
-  "generated_at": "2026-04-18T23:30:00Z",
+  "manifest_id": "capmanifest_20260428A",
+  "generated_at": "2026-04-28T16:00:00Z",
   "runtime_layer": "audio_runtime",
   "summary": "Published runtime capability surface for deterministic audio editing, including first-cohort time_range execution for segment-safe Layer 1 operations.",
   "limitations": [
     "Region targeting currently exposes explicit time_range support for a conservative first cohort of duration-preserving operations.",
-    "The baseline planner now covers conservative normalization, surgical tone shaping, restoration, and a narrow timing-edit wave for explicit supported prompt families only.",
-    "Duration-changing operations remain full_file only, and timing edits still stay conservative and single-file only in the current planner.",
-    "Transient shaping, clipping, and gating are runtime-available but not yet selected by the baseline planner.",
+    "The baseline planner now uses normalization, conservative timing edits, and a narrow surgical tone-shaping and restoration wave for explicit supported prompt families only.",
+    "Transient shaping, intentional clipping, and gating are runtime-available but not yet selected by the baseline planner.",
     "Duration-changing operations, tail-bearing ambience effects, and channel-topology-changing operations remain full_file only in the current runtime.",
     "Stereo routing and broader Layer 1 effect operations remain runtime-available but not yet selected by the baseline planner."
   ],
@@ -137,7 +136,7 @@
       "intent_support": "planner_supported",
       "supported_target_scopes": ["full_file"],
       "planner_notes": [
-        "Chosen by the baseline planner for explicit boundary-silence trimming requests."
+        "Chosen by the baseline planner for explicit trim-silence and boundary-cleanup timing requests only."
       ],
       "parameters": [
         {
@@ -210,7 +209,7 @@
       "intent_support": "planner_supported",
       "supported_target_scopes": ["full_file", "time_range"],
       "planner_notes": [
-        "Chosen by the baseline planner for explicit semitone pitch requests on material that reads as pitched."
+        "Chosen by the baseline planner only for conservative pitched-material requests with explicit direction."
       ],
       "parameters": [
         {
@@ -692,7 +691,7 @@
       "intent_support": "planner_supported",
       "supported_target_scopes": ["full_file"],
       "planner_notes": [
-        "Chosen by the baseline planner for explicit speed-up or slow-down requests that preserve pitch."
+        "Chosen by the baseline planner for explicit faster or slower timing requests with moderate ratios."
       ],
       "parameters": [
         {
@@ -810,13 +809,15 @@
       "name": "stereo_balance_correction",
       "category": "stereo",
       "summary": "Attenuate one stereo channel by an explicit correction amount.",
-      "intent_support": "runtime_only",
+      "intent_support": "planner_supported",
       "supported_target_scopes": ["full_file", "time_range"],
       "channel_requirements": {
         "exact_channels": 2
       },
       "constraints": ["Requires stereo 2-channel input."],
-      "planner_notes": ["Runtime-available but not yet chosen by the baseline planner."],
+      "planner_notes": [
+        "Chosen conservatively when measured left-right imbalance is materially off-center."
+      ],
       "parameters": [
         {
           "name": "target_channel",
@@ -1016,6 +1017,74 @@
           "value_type": "enum",
           "required": false,
           "description": "Overlap method used by the repair pass.",
+          "enum_values": ["add", "save"],
+          "default_value": "add",
+          "example_value": "add"
+        }
+      ]
+    },
+    {
+      "name": "declip",
+      "category": "restoration",
+      "summary": "Repair measurable hard-clipping artifacts using deterministic FFmpeg declipping.",
+      "intent_support": "planner_supported",
+      "supported_target_scopes": ["full_file"],
+      "planner_notes": [
+        "Chosen by the baseline planner only for explicit clipping or clipping-backed distortion-repair requests with direct clipping evidence."
+      ],
+      "parameters": [
+        {
+          "name": "window_ms",
+          "value_type": "number",
+          "required": true,
+          "description": "Analysis window size used by the declipping pass.",
+          "minimum": 10,
+          "maximum": 100,
+          "unit": "ms",
+          "example_value": 55
+        },
+        {
+          "name": "overlap_percent",
+          "value_type": "number",
+          "required": false,
+          "description": "Window overlap used during clipped-peak reconstruction.",
+          "minimum": 50,
+          "maximum": 95,
+          "unit": "percent",
+          "example_value": 75
+        },
+        {
+          "name": "ar_order",
+          "value_type": "integer",
+          "required": false,
+          "description": "Autoregression order used while reconstructing clipped regions.",
+          "minimum": 0,
+          "maximum": 25,
+          "example_value": 8
+        },
+        {
+          "name": "threshold",
+          "value_type": "number",
+          "required": false,
+          "description": "Declipping threshold used by the reconstruction detector.",
+          "minimum": 1,
+          "maximum": 100,
+          "example_value": 10
+        },
+        {
+          "name": "histogram_size",
+          "value_type": "integer",
+          "required": false,
+          "description": "Histogram size used by FFmpeg's declipping detector.",
+          "minimum": 100,
+          "maximum": 9999,
+          "example_value": 1000
+        },
+        {
+          "name": "method",
+          "value_type": "enum",
+          "required": false,
+          "description": "Overlap method used by the declipping pass.",
           "enum_values": ["add", "save"],
           "default_value": "add",
           "example_value": "add"

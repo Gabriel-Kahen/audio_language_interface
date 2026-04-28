@@ -15,8 +15,8 @@ This is the current static capability snapshot consumed by planning, tools, and 
 Current behavior:
 
 - uses the shared `RuntimeCapabilityManifest` contract shape
-- publishes `manifest_id = "capmanifest_20260418C"`
-- publishes `generated_at = "2026-04-18T23:30:00Z"`
+- publishes `manifest_id = "capmanifest_20260428A"`
+- publishes `generated_at = "2026-04-28T16:00:00Z"`
 - describes the runtime-supported operation inventory, current planner support, target scopes, parameter surfaces, and high-level limitations
 
 The manifest is static in the current implementation. The module does not probe the runtime dynamically.

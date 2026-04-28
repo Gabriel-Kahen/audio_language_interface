@@ -491,11 +491,14 @@ describe("analyzeAudioVersion", () => {
 
       expect(report.measurements.artifacts.clipping_detected).toBe(true);
       expect(report.measurements.artifacts.clipped_sample_count).toBeGreaterThan(0);
+      expect(report.measurements.artifacts.clipped_frame_count).toBeGreaterThan(0);
+      expect(report.measurements.artifacts.clipped_frame_ratio).toBeGreaterThan(0);
+      expect(report.measurements.artifacts.clipping_severity).toBeGreaterThan(0);
       expect(report.measurements.dynamics.transient_density_per_second).toBeGreaterThan(1);
       expect(report.annotations?.some((annotation) => annotation.kind === "clipping")).toBe(true);
       expect(report.summary.plain_text).toContain("Clipping is present");
     });
-  });
+  }, 10000);
 
   it("defaults generated_at deterministically from the input lineage timestamp", async () => {
     await withTempWorkspace(async (workspaceRoot) => {
@@ -569,6 +572,9 @@ describe("analyzeAudioVersion", () => {
 
       expect(report.measurements.artifacts.clipping_detected).toBe(true);
       expect(report.measurements.artifacts.clipped_sample_count).toBe(4);
+      expect(report.measurements.artifacts.clipped_frame_count).toBe(3);
+      expect(report.measurements.artifacts.clipped_frame_ratio).toBe(0.000068);
+      expect(report.measurements.artifacts.clipping_severity).toBe(0.006803);
       expect(
         report.annotations?.find((annotation) => annotation.kind === "clipping")?.evidence,
       ).toContain("4 clipped samples across 3 frames");

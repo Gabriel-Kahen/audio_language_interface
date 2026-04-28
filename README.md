@@ -91,7 +91,7 @@ The published tool surface now also exposes a first-class orchestration entrypoi
 
 The current cleanup slice is now analysis-backed instead of purely prompt-driven:
 
-- `analysis` emits explicit `hum` and `click` annotations plus file-level artifact fields such as `hum_detected`, `hum_fundamental_hz`, `click_detected`, and `click_count`
+- `analysis` emits explicit `hum`, `click`, and clipping annotations plus file-level artifact fields such as `hum_detected`, `hum_fundamental_hz`, `click_detected`, `click_count`, `clipped_frame_count`, and `clipping_severity`
 - `semantics` can assign `hum_present` and `clicks_present` when that evidence is strong enough
 - `semantics` now also carries a small deterministic texture vocabulary for `relaxed`, `aggressive`, `distorted`, and `crunchy`, with the actual descriptor truth still grounded in measured dynamics, spectral, and artifact evidence
 - `compare` reports `evaluation_basis` so downstream callers can see whether structured verification, heuristic goal alignment, or raw deltas are driving quality interpretation
@@ -214,6 +214,7 @@ The current runtime can execute:
 - `denoise`
 - `de_esser`
 - `declick`
+- `declip`
 - `dehum`
 - `reverb`
 - `delay`
@@ -251,6 +252,7 @@ At the moment, that includes:
 - `denoise`
 - `de_esser`
 - `declick`
+- `declip`
 - `dehum`
 
 The baseline planner now includes a conservative timing-edit slice for explicit boundary-silence trimming, pitch-preserving time stretching, and semitone pitch shifting on pitched material, plus a narrow stereo/spatial slice for widening, narrowing, and centering already-stereo material when the measured image is safe to adjust conservatively. `pan`, channel-utility and broader stereo-routing operations, the broader transient/control operations, and the newer creative effect operations remain runtime-available without being baseline-planner-selected. The transient-shaper surface is currently a compand-based, transient-biased runtime primitive rather than a full transient-designer model.
@@ -292,7 +294,7 @@ The current system is strongest on conservative editing requests such as:
 - airier, warmer, or less muddy through conservative surgical EQ
 - texture wording such as `more relaxed` or `less aggressive` when it can be grounded honestly as a conservative tonal-softening move
 - tame sibilance, remove explicitly specified `50 Hz` or `60 Hz` hum, and clean up clicks
-- explicit `less distorted` or `less crunchy` wording only as a safe tonal proxy when the source does not already read as direct clipping or distortion; true distortion-repair requests still refuse honestly
+- explicit `less distorted`, `repair clipping`, or `declip` wording when the source has direct clipping evidence; this is narrow hard-clipping repair, not general distortion removal
 - more controlled
 - control peaks
 - widen or narrow slightly when stereo evidence supports it

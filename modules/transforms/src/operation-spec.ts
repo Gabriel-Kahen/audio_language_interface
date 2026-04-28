@@ -36,6 +36,7 @@ import { buildGainOperation, buildNormalizeOperation } from "./operations/gain.j
 import { buildPitchShiftOperation } from "./operations/pitch.js";
 import {
   buildDeclickOperation,
+  buildDeclipOperation,
   buildDeEsserOperation,
   buildDehumOperation,
   buildDenoiseOperation,
@@ -161,6 +162,8 @@ function buildResolvedOperation(
       return buildDeEsserOperation(audio, parameters, target);
     case "declick":
       return buildDeclickOperation(audio, parameters, target);
+    case "declip":
+      return buildDeclipOperation(audio, parameters, target);
     case "dehum":
       return buildDehumOperation(audio, parameters, target);
     default:

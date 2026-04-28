@@ -33,7 +33,7 @@ The runtime capability surface is now also published explicitly through `Runtime
 ### Audio Runtime
 
 - `io`: local file import, metadata inspection, optional WAV normalization, source-ref validation
-- `analysis`: deterministic baseline analysis for workspace-local WAV files, including explicit hum/click artifact detection for the current cleanup slice
+- `analysis`: deterministic baseline analysis for workspace-local WAV files, including explicit hum/click artifact detection and direct clipping severity fields for the current cleanup slice
 - `transforms`: deterministic FFmpeg-backed execution for the current runtime operation set
 - `render`: preview MP3 rendering plus WAV and FLAC export rendering
 - `compare`: metric deltas, small semantic delta vocabulary, regression warnings, structured verification, and `evaluation_basis` metadata
@@ -74,7 +74,7 @@ Supported but conservative areas:
 - airier, warmer, less muddy, or less harsh ring through surgical tone-shaping
 - texture wording such as `more relaxed` or `less aggressive` when it can be grounded honestly as a conservative tonal-softening move
 - tame sibilance, remove explicitly specified `50 Hz` / `60 Hz` hum, or clean up clicks through narrow restoration primitives
-- explicit `less distorted` or `less crunchy` wording only as a safe tonal proxy when the source does not already read as direct clipping or distortion; true distortion-repair requests still refuse honestly
+- explicit `less distorted`, `repair clipping`, or `declip` wording only when the source has direct clipping evidence; broader distortion removal remains outside the supported planner surface
 - pure `more controlled` or `louder and more controlled` requests may refuse on already tightly controlled material instead of silently degrading it
 - small benchmarked compound prompts within the supported slice, including tonal combinations such as `warmer and airier` or `darker, less harsh, and less muddy` plus a narrow cross-family set such as `speed up by 10% and tame the sibilance`, `tame the sibilance and make it darker`, `center this more and make it wider`, and the current tradeoff-style `make this a little tighter and more controlled, and darker`
 
@@ -110,6 +110,7 @@ Supported but conservative areas:
 - `denoise`
 - `de_esser`
 - `declick`
+- `declip`
 - `dehum`
 - `reverb`
 - `delay`
@@ -145,6 +146,7 @@ The baseline planner currently plans only against operations marked `planner_sup
 - `denoise`
 - `de_esser`
 - `declick`
+- `declip`
 - `dehum`
 
 The baseline planner now supports a conservative timing-edit slice for explicit boundary-silence trimming, pitch-preserving time stretching, and semitone pitch shifting on material that reads as pitched, plus a narrow stereo/spatial slice for widening, narrowing, and centering already-stereo material when the measured image is safe to adjust conservatively. `pan`, channel-utility and broader stereo-routing operations, the broader transient/control operations, and the new Layer 1 effect operations remain runtime-available without being baseline-planner-selected. The current `transient_shaper` surface is compand-based and best suited to transient-rich material.
@@ -178,7 +180,7 @@ Current tool-surface caveats:
 - analysis currently requires `.wav` input files on disk
 - analysis reads the whole file into memory
 - semantic descriptor coverage is intentionally small and conservative
-- the deterministic descriptor layer now includes a small texture slice (`relaxed`, `aggressive`, `distorted`, `crunchy`), but true distortion repair is still narrower than the language surface
+- the deterministic descriptor layer now includes a small texture slice (`relaxed`, `aggressive`, `distorted`, `crunchy`), but artifact repair is still limited to measurable clipping via `declip`
 - the optional interpretation layer broadens language handling, but it does not make unsupported descriptors or transforms safe automatically
 - the baseline planner now grounds one narrow region-targeting slice for explicit numeric `time_range` wording such as `the first 0.5 seconds` or `from 0.2s to 0.7s`, but it still refuses vague named regions like `intro` and it still refuses region-scoped requests that require full-file-only planner operations
 - planning fails on unsupported requests instead of trying to generalize broadly

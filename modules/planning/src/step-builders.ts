@@ -8,6 +8,7 @@ import {
   assertValidFadeSpans,
   buildCompressorSafetyLimits,
   buildDeclickSafetyLimits,
+  buildDeclipSafetyLimits,
   buildDeEsserSafetyLimits,
   buildDehumSafetyLimits,
   buildDenoiseSafetyLimits,
@@ -99,6 +100,7 @@ export function buildPlannedSteps(context: StepBuildContext): EditPlanStep[] {
     {
       phase: "restoration",
       steps: [
+        buildDeclipStep(context.objectives),
         buildDeclickStep(context.objectives),
         buildDehumStep(context.objectives),
         buildDenoiseStep(context.objectives, context.analysisReport),
@@ -379,6 +381,33 @@ function buildDeclickStep(objectives: ParsedEditObjectives): EditPlanStep | unde
     },
     expected_effects: ["repair short impulsive clicks and pops conservatively"],
     safety_limits: buildDeclickSafetyLimits(),
+  };
+}
+
+function buildDeclipStep(objectives: ParsedEditObjectives): EditPlanStep | undefined {
+  if (!objectives.wants_declip) {
+    return undefined;
+  }
+
+  return {
+    ...assertPlannerStepSupport("declip", "full_file"),
+    step_id: "step_declip_1",
+    operation: "declip",
+    target: { scope: "full_file" },
+    parameters: {
+      window_ms:
+        objectives.intensity === "subtle" ? 45 : objectives.intensity === "strong" ? 65 : 55,
+      overlap_percent: 75,
+      ar_order: objectives.intensity === "strong" ? 10 : 8,
+      threshold:
+        objectives.intensity === "subtle" ? 12 : objectives.intensity === "strong" ? 7 : 10,
+      histogram_size: 1000,
+      method: "add",
+    },
+    expected_effects: [
+      "reconstruct clipped peaks and reduce hard-clipping artifacts conservatively",
+    ],
+    safety_limits: buildDeclipSafetyLimits(),
   };
 }
 

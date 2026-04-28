@@ -64,7 +64,7 @@ Each operation should include:
 - Execution-time normalization may add derived fields such as `applied_gain_db`, `applied_tempo_ratio`, `duration_seconds`, `fade_out_start_seconds`, `result_duration_seconds`, or `trimmed_duration_seconds` when those values reflect the exact applied behavior. Channel-utility operations intentionally keep parameter surfaces minimal and do not add hidden remix parameters beyond the published contract.
 - Layer 1 runtime effects such as `reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, and `phaser` record the same published caller-facing parameter surface used in `EditPlan`. Runtime-specific implementation details should stay out of the contract unless they materially describe the applied result.
 - Measurement-aware `normalize` steps may add derived execution fields such as `applied_gain_db`, `estimated_integrated_lufs`, `estimated_true_peak_dbtp`, and `gain_limited_by_true_peak`.
-- Restoration steps such as `de_esser`, `declick`, and `dehum` record the same published caller-facing parameter surface, plus only those derived values that materially describe the exact applied runtime behavior, such as `normalized_frequency` or `applied_frequencies_hz`.
+- Restoration steps such as `de_esser`, `declick`, `declip`, and `dehum` record the same published caller-facing parameter surface, plus only those derived values that materially describe the exact applied runtime behavior, such as `normalized_frequency` or `applied_frequencies_hz`.
 
 ## Example
 

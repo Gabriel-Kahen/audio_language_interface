@@ -65,10 +65,10 @@ See `docs/api.md` for the current failure surface, planner entrypoint behavior, 
 - supports compatible cross-family compounds across timing, restoration, tonal, loudness/control, and stereo families through the fixed phase order instead of phrase order in the prompt
 - supports stereo recentering together with width changes when the current image is safe for both moves, and refuses that compound when the source is too narrow to recenter and narrow conservatively in one pass
 - refuses compound prompts that combine upper-band brightening with de-essing, broadband denoise with upper-band brightening, or hum removal with added warmth because the current baseline planner cannot sequence those safely in one pass
-- supports explicit loudness-normalization, upper-air, warmth, low-mid cleanup, harsh-ring, sibilance, click-cleanup, and hum-removal requests with conservative defaults grounded in the published manifest
-- refuses true clipping or distortion-repair requests explicitly instead of pretending tonal softening can fully repair distortion artifacts
+- supports explicit loudness-normalization, upper-air, warmth, low-mid cleanup, harsh-ring, sibilance, clipping repair, click-cleanup, and hum-removal requests with conservative defaults grounded in the published manifest
+- maps `less distorted` to `declip` only when direct clipping evidence exists, and still refuses broader distortion repair instead of pretending tonal softening can fully repair non-clipping artifacts
 - supports explicit denoise requests only when analysis indicates steady noise
-- prefers annotation-backed or semantic-backed restoration verification when that evidence exists, and now routes hum/click verification through direct artifact measurements before falling back to coarse low-band or clipped-sample proxies
+- prefers annotation-backed or semantic-backed restoration verification when that evidence exists, and now routes clipping/hum/click verification through direct artifact measurements before falling back to coarse proxies
 - supports explicit stereo-width and centering requests only for already-stereo material when the current image is safe to adjust conservatively
 - now grounds explicit `time_range` region wording such as `the first 0.5 seconds`, `the last 0.5 seconds`, or `from 0.2s to 0.7s` for a narrow first cohort of planner operations: tonal EQ moves, conservative restoration, gain/normalize staging, and the current stereo-image cleanup steps
 - still refuses vague named regions such as `intro`, `outro`, or `ending word`, and still refuses region-scoped requests that would require full-file-only operations such as `time_stretch`, `trim_silence`, or the current dynamics-control path

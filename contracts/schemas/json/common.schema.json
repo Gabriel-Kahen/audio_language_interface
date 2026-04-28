@@ -249,6 +249,7 @@
         "denoise",
         "de_esser",
         "declick",
+        "declip",
         "dehum",
         "reverb",
         "delay",
@@ -1416,6 +1417,41 @@
           "type": "number",
           "minimum": 0,
           "maximum": 10
+        },
+        "method": {
+          "enum": ["add", "save"]
+        }
+      }
+    },
+    "declipParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["window_ms"],
+      "properties": {
+        "window_ms": {
+          "type": "number",
+          "minimum": 10,
+          "maximum": 100
+        },
+        "overlap_percent": {
+          "type": "number",
+          "minimum": 50,
+          "maximum": 95
+        },
+        "ar_order": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 25
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "histogram_size": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 9999
         },
         "method": {
           "enum": ["add", "save"]

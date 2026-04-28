@@ -110,6 +110,14 @@ function evaluateAnalysisMetricTarget(
     target.comparison === "at_most" &&
     observedValue === undefined &&
     candidate.artifacts.click_detected === false;
+  const missingMetricClippingCleared =
+    (target.metric === "artifacts.clipped_sample_count" ||
+      target.metric === "artifacts.clipped_frame_count" ||
+      target.metric === "artifacts.clipped_frame_ratio" ||
+      target.metric === "artifacts.clipping_severity") &&
+    target.comparison === "at_most" &&
+    observedValue === undefined &&
+    candidate.artifacts.clipping_detected === false;
 
   if (missingMetricHumCleared) {
     return {
@@ -126,6 +134,15 @@ function evaluateAnalysisMetricTarget(
       status: "met",
       evidence:
         "Candidate click detector cleared and no direct click activity remained available, so the click target is treated as satisfied.",
+    };
+  }
+
+  if (missingMetricClippingCleared) {
+    return {
+      ...target,
+      status: "met",
+      evidence:
+        "Candidate clipping detector cleared and no direct clipping metric remained available, so the clipping target is treated as satisfied.",
     };
   }
 

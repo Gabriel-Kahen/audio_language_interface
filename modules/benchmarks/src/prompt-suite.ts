@@ -548,6 +548,96 @@ export const firstPromptFamilyFixtureCorpus: ComparisonBenchmarkCorpus = {
       },
     },
     {
+      caseId: "compare_repair_clipping_direct_evidence",
+      family: "first_prompt_family",
+      prompt: "make it less distorted",
+      description: "Declipping scored from direct clipped-frame and clipped-sample evidence.",
+      fixtures: {
+        sourceFixtureId: "fixture_phase1_request_cycle_clipped_distortion_source",
+        baselineFixtureId: "fixture_phase1_request_cycle_clipped_distortion_source",
+        candidateFixtureId: "fixture_phase1_request_cycle_clipped_distortion_declipped",
+      },
+      compareOptions: createCompareOptions({
+        baselineVersionId: "ver_suite_declip_base",
+        candidateVersionId: "ver_suite_declip_cand",
+        baseline: {
+          integratedLufs: -7.8,
+          truePeakDbtp: 0,
+          headroomDb: 0,
+          crestFactorDb: 4.2,
+          transientDensity: 1.5,
+          lowBandDb: -8.8,
+          midBandDb: -7.4,
+          highBandDb: -10.2,
+          spectralCentroidHz: 1220,
+          stereoWidth: 0,
+          stereoCorrelation: 1,
+          noiseFloorDbfs: -72,
+          clippingDetected: true,
+          clippedSampleCount: 15998,
+          clippedFrameCount: 7999,
+          clippedFrameRatio: 0.173589,
+          clippingSeverity: 1,
+        },
+        candidate: {
+          integratedLufs: -8,
+          truePeakDbtp: 0,
+          headroomDb: 0,
+          crestFactorDb: 4.3,
+          transientDensity: 1.5,
+          lowBandDb: -8.9,
+          midBandDb: -7.5,
+          highBandDb: -10.3,
+          spectralCentroidHz: 1215,
+          stereoWidth: 0,
+          stereoCorrelation: 1,
+          noiseFloorDbfs: -72,
+          clippingDetected: true,
+          clippedSampleCount: 15398,
+          clippedFrameCount: 7699,
+          clippedFrameRatio: 0.167079,
+          clippingSeverity: 1,
+        },
+        prompt: "make it less distorted",
+        goals: ["repair clipping artifacts conservatively"],
+        verificationTargets: [
+          {
+            target_id: "target_reduce_clipping_activity",
+            goal: "repair clipping artifacts conservatively",
+            label: "reduce direct clipped-frame activity",
+            kind: "analysis_metric",
+            comparison: "at_most",
+            metric: "artifacts.clipped_frame_count",
+            threshold: 7991,
+          },
+          {
+            target_id: "target_reduce_clipping_ratio",
+            goal: "repair clipping artifacts conservatively",
+            label: "lower the clipped-frame ratio",
+            kind: "analysis_metric",
+            comparison: "decrease_by",
+            metric: "artifacts.clipped_frame_ratio",
+            threshold: 0.0002,
+          },
+          {
+            target_id: "target_declip_no_new_clipping",
+            goal: "repair clipping artifacts conservatively",
+            label: "avoid introducing or worsening clipping during repair",
+            kind: "regression_guard",
+            comparison: "absent",
+            regression_kind: "introduced_or_worsened_clipping",
+          },
+        ],
+      }),
+      expectation: {
+        goalStatuses: {
+          "repair clipping artifacts conservatively": "met",
+        },
+        requiredSemanticLabels: ["less_clipped"],
+        forbiddenRegressionKinds: ["introduced_clipping", "introduced_or_worsened_clipping"],
+      },
+    },
+    {
       caseId: "compare_make_this_wider",
       family: "first_prompt_family",
       prompt: "make this wider",
@@ -1154,6 +1244,41 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
             target_reduce_click_activity: "met",
             target_reduce_click_no_regression: "met",
           },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_less_distorted_declip",
+      family: "first_prompt_family",
+      prompt: "Make it less distorted.",
+      description:
+        "Explicit less-distorted wording routes to declipping only when the source has direct clipping evidence.",
+      fixtureId: "fixture_phase1_request_cycle_clipped_distortion_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["declip"],
+          expected_operation_order: ["declip"],
+          required_goals: ["repair clipping artifacts conservatively"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "repair clipping artifacts conservatively": "met",
+          },
+          verification_statuses: {
+            target_reduce_clipping_activity: "met",
+            target_reduce_clipping_ratio: "met",
+            target_declip_no_new_clipping: "met",
+          },
+        },
+        regressions: {
+          forbidden_regression_kinds: [
+            "introduced_clipping",
+            "introduced_or_worsened_clipping",
+            "lost_punch",
+          ],
         },
       },
     },
@@ -2097,20 +2222,18 @@ export const interpretationBenchmarkCorpus: InterpretationBenchmarkCorpus = {
       },
     },
     {
-      caseId: "interpret_less_distorted_refuse_on_clipping",
+      caseId: "interpret_less_distorted_declip_on_clipping",
       family: "intent_interpretation",
       prompt: "Make it less distorted.",
       description:
-        "Explicit distortion-repair language should refuse when the supplied evidence already reads as real clipping or distortion.",
+        "Explicit less-distorted wording should normalize to clipping repair when evidence shows direct clipping.",
       interpretation: createInterpretationArtifact({
         userRequest: "Make it less distorted.",
-        normalizedRequest:
-          "Refuse explicit distortion repair and ask for a supported tonal proxy instead.",
-        requestClassification: "unsupported",
-        nextAction: "refuse",
-        normalizedObjectives: [],
+        normalizedRequest: "Repair clipping artifacts conservatively.",
+        requestClassification: "supported",
+        nextAction: "plan",
+        normalizedObjectives: ["repair clipping artifacts conservatively"],
         candidateDescriptors: ["distorted"],
-        unsupportedPhrases: ["less distorted"],
         descriptorHypotheses: [
           {
             label: "distorted",
@@ -2118,14 +2241,17 @@ export const interpretationBenchmarkCorpus: InterpretationBenchmarkCorpus = {
             supported_by: ["analysis.measurements.artifacts.clipping_detected"],
           },
         ],
-        groundingNotes: ["direct clipping evidence makes this a true distortion-repair request"],
+        groundingNotes: [
+          "direct clipping evidence grounds less-distorted wording as declipping rather than tonal softening",
+        ],
       }),
       expectation: {
-        requestClassification: "unsupported",
-        nextAction: "refuse",
+        requestClassification: "supported",
+        nextAction: "plan",
+        requiredNormalizedObjectives: ["repair clipping artifacts conservatively"],
         requiredDescriptorHypotheses: [{ label: "distorted", status: "supported" }],
         requiredGroundingNotes: [
-          "direct clipping evidence makes this a true distortion-repair request",
+          "direct clipping evidence grounds less-distorted wording as declipping rather than tonal softening",
         ],
       },
     },
@@ -2565,6 +2691,9 @@ interface AnalysisValues {
   headroomDb?: number;
   dynamicRangeDb?: number;
   clippedSampleCount?: number;
+  clippedFrameCount?: number;
+  clippedFrameRatio?: number;
+  clippingSeverity?: number;
   humDetected?: boolean;
   humLevelDbfs?: number;
   humFundamentalHz?: number;
@@ -2772,7 +2901,7 @@ function createEditPlan(
   const plan: EditPlan = {
     schema_version: "1.0.0",
     plan_id: `plan_${versionId}`,
-    capability_manifest_id: "capmanifest_20260418C",
+    capability_manifest_id: "capmanifest_20260428A",
     asset_id: "asset_benchmark_01",
     version_id: versionId,
     user_request: prompt,
@@ -2833,6 +2962,9 @@ function createAnalysisReport(
         clipping_detected: values.clippingDetected,
         noise_floor_dbfs: values.noiseFloorDbfs,
         clipped_sample_count: values.clippedSampleCount ?? 0,
+        clipped_frame_count: values.clippedFrameCount ?? 0,
+        clipped_frame_ratio: values.clippedFrameRatio ?? 0,
+        clipping_severity: values.clippingSeverity ?? 0,
         hum_detected: values.humDetected ?? false,
         ...(values.humLevelDbfs === undefined ? {} : { hum_level_dbfs: values.humLevelDbfs }),
         ...(values.humFundamentalHz === undefined

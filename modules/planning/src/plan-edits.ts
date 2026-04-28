@@ -344,18 +344,41 @@ function resolvePlannerObjectives(
     requestedTextureRepair &&
     (semanticLabels.has("distorted") ||
       semanticLabels.has("clipped") ||
-      analysisReport.measurements.artifacts.clipping_detected)
+      analysisReport.measurements.artifacts.clipping_detected) &&
+    !effectiveObjectives.wants_declip
   ) {
     throw createPlanningFailure(
       "unsupported",
-      "The request asks to reduce explicit distortion or clipping, but the current baseline planner cannot repair distortion artifacts directly. Ask for less harshness, a darker tone, quieter level, or use an explicit runtime-only distortion path instead.",
+      "The request asks to reduce explicit distortion-like texture, but the current baseline planner only repairs direct clipping when the request maps to declip. Ask for declip/repair clipping when clipping is the issue, or ask for less harshness/darker tone when the issue is tonal.",
       {
         matched_requests: ["distortion repair"],
       },
     );
   }
 
-  if ((requestedTextureSoftening || requestedTextureRepair) && !hasTextureProxyEvidence) {
+  if (effectiveObjectives.wants_declip) {
+    const hasClippingEvidence =
+      analysisReport.measurements.artifacts.clipping_detected ||
+      (analysisReport.measurements.artifacts.clipped_sample_count ?? 0) > 0 ||
+      (analysisReport.measurements.artifacts.clipped_frame_count ?? 0) > 0;
+
+    if (!hasClippingEvidence) {
+      throw createPlanningFailure(
+        "supported_but_underspecified",
+        "The request asks to reduce clipping or clipping-like distortion, but the current source does not show direct clipping evidence. Ask for less harshness or darker tone if the issue is tonal rather than clipping.",
+        {
+          matched_requests: ["clipping repair"],
+        },
+      );
+    }
+
+    effectiveObjectives.wants_less_harsh = false;
+  }
+
+  if (
+    (requestedTextureSoftening || (requestedTextureRepair && !effectiveObjectives.wants_declip)) &&
+    !hasTextureProxyEvidence
+  ) {
     throw createPlanningFailure(
       "supported_but_underspecified",
       "The request uses texture wording like relaxed, aggressive, distorted, or crunchy, but the current source does not show enough forward or harsh evidence for the baseline planner to ground that wording honestly. Ask for an explicit tonal direction such as less harsh or darker instead.",
@@ -590,6 +613,7 @@ function resolvePlannerObjectives(
 
   if (
     effectiveObjectives.wants_remove_clicks ||
+    effectiveObjectives.wants_declip ||
     effectiveObjectives.wants_remove_hum ||
     effectiveObjectives.wants_tame_sibilance ||
     effectiveObjectives.wants_denoise
@@ -645,6 +669,7 @@ function hasCompanionNonDynamicsIntent(objectives: ReturnType<typeof parseUserRe
     objectives.wants_denoise ||
     objectives.wants_remove_hum ||
     objectives.wants_remove_clicks ||
+    objectives.wants_declip ||
     objectives.wants_wider ||
     objectives.wants_narrower ||
     objectives.wants_more_centered ||
@@ -847,6 +872,9 @@ function buildGoals(objectives: ReturnType<typeof parseUserRequest>): string[] {
   if (objectives.wants_remove_clicks) {
     goals.push("repair short clicks and pops conservatively");
   }
+  if (objectives.wants_declip) {
+    goals.push("repair clipping artifacts conservatively");
+  }
   if (objectives.wants_remove_hum) {
     goals.push("reduce mains hum and harmonic buzz conservatively");
   }
@@ -929,6 +957,12 @@ function buildConstraints(
 
   if (objectives.wants_remove_clicks) {
     constraints.push("avoid blunting intentional transient attacks");
+  }
+
+  if (objectives.wants_declip) {
+    constraints.push(
+      "repair only measurable clipping artifacts; do not invent broad distortion removal",
+    );
   }
 
   if (objectives.wants_remove_hum) {

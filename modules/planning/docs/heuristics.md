@@ -9,7 +9,8 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - `darker`, `less bright` -> gentle `tilt_eq` darkening around `1200 Hz`
 - `less harsh`, `smoother` -> `notch_filter` centered on the analysis harshness annotation midpoint, or `3750 Hz` fallback
 - `more relaxed`, `less aggressive` -> the same conservative `notch_filter + tilt_eq` tonal-softening path when deterministic evidence supports that grounded reading
-- `less distorted`, `less crunchy` -> conservative `less harsh` proxy only when the request does not already read as explicit clipping or distortion repair
+- `less distorted`, `repair clipping`, `declip` -> conservative `declip` only when analysis or semantics show direct clipping evidence
+- `less crunchy` -> conservative `less harsh` proxy only when the request does not already read as explicit clipping or distortion repair
 - `cleaner`, `clean up a bit` -> conservative tonal cleanup only when analysis or semantics show harshness or muddiness; otherwise reject as underspecified
 - `brighter`, `more presence` -> gentle `tilt_eq` brightening around `1200 Hz`
 - `airier`, `more air` -> `high_shelf` boost around `6500 Hz`
@@ -46,7 +47,7 @@ When one request maps to multiple supported operations, the baseline planner emi
 - duration shaping: `time_stretch`
 - pitch shaping: `pitch_shift`
 - boundary envelopes: `fade`
-- restoration: `declick`, `dehum`, `denoise`, `de_esser`
+- restoration: `declip`, `declick`, `dehum`, `denoise`, `de_esser`
 - filters: `high_pass_filter`
 - tonal balance: EQ and filter-toning steps such as `tilt_eq`, `notch_filter`, `high_shelf`, `low_shelf`
 - dynamics: `compressor`, `limiter`, or the dedicated controlled-loudness path
@@ -71,11 +72,11 @@ Compatible compounds that the baseline planner now supports explicitly include:
 - Compound timing verification composes earlier duration-changing edits first, so `time_stretch` and `pitch_shift` guards use post-trim or post-silence-trim expected durations rather than raw source duration.
 - If a request cannot be mapped to an explicit supported operation, planning fails instead of guessing.
 - Requests for runtime-available but non-planner-enabled operations such as `reverb`, `delay`, `echo`, `bitcrush`, `distortion`, `saturation`, `flanger`, `phaser`, or `reverse` are classified as `supported_runtime_only_but_not_planner_enabled`.
-- Requests for declip, dereverb, and broader restoration categories outside denoise, de-ess, declick, and dehum still fail explicitly.
-- Requests that explicitly ask to repair direct clipping or distortion now fail explicitly too when analysis already carries strong clipping or `distorted` evidence. The baseline planner will only use tonal proxies such as `less harsh` when the request does not already read as a true artifact-repair request.
+- Requests for dereverb and broader restoration categories outside denoise, de-ess, declip, declick, and dehum still fail explicitly.
+- Requests that explicitly ask to repair clipping now require direct clipping evidence. `declip` is hard-clipping repair only; broader distortion removal still fails instead of being approximated with tonal softening.
 - Generic cleanup wording does not automatically turn hum or click evidence into restoration steps; hum and click cleanup still require explicit supported intent.
 - Denoise only proceeds when steady-noise evidence is present; otherwise the planner rejects the request instead of guessing.
-- Hum and click verification stay conservative: the planner now prefers direct `AnalysisReport.artifacts` evidence when annotations or semantics support it and only uses coarse low-band or clipped-sample fallbacks where direct artifact measurements are unavailable.
+- Clipping, hum, and click verification stay conservative: the planner now prefers direct `AnalysisReport.artifacts` evidence when annotations or semantics support it and only uses coarse fallback metrics where direct artifact measurements are unavailable.
 - Pitch shifting only proceeds when `AnalysisReport.source_character.pitched` is true, and time stretching keeps duration targets conservative rather than attempting broad tempo inference.
 - The planner refuses explicit trim-point requests combined with automatic silence trimming so it does not guess which boundary edit should win.
 - Region-targeted planning is intentionally narrower than runtime `time_range` support. The first planner-grounded cohort is limited to EQ/tonal shaping, conservative restoration, gain/normalize staging, and the current stereo cleanup steps.

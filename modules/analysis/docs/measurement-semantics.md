@@ -204,6 +204,9 @@ Important limitations:
 
 - A frame is clipped when any channel has absolute amplitude `>= 0.999`.
 - `clipped_sample_count` is the number of clipped channel samples at that threshold.
+- `clipped_frame_count` is the number of frames where at least one channel is clipped.
+- `clipped_frame_ratio` is `clipped_frame_count / frame_count`.
+- `clipping_severity` is a normalized `0..1` score based on clipped-frame density over the file.
 - If clipping is found, one annotation is emitted from the first clipped frame to the last clipped frame.
 - Clipping severity is `clamp(clippedFrames / max(frameCount * 0.01, 1), 0, 1)`.
 - `noise_floor_dbfs` is estimated as the 10th-percentile fixed-window RMS dBFS value.

@@ -332,6 +332,76 @@
       ]
     },
     {
+      "fixture_id": "fixture_phase1_request_cycle_clipped_distortion_source",
+      "display_name": "Request-Cycle Clipped Distortion Source",
+      "relative_path": "phase-1/request-cycle-clipped-distortion-source.wav",
+      "availability": "committed",
+      "format": {
+        "container": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 48000,
+        "channels": 2,
+        "bit_depth": 16,
+        "duration_seconds": 0.96,
+        "file_size_bytes": 184364
+      },
+      "provenance": {
+        "source_type": "synthetic_generation",
+        "created_by": "fixtures/audio request-cycle corpus",
+        "license": "CC0-1.0",
+        "redistributable": true,
+        "checksum_sha256": "e158e9729e0d53a00a6793c5ef93bbe710f0c58076d85a6c6559215e3d9adc67",
+        "notes": "Deterministic stereo source generated from a driven tonal bed and clipped harmonic/transient content so declipping benchmarks preserve direct clipped-frame evidence through the default import path."
+      },
+      "intended_use": {
+        "prompt_family": ["less distorted", "repair clipping", "declip conservatively"],
+        "used_by": ["benchmarks"],
+        "expected_characteristics": [
+          "stereo tonal bed",
+          "direct clipped-sample and clipped-frame evidence",
+          "short committed synthetic source"
+        ]
+      },
+      "generation_recipe": [
+        "Write a 0.96-second stereo WAV at 48000 Hz with deterministic sine synthesis.",
+        "Sum a 220 Hz bed, 440 Hz harmonic, and gated 1.2 kHz transient component, then clamp samples to 16-bit full scale.",
+        "Keep the clipping deterministic so request-cycle declipping verification can compare direct artifact fields."
+      ]
+    },
+    {
+      "fixture_id": "fixture_phase1_request_cycle_clipped_distortion_declipped",
+      "display_name": "Request-Cycle Clipped Distortion Declipped Candidate",
+      "relative_path": "phase-1/request-cycle-clipped-distortion-declipped.wav",
+      "availability": "committed",
+      "format": {
+        "container": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 48000,
+        "channels": 2,
+        "bit_depth": 16,
+        "duration_seconds": 0.96,
+        "file_size_bytes": 184398
+      },
+      "provenance": {
+        "source_type": "deterministic_derivation",
+        "created_by": "fixtures/audio request-cycle corpus",
+        "license": "CC0-1.0",
+        "redistributable": true,
+        "checksum_sha256": "b8c150e355ae6116837c4fd9f0020551fddd0e196d54e8d207b749fa456df87b",
+        "notes": "Derived from the clipped source fixture with FFmpeg adeclip using the baseline planner's default declip parameters."
+      },
+      "derived_from_fixture_id": "fixture_phase1_request_cycle_clipped_distortion_source",
+      "intended_use": {
+        "prompt_family": ["less distorted", "repair clipping", "declip conservatively"],
+        "used_by": ["benchmarks"],
+        "expected_characteristics": [
+          "reduced clipped-frame evidence",
+          "same duration and channel layout as source",
+          "deterministic declipping candidate"
+        ]
+      }
+    },
+    {
       "fixture_id": "fixture_phase1_request_cycle_loudness_control_source",
       "display_name": "Request-Cycle Loudness Control Source",
       "relative_path": "phase-1/request-cycle-loudness-control-source.wav",

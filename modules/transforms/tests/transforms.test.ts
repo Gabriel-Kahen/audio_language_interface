@@ -517,6 +517,19 @@ describe("buildOperation", () => {
       },
       { scope: "full_file" },
     );
+    const declip = buildOperation(
+      audio,
+      "declip",
+      {
+        window_ms: 50,
+        overlap_percent: 70,
+        ar_order: 9,
+        threshold: 8,
+        histogram_size: 1200,
+        method: "save",
+      },
+      { scope: "full_file" },
+    );
     const dehum = buildOperation(
       audio,
       "dehum",
@@ -544,6 +557,16 @@ describe("buildOperation", () => {
       ar_order: 3,
       threshold: 4,
       burst_fusion: 2.5,
+      method: "save",
+    });
+
+    expect(declip.filterChain).toBe("adeclip=w=50:o=70:a=9:t=8:n=1200:m=save");
+    expect(declip.effectiveParameters).toEqual({
+      window_ms: 50,
+      overlap_percent: 70,
+      ar_order: 9,
+      threshold: 8,
+      histogram_size: 1200,
       method: "save",
     });
 
@@ -881,6 +904,19 @@ describe("buildOperation", () => {
           release_ms: 120,
         },
         { scope: "channel", channel: "left" },
+      ),
+    ).toThrow(/full_file/);
+  });
+
+  it("rejects time_range targets for declip", () => {
+    expect(() =>
+      buildOperation(
+        createAudioVersion("storage/audio/source.wav").audio,
+        "declip",
+        {
+          window_ms: 55,
+        },
+        { scope: "time_range", start_seconds: 0.25, end_seconds: 1.25 },
       ),
     ).toThrow(/full_file/);
   });
@@ -2018,6 +2054,21 @@ describe("applyOperation", () => {
       recordId: "transform_01HZYRESTORE000000002",
       createdAt: new Date("2026-04-18T22:45:00Z"),
     });
+    const clipWorkspaceRoot = await createWorkspace();
+    const clippedVersion = await createClippedAudioVersionFixture(clipWorkspaceRoot);
+    const declipResult = await applyOperation({
+      workspaceRoot: clipWorkspaceRoot,
+      version: clippedVersion,
+      operation: "declip",
+      target: { scope: "full_file" },
+      parameters: {
+        window_ms: 55,
+        threshold: 7,
+      },
+      outputVersionId: "ver_01HZYRESTORE00000000004",
+      recordId: "transform_01HZYRESTORE000000004",
+      createdAt: new Date("2026-04-18T22:45:00Z"),
+    });
     const humWorkspaceRoot = await createWorkspace();
     const humVersion = await createHumFixture(humWorkspaceRoot);
     const dehumResult = await applyOperation({
@@ -2061,12 +2112,20 @@ describe("applyOperation", () => {
       50,
       80,
     );
+    const sourceClippedSamples = await countClippedSamples(
+      path.join(clipWorkspaceRoot, clippedVersion.audio.storage_ref),
+    );
+    const declippedSamples = await countClippedSamples(
+      path.join(clipWorkspaceRoot, declipResult.outputVersion.audio.storage_ref),
+    );
 
     expect(deEssedSibilanceDb).toBeLessThan(sourceSibilanceDb - 1);
     expect(declickedCrestDb).toBeLessThan(sourceClickCrestDb - 2);
     expect(dehummedBandDb).toBeLessThan(sourceHumBandDb - 4);
+    expect(declippedSamples).toBeLessThan(sourceClippedSamples);
     expect(deEsserResult.transformRecord.operations[0]?.operation).toBe("de_esser");
     expect(declickResult.transformRecord.operations[0]?.operation).toBe("declick");
+    expect(declipResult.transformRecord.operations[0]?.operation).toBe("declip");
     expect(dehumResult.transformRecord.operations[0]?.operation).toBe("dehum");
   });
 
@@ -2562,7 +2621,7 @@ describe("applyEditPlan", () => {
     const plan: EditPlan = {
       schema_version: "1.0.0",
       plan_id: "plan_01HZX8E7J2V3M4N5P6Q7R8S9T0",
-      capability_manifest_id: "capmanifest_20260418C",
+      capability_manifest_id: "capmanifest_20260428A",
       asset_id: version.asset_id,
       version_id: version.version_id,
       user_request: "Trim, soften edges, and reduce level slightly.",
@@ -2620,7 +2679,7 @@ describe("applyEditPlan", () => {
     const plan: EditPlan = {
       schema_version: "1.0.0",
       plan_id: "plan_01HZYREGIONPLAN0000000001",
-      capability_manifest_id: "capmanifest_20260418C",
+      capability_manifest_id: "capmanifest_20260428A",
       asset_id: version.asset_id,
       version_id: version.version_id,
       user_request: "Cut a little low end in the middle, then fade the whole clip.",
@@ -2679,7 +2738,7 @@ describe("applyEditPlan", () => {
     const plan: EditPlan = {
       schema_version: "1.0.0",
       plan_id: "plan_01HZY2INVALID000000000001",
-      capability_manifest_id: "capmanifest_20260418C",
+      capability_manifest_id: "capmanifest_20260428A",
       asset_id: version.asset_id,
       version_id: version.version_id,
       user_request: "Collapse to mono, then widen it.",
@@ -3173,6 +3232,25 @@ async function createClickyAudioVersionFixture(workspaceRoot: string): Promise<A
   });
 }
 
+async function createClippedAudioVersionFixture(workspaceRoot: string): Promise<AudioVersion> {
+  const sampleRateHz = 44100;
+  const durationSeconds = 1;
+  const totalFrames = Math.round(durationSeconds * sampleRateHz);
+  const mono = Array.from({ length: totalFrames }, (_, index) => {
+    const driven =
+      Math.sin((2 * Math.PI * 220 * index) / sampleRateHz) * 26000 +
+      Math.sin((2 * Math.PI * 440 * index) / sampleRateHz) * 15000;
+    return Math.max(-32767, Math.min(32767, Math.round(driven)));
+  });
+
+  return createCustomAudioVersionFixture(workspaceRoot, {
+    sampleRateHz,
+    channels: 1,
+    channelLayout: "mono",
+    samples: [mono],
+  });
+}
+
 async function createHumFixture(workspaceRoot: string): Promise<AudioVersion> {
   const sampleRateHz = 44100;
   const durationSeconds = 1;
@@ -3380,6 +3458,21 @@ async function readWaveSamples(absolutePath: string): Promise<Int16Array[]> {
 
   const channels = samples as unknown as ArrayLike<number>[];
   return channels.map((channel) => Int16Array.from(channel));
+}
+
+async function countClippedSamples(absolutePath: string): Promise<number> {
+  const channels = await readWaveSamples(absolutePath);
+  let clippedSamples = 0;
+
+  for (const channel of channels) {
+    for (const sample of channel) {
+      if (Math.abs(sample) >= 32760) {
+        clippedSamples += 1;
+      }
+    }
+  }
+
+  return clippedSamples;
 }
 
 async function measurePeakLevelDbfs(absolutePath: string): Promise<number> {

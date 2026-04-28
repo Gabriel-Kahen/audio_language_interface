@@ -164,6 +164,24 @@ export function computeAnalysisMetricDeltas(
   );
   pushOptionalNumericDelta(
     deltas,
+    "artifacts.clipped_frame_count",
+    baseline.artifacts.clipped_frame_count,
+    candidate.artifacts.clipped_frame_count,
+  );
+  pushOptionalNumericDelta(
+    deltas,
+    "artifacts.clipped_frame_ratio",
+    baseline.artifacts.clipped_frame_ratio,
+    candidate.artifacts.clipped_frame_ratio,
+  );
+  pushOptionalNumericDelta(
+    deltas,
+    "artifacts.clipping_severity",
+    baseline.artifacts.clipping_severity,
+    candidate.artifacts.clipping_severity,
+  );
+  pushOptionalNumericDelta(
+    deltas,
     "artifacts.click_count",
     baseline.artifacts.click_count,
     candidate.artifacts.click_count,
