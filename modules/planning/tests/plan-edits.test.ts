@@ -28,6 +28,18 @@ describe("parseUserRequest", () => {
     expect(parsed.fade_out_seconds).toBe(0.1);
   });
 
+  it("extracts natural duration-before-label fade phrases", () => {
+    const fadeIn = parseUserRequest("Add a 0.2 second fade in.");
+    const fadeOut = parseUserRequest("Add a 0.2 second fade out.");
+    const shortUnitFadeOut = parseUserRequest("Add a 250 ms fade out.");
+    const abbreviatedFadeIn = parseUserRequest("Add a 0.3 sec fade in.");
+
+    expect(fadeIn.fade_in_seconds).toBe(0.2);
+    expect(fadeOut.fade_out_seconds).toBe(0.2);
+    expect(shortUnitFadeOut.fade_out_seconds).toBe(0.25);
+    expect(abbreviatedFadeIn.fade_in_seconds).toBe(0.3);
+  });
+
   it("parses cleaner and preserve-punch language conservatively", () => {
     const parsed = parseUserRequest("Clean this sample up a bit without losing punch.");
 
@@ -462,6 +474,29 @@ describe("planEdits", () => {
     });
     expect(plan.steps[1]?.parameters).toEqual({ fade_out_seconds: 0.1 });
     expect(validateAgainstSchema(editPlanSchema, plan)).toBe(true);
+  });
+
+  it("builds executable fade steps from duration-before-label phrasing", () => {
+    const fadeInPlan = planEdits({
+      userRequest: "Add a 0.2 second fade in.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+    const fadeOutPlan = planEdits({
+      userRequest: "Add a 0.2 second fade out.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(fadeInPlan.steps.map((step) => step.operation)).toEqual(["fade"]);
+    expect(fadeInPlan.steps[0]?.parameters).toEqual({ fade_in_seconds: 0.2 });
+    expect(validateAgainstSchema(editPlanSchema, fadeInPlan)).toBe(true);
+
+    expect(fadeOutPlan.steps.map((step) => step.operation)).toEqual(["fade"]);
+    expect(fadeOutPlan.steps[0]?.parameters).toEqual({ fade_out_seconds: 0.2 });
+    expect(validateAgainstSchema(editPlanSchema, fadeOutPlan)).toBe(true);
   });
 
   it("adds a conservative gain step only when measured headroom allows it", () => {

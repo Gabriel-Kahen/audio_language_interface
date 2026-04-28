@@ -75,7 +75,9 @@ There is now also an optional interpretation layer for open-ended language:
 On top of the one-shot loop, orchestration now supports early iterative follow-up behavior for:
 
 - `more`
+- `make it more`
 - `less`
+- `make it less`
 - `undo`
 - `revert to previous version`
 - `try another version`

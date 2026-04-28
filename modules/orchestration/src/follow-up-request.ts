@@ -110,13 +110,22 @@ function normalizeRequest(value: string): string {
 }
 
 function isMoreFollowUp(value: string): boolean {
-  return ["more", "more please", "a bit more", "a little more", "same again", "again"].includes(
-    value,
-  );
+  return [
+    "more",
+    "more please",
+    "a bit more",
+    "a little more",
+    "make it more",
+    "make it a little more",
+    "same again",
+    "again",
+  ].includes(value);
 }
 
 function getRevertSource(value: string): RevertFollowUpSource | undefined {
-  if (["less", "a bit less", "a little less"].includes(value)) {
+  if (
+    ["less", "a bit less", "a little less", "make it less", "make it a little less"].includes(value)
+  ) {
     return "less";
   }
 

@@ -184,7 +184,7 @@ Current tool-surface caveats:
 - the optional interpretation layer broadens language handling, but it does not make unsupported descriptors or transforms safe automatically
 - the baseline planner now grounds one narrow region-targeting slice for explicit numeric `time_range` wording such as `the first 0.5 seconds` or `from 0.2s to 0.7s`, but it still refuses vague named regions like `intro` and it still refuses region-scoped requests that require full-file-only planner operations
 - planning fails on unsupported requests instead of trying to generalize broadly
-- iterative editing now supports `more`, `less`, `undo`, `revert to previous version`, and `try another version` through both orchestration and the published `run_request_cycle` tool; those follow-up flows still require explicit historical version materialization rather than hidden adapter-managed state
+- iterative editing now supports `more`, `make it more`, `less`, `make it less`, `undo`, `revert to previous version`, and `try another version` through both orchestration and the published `run_request_cycle` tool; those follow-up flows still require explicit historical version materialization rather than hidden adapter-managed state
 - conservative interpretation can now stop at a first-class clarification result instead of a planner error, and the next caller-supplied `session_graph` can resume that clarification path explicitly
 - the baseline planner still does not choose `pan`, channel remapping, `mid_side_eq`, broader Layer 1 runtime effects, or the creative-effect surface automatically
 - render preview is MP3-only

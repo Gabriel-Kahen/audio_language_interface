@@ -677,14 +677,22 @@ function parseTrimRange(value: string): ParsedEditObjectives["trim_range"] {
 }
 
 function parseNamedDuration(value: string, label: "fade in" | "fade out"): number | undefined {
-  const match = value.match(
-    new RegExp(`${label}\\s+(\\d+(?:\\.\\d+)?)\\s*(?:s|sec|secs|second|seconds)`),
+  const durationUnitPattern = "(ms|millisecond|milliseconds|s|sec|secs|second|seconds)";
+  const labelThenDurationMatch = value.match(
+    new RegExp(`\\b${label}\\s+(\\d+(?:\\.\\d+)?)\\s*${durationUnitPattern}\\b`),
   );
+  const durationThenLabelMatch = value.match(
+    new RegExp(`\\b(\\d+(?:\\.\\d+)?)\\s*${durationUnitPattern}\\s+${label}\\b`),
+  );
+  const match = labelThenDurationMatch ?? durationThenLabelMatch;
   if (!match) {
     return undefined;
   }
 
-  const seconds = Number(match[1]);
+  const valueInUnits = Number(match[1]);
+  const unit = match[2] ?? "";
+  const seconds =
+    unit === "ms" || unit.startsWith("millisecond") ? valueInUnits / 1000 : valueInUnits;
   return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
 }
 

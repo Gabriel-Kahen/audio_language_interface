@@ -131,13 +131,13 @@ The default behavior is one attempt with no retries.
 `resolveFollowUpRequest(options)`
 
 - resolves plain requests directly
-- expands shorthand `more` to the recorded `user_request` from the plan that produced the current version
-- resolves `less` and nearby revert-style wording to a concrete ancestor `version_id` using `modules/history`
+- expands shorthand `more`, including `make it more` and `make it a little more`, to the recorded `user_request` from the plan that produced the current version
+- resolves `less`, including `make it less` and `make it a little less`, and nearby revert-style wording to a concrete ancestor `version_id` using `modules/history`
 - resolves `undo` to the previously active version using explicit `active_ref_history`
 - resolves `try another version` to the prior baseline request and source version, then lets `runRequestCycle()` branch from that baseline before replaying the request
 - throws when the current session state is insufficient to resolve the follow-up safely
 
-`runRequestCycle(options)` now uses this resolver for `input.kind = "existing"`, which lets repeated requests such as `more`, `less`, `undo`, `revert to previous version`, and `try another version` reuse explicit session history without introducing hidden orchestration state.
+`runRequestCycle(options)` now uses this resolver for `input.kind = "existing"`, which lets repeated requests such as `more`, `make it more`, `less`, `make it less`, `undo`, `revert to previous version`, and `try another version` reuse explicit session history without introducing hidden orchestration state.
 
 When `options.revision.enabled` is true, `runRequestCycle()` may execute one additional explicit pass after the first version-level comparison. The default policy is conservative:
 

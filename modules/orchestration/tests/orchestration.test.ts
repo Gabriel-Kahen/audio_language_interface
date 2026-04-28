@@ -587,7 +587,12 @@ describe("runRequestCycle", () => {
     } satisfies Partial<OrchestrationStageError>);
   });
 
-  it("reuses the last recorded request for `more` follow-ups", async () => {
+  it.each([
+    "more",
+    "a little more",
+    "Make it more.",
+    "Make it a little more.",
+  ])("reuses the last recorded request for `%s` follow-ups", async (followUpRequest) => {
     const asset = createAsset();
     const inputVersion = createVersion("ver_input");
     const dependencies = createDependencies();
@@ -608,7 +613,7 @@ describe("runRequestCycle", () => {
     const secondCycle = expectAppliedRequestCycleResult(
       await runRequestCycle({
         workspaceRoot: "/workspace",
-        userRequest: "more",
+        userRequest: followUpRequest,
         input: {
           kind: "existing",
           asset,
@@ -620,7 +625,74 @@ describe("runRequestCycle", () => {
     );
 
     expect(secondCycle.result_kind).toBe("applied");
+    expect(secondCycle.followUpResolution).toMatchObject({
+      kind: "apply",
+      resolvedUserRequest: "Make it darker",
+      source: "repeat_last_request",
+    });
     expect(secondCycle.editPlan?.user_request).toBe("Make it darker");
+  });
+
+  it.each([
+    "Make it more bass.",
+    "Make it less harsh.",
+  ])("preserves concrete `%s` requests as direct requests", (userRequest) => {
+    expect(
+      resolveFollowUpRequest({
+        userRequest,
+        versionId: "ver_output",
+      }),
+    ).toEqual({
+      kind: "apply",
+      resolvedUserRequest: userRequest,
+      source: "direct_request",
+    });
+  });
+
+  it.each([
+    "less",
+    "a little less",
+    "Make it less.",
+    "Make it a little less.",
+  ])("reuses version ancestry for `%s` follow-ups", async (followUpRequest) => {
+    const asset = createAsset();
+    const inputVersion = createVersion("ver_input");
+    const dependencies = createDependencies();
+
+    const firstCycle = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "Make it darker",
+        input: {
+          kind: "existing",
+          asset,
+          version: inputVersion,
+        },
+        dependencies,
+      }),
+    );
+
+    const lessCycle = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: followUpRequest,
+        input: {
+          kind: "existing",
+          asset,
+          version: firstCycle.outputVersion,
+          sessionGraph: firstCycle.sessionGraph,
+        },
+        dependencies,
+      }),
+    );
+
+    expect(lessCycle.result_kind).toBe("reverted");
+    expect(lessCycle.outputVersion.version_id).toBe(inputVersion.version_id);
+    expect(lessCycle.followUpResolution).toEqual({
+      kind: "revert",
+      targetVersionId: inputVersion.version_id,
+      source: "less",
+    });
   });
 
   it("supports `try another version` by branching from the prior baseline and replaying the last request", async () => {
