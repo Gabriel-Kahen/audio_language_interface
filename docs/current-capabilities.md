@@ -71,10 +71,10 @@ Supported but conservative areas:
 - center this more or fix the stereo imbalance, when measured left-right balance is clearly off but still safe to correct conservatively
 - denoise or reduce hiss, when steady-noise evidence is strong enough
 - explicit loudness normalization through `normalize`
-- airier, warmer, less muddy, or less harsh ring through surgical tone-shaping
-- texture wording such as `more relaxed` or `less aggressive` when it can be grounded honestly as a conservative tonal-softening move
-- tame sibilance, remove explicitly specified `50 Hz` / `60 Hz` hum, or clean up clicks through narrow restoration primitives
-- explicit `less distorted`, `repair clipping`, or `declip` wording only when the source has direct clipping evidence; broader distortion removal remains outside the supported planner surface
+- airier, warmer, less muddy, or less harsh ring through surgical tone-shaping, with less-muddy requests using a low-mid bell cut aligned to mid-band verification
+- texture wording such as `more relaxed` or `less aggressive` when it can be grounded honestly as a conservative tonal-softening move from harshness, aggressive, or brightness evidence
+- tame sibilance, remove explicitly specified `50 Hz` / `60 Hz` hum, or clean up clicks through narrow restoration primitives only when matching source evidence is present
+- explicit `less distorted`, `repair clipping`, or `declip` wording only when the source has direct clipping evidence; no-evidence declip can be dropped from safe compounds, but isolated clipping/distortion repair still refuses honestly
 - pure `more controlled` or `louder and more controlled` requests may refuse on already tightly controlled material instead of silently degrading it
 - small benchmarked compound prompts within the supported slice, including tonal combinations such as `warmer and airier` or `darker, less harsh, and less muddy` plus a narrow cross-family set such as `speed up by 10% and tame the sibilance`, `tame the sibilance and make it darker`, `center this more and make it wider`, and the current tradeoff-style `make this a little tighter and more controlled, and darker`
 

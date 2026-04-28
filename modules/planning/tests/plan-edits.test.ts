@@ -138,6 +138,10 @@ describe("parseUserRequest", () => {
   it("parses explicit time-range region phrases for supported local edits", () => {
     const firstWindow = parseUserRequest("Make the first second darker and less harsh.");
     const explicitRange = parseUserRequest("Make it darker from 0.2s to 0.7s.");
+    const firstHalfSecond = parseUserRequest("Make the first half second darker.");
+    const firstHalfASecond = parseUserRequest("Make the first half a second darker.");
+    const lastHalfSecond = parseUserRequest("Make the last half second darker.");
+    const lastHalfASecond = parseUserRequest("Make the last half a second darker.");
 
     expect(firstWindow.region_target_hint).toEqual({
       kind: "leading_window",
@@ -149,6 +153,26 @@ describe("parseUserRequest", () => {
       start_seconds: 0.2,
       end_seconds: 0.7,
       source_phrase: "from 0.2s to 0.7s",
+    });
+    expect(firstHalfSecond.region_target_hint).toEqual({
+      kind: "leading_window",
+      duration_seconds: 0.5,
+      source_phrase: "first half second",
+    });
+    expect(firstHalfASecond.region_target_hint).toEqual({
+      kind: "leading_window",
+      duration_seconds: 0.5,
+      source_phrase: "first half a second",
+    });
+    expect(lastHalfSecond.region_target_hint).toEqual({
+      kind: "trailing_window",
+      duration_seconds: 0.5,
+      source_phrase: "last half second",
+    });
+    expect(lastHalfASecond.region_target_hint).toEqual({
+      kind: "trailing_window",
+      duration_seconds: 0.5,
+      source_phrase: "last half a second",
     });
   });
 
@@ -286,7 +310,19 @@ describe("planEdits", () => {
     ]);
   });
 
-  it("refuses texture-softening wording when the source does not show enough aggressive evidence", () => {
+  it("grounds more-relaxed wording with brightness evidence without inventing harshness repair", () => {
+    const plan = planEdits({
+      userRequest: "Make this more relaxed.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createBrightNotHarshAnalysisReportFixture(),
+      semanticProfile: createBrightSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["tilt_eq"]);
+    expect(plan.goals).toEqual(["tilt the overall balance slightly darker"]);
+  });
+
+  it("refuses texture-softening wording when the source does not show enough texture evidence", () => {
     expect(() =>
       planEdits({
         userRequest: "Make this more relaxed.",
@@ -316,6 +352,18 @@ describe("planEdits", () => {
       start_seconds: 0,
       end_seconds: 1,
     });
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_darker_brightness_tilt",
+          target: {
+            scope: "time_range",
+            start_seconds: 0,
+            end_seconds: 1,
+          },
+        }),
+      ]),
+    );
     expect(plan.constraints).toContain("apply supported edits only within 0s to 1s");
   });
 
@@ -510,6 +558,46 @@ describe("planEdits", () => {
     expect(plan.goals).toContain("add a little upper-band air");
   });
 
+  it("maps less-muddy requests to a low-mid parametric cut aligned with verification", () => {
+    const plan = planEdits({
+      userRequest: "Make it less muddy.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["parametric_eq"]);
+    expect(plan.steps[0]?.parameters).toEqual({
+      bands: [{ type: "bell", frequency_hz: 360, gain_db: -2.5, q: 0.9 }],
+    });
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_less_muddy_mid_band",
+          metric: "spectral_balance.mid_band_db",
+        }),
+      ]),
+    );
+  });
+
+  it("does not add the less-muddy air-loss guard when darker is explicitly requested", () => {
+    const plan = planEdits({
+      userRequest: "Make it darker and less muddy.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["tilt_eq", "parametric_eq"]);
+    expect(plan.verification_targets).toEqual(
+      expect.not.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_less_muddy_no_lost_air_regression",
+        }),
+      ]),
+    );
+  });
+
   it("maps explicit de-ess, declick, and dehum requests to conservative restoration steps", () => {
     const plan = planEdits({
       userRequest: "Tame the sibilance, remove clicks, and remove 60 Hz hum.",
@@ -542,8 +630,8 @@ describe("planEdits", () => {
       expect.arrayContaining([
         expect.objectContaining({
           target_id: "target_reduce_click_activity",
-          label: "reduce clipped-sample spike activity when direct click evidence is unavailable",
-          metric: "artifacts.clipped_sample_count",
+          label: "reduce detected click activity where explicit click evidence exists",
+          metric: "artifacts.click_count",
         }),
         expect.objectContaining({
           target_id: "target_reduce_hum_activity",
@@ -554,6 +642,62 @@ describe("planEdits", () => {
         }),
       ]),
     );
+  });
+
+  it("refuses explicit restoration requests when matching artifact evidence is absent", () => {
+    const audioVersion = createAudioVersionFixture();
+    const analysisReport = createRelaxedLikeAnalysisReportFixture();
+    const semanticProfile = createNeutralSemanticProfileFixture();
+
+    expect(() =>
+      planEdits({
+        userRequest: "Remove clicks.",
+        audioVersion,
+        analysisReport,
+        semanticProfile,
+      }),
+    ).toThrow(/does not show click evidence/i);
+    expect(() =>
+      planEdits({
+        userRequest: "Remove 60 Hz hum.",
+        audioVersion,
+        analysisReport,
+        semanticProfile,
+      }),
+    ).toThrow(/does not show hum evidence/i);
+    expect(() =>
+      planEdits({
+        userRequest: "Tame the sibilance.",
+        audioVersion,
+        analysisReport,
+        semanticProfile,
+      }),
+    ).toThrow(/does not show sibilance evidence/i);
+  });
+
+  it("accepts localized upper-presence harshness as evidence for explicit de-essing", () => {
+    const analysisReport = {
+      ...createAnalysisReportFixture(),
+      annotations: [
+        {
+          kind: "harshness",
+          start_seconds: 0.7,
+          end_seconds: 0.85,
+          bands_hz: [2500, 6000],
+          severity: 0.52,
+          evidence: "presence-band burst is concentrated in the de-essing range",
+        },
+      ],
+    } satisfies AnalysisReport;
+
+    const plan = planEdits({
+      userRequest: "Tame the sibilance.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport,
+      semanticProfile: createNeutralSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["de_esser"]);
   });
 
   it("requires an explicit mains frequency for dehum requests", () => {
@@ -1038,8 +1182,8 @@ describe("planEdits", () => {
       userRequest:
         "Remove clicks, tame the sibilance, make it darker, make it more controlled, catch peaks, and center this more.",
       audioVersion: createAudioVersionFixture(),
-      analysisReport: createImbalancedStereoAnalysisReportFixture(),
-      semanticProfile: createOffCenterSemanticProfileFixture(),
+      analysisReport: createImbalancedRestorationAnalysisReportFixture(),
+      semanticProfile: createOffCenterRestorationSemanticProfileFixture(),
     });
 
     expect(plan.steps.map((step) => step.operation)).toEqual([
@@ -1056,8 +1200,8 @@ describe("planEdits", () => {
     const plan = planEdits({
       userRequest: "Trim the silence at the beginning and end, then remove clicks.",
       audioVersion: createTrimSilenceAudioVersionFixture(),
-      analysisReport: createTrimSilenceAnalysisReportFixture(),
-      semanticProfile: createVersionScopedNeutralSemanticProfile("ver_trimSilenceFixture"),
+      analysisReport: createTrimSilenceRestorationAnalysisReportFixture(),
+      semanticProfile: createVersionScopedRestorationSemanticProfile("ver_trimSilenceFixture"),
     });
 
     expect(plan.steps.map((step) => step.operation)).toEqual(["trim_silence", "declick"]);
@@ -1175,8 +1319,8 @@ describe("planEdits", () => {
     const plan = planEdits({
       userRequest: "Clean this sample up by removing clicks.",
       audioVersion: createAudioVersionFixture(),
-      analysisReport: createAnalysisReportFixture(),
-      semanticProfile: createSemanticProfileFixture(),
+      analysisReport: createRestorationAnalysisReportFixture(),
+      semanticProfile: createRestorationSemanticProfileFixture(),
     });
 
     expect(plan.steps.map((step) => step.operation)).toEqual(["declick"]);
@@ -1186,7 +1330,10 @@ describe("planEdits", () => {
     const plan = planEdits({
       userRequest: "Remove clicks.",
       audioVersion: createAudioVersionFixture(),
-      analysisReport: createRestorationAnalysisReportFixture({ clipped_sample_count: 0 }),
+      analysisReport: createRestorationAnalysisReportFixture({
+        clipped_sample_count: 0,
+        click_count: 0,
+      }),
       semanticProfile: createRestorationSemanticProfileFixture(),
     });
 
@@ -1336,6 +1483,18 @@ describe("planEdits", () => {
         semanticProfile: createSemanticProfileFixture(),
       }),
     ).toThrow(/does not show direct clipping evidence/i);
+  });
+
+  it("drops unsupported declipping from compounds when safe tonal objectives remain", () => {
+    const plan = planEdits({
+      userRequest: "Make it more relaxed and less distorted.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createBrightNotHarshAnalysisReportFixture(),
+      semanticProfile: createBrightSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["tilt_eq"]);
+    expect(plan.goals).toEqual(["tilt the overall balance slightly darker"]);
   });
 
   it("requires direct analysis evidence before trusting semantic clipping labels for declipping", () => {
@@ -1635,6 +1794,25 @@ function createTrimSilenceAnalysisReportFixture(): AnalysisReport {
   };
 }
 
+function createTrimSilenceRestorationAnalysisReportFixture(): AnalysisReport {
+  return {
+    ...createRestorationAnalysisReportFixture(),
+    version_id: "ver_trimSilenceFixture",
+    measurements: {
+      ...createRestorationAnalysisReportFixture().measurements,
+      artifacts: {
+        ...createRestorationAnalysisReportFixture().measurements.artifacts,
+        noise_floor_dbfs: -60,
+      },
+    },
+    segments: [
+      { kind: "silence", start_seconds: 0, end_seconds: 0.14 },
+      { kind: "active", start_seconds: 0.14, end_seconds: 0.86 },
+      { kind: "silence", start_seconds: 0.86, end_seconds: 1.04 },
+    ],
+  };
+}
+
 function createPitchedAnalysisReportFixture(): AnalysisReport {
   return {
     ...createAnalysisReportFixture(),
@@ -1757,6 +1935,45 @@ function createRelaxedLikeAnalysisReportFixture(): AnalysisReport {
   };
 }
 
+function createBrightNotHarshAnalysisReportFixture(): AnalysisReport {
+  return {
+    ...createRelaxedLikeAnalysisReportFixture(),
+    measurements: {
+      ...createRelaxedLikeAnalysisReportFixture().measurements,
+      spectral_balance: {
+        ...createRelaxedLikeAnalysisReportFixture().measurements.spectral_balance,
+        high_band_db: -6.2,
+        spectral_centroid_hz: 2700,
+        brightness_tilt_db: 6.1,
+        harshness_ratio_db: 1.4,
+      },
+    },
+    annotations: [
+      {
+        kind: "brightness",
+        start_seconds: 0,
+        end_seconds: 4,
+        severity: 0.42,
+        evidence: "overall high-band tilt is elevated without a narrow harshness region",
+      },
+    ],
+  };
+}
+
+function createBrightSemanticProfileFixture(): SemanticProfile {
+  return {
+    ...createNeutralSemanticProfileFixture(),
+    descriptors: [
+      {
+        label: "bright",
+        confidence: 0.72,
+        evidence_refs: ["analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:measurements.spectral_balance"],
+        rationale: "Measured brightness tilt is elevated.",
+      },
+    ],
+  };
+}
+
 function createImbalancedStereoAnalysisReportFixture(): AnalysisReport {
   return {
     ...createAnalysisReportFixture(),
@@ -1770,6 +1987,21 @@ function createImbalancedStereoAnalysisReportFixture(): AnalysisReport {
       },
     },
     annotations: [],
+  };
+}
+
+function createImbalancedRestorationAnalysisReportFixture(): AnalysisReport {
+  return {
+    ...createRestorationAnalysisReportFixture(),
+    measurements: {
+      ...createRestorationAnalysisReportFixture().measurements,
+      stereo: {
+        ...createRestorationAnalysisReportFixture().measurements.stereo,
+        width: 0.24,
+        correlation: 0.72,
+        balance_db: 3.2,
+      },
+    },
   };
 }
 
@@ -1817,6 +2049,13 @@ function createVersionScopedNeutralSemanticProfile(versionId: string): SemanticP
   };
 }
 
+function createVersionScopedRestorationSemanticProfile(versionId: string): SemanticProfile {
+  return {
+    ...createRestorationSemanticProfileFixture(),
+    version_id: versionId,
+  };
+}
+
 function createWideSemanticProfileFixture(): SemanticProfile {
   return {
     ...createNeutralSemanticProfileFixture(),
@@ -1847,6 +2086,7 @@ function createOffCenterSemanticProfileFixture(): SemanticProfile {
 
 function createRestorationAnalysisReportFixture(options?: {
   clipped_sample_count?: number;
+  click_count?: number;
 }): AnalysisReport {
   return {
     ...createAnalysisReportFixture(),
@@ -1855,6 +2095,13 @@ function createRestorationAnalysisReportFixture(options?: {
       artifacts: {
         ...createAnalysisReportFixture().measurements.artifacts,
         clipped_sample_count: options?.clipped_sample_count ?? 0,
+        hum_detected: true,
+        hum_fundamental_hz: 60,
+        hum_harmonic_count: 3,
+        hum_level_dbfs: -48,
+        click_detected: true,
+        click_count: options?.click_count ?? 2,
+        click_rate_per_second: (options?.click_count ?? 2) > 0 ? 0.5 : 0,
       },
     },
     annotations: [
@@ -1872,6 +2119,14 @@ function createRestorationAnalysisReportFixture(options?: {
         end_seconds: 1.23,
         severity: 0.54,
         evidence: "short impulsive pop around 1.22 seconds",
+      },
+      {
+        kind: "sibilance",
+        start_seconds: 2,
+        end_seconds: 2.14,
+        bands_hz: [5000, 8000],
+        severity: 0.56,
+        evidence: "localized upper-presence burst reads as sibilant",
       },
     ],
   };
@@ -1892,6 +2147,27 @@ function createRestorationSemanticProfileFixture(): SemanticProfile {
         confidence: 0.74,
         evidence_refs: ["analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:annotations[1]"],
         rationale: "Short click evidence is present.",
+      },
+      {
+        label: "sibilant",
+        confidence: 0.73,
+        evidence_refs: ["analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:annotations[2]"],
+        rationale: "Localized sibilance evidence is present.",
+      },
+    ],
+  };
+}
+
+function createOffCenterRestorationSemanticProfileFixture(): SemanticProfile {
+  return {
+    ...createRestorationSemanticProfileFixture(),
+    descriptors: [
+      ...createRestorationSemanticProfileFixture().descriptors,
+      {
+        label: "off_center",
+        confidence: 0.76,
+        evidence_refs: ["analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:measurements.stereo"],
+        rationale: "Left-right balance is materially offset from center.",
       },
     ],
   };

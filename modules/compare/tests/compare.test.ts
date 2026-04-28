@@ -1084,6 +1084,160 @@ describe("compareVersions", () => {
     );
   });
 
+  it("keeps guard-only structured cleanup goals unknown when no requested target exists", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_guard_only_base"),
+      candidateVersion: createVersion("ver_guard_only_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_guard_only_base",
+        versionId: "ver_guard_only_base",
+        integratedLufs: -16,
+        truePeakDbtp: -2,
+        crestFactorDb: 10,
+        transientDensity: 1.5,
+        lowBandDb: -14,
+        midBandDb: -11,
+        highBandDb: -10,
+        spectralCentroidHz: 2300,
+        stereoWidth: 0.5,
+        stereoCorrelation: 0.5,
+        noiseFloorDbfs: -70,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_guard_only_cand",
+        versionId: "ver_guard_only_cand",
+        integratedLufs: -16,
+        truePeakDbtp: -2,
+        crestFactorDb: 10,
+        transientDensity: 1.5,
+        lowBandDb: -14,
+        midBandDb: -11,
+        highBandDb: -10,
+        spectralCentroidHz: 2300,
+        stereoWidth: 0.5,
+        stereoCorrelation: 0.5,
+        noiseFloorDbfs: -70,
+        clippingDetected: false,
+      }),
+      editPlan: {
+        ...createEditPlan(),
+        version_id: "ver_guard_only_base",
+        goals: ["clean up noise"],
+        verification_targets: [
+          {
+            target_id: "target_guard_only_no_denoise_artifacts",
+            goal: "clean up noise",
+            label: "avoid denoise artifacts",
+            kind: "regression_guard",
+            comparison: "absent",
+            regression_kind: "denoise_artifacts",
+          },
+        ],
+      },
+      generatedAt: "2026-04-22T15:00:00Z",
+    });
+
+    expect(report.verification_results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_guard_only_no_denoise_artifacts",
+          status: "met",
+        }),
+      ]),
+    );
+    expect(report.goal_alignment).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          goal: "clean up noise",
+          status: "unknown",
+          verification_rollup: expect.objectContaining({
+            requested_target_count: 0,
+            regression_guard_status: "met",
+          }),
+        }),
+      ]),
+    );
+  });
+
+  it("does not score region-scoped analysis metrics from whole-file analysis evidence", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_region_metric_base"),
+      candidateVersion: createVersion("ver_region_metric_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_region_metric_base",
+        versionId: "ver_region_metric_base",
+        integratedLufs: -18,
+        truePeakDbtp: -3,
+        crestFactorDb: 10,
+        transientDensity: 1.5,
+        lowBandDb: -14,
+        midBandDb: -11,
+        highBandDb: -10,
+        spectralCentroidHz: 2300,
+        stereoWidth: 0.5,
+        stereoCorrelation: 0.5,
+        noiseFloorDbfs: -70,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_region_metric_cand",
+        versionId: "ver_region_metric_cand",
+        integratedLufs: -15,
+        truePeakDbtp: -3,
+        crestFactorDb: 10,
+        transientDensity: 1.5,
+        lowBandDb: -14,
+        midBandDb: -11,
+        highBandDb: -10,
+        spectralCentroidHz: 2300,
+        stereoWidth: 0.5,
+        stereoCorrelation: 0.5,
+        noiseFloorDbfs: -70,
+        clippingDetected: false,
+      }),
+      editPlan: {
+        ...createEditPlan(),
+        version_id: "ver_region_metric_base",
+        goals: ["raise the chorus level"],
+        verification_targets: [
+          {
+            target_id: "target_region_loudness_lift",
+            goal: "raise the chorus level",
+            label: "raise loudness in the chorus region",
+            kind: "analysis_metric",
+            comparison: "increase_by",
+            metric: "levels.integrated_lufs",
+            threshold: 2,
+            target: {
+              scope: "time_range",
+              start_seconds: 5,
+              end_seconds: 9,
+            },
+          },
+        ],
+      },
+      generatedAt: "2026-04-22T15:05:00Z",
+    });
+
+    expect(report.verification_results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_region_loudness_lift",
+          status: "unknown",
+        }),
+      ]),
+    );
+    expect(report.goal_alignment).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          goal: "raise the chorus level",
+          status: "unknown",
+        }),
+      ]),
+    );
+  });
+
   it("detects clipping and loudness regressions", () => {
     const report = compareVersions({
       baselineVersion: createVersion("ver_clean123"),
@@ -1198,6 +1352,188 @@ describe("compareVersions", () => {
     );
     expect(report.semantic_deltas).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ label: "cleaner" })]),
+    );
+  });
+
+  it("keeps less_air semantic evidence for intentional darkening without flagging lost_air", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_dark_air_base"),
+      candidateVersion: createVersion("ver_dark_air_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_dark_air_base",
+        versionId: "ver_dark_air_base",
+        integratedLufs: -16,
+        truePeakDbtp: -2,
+        crestFactorDb: 10,
+        transientDensity: 1.5,
+        lowBandDb: -14,
+        midBandDb: -11,
+        highBandDb: -8,
+        spectralCentroidHz: 2600,
+        brightnessTiltDb: 5,
+        stereoWidth: 0.5,
+        stereoCorrelation: 0.5,
+        noiseFloorDbfs: -70,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_dark_air_cand",
+        versionId: "ver_dark_air_cand",
+        integratedLufs: -16,
+        truePeakDbtp: -2.1,
+        crestFactorDb: 10,
+        transientDensity: 1.5,
+        lowBandDb: -14,
+        midBandDb: -11,
+        highBandDb: -10,
+        spectralCentroidHz: 2380,
+        brightnessTiltDb: 3.5,
+        stereoWidth: 0.5,
+        stereoCorrelation: 0.5,
+        noiseFloorDbfs: -70,
+        clippingDetected: false,
+      }),
+      editPlan: {
+        ...createEditPlan(),
+        version_id: "ver_dark_air_base",
+        user_request: "Make the loop darker and less sharp.",
+        goals: ["make the loop darker"],
+        verification_targets: [
+          {
+            target_id: "target_dark_air_high_band",
+            goal: "make the loop darker",
+            label: "reduce upper-band brightness",
+            kind: "analysis_metric",
+            comparison: "decrease_by",
+            metric: "spectral_balance.high_band_db",
+            threshold: 1,
+          },
+        ],
+      },
+      generatedAt: "2026-04-22T15:10:00Z",
+    });
+
+    expect(report.semantic_deltas).toEqual(
+      expect.arrayContaining([expect.objectContaining({ label: "less_air" })]),
+    );
+    expect(report.regressions).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: "lost_air" })]),
+    );
+  });
+
+  it("flags lost_air when preserving air is explicitly requested", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_preserve_air_base"),
+      candidateVersion: createVersion("ver_preserve_air_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_preserve_air_base",
+        versionId: "ver_preserve_air_base",
+        integratedLufs: -16,
+        truePeakDbtp: -2,
+        crestFactorDb: 10,
+        transientDensity: 1.5,
+        lowBandDb: -14,
+        midBandDb: -11,
+        highBandDb: -8,
+        spectralCentroidHz: 2600,
+        brightnessTiltDb: 5,
+        stereoWidth: 0.5,
+        stereoCorrelation: 0.5,
+        noiseFloorDbfs: -70,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_preserve_air_cand",
+        versionId: "ver_preserve_air_cand",
+        integratedLufs: -16,
+        truePeakDbtp: -2.1,
+        crestFactorDb: 10,
+        transientDensity: 1.5,
+        lowBandDb: -14,
+        midBandDb: -11,
+        highBandDb: -10,
+        spectralCentroidHz: 2380,
+        brightnessTiltDb: 3.5,
+        stereoWidth: 0.5,
+        stereoCorrelation: 0.5,
+        noiseFloorDbfs: -70,
+        clippingDetected: false,
+      }),
+      editPlan: {
+        ...createEditPlan(),
+        version_id: "ver_preserve_air_base",
+        user_request: "Keep the air while reducing harshness.",
+        goals: ["preserve air while reducing harshness"],
+        verification_targets: [
+          {
+            target_id: "target_preserve_air_no_loss",
+            goal: "preserve air while reducing harshness",
+            label: "avoid losing air",
+            kind: "regression_guard",
+            comparison: "absent",
+            regression_kind: "lost_air",
+          },
+        ],
+      },
+      generatedAt: "2026-04-22T15:15:00Z",
+    });
+
+    expect(report.regressions).toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: "lost_air" })]),
+    );
+    expect(report.goal_alignment).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          goal: "preserve air while reducing harshness",
+          status: "not_met",
+        }),
+      ]),
+    );
+  });
+
+  it("does not flag peak-control regression for benign peak lifts with ample headroom", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_peak_lift_base"),
+      candidateVersion: createVersion("ver_peak_lift_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_peak_lift_base",
+        versionId: "ver_peak_lift_base",
+        integratedLufs: -18,
+        truePeakDbtp: -8,
+        headroomDb: 8,
+        crestFactorDb: 10,
+        transientDensity: 1.5,
+        lowBandDb: -14,
+        midBandDb: -11,
+        highBandDb: -10,
+        spectralCentroidHz: 2300,
+        stereoWidth: 0.5,
+        stereoCorrelation: 0.5,
+        noiseFloorDbfs: -70,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_peak_lift_cand",
+        versionId: "ver_peak_lift_cand",
+        integratedLufs: -17.4,
+        truePeakDbtp: -5.8,
+        headroomDb: 5.8,
+        crestFactorDb: 10,
+        transientDensity: 1.5,
+        lowBandDb: -13.8,
+        midBandDb: -10.8,
+        highBandDb: -9.7,
+        spectralCentroidHz: 2350,
+        stereoWidth: 0.5,
+        stereoCorrelation: 0.5,
+        noiseFloorDbfs: -70,
+        clippingDetected: false,
+      }),
+      generatedAt: "2026-04-22T15:20:00Z",
+    });
+
+    expect(report.regressions).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: "peak_control_regression" })]),
     );
   });
 

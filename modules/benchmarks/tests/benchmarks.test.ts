@@ -759,7 +759,7 @@ describe("runRequestCycleBenchmarks", () => {
       expectAppliedRequestCycleResult(
         darkerLessHarshLessMuddyCase?.requestCycleResult,
       ).editPlan?.steps.map((step) => step.operation),
-    ).toEqual(["notch_filter", "tilt_eq", "low_shelf"]);
+    ).toEqual(["notch_filter", "tilt_eq", "parametric_eq"]);
 
     const sibilanceCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === tameSibilance.caseId,
@@ -1109,7 +1109,7 @@ describe("formatBenchmarkMarkdownReport request-cycle mode", () => {
     expect(markdown).toContain("request_cycle_trim_boundary_silence");
     expect(markdown).toContain("request_cycle_clean_this_sample_up_a_bit_underspecified");
     expect(markdown).toContain("planned operations: notch_filter, tilt_eq");
-    expect(markdown).toContain("planned operations: notch_filter, tilt_eq, low_shelf");
+    expect(markdown).toContain("planned operations: notch_filter, tilt_eq, parametric_eq");
     expect(markdown).toContain("planned operations: time_stretch, de_esser");
     expect(markdown).toContain("planned operations: trim_silence");
     expect(markdown).toContain("failure class: supported_but_underspecified");

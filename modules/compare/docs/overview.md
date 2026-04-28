@@ -191,6 +191,10 @@ The current regression warning kinds are:
 
 `increased_sibilance` is also intentionally conservative: aggregate presence or harshness growth alone is not enough without explicit upstream sibilance annotations.
 
+`lost_air` is goal-aware. Compare still emits the semantic `less_air` label whenever the measured evidence supports it, but it only reports `lost_air` as a regression when the request or structured targets explicitly ask to preserve, add, or guard air/top-end detail. Intentional darkening edits should not be warned as accidental air loss by default.
+
+`peak_control_regression` requires both a meaningful peak/headroom worsening and low remaining peak headroom. Benign EQ or normalization peak lifts with several dB of measured or inferred headroom are not treated as peak-control regressions.
+
 ### Render regressions
 
 - `render_duration_mismatch`
@@ -223,6 +227,10 @@ The top-level goal `status` remains intentionally conservative for compatibility
 - `verification_rollup.*_targets` exposes the exact per-status target counts used to build the rollup
 
 For structured compound goals with multiple requested sub-targets, compare now reports partial requested progress as `mostly_met` when at least one requested sub-target succeeded and another missed. Explicit regression-guard failures still keep the overall goal at `not_met`.
+
+Guard-only structured goals do not prove that requested cleanup happened. If a goal only contains regression guards and those guards pass, the goal-level status is `unknown` while the guard result remains visible as `met`.
+
+Time-range, segment, and channel-scoped `analysis_metric` targets are not scored from whole-file analysis metrics. Until matching local analysis evidence is available, compare reports those target results as `unknown` rather than incorrectly applying whole-file deltas to a local slice. Frequency-region targets remain scoreable from already band-specific whole-file metrics.
 
 ## Legacy goal alignment fallback
 

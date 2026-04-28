@@ -63,6 +63,7 @@ export function compareVersions(options: CompareVersionsOptions): ComparisonRepo
     baselineMeasurements,
     candidateMeasurements,
     metricDeltas,
+    options.editPlan === undefined ? {} : { editPlan: options.editPlan },
   );
   const structuredVerification =
     options.editPlan?.verification_targets === undefined

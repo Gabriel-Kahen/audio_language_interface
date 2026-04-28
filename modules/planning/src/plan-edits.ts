@@ -323,10 +323,18 @@ function resolvePlannerObjectives(
     semanticLabels.has("harsh") ||
     semanticLabels.has("slightly_harsh");
   const hasMudEvidence = semanticLabels.has("muddy") || semanticLabels.has("slightly_muddy");
+  const hasBrightnessEvidence =
+    semanticLabels.has("bright") ||
+    semanticLabels.has("slightly_bright") ||
+    (analysisReport.measurements.spectral_balance.brightness_tilt_db ?? 0) >= 4.5 ||
+    analysisReport.annotations?.some(
+      (annotation) => annotation.kind === "brightness" && annotation.severity >= 0.25,
+    ) === true;
   const hasTextureProxyEvidence =
     semanticLabels.has("aggressive") ||
     semanticLabels.has("punchy") ||
     semanticLabels.has("slightly_harsh") ||
+    hasBrightnessEvidence ||
     analysisReport.annotations?.some(
       (annotation) =>
         (annotation.kind === "harshness" || annotation.kind === "transient_impact") &&
@@ -357,22 +365,80 @@ function resolvePlannerObjectives(
   }
 
   if (effectiveObjectives.wants_declip) {
-    const hasClippingEvidence =
-      analysisReport.measurements.artifacts.clipping_detected ||
-      (analysisReport.measurements.artifacts.clipped_sample_count ?? 0) > 0 ||
-      (analysisReport.measurements.artifacts.clipped_frame_count ?? 0) > 0;
-
-    if (!hasClippingEvidence) {
-      throw createPlanningFailure(
-        "supported_but_underspecified",
-        "The request asks to reduce clipping or clipping-like distortion, but the current source does not show direct clipping evidence. Ask for less harshness or darker tone if the issue is tonal rather than clipping.",
-        {
-          matched_requests: ["clipping repair"],
-        },
-      );
+    if (!hasClippingEvidence(analysisReport)) {
+      if (hasCompanionNonDeclipIntent(effectiveObjectives)) {
+        effectiveObjectives.wants_declip = false;
+      } else {
+        throw createPlanningFailure(
+          "supported_but_underspecified",
+          "The request asks to reduce clipping or clipping-like distortion, but the current source does not show direct clipping evidence. Ask for less harshness or darker tone if the issue is tonal rather than clipping.",
+          {
+            matched_requests: ["clipping repair"],
+          },
+        );
+      }
+    } else {
+      effectiveObjectives.wants_less_harsh = false;
     }
+  }
 
+  if (
+    requestedTextureSoftening &&
+    !hasHarshnessEvidence &&
+    hasBrightnessEvidence &&
+    effectiveObjectives.wants_less_harsh
+  ) {
     effectiveObjectives.wants_less_harsh = false;
+  }
+
+  if (
+    effectiveObjectives.wants_remove_clicks &&
+    !hasClickEvidence(analysisReport, semanticLabels)
+  ) {
+    throw createPlanningFailure(
+      "supported_but_underspecified",
+      "The request asks to remove clicks or pops, but the current source does not show click evidence. The baseline planner will not run declick without measured click artifacts.",
+      {
+        matched_requests: ["click repair"],
+      },
+    );
+  }
+
+  if (effectiveObjectives.wants_remove_hum && !hasHumEvidence(analysisReport, semanticLabels)) {
+    throw createPlanningFailure(
+      "supported_but_underspecified",
+      "The request asks to remove hum, but the current source does not show hum evidence. The baseline planner will not run dehum without measured hum artifacts.",
+      {
+        matched_requests: ["hum removal"],
+      },
+    );
+  }
+
+  if (
+    effectiveObjectives.wants_tame_sibilance &&
+    !hasSibilanceEvidence(analysisReport, semanticLabels)
+  ) {
+    throw createPlanningFailure(
+      "supported_but_underspecified",
+      "The request asks to tame sibilance, but the current source does not show sibilance evidence. The baseline planner will not run de-essing without measured sibilant emphasis.",
+      {
+        matched_requests: ["sibilance reduction"],
+      },
+    );
+  }
+
+  if (
+    requestedTextureRepair &&
+    !effectiveObjectives.wants_declip &&
+    !hasCompanionNonDeclipIntent(effectiveObjectives)
+  ) {
+    throw createPlanningFailure(
+      "supported_but_underspecified",
+      "The request asks to reduce clipping or clipping-like distortion, but the current source does not show direct clipping evidence. Ask for less harshness or darker tone if the issue is tonal rather than clipping.",
+      {
+        matched_requests: ["clipping repair"],
+      },
+    );
   }
 
   if (
@@ -643,6 +709,72 @@ function resolvePlannerObjectives(
   );
 }
 
+function hasClippingEvidence(analysisReport: AnalysisReport): boolean {
+  return (
+    analysisReport.measurements.artifacts.clipping_detected ||
+    (analysisReport.measurements.artifacts.clipped_sample_count ?? 0) > 0 ||
+    (analysisReport.measurements.artifacts.clipped_frame_count ?? 0) > 0
+  );
+}
+
+function hasClickEvidence(analysisReport: AnalysisReport, semanticLabels: Set<string>): boolean {
+  return (
+    analysisReport.measurements.artifacts.click_detected ||
+    analysisReport.measurements.artifacts.click_count > 0 ||
+    analysisReport.measurements.artifacts.click_rate_per_second > 0 ||
+    semanticLabels.has("clicks_present") ||
+    semanticLabels.has("clicky") ||
+    analysisReport.annotations?.some(
+      (annotation) =>
+        (annotation.kind === "click" || annotation.kind === "pop") && annotation.severity >= 0.35,
+    ) === true
+  );
+}
+
+function hasHumEvidence(analysisReport: AnalysisReport, semanticLabels: Set<string>): boolean {
+  return (
+    analysisReport.measurements.artifacts.hum_detected ||
+    (analysisReport.measurements.artifacts.hum_harmonic_count ?? 0) > 0 ||
+    semanticLabels.has("hum_present") ||
+    semanticLabels.has("buzz_present") ||
+    analysisReport.annotations?.some(
+      (annotation) =>
+        (annotation.kind === "hum" || annotation.kind === "buzz") && annotation.severity >= 0.35,
+    ) === true
+  );
+}
+
+function hasSibilanceEvidence(
+  analysisReport: AnalysisReport,
+  semanticLabels: Set<string>,
+): boolean {
+  return (
+    semanticLabels.has("sibilant") ||
+    analysisReport.annotations?.some(
+      (annotation) =>
+        (annotation.kind === "sibilance" || annotation.kind === "sibilant") &&
+        annotation.severity >= 0.35,
+    ) === true ||
+    hasLocalizedSibilanceProxyEvidence(analysisReport)
+  );
+}
+
+function hasLocalizedSibilanceProxyEvidence(analysisReport: AnalysisReport): boolean {
+  const upperPresenceHarshnessAnnotations =
+    analysisReport.annotations?.filter(
+      (annotation) =>
+        annotation.kind === "harshness" &&
+        annotation.severity >= 0.2 &&
+        (annotation.bands_hz?.[0] ?? 0) >= 2500 &&
+        (annotation.bands_hz?.[1] ?? 0) >= 5000,
+    ) ?? [];
+
+  return (
+    upperPresenceHarshnessAnnotations.some((annotation) => annotation.severity >= 0.5) ||
+    upperPresenceHarshnessAnnotations.length >= 2
+  );
+}
+
 function isAlreadyTightlyControlled(analysisReport: AnalysisReport): boolean {
   const dynamicRangeDb = analysisReport.measurements.dynamics.dynamic_range_db;
   const transientDensity = analysisReport.measurements.dynamics.transient_density_per_second;
@@ -678,6 +810,37 @@ function hasCompanionNonDynamicsIntent(objectives: ReturnType<typeof parseUserRe
     objectives.wants_pitch_shift ||
     objectives.wants_trim_silence ||
     objectives.trim_range !== undefined
+  );
+}
+
+function hasCompanionNonDeclipIntent(objectives: ReturnType<typeof parseUserRequest>): boolean {
+  return (
+    objectives.wants_trim_silence ||
+    objectives.trim_range !== undefined ||
+    objectives.fade_in_seconds !== undefined ||
+    objectives.fade_out_seconds !== undefined ||
+    objectives.wants_darker ||
+    objectives.wants_brighter ||
+    objectives.wants_more_air ||
+    objectives.wants_less_harsh ||
+    objectives.wants_less_muddy ||
+    objectives.wants_more_warmth ||
+    objectives.wants_remove_rumble ||
+    objectives.wants_louder ||
+    objectives.wants_quieter ||
+    objectives.wants_more_even_level ||
+    objectives.wants_more_controlled_dynamics ||
+    objectives.wants_peak_control ||
+    objectives.wants_denoise ||
+    objectives.wants_tame_sibilance ||
+    objectives.wants_remove_clicks ||
+    objectives.wants_remove_hum ||
+    objectives.wants_wider ||
+    objectives.wants_narrower ||
+    objectives.wants_more_centered ||
+    objectives.wants_speed_up ||
+    objectives.wants_slow_down ||
+    objectives.wants_pitch_shift
   );
 }
 

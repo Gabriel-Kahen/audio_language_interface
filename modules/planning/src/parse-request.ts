@@ -521,6 +521,15 @@ function parseRegionTargetHint(
     };
   }
 
+  const leadingHalfSecondMatch = value.match(/\bfirst half(?:\s+a)?\s+second\b/u);
+  if (leadingHalfSecondMatch) {
+    return {
+      kind: "leading_window",
+      duration_seconds: 0.5,
+      source_phrase: leadingHalfSecondMatch[0].trim(),
+    };
+  }
+
   const trailingWindowMatch = value.match(
     /\b(?:only|just)?\s*(?:in|on|for)?\s*the last\s+(\d+(?:\.\d+)?)\s*(?:s|sec|secs|second|seconds)\b/u,
   );
@@ -541,6 +550,15 @@ function parseRegionTargetHint(
       kind: "trailing_window",
       duration_seconds: 1,
       source_phrase: "last second",
+    };
+  }
+
+  const trailingHalfSecondMatch = value.match(/\blast half(?:\s+a)?\s+second\b/u);
+  if (trailingHalfSecondMatch) {
+    return {
+      kind: "trailing_window",
+      duration_seconds: 0.5,
+      source_phrase: trailingHalfSecondMatch[0].trim(),
     };
   }
 

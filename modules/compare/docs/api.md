@@ -93,12 +93,14 @@ Detects a small set of analysis-side failure modes:
 - stereo collapse
 - measurable punch loss
 - over-compression from combined crest-factor and dynamic-range reduction
-- worsened peak control from higher peaks or lower sample headroom
+- worsened peak control from higher peaks or lower sample headroom, gated by low remaining headroom
 - increased sibilance from presence/harshness growth, but only when analysis already carries explicit sibilance annotations
-- lost air from upper-band loss
+- lost air from upper-band loss, but only when the request or structured targets ask to preserve, add, or guard air
 - added muddiness from mid-band buildup paired with a duller brightness tilt
 - proxy-pattern increases in hum-like low-frequency contamination
 - proxy-pattern increases in click-like clipped spikes
+
+Benign EQ or normalization peak lifts with several dB of measured or inferred headroom are not treated as `peak_control_regression`.
 
 ### `detectRenderRegressions(baseline, candidate, metricDeltas)`
 
@@ -135,6 +137,8 @@ Constructs a schema-shaped `ComparisonReport`, adds a summary string, and genera
 Generated ids are derived from baseline and candidate reference type/id pairs.
 The builder also emits `evaluation_basis` and treats `verification_results` as the authoritative summary source whenever structured verification exists.
 When structured verification rolled a goal up from multiple targets, the emitted `goal_alignment[]` item may also include `verification_rollup` with per-status target counts plus separate `requested_target_status` and `regression_guard_status` fields. Requested-target rollups now treat partial compound success as `mostly_met`, while explicit regression-guard failures still downgrade the goal conservatively.
+Guard-only structured goals remain honest: a passing guard-only group reports the guard result as `met`, but the goal status as `unknown` because no requested target was measured.
+Region-scoped `analysis_metric` targets return `unknown` unless compare has matching local evidence. Whole-file analysis deltas are not used to verify time-range, segment, or channel targets. Frequency-region targets still use the matching whole-file spectral or artifact metric because those targets describe the intended band for an already band-specific metric rather than a local time/channel slice.
 
 ## Validation helpers
 

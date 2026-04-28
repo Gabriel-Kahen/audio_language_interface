@@ -269,17 +269,20 @@ export function buildVerificationTargets(
       kind: "analysis_metric",
       comparison: "decrease_by",
       metric: "spectral_balance.mid_band_db",
-      threshold: thresholdByIntensity(objectives.intensity, 0.3, 0.75, 1.2),
-      rationale: "Less muddiness should reduce low-mid or mid-band buildup.",
+      threshold: thresholdByIntensity(objectives.intensity, 0.15, 0.2, 0.35),
+      rationale:
+        "Less muddiness should reduce low-mid or mid-band buildup; this broad metric is intentionally low-threshold because the deterministic edit is a localized low-mid bell cut.",
     });
-    targets.push({
-      target_id: "target_less_muddy_no_lost_air_regression",
-      goal: "trim excess low-mid weight",
-      label: "avoid taking too much upper openness out with the cleanup",
-      kind: "regression_guard",
-      comparison: "absent",
-      regression_kind: "lost_air",
-    });
+    if (!objectives.wants_darker) {
+      targets.push({
+        target_id: "target_less_muddy_no_lost_air_regression",
+        goal: "trim excess low-mid weight",
+        label: "avoid taking too much upper openness out with the cleanup",
+        kind: "regression_guard",
+        comparison: "absent",
+        regression_kind: "lost_air",
+      });
+    }
   }
 
   if (objectives.wants_more_warmth) {
@@ -784,7 +787,31 @@ export function buildVerificationTargets(
     });
   }
 
-  return dedupeByTargetId(targets);
+  return applyRegionTargetToVerificationTargets(dedupeByTargetId(targets), objectives);
+}
+
+function applyRegionTargetToVerificationTargets(
+  targets: VerificationTarget[],
+  objectives: ParsedEditObjectives,
+): VerificationTarget[] {
+  if (objectives.region_target === undefined) {
+    return targets;
+  }
+
+  return targets.map((target) => {
+    if (target.kind !== "analysis_metric" || target.target !== undefined) {
+      return target;
+    }
+
+    return {
+      ...target,
+      target: {
+        scope: "time_range",
+        start_seconds: objectives.region_target?.start_seconds ?? 0,
+        end_seconds: objectives.region_target?.end_seconds ?? 0,
+      },
+    };
+  });
 }
 
 function getLeadingSilenceSeconds(analysisReport: AnalysisReport): number {

@@ -284,7 +284,9 @@ Threshold summary for downstream modules:
 - Samples up to `3` evenly spaced `2048`-sample windows across the file instead of only the beginning.
 - Only windows at or above `-42 dBFS` RMS are considered active enough for pitch estimation.
 - Searches lags corresponding roughly to `80 Hz` through `1000 Hz`.
-- For each active window, the estimator keeps the strongest normalized autocorrelation-style candidate when its score is at least `0.68`.
+- For each active window, the estimator first finds normalized autocorrelation-style local
+  maxima at or above `0.68`, then verifies near-octave lower alternatives with lightweight
+  harmonic support before keeping one candidate.
 - Window candidates are merged with a score-weighted center in MIDI space, then converted back to `frequency_hz`.
 - `uncertainty_cents` is the score-weighted average absolute deviation from that center.
 - `voicing` is:

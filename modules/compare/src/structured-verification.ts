@@ -78,6 +78,15 @@ function evaluateAnalysisMetricTarget(
     };
   }
 
+  if (requiresRegionLocalEvidence(target)) {
+    return {
+      ...target,
+      status: "unknown",
+      evidence:
+        "Structured verification target is scoped to a region, but compare only has whole-file analysis evidence for this metric.",
+    };
+  }
+
   if (target.comparison === "increase_by" || target.comparison === "decrease_by") {
     const observedDelta = metricDeltas.find((delta) => delta.metric === target.metric)?.delta;
     const status = classifyDirectionalMetric(
@@ -162,6 +171,15 @@ function evaluateAnalysisMetricTarget(
         ? `Metric ${target.metric} was unavailable on candidate analysis measurements.`
         : `Observed ${target.metric} value was ${observedValue.toFixed(3)}.`,
   };
+}
+
+function requiresRegionLocalEvidence(target: VerificationTarget): boolean {
+  return (
+    target.target !== undefined &&
+    (target.target.scope === "time_range" ||
+      target.target.scope === "segment" ||
+      target.target.scope === "channel")
+  );
 }
 
 function evaluateSemanticTarget(
@@ -430,6 +448,13 @@ function hasMixedRequestedTargetOutcome(targets: VerificationTargetResult[]): bo
 }
 
 function deriveGoalStatus(verificationRollup: GoalAlignmentVerificationRollup): GoalStatus {
+  if (
+    verificationRollup.requested_target_count === 0 &&
+    verificationRollup.regression_guard_count > 0
+  ) {
+    return verificationRollup.regression_guard_status === "not_met" ? "not_met" : "unknown";
+  }
+
   const statuses: GoalStatus[] = [];
 
   if (verificationRollup.requested_target_status !== undefined) {

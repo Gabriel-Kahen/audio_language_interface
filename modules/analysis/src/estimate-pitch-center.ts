@@ -27,6 +27,12 @@ interface PitchWindowCandidate {
   score: number;
 }
 
+interface PitchLagCandidate {
+  lag: number;
+  score: number;
+  harmonicScore: number;
+}
+
 /**
  * Estimate a conservative pitch center for one contract-aligned `AudioVersion`.
  *
@@ -198,23 +204,34 @@ function estimateWindowPitch(
   }
 
   const targetScore = Math.max(MIN_CORRELATION_SCORE, bestScore - 0.02);
-  let bestLag = 0;
+  const lagCandidates: PitchLagCandidate[] = [];
+  let firstNearBestLag = 0;
   for (let lag = minimumLag; lag <= maximumLag && lag < centeredSamples.length / 2; lag += 1) {
     const score = lagScores[lag] ?? 0;
     const previous = lagScores[lag - 1] ?? Number.NEGATIVE_INFINITY;
     const next = lagScores[lag + 1] ?? Number.NEGATIVE_INFINITY;
     const isLocalMaximum = score >= previous && score >= next;
 
-    if (isLocalMaximum && score >= targetScore) {
-      bestLag = lag;
-      bestScore = score;
-      break;
+    if (isLocalMaximum && score >= MIN_CORRELATION_SCORE) {
+      lagCandidates.push({
+        lag,
+        score,
+        harmonicScore: scoreHarmonicSupport(centeredSamples, sampleRateHz, sampleRateHz / lag),
+      });
+
+      if (firstNearBestLag === 0 && score >= targetScore) {
+        firstNearBestLag = lag;
+        bestScore = score;
+      }
     }
   }
 
-  if (bestLag === 0) {
+  if (firstNearBestLag === 0) {
     return undefined;
   }
+
+  const bestLag = selectOctaveVerifiedLag(lagCandidates, firstNearBestLag);
+  bestScore = lagScores[bestLag] ?? bestScore;
 
   const frequencyHz = sampleRateHz / bestLag;
   return {
@@ -222,6 +239,112 @@ function estimateWindowPitch(
     midiValue: frequencyToMidi(frequencyHz),
     score: bestScore,
   };
+}
+
+function selectOctaveVerifiedLag(candidates: PitchLagCandidate[], initialLag: number): number {
+  const initialCandidate = candidates.find((candidate) => candidate.lag === initialLag);
+  if (initialCandidate === undefined) {
+    return initialLag;
+  }
+
+  let selected = initialCandidate;
+  let selectedScore = combinedLagScore(selected);
+
+  for (const candidate of candidates) {
+    if (
+      candidate.lag === initialLag ||
+      candidate.lag < initialLag ||
+      !isOctaveRelated(candidate.lag, initialLag)
+    ) {
+      continue;
+    }
+
+    if (candidate.score < initialCandidate.score - 0.12) {
+      continue;
+    }
+
+    const candidateScore = combinedLagScore(candidate);
+    if (candidateScore > selectedScore + 0.025) {
+      selected = candidate;
+      selectedScore = candidateScore;
+    }
+  }
+
+  return selected.lag;
+}
+
+function combinedLagScore(candidate: PitchLagCandidate): number {
+  return candidate.score * 0.65 + candidate.harmonicScore * 0.35;
+}
+
+function isOctaveRelated(candidateLag: number, referenceLag: number): boolean {
+  const ratio = candidateLag / referenceLag;
+  return (ratio >= 0.48 && ratio <= 0.52) || (ratio >= 1.9 && ratio <= 2.1);
+}
+
+function scoreHarmonicSupport(
+  samples: Float32Array,
+  sampleRateHz: number,
+  frequencyHz: number,
+): number {
+  const nyquistHz = sampleRateHz / 2;
+  const harmonicMagnitudes: number[] = [];
+
+  for (let harmonic = 1; harmonic <= 6; harmonic += 1) {
+    const harmonicFrequencyHz = frequencyHz * harmonic;
+    if (harmonicFrequencyHz >= nyquistHz) {
+      break;
+    }
+
+    harmonicMagnitudes.push(measureFrequencyMagnitude(samples, sampleRateHz, harmonicFrequencyHz));
+  }
+
+  if (harmonicMagnitudes.length === 0) {
+    return 0;
+  }
+
+  const strongestMagnitude = Math.max(...harmonicMagnitudes);
+  if (strongestMagnitude <= 1e-8) {
+    return 0;
+  }
+
+  let weightedCoverage = 0;
+  let weightTotal = 0;
+  let weightedEnergy = 0;
+  for (let index = 0; index < harmonicMagnitudes.length; index += 1) {
+    const magnitude = harmonicMagnitudes[index] ?? 0;
+    const weight = 1 / (index + 1);
+    weightedCoverage += magnitude >= strongestMagnitude * 0.25 ? weight : 0;
+    weightedEnergy += (magnitude / strongestMagnitude) * weight;
+    weightTotal += weight;
+  }
+
+  const fundamentalPresence = (harmonicMagnitudes[0] ?? 0) / strongestMagnitude;
+  return clamp(
+    (weightedCoverage / weightTotal) * 0.35 +
+      (weightedEnergy / weightTotal) * 0.35 +
+      fundamentalPresence * 0.3,
+    0,
+    1,
+  );
+}
+
+function measureFrequencyMagnitude(
+  samples: Float32Array,
+  sampleRateHz: number,
+  frequencyHz: number,
+): number {
+  let real = 0;
+  let imaginary = 0;
+
+  for (let index = 0; index < samples.length; index += 1) {
+    const phase = (2 * Math.PI * frequencyHz * index) / sampleRateHz;
+    const sample = samples[index] ?? 0;
+    real += sample * Math.cos(phase);
+    imaginary -= sample * Math.sin(phase);
+  }
+
+  return (2 * Math.hypot(real, imaginary)) / Math.max(samples.length, 1);
 }
 
 function centerSamples(samples: Float32Array): Float32Array {

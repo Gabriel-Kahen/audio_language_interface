@@ -4,7 +4,9 @@ import { dirname, join } from "node:path";
 import {
   analyzeAudioVersion,
   detectTransients,
+  estimatePitchCenter,
   isValidAnalysisReport,
+  isValidPitchCenterEstimate,
   isValidTransientMap,
 } from "@audio-language-interface/analysis";
 import type { AudioVersion } from "@audio-language-interface/core";
@@ -109,6 +111,28 @@ function createLocalizedHarshnessSignal(
       time < durationSeconds / 2
         ? 0.24 * Math.sin(2 * Math.PI * 300 * time)
         : 0.05 * Math.sin(2 * Math.PI * 500 * time) + 0.32 * Math.sin(2 * Math.PI * 3600 * time);
+  }
+
+  return [mono];
+}
+
+function createOctaveShiftedGuitarLikeSignal(
+  sampleRateHz: number,
+  durationSeconds: number,
+): Float32Array[] {
+  const frameCount = Math.round(sampleRateHz * durationSeconds);
+  const mono = new Float32Array(frameCount);
+  const pitchCenterHz = 220;
+
+  for (let index = 0; index < frameCount; index += 1) {
+    const time = index / sampleRateHz;
+    const envelope = 0.72 + 0.28 * Math.exp(-time * 4);
+    mono[index] =
+      envelope *
+      (0.08 * Math.sin(2 * Math.PI * pitchCenterHz * time) +
+        0.28 * Math.sin(2 * Math.PI * pitchCenterHz * 2 * time + 0.15) +
+        0.14 * Math.sin(2 * Math.PI * pitchCenterHz * 3 * time + 0.35) +
+        0.06 * Math.sin(2 * Math.PI * pitchCenterHz * 4 * time + 0.55));
   }
 
   return [mono];
@@ -499,6 +523,38 @@ describe("analyzeAudioVersion", () => {
       expect(report.summary.plain_text).toContain("Clipping is present");
     });
   }, 10000);
+
+  it("keeps octave-shifted guitar-like tonal material pitched", async () => {
+    await withTempWorkspace(async (workspaceRoot) => {
+      const sampleRateHz = 44100;
+      const durationSeconds = 2;
+      const storageRef = "storage/audio/test-octave-shifted-guitar-like.wav";
+      const channels = createOctaveShiftedGuitarLikeSignal(sampleRateHz, durationSeconds);
+      const audioVersion = createAudioVersion(
+        storageRef,
+        sampleRateHz,
+        channels.length,
+        getFrameCount(channels),
+      );
+
+      await writeWav(workspaceRoot, storageRef, sampleRateHz, channels);
+
+      const estimate = estimatePitchCenter(audioVersion, { workspaceRoot });
+      expect(isValidPitchCenterEstimate(estimate)).toBe(true);
+      expect(estimate.voicing).toBe("voiced");
+      expect(estimate.frequency_hz).toBeGreaterThan(218);
+      expect(estimate.frequency_hz).toBeLessThan(223);
+      expect(estimate.note_name).toBe("A3");
+
+      const report = await analyzeAudioVersion(audioVersion, {
+        workspaceRoot,
+        generatedAt: "2026-04-14T20:20:10Z",
+      });
+
+      expect(report.source_character?.pitched).toBe(true);
+      expect(report.source_character?.primary_class).toBe("tonal_phrase");
+    });
+  });
 
   it("defaults generated_at deterministically from the input lineage timestamp", async () => {
     await withTempWorkspace(async (workspaceRoot) => {

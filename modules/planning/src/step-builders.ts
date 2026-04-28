@@ -529,14 +529,19 @@ function buildTonalSteps({ objectives, analysisReport }: StepBuildContext): Edit
 
   if (objectives.wants_less_muddy) {
     steps.push({
-      ...assertPlannerStepSupport("low_shelf", "full_file"),
-      step_id: "step_low_shelf_1",
-      operation: "low_shelf",
+      ...assertPlannerStepSupport("parametric_eq", "full_file"),
+      step_id: "step_parametric_eq_1",
+      operation: "parametric_eq",
       target: { scope: "full_file" },
       parameters: {
-        frequency_hz: 220,
-        gain_db: Number((resolveEqGainDb(objectives, "cut") * 0.75).toFixed(2)),
-        q: 0.75,
+        bands: [
+          {
+            type: "bell",
+            frequency_hz: 360,
+            gain_db: Number((resolveEqGainDb(objectives, "cut") * 1.25).toFixed(2)),
+            q: 0.9,
+          },
+        ],
       },
       expected_effects: ["trim excess low-mid weight without hollowing the mids"],
       safety_limits: buildEqSafetyLimits(objectives),

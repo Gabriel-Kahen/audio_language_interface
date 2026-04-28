@@ -1019,12 +1019,12 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
       caseId: "request_cycle_less_muddy",
       family: "first_prompt_family",
       prompt: "make this less muddy",
-      description: "Low-shelf tonal cleanup on the supported low-mid path.",
+      description: "Low-mid parametric EQ cleanup on the supported muddiness path.",
       fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
       expectation: {
         planner: {
           expected_result_kind: "applied",
-          required_operations: ["low_shelf"],
+          required_operations: ["parametric_eq"],
           forbidden_operations: ["notch_filter", "compressor", "denoise"],
           required_goals: ["trim excess low-mid weight"],
         },
@@ -1082,8 +1082,8 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
       expectation: {
         planner: {
           expected_result_kind: "applied",
-          required_operations: ["notch_filter", "tilt_eq", "low_shelf"],
-          expected_operation_order: ["notch_filter", "tilt_eq", "low_shelf"],
+          required_operations: ["notch_filter", "tilt_eq", "parametric_eq"],
+          expected_operation_order: ["notch_filter", "tilt_eq", "parametric_eq"],
           required_goals: [
             "reduce upper-mid harshness",
             "trim excess low-mid weight",
@@ -1095,13 +1095,12 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
           require_structured_verification: true,
           goal_statuses: {
             "reduce upper-mid harshness": "met",
-            "trim excess low-mid weight": "mostly_met",
+            "trim excess low-mid weight": "met",
             "tilt the overall balance slightly darker": "met",
           },
           verification_statuses: {
             target_reduce_harshness_presence_band: "met",
             target_less_muddy_mid_band: "met",
-            target_less_muddy_no_lost_air_regression: "mostly_met",
             target_darker_brightness_tilt: "met",
           },
         },

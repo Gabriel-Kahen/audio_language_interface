@@ -81,6 +81,7 @@ export function compareRenders(options: CompareRendersOptions): ComparisonReport
           options.baselineAnalysis.measurements,
           options.candidateAnalysis.measurements,
           metricDeltas,
+          options.editPlan === undefined ? {} : { editPlan: options.editPlan },
         )
       : [];
   const combinedRegressions = [...analysisRegressions, ...renderRegressions];

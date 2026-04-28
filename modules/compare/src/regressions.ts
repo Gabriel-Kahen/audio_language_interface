@@ -1,11 +1,16 @@
 import type { CompareMeasurementContext } from "./deltas.js";
-import type { MetricDelta, RegressionWarning, RenderArtifact } from "./types.js";
+import type { EditPlan, MetricDelta, RegressionWarning, RenderArtifact } from "./types.js";
+
+export interface AnalysisRegressionContext {
+  editPlan?: EditPlan;
+}
 
 /** Detects analysis-side regressions from a narrow set of explicit rules. */
 export function detectAnalysisRegressions(
   baseline: CompareMeasurementContext,
   candidate: CompareMeasurementContext,
   metricDeltas: MetricDelta[],
+  context: AnalysisRegressionContext = {},
 ): RegressionWarning[] {
   const regressions: RegressionWarning[] = [];
 
@@ -158,7 +163,8 @@ export function detectAnalysisRegressions(
 
   if (
     truePeakDelta !== undefined &&
-    (truePeakDelta >= 0.75 || (headroomDelta !== undefined && headroomDelta <= -0.75))
+    (truePeakDelta >= 0.75 || (headroomDelta !== undefined && headroomDelta <= -0.75)) &&
+    hasLowRemainingPeakHeadroom(candidate)
   ) {
     regressions.push({
       kind: "peak_control_regression",
@@ -233,7 +239,8 @@ export function detectAnalysisRegressions(
     highBandDelta !== undefined &&
     brightnessTiltDelta !== undefined &&
     highBandDelta <= -1.5 &&
-    brightnessTiltDelta <= -1
+    brightnessTiltDelta <= -1 &&
+    shouldGuardAirLoss(context.editPlan)
   ) {
     regressions.push({
       kind: "lost_air",
@@ -313,6 +320,50 @@ export function detectAnalysisRegressions(
   }
 
   return regressions;
+}
+
+function hasLowRemainingPeakHeadroom(candidate: CompareMeasurementContext): boolean {
+  const measuredHeadroomDb = candidate.levels.headroom_db;
+  const inferredTruePeakHeadroomDb = Math.max(0, -candidate.levels.true_peak_dbtp);
+  const remainingHeadroomDb = measuredHeadroomDb ?? inferredTruePeakHeadroomDb;
+
+  return remainingHeadroomDb <= 2;
+}
+
+function shouldGuardAirLoss(editPlan: EditPlan | undefined): boolean {
+  if (editPlan === undefined) {
+    return false;
+  }
+
+  const verificationTargets = editPlan.verification_targets ?? [];
+  if (
+    verificationTargets.some(
+      (target) =>
+        typeof target === "object" &&
+        target !== null &&
+        ((target.kind === "regression_guard" && target.regression_kind === "lost_air") ||
+          (target.kind === "semantic_delta" &&
+            target.semantic_label === "more_air" &&
+            target.comparison === "present")),
+    )
+  ) {
+    return true;
+  }
+
+  return [editPlan.user_request, ...editPlan.goals].some(requestsAirPreservationOrIncrease);
+}
+
+function requestsAirPreservationOrIncrease(text: string): boolean {
+  const normalized = text.toLowerCase();
+
+  return (
+    (/\b(preserve|keep|retain|maintain|protect|avoid losing|don't lose|do not lose)\b/.test(
+      normalized,
+    ) &&
+      /\b(air|airy|openness|top[- ]end detail|sparkle)\b/.test(normalized)) ||
+    (/\b(add|more|increase|boost|bring out|restore)\b/.test(normalized) &&
+      /\b(air|airy|openness|top[- ]end detail|sparkle)\b/.test(normalized))
+  );
 }
 
 export function detectRenderRegressions(
