@@ -413,6 +413,13 @@ function resolvePlannerObjectives(
   }
 
   if (
+    isAlreadyTightlyControlled(analysisReport) &&
+    hasExplicitControlledNormalizationIntent(effectiveObjectives)
+  ) {
+    effectiveObjectives.wants_more_controlled_dynamics = false;
+  }
+
+  if (
     effectiveObjectives.wants_remove_clicks &&
     !hasClickEvidence(analysisReport, semanticLabels)
   ) {
@@ -820,6 +827,17 @@ function isAlreadyTightlyControlled(analysisReport: AnalysisReport): boolean {
     dynamicRangeDb <= 1.25 &&
     transientDensity <= 0.35 &&
     punchWindowRatio <= 0.05
+  );
+}
+
+function hasExplicitControlledNormalizationIntent(
+  objectives: ReturnType<typeof parseUserRequest>,
+): boolean {
+  return (
+    objectives.wants_louder &&
+    objectives.wants_more_even_level &&
+    (objectives.normalized_request.includes("keep it controlled") ||
+      objectives.normalized_request.includes("keep this controlled"))
   );
 }
 

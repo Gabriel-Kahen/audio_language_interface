@@ -89,7 +89,7 @@ Detects a small set of analysis-side failure modes:
 - clipping introduced by the candidate
 - excessive integrated loudness shift
 - reduced true-peak headroom
-- loudness increases that also reduce headroom
+- loudness increases that also reduce headroom into unsafe peak margin
 - stereo collapse
 - measurable punch loss
 - over-compression from combined crest-factor and dynamic-range reduction
@@ -100,7 +100,7 @@ Detects a small set of analysis-side failure modes:
 - proxy-pattern increases in hum-like low-frequency contamination
 - proxy-pattern increases in click-like clipped spikes
 
-Benign EQ or normalization peak lifts with several dB of measured or inferred headroom are not treated as `peak_control_regression`.
+Benign EQ, gain, or normalization peak lifts that still leave safe measured or inferred headroom are not treated as `loudness_headroom_loss` or `peak_control_regression`. `loudness_headroom_loss` remains available for true unsafe cases such as clipping evidence, true peaks above the conservative ceiling, or very low remaining peak margin.
 
 ### `detectRenderRegressions(baseline, candidate, metricDeltas)`
 
@@ -138,7 +138,7 @@ Generated ids are derived from baseline and candidate reference type/id pairs.
 The builder also emits `evaluation_basis` and treats `verification_results` as the authoritative summary source whenever structured verification exists.
 When structured verification rolled a goal up from multiple targets, the emitted `goal_alignment[]` item may also include `verification_rollup` with per-status target counts plus separate `requested_target_status` and `regression_guard_status` fields. Requested-target rollups now treat partial compound success as `mostly_met`, while explicit regression-guard failures still downgrade the goal conservatively.
 Guard-only structured goals remain honest: a passing guard-only group reports the guard result as `met`, but the goal status as `unknown` because no requested target was measured.
-Region-scoped `analysis_metric` targets use local WAV evidence when `compareVersions()` receives `workspaceRoot` and both versions point to workspace-local WAV files. The current local evidence covers time-range level and spectral-balance movement, explicit trim duration, and fade-in/fade-out boundary envelope ratios. Whole-file analysis deltas are still not used to verify time-range, segment, or channel targets when matching local evidence is unavailable. Frequency-region targets still use the matching whole-file spectral or artifact metric because those targets describe the intended band for an already band-specific metric rather than a local time/channel slice.
+Region-scoped `analysis_metric` targets use local WAV evidence when `compareVersions()` receives `workspaceRoot` and both versions point to workspace-local WAV files. The current local evidence covers time-range level and spectral-balance movement, explicit trim duration, fade-in/fade-out boundary envelope ratios, and full-file `derived.pitch_center_hz` checks for supported pitched WAV material. Whole-file analysis deltas are still not used to verify time-range, segment, or channel targets when matching local evidence is unavailable. Frequency-region targets still use the matching whole-file spectral or artifact metric because those targets describe the intended band for an already band-specific metric rather than a local time/channel slice.
 
 ## Validation helpers
 

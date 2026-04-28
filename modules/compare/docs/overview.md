@@ -193,6 +193,8 @@ The current regression warning kinds are:
 
 `lost_air` is goal-aware. Compare still emits the semantic `less_air` label whenever the measured evidence supports it, but it only reports `lost_air` as a regression when the request or structured targets explicitly ask to preserve, add, or guard air/top-end detail. Intentional darkening edits should not be warned as accidental air loss by default.
 
+`loudness_headroom_loss` requires both a meaningful loudness-side peak/headroom worsening and unsafe remaining peak margin, direct clipping evidence, or a true peak above the conservative ceiling. Safe controlled loudness or normalization moves that raise peaks while still leaving usable measured or inferred headroom are not treated as headroom-loss regressions.
+
 `peak_control_regression` requires both a meaningful peak/headroom worsening and low remaining peak headroom. Benign EQ or normalization peak lifts with several dB of measured or inferred headroom are not treated as peak-control regressions.
 
 ### Render regressions
@@ -230,7 +232,7 @@ For structured compound goals with multiple requested sub-targets, compare now r
 
 Guard-only structured goals do not prove that requested cleanup happened. If a goal only contains regression guards and those guards pass, the goal-level status is `unknown` while the guard result remains visible as `met`.
 
-Time-range, segment, and channel-scoped `analysis_metric` targets are not scored from whole-file analysis metrics. When `compareVersions()` receives `workspaceRoot` and workspace-local WAV versions, compare can now score the first local evidence slice: explicit trim duration, fade-in/fade-out boundary envelope ratios, and time-range level or spectral-balance movement. If that local evidence is unavailable, compare still reports those target results as `unknown` rather than incorrectly applying whole-file deltas to a local slice. Frequency-region targets remain scoreable from already band-specific whole-file metrics.
+Time-range, segment, and channel-scoped `analysis_metric` targets are not scored from whole-file analysis metrics. When `compareVersions()` receives `workspaceRoot` and workspace-local WAV versions, compare can now score the first local evidence slice: explicit trim duration, fade-in/fade-out boundary envelope ratios, time-range level or spectral-balance movement, and full-file `derived.pitch_center_hz` targets for supported pitched WAV material. If that local evidence is unavailable, compare still reports those target results as `unknown` rather than incorrectly applying whole-file deltas to a local slice. Frequency-region targets remain scoreable from already band-specific whole-file metrics.
 
 ## Legacy goal alignment fallback
 

@@ -6,7 +6,7 @@ Evaluate module quality and end-to-end reliability for LLM-driven audio manipula
 
 This module is the evaluation layer over the rest of the architecture.
 
-The current implementation provides four benchmark modes for the current supported cleanup, timing, control, iterative follow-up, and interpretation prompt family:
+The current implementation provides four benchmark modes for the current supported cleanup, timing, control, iterative follow-up, stress-wording, and interpretation prompt family:
 
 - compare-only evaluation over curated `ComparisonReport` inputs
 - interpretation-only evaluation over curated `IntentInterpretation` artifacts
@@ -110,7 +110,7 @@ The live interpretation benchmark corpus covers the same prompt families, but st
 - compare-only benchmark scoring is still centered on curated `compareVersions()` inputs for the currently supported cleanup and restoration slice
 - interpretation benchmarks are intentionally offline artifact checks; they benchmark the shape and stability of `IntentInterpretation`, not live provider/network quality
 - live interpretation benchmarks are intentionally opt-in and not part of default CI because they require real provider keys, incur network latency and API cost, and are expected to surface provider drift over time
-- the request-cycle benchmark corpus is intentionally small and currently focuses on stable tonal cleanup, cross-family compounds that stay honest on the committed fixtures, restoration, timing edits, stereo/spatial edits, the first explicit numeric region-targeting slice, iterative follow-up flows, peak control, and explicit clarification/failure controls, including a real clarify -> answer -> resume path
+- the request-cycle benchmark corpus is intentionally small and currently focuses on stable tonal cleanup, cross-family compounds that stay honest on the committed fixtures, restoration, timing edits, stereo/spatial edits, the first explicit numeric region-targeting slice, stress wording from recent prompt runs, iterative follow-up flows, peak control, and explicit clarification/failure controls, including a real clarify -> answer -> resume path
 - some cross-family request-cycle cases intentionally encode mixed or unmet outcome expectations when that is what the current compare/orchestration path actually produces on the committed fixtures
 - tool-surface request-cycle benchmarks still keep session state explicit by materializing `SessionGraph` and `available_versions` inside the benchmark harness rather than relying on hidden adapter persistence
 - request-cycle outcome scoring is only as strong as the current compare/orchestration evidence:
@@ -174,16 +174,24 @@ The first public request-cycle corpus currently covers:
 - `trim the silence at the beginning and end`
 - `speed up by 10%`
 - `pitch up by 2 semitones`
+- stress variants for semitone wording and time-stretch verification such as `raise the pitch two semitones` and `make it faster by 10% but keep the pitch the same`
 - `make this wider`
 - `narrow it a bit`
 - `center this more`
+- stress stereo-centering wording such as `move it toward center`
 - `fix the stereo imbalance`
 - `center this more and make it wider`
 - `make the first 0.5 seconds darker and less harsh`
+- regional level wording such as `make the first half second softer` and `turn down the first 0.5 seconds a little`
 - iterative follow-up requests such as `more`, `less`, `undo`, `revert to previous version`, and `try another version`
 - `control the peaks without crushing it`
+- peak-limiting wording such as `limit the peaks without crushing it`
 - `make it louder and more controlled`
+- loudness/control wording such as `make it louder but keep the dynamics controlled`
+- high-pass low-end wording such as `high pass the low end rumble`
+- low-mid cleanup wording such as `clean up the low mids`
+- grounded request-cycle texture wording such as `make this feel more relaxed`
 - `make this a little tighter and more controlled, and darker`
 - explicit clarification/failure controls such as `clean it`, `clean this sample up a bit`, `make it brighter and darker`, `make it faster and slower`, `make it wider and narrower`, and vague region wording such as `make the intro darker`
 
-Those cases were chosen because they are stable against the committed phase-1 fixtures and expose the main Layer 2 responsibilities without overclaiming broader planner coverage. The compound tonal cases deliberately stay on the shared first-slice fixture so ordering checks can exercise multi-step planner behavior without adding a larger synthetic corpus; low-mid muddiness cleanup is now asserted as a `parametric_eq` bell cut instead of a broad `low_shelf`. The newer cross-family compounds stay attached to the fixtures that already justify one side of the request: the sibilance source anchors restoration-plus-timing and restoration-plus-tonal prompts, the shared first-slice fixture anchors the current control-plus-tonal prompt and the first numeric region-targeted tonal case, and the stereo imbalance source anchors stereo-balance-plus-width coverage. When a mixed request is not honestly supported by the current planner surface, the corpus prefers an explicit refusal benchmark over an optimistic happy path. For the current region-targeting slice, the strongest benchmark signal is still planner correctness: the suite asserts the emitted `time_range` targets directly and keeps outcome expectations conservative until compare grows deeper local-window verification.
+Those cases were chosen because they are stable against the committed phase-1 fixtures and expose the main Layer 2 responsibilities without overclaiming broader planner coverage. The compound tonal cases deliberately stay on the shared first-slice fixture so ordering checks can exercise multi-step planner behavior without adding a larger synthetic corpus; low-mid muddiness cleanup is now asserted as a `parametric_eq` bell cut instead of a broad `low_shelf`. The stress-wording cases preserve prompt categories that recently found regressions: semitone parsing, peak limiting, high-pass low-end cleanup, stereo centering, low-mid cleanup, regional softer/gain wording, pitch/time verification guards, loudness/control verification guards, and texture wording. They still reuse the small committed phase-1 fixtures and assert emitted operations, goals, scoped targets, structured-verification statuses, and regression guards rather than embedding production parsing or transform logic. Best-effort texture policy coverage lives in the offline interpretation corpus because the request-cycle runner does not expose case-level planning policy. The newer cross-family compounds stay attached to the fixtures that already justify one side of the request: the sibilance source anchors restoration-plus-timing and restoration-plus-tonal prompts, the shared first-slice fixture anchors the current control-plus-tonal prompt and the first numeric region-targeted tonal case, and the stereo imbalance source anchors stereo-balance-plus-width coverage. When a mixed request is not honestly supported by the current planner surface, the corpus prefers an explicit refusal benchmark over an optimistic happy path. For the current region-targeting slice, the strongest benchmark signal is still planner correctness, but regional gain/level stress cases also assert local structured verification where compare has deterministic fixture-backed evidence.

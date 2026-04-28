@@ -7,7 +7,7 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 ## Current phrase mappings
 
 - `darker`, `less bright` -> gentle `tilt_eq` darkening around `1200 Hz`
-- `less harsh`, `smoother` -> `notch_filter` centered on the analysis harshness annotation midpoint, or `3750 Hz` fallback
+- `less harsh`, `smoother`, non-regional `softer` -> `notch_filter` centered on the analysis harshness annotation midpoint, or `3750 Hz` fallback
 - `more relaxed`, `less aggressive`, `less intense`, `less sharp`, `less gritty`, `less fuzzy` -> conservative tonal softening only when deterministic evidence supports that grounded reading; harshness/aggressive evidence may use `notch_filter + tilt_eq`, while brightness-only evidence uses darker `tilt_eq` without inventing harshness repair
 - `less distorted`, `repair clipping`, `declip` -> conservative `declip` only when analysis shows direct clipping evidence
 - with `planningPolicy = "best_effort"`, subjective texture repair or softening wording without direct artifact evidence falls back to conservative tonal softening and records a best-effort constraint note instead of claiming hard artifact repair
@@ -15,12 +15,13 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - `cleaner`, `clean up a bit` -> conservative tonal cleanup only when analysis or semantics show harshness or muddiness; otherwise reject as underspecified
 - `brighter`, `more presence` -> gentle `tilt_eq` brightening around `1200 Hz`
 - `airier`, `more air` -> `high_shelf` boost around `6500 Hz`
-- `less muddy` -> low-mid `parametric_eq` bell cut around `360 Hz`; verification uses a low-threshold broad mid-band check because the actual edit is localized, and when this is combined with an explicit darker request, the planner omits the automatic lost-air guard because the user asked for a top-end reduction
-- `warmer`, `more warmth` -> `low_shelf` boost around `180 Hz`
-- `rumble`, `subsonic` -> `high_pass_filter` at `40 Hz`
+- `less muddy`, `clean up the low mids` -> low-mid `parametric_eq` bell cut around `360 Hz`; verification uses a low-threshold broad mid-band check because the actual edit is localized, and when this is combined with an explicit darker request, the planner omits the automatic lost-air guard because the user asked for a top-end reduction
+- `warmer`, `more warmth` -> `low_shelf` boost around `180 Hz`; when paired with explicit quieter wording, verification checks warmer relative tonal tilt instead of absolute low-band gain because the level move intentionally reduces the whole signal
+- `rumble`, `subsonic`, `high-pass the low end` -> `high_pass_filter` at `40 Hz`
 - `more controlled`, `compression`, `tighter and more controlled` -> conservative `compressor` settings with explicit threshold, ratio, attack, and release
 - `louder and more controlled`, `make it louder and more controlled` -> dedicated `compressor -> normalize` path that tightens dynamics first, then raises integrated loudness with measured staging and explicit true-peak protection
-- `control peaks`, `catch peaks`, `limiter` -> conservative `limiter` settings with explicit `ceiling_dbtp`, `release_ms`, `lookahead_ms`, and no added limiter input gain by default
+- `normalize it louder but keep it controlled` -> measured `normalize` path with true-peak protection when the source already measures as tightly controlled, or the controlled-loudness path when dynamics still have room to tighten safely
+- `control peaks`, `catch peaks`, `limit the peaks`, `limiter` -> conservative `limiter` settings with explicit `ceiling_dbtp`, `release_ms`, `lookahead_ms`, and no added limiter input gain by default
 - explicit `normalize` / `normalise` requests -> `normalize` with integrated-loudness targeting and a `-1 dBTP` ceiling
 - `remove noise`, `reduce hiss`, `denoise` -> conservative `denoise` only when analysis indicates sustained noise
 - `tame sibilance`, `de-ess` -> conservative `de_esser` only when analysis or semantics show sibilance evidence, including one strong or multiple localized upper-presence harshness annotations in the de-essing range
@@ -29,15 +30,16 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - `wider`, `widen`, `more width`, `narrower`, `narrow it` -> conservative `stereo_width` only for already-stereo material with safe balance and correlation
 - `speed it up`, `slow it down`, `narrow this` -> same baseline timing or stereo-width mappings as the corresponding shorter phrases
 - `increase playback speed by 10%`, `decrease playback speed by 10%`, `increase tempo by 10%`, `decrease tempo by 10%` -> same conservative `time_stretch` mapping as the shorter `speed up` or `slow down` wording
-- `center this more`, `more centered`, `fix stereo imbalance` -> conservative `stereo_balance_correction` only for already-stereo material with clear but not extreme left-right imbalance
-- `louder` -> conservative `gain` step limited by measured true-peak headroom to a `-1 dBTP` ceiling unless the request also explicitly asks for more control, in which case the dedicated controlled-loudness path takes precedence
+- `center this more`, `center the stereo image`, `more centered`, `fix stereo imbalance` -> conservative `stereo_balance_correction` only for already-stereo material with clear but not extreme left-right imbalance
+- `louder` -> conservative `gain` step limited by measured true-peak headroom to a `-1 dBTP` ceiling unless the request also explicitly asks for more control and the source is not already tightly controlled, in which case the dedicated controlled-loudness path takes precedence
 - `quieter` -> conservative negative `gain` step
 - `trim from Xs to Ys` -> `trim` time-range step with explicit start and end seconds
 - `make the first 0.5 seconds darker`, `remove 60 Hz hum only in the last 0.5 seconds`, `make it less harsh from 0.2s to 0.7s` -> keep the same supported operation family, but ground the steps to one explicit `time_range` target instead of `full_file`
+- `make the last second softer` -> region-scoped `gain` reduction rather than tonal harshness repair
 - `trim the silence`, `remove silence at the beginning and end` -> full-file `trim_silence` using a conservative threshold derived from the measured noise floor
 - `speed up by 10%`, `slow down by 10%`, `faster`, `slower` -> conservative `time_stretch` with explicit `stretch_ratio` and pitch-preservation verification
-- `pitch up by 2 semitones`, `pitch it up a bit`, `pitch it up like a whole octave`, `pitch down by 2 semitones`, `up an octave`, `down an octave`, `transpose` -> conservative `pitch_shift` only when analysis says the source is pitched
-- `fade in Xs`, `fade out Xs`, `X second fade in`, `X second fade out` -> `fade` step with explicit durations
+- `pitch up by 2 semitones`, `pitch it up 3 semitones`, `transpose it up 3 semitones`, `lower the pitch by 1 semitone`, `pitch it up a bit`, `pitch it up like a whole octave`, `pitch down by 2 semitones`, `up an octave`, `down an octave`, `transpose` -> conservative `pitch_shift` only when analysis says the source is pitched
+- `fade in Xs`, `fade in for Xs`, `fade out Xs`, `fade out for Xs`, `X second fade in`, `X second fade out` -> `fade` step with explicit durations
 
 ## Compound prompt ordering
 

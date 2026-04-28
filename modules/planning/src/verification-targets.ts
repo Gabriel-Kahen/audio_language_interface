@@ -227,25 +227,27 @@ export function buildVerificationTargets(
   }
 
   if (objectives.wants_less_harsh) {
-    targets.push({
-      target_id: "target_reduce_harshness_presence_band",
-      goal: "reduce upper-mid harshness",
-      label: "reduce upper-presence energy in the harshness region",
-      kind: "analysis_metric",
-      comparison: "decrease_by",
-      metric: "spectral_balance.presence_band_db",
-      threshold: thresholdByIntensity(objectives.intensity, 0.4, 0.8, 1.1),
-      ...(harshnessAnnotation?.bands_hz === undefined
-        ? {}
-        : {
-            target: {
-              scope: "frequency_region",
-              bands_hz: harshnessAnnotation.bands_hz,
-            } as const,
-          }),
-      rationale:
-        "Harshness should show up as lower upper-presence energy after the edit, even when a companion pitch move changes overall top-end placement.",
-    });
+    if (!objectives.wants_louder) {
+      targets.push({
+        target_id: "target_reduce_harshness_presence_band",
+        goal: "reduce upper-mid harshness",
+        label: "reduce upper-presence energy in the harshness region",
+        kind: "analysis_metric",
+        comparison: "decrease_by",
+        metric: "spectral_balance.presence_band_db",
+        threshold: thresholdByIntensity(objectives.intensity, 0.4, 0.8, 1.1),
+        ...(harshnessAnnotation?.bands_hz === undefined
+          ? {}
+          : {
+              target: {
+                scope: "frequency_region",
+                bands_hz: harshnessAnnotation.bands_hz,
+              } as const,
+            }),
+        rationale:
+          "Harshness should show up as lower upper-presence energy after the edit when the request does not also ask for a broad loudness lift.",
+      });
+    }
     targets.push({
       target_id: "target_reduce_harshness_ratio",
       goal: "reduce upper-mid harshness",
@@ -331,16 +333,30 @@ export function buildVerificationTargets(
   }
 
   if (objectives.wants_more_warmth) {
-    targets.push({
-      target_id: "target_more_warmth_low_band",
-      goal: "add a little low-band warmth",
-      label: "increase low-band weight slightly",
-      kind: "analysis_metric",
-      comparison: "increase_by",
-      metric: "spectral_balance.low_band_db",
-      threshold: thresholdByIntensity(objectives.intensity, 0.3, 0.75, 1.2),
-      rationale: "Warmth should show up as a modest increase in low-band weight.",
-    });
+    if (objectives.wants_quieter) {
+      targets.push({
+        target_id: "target_more_warmth_relative_tilt",
+        goal: "add a little low-band warmth",
+        label: "shift the tonal tilt warmer while reducing level",
+        kind: "analysis_metric",
+        comparison: "decrease_by",
+        metric: "spectral_balance.brightness_tilt_db",
+        threshold: thresholdByIntensity(objectives.intensity, 0.25, 0.5, 0.9),
+        rationale:
+          "When a warmth request is paired with a quieter level move, warmth should be verified as relative low-band emphasis rather than an absolute low-band gain increase.",
+      });
+    } else {
+      targets.push({
+        target_id: "target_more_warmth_low_band",
+        goal: "add a little low-band warmth",
+        label: "increase low-band weight slightly",
+        kind: "analysis_metric",
+        comparison: "increase_by",
+        metric: "spectral_balance.low_band_db",
+        threshold: thresholdByIntensity(objectives.intensity, 0.3, 0.75, 1.2),
+        rationale: "Warmth should show up as a modest increase in low-band weight.",
+      });
+    }
     targets.push({
       target_id: "target_more_warmth_no_added_muddiness",
       goal: "add a little low-band warmth",
@@ -416,16 +432,21 @@ export function buildVerificationTargets(
       regression_kind: "loudness_headroom_loss",
     });
   } else if (objectives.wants_more_controlled_dynamics) {
-    targets.push({
-      target_id: "target_control_dynamics_range",
-      goal: "make dynamics more controlled without over-compressing",
-      label: "reduce dynamic range slightly",
-      kind: "analysis_metric",
-      comparison: "decrease_by",
-      metric: "dynamics.dynamic_range_db",
-      threshold: thresholdByIntensity(objectives.intensity, 0.15, 0.25, 0.4),
-      rationale: "Controlled dynamics should trim range slightly without flattening the source.",
-    });
+    if (
+      analysisReport.measurements.dynamics.dynamic_range_db === undefined ||
+      analysisReport.measurements.dynamics.dynamic_range_db > 2
+    ) {
+      targets.push({
+        target_id: "target_control_dynamics_range",
+        goal: "make dynamics more controlled without over-compressing",
+        label: "reduce dynamic range slightly",
+        kind: "analysis_metric",
+        comparison: "decrease_by",
+        metric: "dynamics.dynamic_range_db",
+        threshold: thresholdByIntensity(objectives.intensity, 0.15, 0.25, 0.4),
+        rationale: "Controlled dynamics should trim range slightly without flattening the source.",
+      });
+    }
     targets.push({
       target_id: "target_control_dynamics_headroom",
       goal: "make dynamics more controlled without over-compressing",

@@ -77,36 +77,50 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "clean this",
       "clean it up",
     ]),
-    wants_less_harsh: containsAny(normalizedRequest, [
-      "less harsh",
-      "reduce harsh",
-      "tame harsh",
-      "smoother",
-      "softer",
-      "less aggressive",
-      "less intense",
-      "less sharp",
-      "less gritty",
-      "less fuzzy",
-      "reduce sharp",
-      "reduce intensity",
-      "more relaxed",
-      "sound more relaxed",
-      "feel more relaxed",
-      "less crunchy",
-      "harsh ring",
-      "ringing resonance",
-      "resonance",
-    ]),
+    wants_less_harsh:
+      containsAny(normalizedRequest, [
+        "less harsh",
+        "reduce harsh",
+        "tame harsh",
+        "smoother",
+        "less aggressive",
+        "less intense",
+        "less sharp",
+        "less gritty",
+        "less fuzzy",
+        "reduce sharp",
+        "reduce intensity",
+        "more relaxed",
+        "sound more relaxed",
+        "feel more relaxed",
+        "less crunchy",
+        "harsh ring",
+        "ringing resonance",
+        "resonance",
+      ]) ||
+      (normalizedRequest.includes("softer") && !isLevelSofteningRequest(normalizedRequest)),
     wants_less_muddy: containsAny(normalizedRequest, [
       "less muddy",
       "reduce mud",
       "clean up low mids",
+      "clean up the low mids",
+      "clean low mids",
+      "clean the low mids",
     ]),
     wants_more_warmth: containsAny(normalizedRequest, ["warmer", "more warmth", "fuller"]),
-    wants_remove_rumble: containsAny(normalizedRequest, ["rumble", "subsonic", "low end noise"]),
+    wants_remove_rumble: containsAny(normalizedRequest, [
+      "rumble",
+      "subsonic",
+      "low end noise",
+      "high pass the low end",
+      "highpass the low end",
+      "high pass low end",
+      "highpass low end",
+    ]),
     wants_louder: containsAny(normalizedRequest, ["louder", "turn up", "more level"]),
-    wants_quieter: containsAny(normalizedRequest, ["quieter", "turn down", "lower level"]),
+    wants_quieter:
+      containsAny(normalizedRequest, ["quieter", "turn down", "lower level"]) ||
+      isLevelSofteningRequest(normalizedRequest),
     wants_more_even_level: containsAny(normalizedRequest, ["normalize", "normalise"]),
     wants_more_controlled_dynamics: wantsMoreControlledDynamics(normalizedRequest),
     wants_peak_control: containsAny(normalizedRequest, [
@@ -115,6 +129,7 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "catch peaks",
       "keep peaks in check",
       "limit peaks",
+      "limit the peaks",
       "peak limiting",
       "use a limiter",
       "limiter",
@@ -200,6 +215,10 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "move it to centre",
       "center it more",
       "centre it more",
+      "center the stereo image",
+      "centre the stereo image",
+      "center stereo image",
+      "centre stereo image",
       "fix stereo imbalance",
       "fix the stereo imbalance",
       "correct stereo imbalance",
@@ -624,6 +643,8 @@ function wantsMoreControlledDynamics(value: string): boolean {
     containsAny(value, [
       "more controlled",
       "better controlled",
+      "keep it controlled",
+      "keep this controlled",
       "control the dynamics",
       "compress",
       "compression",
@@ -631,6 +652,17 @@ function wantsMoreControlledDynamics(value: string): boolean {
       "glue it slightly",
     ]) ||
     (value.includes("tighter") && value.includes("controlled"))
+  );
+}
+
+function isLevelSofteningRequest(value: string): boolean {
+  return (
+    value.includes("softer") &&
+    (value.includes("first second") ||
+      value.includes("last second") ||
+      value.includes("first half") ||
+      value.includes("last half") ||
+      /\b(?:from|between)\s+\d/.test(value))
   );
 }
 
@@ -685,7 +717,7 @@ function parseTrimRange(value: string): ParsedEditObjectives["trim_range"] {
 function parseNamedDuration(value: string, label: "fade in" | "fade out"): number | undefined {
   const durationUnitPattern = "(ms|millisecond|milliseconds|s|sec|secs|second|seconds)";
   const labelThenDurationMatch = value.match(
-    new RegExp(`\\b${label}\\s+(\\d+(?:\\.\\d+)?)\\s*${durationUnitPattern}\\b`),
+    new RegExp(`\\b${label}\\s+(?:for\\s+)?(\\d+(?:\\.\\d+)?)\\s*${durationUnitPattern}\\b`),
   );
   const durationThenLabelMatch = value.match(
     new RegExp(`\\b(\\d+(?:\\.\\d+)?)\\s*${durationUnitPattern}\\s+${label}\\b`),
@@ -840,6 +872,19 @@ function parsePitchShiftSemitones(
 ): number | undefined {
   if (!parsed.wants_pitch_shift) {
     return undefined;
+  }
+
+  const directedSemitoneMatcher = value.match(
+    /\b(?:(pitch(?: it)?|pitch(?:-|\s)?shift(?: the full audio)?|transpose(?: it)?|shift the pitch)\s+(up|down)|raise the pitch|lower the pitch)\b(?:\s+(?:by|around|about))?\s+(-?\d+(?:\.\d+)?)\s+(?:semitones?|st)\b/u,
+  );
+  if (directedSemitoneMatcher) {
+    const direction =
+      directedSemitoneMatcher[2] ??
+      (directedSemitoneMatcher[0].includes("lower the pitch") ? "down" : "up");
+    const magnitude = Math.abs(Number(directedSemitoneMatcher[3]));
+    if (Number.isFinite(magnitude)) {
+      return direction === "down" ? -magnitude : magnitude;
+    }
   }
 
   const explicitMatcher = value.match(

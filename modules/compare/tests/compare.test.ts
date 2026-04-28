@@ -817,6 +817,235 @@ describe("compareVersions", () => {
     }
   });
 
+  it("uses local WAV pitch evidence for octave pitch-shift verification", () => {
+    const workspaceRoot = mkdtempSync(path.join(os.tmpdir(), "ali-compare-pitch-"));
+    try {
+      mkdirSync(path.join(workspaceRoot, "audio"), { recursive: true });
+      const sampleRateHz = 16000;
+      writeWav(
+        path.join(workspaceRoot, "audio", "baseline.wav"),
+        sampleRateHz,
+        createSineSamples(sampleRateHz, 1, { frequencyHz: 880, gain: 0.45 }),
+      );
+      writeWav(
+        path.join(workspaceRoot, "audio", "candidate.wav"),
+        sampleRateHz,
+        createSineSamples(sampleRateHz, 1, { frequencyHz: 1760, gain: 0.45 }),
+      );
+
+      const baselineVersion = createVersion("ver_PitchOctaveBase", {
+        storageRef: "audio/baseline.wav",
+        channels: 1,
+        sampleRateHz,
+        durationSeconds: 1,
+        channelLayout: "mono",
+      });
+      const candidateVersion = createVersion("ver_PitchOctaveCand", {
+        storageRef: "audio/candidate.wav",
+        channels: 1,
+        sampleRateHz,
+        durationSeconds: 1,
+        channelLayout: "mono",
+      });
+
+      const report = compareVersions({
+        workspaceRoot,
+        baselineVersion,
+        candidateVersion,
+        baselineAnalysis: createAnalysisReport({
+          reportId: "analysis_pitch_octave_base",
+          versionId: baselineVersion.version_id,
+          integratedLufs: -12,
+          truePeakDbtp: -7,
+          crestFactorDb: 3,
+          transientDensity: 0.4,
+          lowBandDb: -60,
+          midBandDb: -12,
+          highBandDb: -28,
+          spectralCentroidHz: 880,
+          stereoWidth: 0,
+          stereoCorrelation: 1,
+          noiseFloorDbfs: -90,
+          clippingDetected: false,
+        }),
+        candidateAnalysis: createAnalysisReport({
+          reportId: "analysis_pitch_octave_cand",
+          versionId: candidateVersion.version_id,
+          integratedLufs: -12,
+          truePeakDbtp: -7,
+          crestFactorDb: 3,
+          transientDensity: 0.4,
+          lowBandDb: -60,
+          midBandDb: -18,
+          highBandDb: -12,
+          spectralCentroidHz: 1760,
+          stereoWidth: 0,
+          stereoCorrelation: 1,
+          noiseFloorDbfs: -90,
+          clippingDetected: false,
+        }),
+        editPlan: {
+          ...createEditPlan(),
+          version_id: baselineVersion.version_id,
+          goals: ["raise the pitch by 12 semitones"],
+          verification_targets: [
+            {
+              target_id: "target_pitch_shift_center",
+              goal: "raise the pitch by 12 semitones",
+              label: "move the pitch center toward the requested semitone shift",
+              kind: "analysis_metric",
+              comparison: "within",
+              metric: "derived.pitch_center_hz",
+              threshold: 1760,
+              tolerance: 90,
+            },
+          ],
+        },
+        generatedAt: "2026-04-28T12:00:00Z",
+      });
+
+      expect(report.verification_results).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            target_id: "target_pitch_shift_center",
+            status: "met",
+            observed_value: expect.any(Number),
+          }),
+        ]),
+      );
+      expect(
+        report.verification_results?.find(
+          (result) => result.target_id === "target_pitch_shift_center",
+        )?.evidence,
+      ).toContain("workspace-local WAV evidence");
+    } finally {
+      rmSync(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("uses local WAV pitch evidence for time-stretch pitch-preservation verification", () => {
+    const workspaceRoot = mkdtempSync(path.join(os.tmpdir(), "ali-compare-timestretch-"));
+    try {
+      mkdirSync(path.join(workspaceRoot, "audio"), { recursive: true });
+      const sampleRateHz = 16000;
+      writeWav(
+        path.join(workspaceRoot, "audio", "baseline.wav"),
+        sampleRateHz,
+        createSineSamples(sampleRateHz, 1, { frequencyHz: 440, gain: 0.45 }),
+      );
+      writeWav(
+        path.join(workspaceRoot, "audio", "candidate.wav"),
+        sampleRateHz,
+        createSineSamples(sampleRateHz, 0.75, { frequencyHz: 440, gain: 0.45 }),
+      );
+
+      const baselineVersion = createVersion("ver_StretchPitchBase", {
+        storageRef: "audio/baseline.wav",
+        channels: 1,
+        sampleRateHz,
+        durationSeconds: 1,
+        channelLayout: "mono",
+      });
+      const candidateVersion = createVersion("ver_StretchPitchCand", {
+        storageRef: "audio/candidate.wav",
+        channels: 1,
+        sampleRateHz,
+        durationSeconds: 0.75,
+        channelLayout: "mono",
+      });
+
+      const report = compareVersions({
+        workspaceRoot,
+        baselineVersion,
+        candidateVersion,
+        baselineAnalysis: createAnalysisReport({
+          reportId: "analysis_stretch_pitch_base",
+          versionId: baselineVersion.version_id,
+          integratedLufs: -12,
+          truePeakDbtp: -7,
+          crestFactorDb: 3,
+          transientDensity: 0.4,
+          lowBandDb: -60,
+          midBandDb: -12,
+          highBandDb: -50,
+          spectralCentroidHz: 440,
+          stereoWidth: 0,
+          stereoCorrelation: 1,
+          noiseFloorDbfs: -90,
+          clippingDetected: false,
+        }),
+        candidateAnalysis: createAnalysisReport({
+          reportId: "analysis_stretch_pitch_cand",
+          versionId: candidateVersion.version_id,
+          integratedLufs: -12,
+          truePeakDbtp: -7,
+          crestFactorDb: 3,
+          transientDensity: 0.4,
+          lowBandDb: -60,
+          midBandDb: -12,
+          highBandDb: -50,
+          spectralCentroidHz: 440,
+          stereoWidth: 0,
+          stereoCorrelation: 1,
+          noiseFloorDbfs: -90,
+          clippingDetected: false,
+        }),
+        editPlan: {
+          ...createEditPlan(),
+          version_id: baselineVersion.version_id,
+          goals: ["shorten the clip duration while preserving pitch"],
+          verification_targets: [
+            {
+              target_id: "target_time_stretch_duration",
+              goal: "shorten the clip duration while preserving pitch",
+              label: "shorten clip duration by the requested stretch ratio",
+              kind: "analysis_metric",
+              comparison: "within",
+              metric: "derived.duration_seconds",
+              threshold: 0.75,
+              tolerance: 0.02,
+            },
+            {
+              target_id: "target_time_stretch_pitch_preservation",
+              goal: "shorten the clip duration while preserving pitch",
+              label: "preserve the source pitch center while changing duration",
+              kind: "analysis_metric",
+              comparison: "within",
+              metric: "derived.pitch_center_hz",
+              threshold: 440,
+              tolerance: 25,
+            },
+          ],
+        },
+        generatedAt: "2026-04-28T12:05:00Z",
+      });
+
+      expect(report.verification_results).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            target_id: "target_time_stretch_duration",
+            status: "met",
+          }),
+          expect.objectContaining({
+            target_id: "target_time_stretch_pitch_preservation",
+            status: "met",
+            observed_value: expect.any(Number),
+          }),
+        ]),
+      );
+      expect(report.goal_alignment).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            goal: "shorten the clip duration while preserving pitch",
+            status: "met",
+          }),
+        ]),
+      );
+    } finally {
+      rmSync(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
   it("surfaces requested-target success separately from regression-guard tradeoffs for compound goals", () => {
     const report = compareVersions({
       baselineVersion: createVersion("ver_compound_goal_base"),
@@ -2131,6 +2360,382 @@ describe("compareVersions", () => {
     expect(report.regressions).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ kind: "added_muddiness" })]),
     );
+  });
+
+  it("does not fail loudness headroom guards for safe controlled peak movement", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_safe_loud_base"),
+      candidateVersion: createVersion("ver_safe_loud_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_safe_loud_base",
+        versionId: "ver_safe_loud_base",
+        integratedLufs: -18,
+        truePeakDbtp: -3,
+        samplePeakDbfs: -3.1,
+        headroomDb: 3,
+        crestFactorDb: 10.2,
+        transientDensity: 1.6,
+        dynamicRangeDb: 8.5,
+        lowBandDb: -15,
+        midBandDb: -12,
+        highBandDb: -10,
+        spectralCentroidHz: 2300,
+        brightnessTiltDb: 5,
+        presenceBandDb: -9,
+        harshnessRatioDb: 0.7,
+        stereoWidth: 0.42,
+        stereoCorrelation: 0.58,
+        stereoBalanceDb: 0,
+        noiseFloorDbfs: -72,
+        clippedSampleCount: 0,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_safe_loud_cand",
+        versionId: "ver_safe_loud_cand",
+        integratedLufs: -16.3,
+        truePeakDbtp: -1.4,
+        samplePeakDbfs: -1.5,
+        headroomDb: 1.4,
+        crestFactorDb: 10,
+        transientDensity: 1.58,
+        dynamicRangeDb: 8.1,
+        lowBandDb: -14.8,
+        midBandDb: -11.8,
+        highBandDb: -9.8,
+        spectralCentroidHz: 2320,
+        brightnessTiltDb: 5,
+        presenceBandDb: -8.8,
+        harshnessRatioDb: 0.7,
+        stereoWidth: 0.42,
+        stereoCorrelation: 0.58,
+        stereoBalanceDb: 0,
+        noiseFloorDbfs: -71.8,
+        clippedSampleCount: 0,
+        clippingDetected: false,
+      }),
+      editPlan: {
+        ...createEditPlan(),
+        version_id: "ver_safe_loud_base",
+        goals: ["increase output level conservatively"],
+        verification_targets: [
+          {
+            target_id: "target_louder_integrated_lufs",
+            goal: "increase output level conservatively",
+            label: "increase integrated loudness",
+            kind: "analysis_metric",
+            comparison: "increase_by",
+            metric: "levels.integrated_lufs",
+            threshold: 1.5,
+          },
+          {
+            target_id: "target_louder_no_headroom_loss",
+            goal: "increase output level conservatively",
+            label: "avoid loudness-side headroom loss",
+            kind: "regression_guard",
+            comparison: "absent",
+            regression_kind: "loudness_headroom_loss",
+          },
+        ],
+      },
+      generatedAt: "2026-04-28T12:10:00Z",
+    });
+
+    expect(report.regressions).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: "loudness_headroom_loss" })]),
+    );
+    expect(report.verification_results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ target_id: "target_louder_no_headroom_loss", status: "met" }),
+      ]),
+    );
+    expect(report.goal_alignment).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ goal: "increase output level conservatively", status: "met" }),
+      ]),
+    );
+  });
+
+  it("still fails loudness headroom guards for unsafe peak movement", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_unsafe_loud_base"),
+      candidateVersion: createVersion("ver_unsafe_loud_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_unsafe_loud_base",
+        versionId: "ver_unsafe_loud_base",
+        integratedLufs: -18,
+        truePeakDbtp: -3,
+        samplePeakDbfs: -3.1,
+        headroomDb: 3,
+        crestFactorDb: 10.2,
+        transientDensity: 1.6,
+        dynamicRangeDb: 8.5,
+        lowBandDb: -15,
+        midBandDb: -12,
+        highBandDb: -10,
+        spectralCentroidHz: 2300,
+        brightnessTiltDb: 5,
+        presenceBandDb: -9,
+        harshnessRatioDb: 0.7,
+        stereoWidth: 0.42,
+        stereoCorrelation: 0.58,
+        stereoBalanceDb: 0,
+        noiseFloorDbfs: -72,
+        clippedSampleCount: 0,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_unsafe_loud_cand",
+        versionId: "ver_unsafe_loud_cand",
+        integratedLufs: -15.8,
+        truePeakDbtp: -0.5,
+        samplePeakDbfs: -0.6,
+        headroomDb: 0.5,
+        crestFactorDb: 9.7,
+        transientDensity: 1.55,
+        dynamicRangeDb: 7.7,
+        lowBandDb: -14.7,
+        midBandDb: -11.7,
+        highBandDb: -9.7,
+        spectralCentroidHz: 2340,
+        brightnessTiltDb: 5,
+        presenceBandDb: -8.7,
+        harshnessRatioDb: 0.7,
+        stereoWidth: 0.42,
+        stereoCorrelation: 0.58,
+        stereoBalanceDb: 0,
+        noiseFloorDbfs: -71.7,
+        clippedSampleCount: 0,
+        clippingDetected: false,
+      }),
+      editPlan: {
+        ...createEditPlan(),
+        version_id: "ver_unsafe_loud_base",
+        goals: ["normalize overall loudness conservatively"],
+        verification_targets: [
+          {
+            target_id: "target_normalize_no_headroom_loss",
+            goal: "normalize overall loudness conservatively",
+            label: "avoid loudness-normalization side effects",
+            kind: "regression_guard",
+            comparison: "absent",
+            regression_kind: "loudness_headroom_loss",
+          },
+        ],
+      },
+      generatedAt: "2026-04-28T12:15:00Z",
+    });
+
+    expect(report.regressions).toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: "loudness_headroom_loss" })]),
+    );
+    expect(report.verification_results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_normalize_no_headroom_loss",
+          status: "not_met",
+        }),
+      ]),
+    );
+  });
+
+  it("does not fail a louder-and-less-harsh compound when requested moves land safely", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_louder_harsh_base"),
+      candidateVersion: createVersion("ver_louder_harsh_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_louder_harsh_base",
+        versionId: "ver_louder_harsh_base",
+        integratedLufs: -17.5,
+        truePeakDbtp: -3,
+        samplePeakDbfs: -3.2,
+        headroomDb: 3,
+        crestFactorDb: 10.4,
+        transientDensity: 1.7,
+        dynamicRangeDb: 8.6,
+        lowBandDb: -15,
+        midBandDb: -11.5,
+        highBandDb: -9.5,
+        spectralCentroidHz: 2600,
+        brightnessTiltDb: 5.5,
+        presenceBandDb: -8.2,
+        harshnessRatioDb: 1.2,
+        stereoWidth: 0.44,
+        stereoCorrelation: 0.56,
+        stereoBalanceDb: 0,
+        noiseFloorDbfs: -72,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_louder_harsh_cand",
+        versionId: "ver_louder_harsh_cand",
+        integratedLufs: -15.9,
+        truePeakDbtp: -1.5,
+        samplePeakDbfs: -1.7,
+        headroomDb: 1.5,
+        crestFactorDb: 10.1,
+        transientDensity: 1.66,
+        dynamicRangeDb: 8.2,
+        lowBandDb: -14.8,
+        midBandDb: -11.4,
+        highBandDb: -10.1,
+        spectralCentroidHz: 2440,
+        brightnessTiltDb: 4.7,
+        presenceBandDb: -9.2,
+        harshnessRatioDb: 0.4,
+        stereoWidth: 0.44,
+        stereoCorrelation: 0.57,
+        stereoBalanceDb: 0,
+        noiseFloorDbfs: -71.8,
+        clippingDetected: false,
+      }),
+      editPlan: {
+        ...createEditPlan(),
+        version_id: "ver_louder_harsh_base",
+        goals: ["make it louder and less harsh"],
+        verification_targets: [
+          {
+            target_id: "target_louder_less_harsh_loudness",
+            goal: "make it louder and less harsh",
+            label: "increase integrated loudness",
+            kind: "analysis_metric",
+            comparison: "increase_by",
+            metric: "levels.integrated_lufs",
+            threshold: 1.5,
+          },
+          {
+            target_id: "target_louder_less_harsh_presence",
+            goal: "make it louder and less harsh",
+            label: "reduce upper-presence harshness",
+            kind: "analysis_metric",
+            comparison: "decrease_by",
+            metric: "spectral_balance.presence_band_db",
+            threshold: 0.8,
+          },
+          {
+            target_id: "target_louder_no_headroom_loss",
+            goal: "make it louder and less harsh",
+            label: "avoid loudness-side headroom loss",
+            kind: "regression_guard",
+            comparison: "absent",
+            regression_kind: "loudness_headroom_loss",
+          },
+        ],
+      },
+      generatedAt: "2026-04-28T12:20:00Z",
+    });
+
+    expect(report.goal_alignment).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ goal: "make it louder and less harsh", status: "met" }),
+      ]),
+    );
+  });
+
+  it("keeps conservative darker-quieter-controlled compounds out of failed status", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_dark_quiet_control_base"),
+      candidateVersion: createVersion("ver_dark_quiet_control_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_dark_quiet_control_base",
+        versionId: "ver_dark_quiet_control_base",
+        integratedLufs: -14.5,
+        truePeakDbtp: -1.8,
+        samplePeakDbfs: -2,
+        headroomDb: 1.8,
+        crestFactorDb: 10.5,
+        transientDensity: 1.9,
+        dynamicRangeDb: 8.4,
+        lowBandDb: -15,
+        midBandDb: -11.5,
+        highBandDb: -9.5,
+        spectralCentroidHz: 2600,
+        brightnessTiltDb: 5.5,
+        presenceBandDb: -8.7,
+        harshnessRatioDb: 0.9,
+        stereoWidth: 0.5,
+        stereoCorrelation: 0.5,
+        stereoBalanceDb: 0,
+        noiseFloorDbfs: -72,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_dark_quiet_control_cand",
+        versionId: "ver_dark_quiet_control_cand",
+        integratedLufs: -16,
+        truePeakDbtp: -2.2,
+        samplePeakDbfs: -2.4,
+        headroomDb: 2.2,
+        crestFactorDb: 10.2,
+        transientDensity: 1.86,
+        dynamicRangeDb: 8.2,
+        lowBandDb: -15.1,
+        midBandDb: -11.6,
+        highBandDb: -10.7,
+        spectralCentroidHz: 2380,
+        brightnessTiltDb: 4.4,
+        presenceBandDb: -9,
+        harshnessRatioDb: 0.8,
+        stereoWidth: 0.5,
+        stereoCorrelation: 0.51,
+        stereoBalanceDb: 0,
+        noiseFloorDbfs: -72,
+        clippingDetected: false,
+      }),
+      editPlan: {
+        ...createEditPlan(),
+        version_id: "ver_dark_quiet_control_base",
+        goals: ["make it darker, quieter, and more controlled"],
+        verification_targets: [
+          {
+            target_id: "target_compound_darker",
+            goal: "make it darker, quieter, and more controlled",
+            label: "tilt the overall balance darker",
+            kind: "analysis_metric",
+            comparison: "decrease_by",
+            metric: "spectral_balance.brightness_tilt_db",
+            threshold: 0.8,
+          },
+          {
+            target_id: "target_compound_quieter",
+            goal: "make it darker, quieter, and more controlled",
+            label: "reduce integrated loudness",
+            kind: "analysis_metric",
+            comparison: "decrease_by",
+            metric: "levels.integrated_lufs",
+            threshold: 1.2,
+          },
+          {
+            target_id: "target_control_dynamics_range",
+            goal: "make it darker, quieter, and more controlled",
+            label: "reduce dynamic range slightly",
+            kind: "analysis_metric",
+            comparison: "decrease_by",
+            metric: "dynamics.dynamic_range_db",
+            threshold: 0.25,
+          },
+          {
+            target_id: "target_control_dynamics_no_overcompression",
+            goal: "make it darker, quieter, and more controlled",
+            label: "avoid over-compression side effects",
+            kind: "regression_guard",
+            comparison: "absent",
+            regression_kind: "over_compression",
+          },
+        ],
+      },
+      generatedAt: "2026-04-28T12:25:00Z",
+    });
+
+    expect(report.goal_alignment).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          goal: "make it darker, quieter, and more controlled",
+          status: "mostly_met",
+        }),
+      ]),
+    );
+    expect(report.goal_alignment?.[0]?.status).not.toBe("not_met");
   });
 
   it("does not treat aggregate upper-presence growth as sibilance without explicit sibilance annotations", () => {

@@ -33,11 +33,15 @@ describe("parseUserRequest", () => {
     const fadeOut = parseUserRequest("Add a 0.2 second fade out.");
     const shortUnitFadeOut = parseUserRequest("Add a 250 ms fade out.");
     const abbreviatedFadeIn = parseUserRequest("Add a 0.3 sec fade in.");
+    const forPhraseFadeIn = parseUserRequest("Fade in for 0.5 seconds.");
+    const forPhraseFadeOut = parseUserRequest("Fade out for 0.5 seconds.");
 
     expect(fadeIn.fade_in_seconds).toBe(0.2);
     expect(fadeOut.fade_out_seconds).toBe(0.2);
     expect(shortUnitFadeOut.fade_out_seconds).toBe(0.25);
     expect(abbreviatedFadeIn.fade_in_seconds).toBe(0.3);
+    expect(forPhraseFadeIn.fade_in_seconds).toBe(0.5);
+    expect(forPhraseFadeOut.fade_out_seconds).toBe(0.5);
   });
 
   it("parses cleaner and preserve-punch language conservatively", () => {
@@ -135,6 +139,9 @@ describe("parseUserRequest", () => {
     const pitchUp = parseUserRequest("Pitch up by 2 semitones.");
     const pitchItUp = parseUserRequest("Pitch it up a bit.");
     const octaveUp = parseUserRequest("Pitch it up like a whole octave.");
+    const pitchItUpThree = parseUserRequest("Pitch it up 3 semitones.");
+    const transposeItUpThree = parseUserRequest("Transpose it up 3 semitones.");
+    const lowerPitchOne = parseUserRequest("Lower the pitch by 1 semitone.");
 
     expect(trimSilence.wants_trim_silence).toBe(true);
     expect(trimSilence.trim_leading_silence).toBe(true);
@@ -149,6 +156,36 @@ describe("parseUserRequest", () => {
     expect(pitchItUp.pitch_shift_semitones).toBe(1);
     expect(octaveUp.wants_pitch_shift).toBe(true);
     expect(octaveUp.pitch_shift_semitones).toBe(12);
+    expect(pitchItUpThree.pitch_shift_semitones).toBe(3);
+    expect(transposeItUpThree.pitch_shift_semitones).toBe(3);
+    expect(lowerPitchOne.pitch_shift_semitones).toBe(-1);
+  });
+
+  it("parses stress-tested supported wording variants without changing intent boundaries", () => {
+    const peakControl = parseUserRequest("Limit the peaks.");
+    const highPass = parseUserRequest("High-pass the low end.");
+    const centerImage = parseUserRequest("Center the stereo image.");
+    const lowMids = parseUserRequest("Clean up the low mids.");
+    const regionalSofter = parseUserRequest("Make the last second softer.");
+    const globalSofter = parseUserRequest("Make it softer.");
+    const controlledNormalize = parseUserRequest("Normalize it louder but keep it controlled.");
+
+    expect(peakControl.wants_peak_control).toBe(true);
+    expect(highPass.wants_remove_rumble).toBe(true);
+    expect(centerImage.wants_more_centered).toBe(true);
+    expect(lowMids.wants_less_muddy).toBe(true);
+    expect(regionalSofter.wants_quieter).toBe(true);
+    expect(regionalSofter.wants_less_harsh).toBe(false);
+    expect(globalSofter.wants_less_harsh).toBe(true);
+    expect(globalSofter.wants_quieter).toBe(false);
+    expect(regionalSofter.region_target_hint).toEqual({
+      kind: "trailing_window",
+      duration_seconds: 1,
+      source_phrase: "last second",
+    });
+    expect(controlledNormalize.wants_louder).toBe(true);
+    expect(controlledNormalize.wants_more_even_level).toBe(true);
+    expect(controlledNormalize.wants_more_controlled_dynamics).toBe(true);
   });
 
   it("parses explicit time-range region phrases for supported local edits", () => {
@@ -324,6 +361,18 @@ describe("planEdits", () => {
       "reduce upper-mid harshness",
       "tilt the overall balance slightly darker",
     ]);
+  });
+
+  it("keeps non-regional softer wording on the tonal-softening path", () => {
+    const plan = planEdits({
+      userRequest: "Make it softer.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["notch_filter"]);
+    expect(plan.goals).toEqual(["reduce upper-mid harshness"]);
   });
 
   it("grounds more-relaxed wording with brightness evidence without inventing harshness repair", () => {
@@ -836,6 +885,56 @@ describe("planEdits", () => {
     expect(plan.goals).toContain("control peak excursions conservatively");
   });
 
+  it("maps stress-tested phrase variants to the intended explicit operations", () => {
+    const highPassPlan = planEdits({
+      userRequest: "High-pass the low end.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+    const lowMidPlan = planEdits({
+      userRequest: "Clean up the low mids.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createNeutralAnalysisReportFixture(),
+      semanticProfile: createNeutralSemanticProfileFixture(),
+    });
+    const centerPlan = planEdits({
+      userRequest: "Center the stereo image.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createImbalancedStereoAnalysisReportFixture(),
+      semanticProfile: createOffCenterSemanticProfileFixture(),
+    });
+    const peakPlan = planEdits({
+      userRequest: "Limit the peaks.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(highPassPlan.steps.map((step) => step.operation)).toEqual(["high_pass_filter"]);
+    expect(lowMidPlan.steps.map((step) => step.operation)).toEqual(["parametric_eq"]);
+    expect(centerPlan.steps.map((step) => step.operation)).toEqual(["stereo_balance_correction"]);
+    expect(peakPlan.steps.map((step) => step.operation)).toEqual(["limiter"]);
+  });
+
+  it("maps regional softer wording to local gain reduction instead of harshness repair", () => {
+    const plan = planEdits({
+      userRequest: "Make the last second softer.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["gain"]);
+    expect(plan.steps[0]?.target).toEqual({
+      scope: "time_range",
+      start_seconds: 3,
+      end_seconds: 4,
+    });
+    expect(plan.steps[0]?.parameters).toEqual({ gain_db: -2 });
+    expect(plan.goals).toEqual(["reduce output level conservatively"]);
+  });
+
   it("maps the benchmarked loudness-and-control wording to the dedicated controlled-loudness path", () => {
     const analysisReport = {
       ...createAnalysisReportFixture(),
@@ -901,6 +1000,28 @@ describe("planEdits", () => {
         }),
       ]),
     );
+  });
+
+  it("keeps explicit normalize-louder-controlled wording ceiling-limited on already controlled material", () => {
+    const plan = planEdits({
+      userRequest: "Normalize it louder but keep it controlled.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAlreadyControlledAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["normalize"]);
+    expect(plan.steps[0]?.parameters).toEqual({
+      mode: "integrated_lufs",
+      target_integrated_lufs: -13.3,
+      measured_integrated_lufs: -14.8,
+      max_true_peak_dbtp: -1,
+      measured_true_peak_dbtp: -1.1,
+    });
+    expect(plan.goals).toEqual([
+      "increase output level conservatively",
+      "normalize overall loudness conservatively",
+    ]);
   });
 
   it("maps the benchmarked peak-control wording to a limiter with preserve-punch checks", () => {
@@ -1154,6 +1275,27 @@ describe("planEdits", () => {
     expect(validateAgainstSchema(editPlanSchema, plan)).toBe(true);
   });
 
+  it("maps exact explicit semitone stress prompts with the requested direction", () => {
+    const requestsToExpectedSemitones = [
+      ["Pitch it up 3 semitones.", 3],
+      ["Transpose it up 3 semitones.", 3],
+      ["Lower the pitch by 1 semitone.", -1],
+    ] as const;
+
+    for (const [userRequest, semitones] of requestsToExpectedSemitones) {
+      const plan = planEdits({
+        userRequest,
+        workspaceRoot: repoRoot,
+        audioVersion: createPitchedAudioVersionFixture(),
+        analysisReport: createPitchedAnalysisReportFixture(),
+        semanticProfile: createVersionScopedNeutralSemanticProfile("ver_pitchedTimingFixture"),
+      });
+
+      expect(plan.steps.map((step) => step.operation)).toEqual(["pitch_shift"]);
+      expect(plan.steps[0]?.parameters).toEqual({ semitones });
+    }
+  });
+
   it("keeps pitch_shift when an interpreted compound request uses `pitch it up` wording", () => {
     const plan = planEdits({
       userRequest: "pitch it up a bit and make it less harsh",
@@ -1369,6 +1511,31 @@ describe("planEdits", () => {
       "compressor",
       "normalize",
     ]);
+  });
+
+  it("verifies warmth as relative tonal tilt when the request also makes the source quieter", () => {
+    const plan = planEdits({
+      userRequest: "Make it warmer and quieter.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["low_shelf", "gain"]);
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_more_warmth_relative_tilt",
+          comparison: "decrease_by",
+          metric: "spectral_balance.brightness_tilt_db",
+        }),
+        expect.objectContaining({
+          target_id: "target_quieter_integrated_lufs",
+          comparison: "decrease_by",
+          metric: "levels.integrated_lufs",
+        }),
+      ]),
+    );
   });
 
   it("fails instead of inventing unsupported behavior", () => {
@@ -1895,6 +2062,13 @@ function createAnalysisReportFixture(): AnalysisReport {
         bands_hz: [3000, 4500],
       },
     ],
+  };
+}
+
+function createNeutralAnalysisReportFixture(): AnalysisReport {
+  return {
+    ...createAnalysisReportFixture(),
+    annotations: [],
   };
 }
 

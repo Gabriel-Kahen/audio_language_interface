@@ -61,6 +61,8 @@ The module exports the current committed benchmark constants and corpora:
 
 These objects are the default benchmark inputs used when a caller does not supply a custom corpus.
 
+The request-cycle corpus includes a lightweight stress-prompt smoke slice over committed fixtures. It preserves prompt categories for semitone wording, peak limiting, high-pass low-end cleanup, stereo centering, low-mid cleanup, regional softer/gain requests, pitch/time verification guards, loudness/control verification guards, and grounded texture wording without requiring live providers or large audio fixtures. Best-effort texture-policy coverage is represented in the offline interpretation corpus.
+
 ## Compare benchmark execution
 
 ### `runComparisonBenchmarkCase(benchmarkCase)`

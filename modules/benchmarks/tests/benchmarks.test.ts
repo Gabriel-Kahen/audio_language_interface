@@ -323,11 +323,13 @@ describe("firstPromptFamilyFixtureCorpus", () => {
     expect(firstPromptFamilyRequestCycleCorpus.fixtureManifestPath).toBe(
       FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
     );
-    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(37);
+    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(46);
     expect(firstPromptFamilyRequestCycleSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
         "request_cycle_more_relaxed",
+        "request_cycle_clean_up_low_mids_stress",
         "request_cycle_warmer_and_airier",
+        "request_cycle_high_pass_low_end_rumble_stress",
         "request_cycle_darker_less_harsh_less_muddy",
         "request_cycle_speed_up_and_tame_sibilance",
         "request_cycle_tame_sibilance_and_darker",
@@ -349,8 +351,15 @@ describe("firstPromptFamilyFixtureCorpus", () => {
         "request_cycle_follow_up_undo",
         "request_cycle_follow_up_revert_previous_version",
         "request_cycle_control_peaks_without_crushing",
+        "request_cycle_limit_peaks_phrase_stress",
         "request_cycle_louder_and_more_controlled",
+        "request_cycle_louder_keep_controlled_stress",
         "request_cycle_more_controlled_and_darker",
+        "request_cycle_faster_keep_pitch_stress",
+        "request_cycle_raise_pitch_two_semitones_word_stress",
+        "request_cycle_move_stereo_image_center_stress",
+        "request_cycle_first_half_second_softer_stress",
+        "request_cycle_first_half_second_turn_down_stress",
         "request_cycle_clean_it_llm_clarification_loop",
         "request_cycle_clean_it_llm_clarification_answer",
         "request_cycle_brighter_and_darker_contradiction",
@@ -366,11 +375,12 @@ describe("firstPromptFamilyFixtureCorpus", () => {
 
   it("defines a stable interpretation benchmark corpus for the richer LLM artifact", () => {
     expect(interpretationBenchmarkCorpus.corpusId).toBe(INTERPRETATION_CORPUS_ID);
-    expect(interpretationBenchmarkSuite).toHaveLength(11);
+    expect(interpretationBenchmarkSuite).toHaveLength(12);
     expect(interpretationBenchmarkSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
         "interpret_darker_keep_punch",
         "interpret_more_relaxed_grounded_texture",
+        "interpret_less_aggressive_best_effort_texture",
         "interpret_clean_it_conservative",
         "interpret_clean_it_best_effort",
         "interpret_brighter_and_darker_conservative",
@@ -1024,6 +1034,60 @@ describe("runRequestCycleBenchmarks", () => {
       llmAnswerCase?.requestCycleResult?.sessionGraph.metadata?.pending_clarification,
     ).toBeUndefined();
   }, 120_000);
+
+  it("runs stress prompt wording smoke cases without live providers", async () => {
+    const stressCases = [
+      getRequestCycleCase("request_cycle_clean_up_low_mids_stress"),
+      getRequestCycleCase("request_cycle_high_pass_low_end_rumble_stress"),
+      getRequestCycleCase("request_cycle_limit_peaks_phrase_stress"),
+      getRequestCycleCase("request_cycle_louder_keep_controlled_stress"),
+      getRequestCycleCase("request_cycle_faster_keep_pitch_stress"),
+      getRequestCycleCase("request_cycle_raise_pitch_two_semitones_word_stress"),
+      getRequestCycleCase("request_cycle_move_stereo_image_center_stress"),
+      getRequestCycleCase("request_cycle_first_half_second_softer_stress"),
+      getRequestCycleCase("request_cycle_first_half_second_turn_down_stress"),
+    ];
+
+    const result = await runRequestCycleBenchmarks({
+      corpusId: "request_cycle_stress_prompt_smoke_subset",
+      suiteId: "first_prompt_family",
+      fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
+      description: "Stress-prompt request-cycle smoke suite.",
+      cases: stressCases,
+    });
+
+    expect(result.caseResults).toHaveLength(stressCases.length);
+    expect(result.totalChecks).toBeGreaterThan(0);
+    expect(result.totalPassedChecks).toBe(result.totalChecks);
+    expect(result.overallScore).toBe(1);
+
+    expect(
+      result.caseResults.map((caseResult) => [
+        caseResult.caseId,
+        caseResult.status,
+        caseResult.requestCycleResult?.result_kind,
+        caseResult.requestCycleResult?.result_kind === "applied" ||
+        caseResult.requestCycleResult?.result_kind === "reverted"
+          ? caseResult.requestCycleResult.editPlan?.steps.map((step) => step.operation)
+          : [],
+      ]),
+    ).toEqual([
+      ["request_cycle_clean_up_low_mids_stress", "ok", "applied", ["parametric_eq"]],
+      ["request_cycle_high_pass_low_end_rumble_stress", "ok", "applied", ["high_pass_filter"]],
+      ["request_cycle_limit_peaks_phrase_stress", "ok", "applied", ["limiter"]],
+      ["request_cycle_louder_keep_controlled_stress", "ok", "applied", ["compressor", "normalize"]],
+      ["request_cycle_faster_keep_pitch_stress", "ok", "applied", ["time_stretch"]],
+      ["request_cycle_raise_pitch_two_semitones_word_stress", "ok", "applied", ["pitch_shift"]],
+      [
+        "request_cycle_move_stereo_image_center_stress",
+        "ok",
+        "applied",
+        ["stereo_balance_correction"],
+      ],
+      ["request_cycle_first_half_second_softer_stress", "ok", "applied", ["gain"]],
+      ["request_cycle_first_half_second_turn_down_stress", "ok", "applied", ["gain"]],
+    ]);
+  }, 90_000);
 
   it("preserves follow-up version loading when import/apply dependencies are overridden", async () => {
     const benchmarkCase = getRequestCycleCase("request_cycle_follow_up_try_another_version");

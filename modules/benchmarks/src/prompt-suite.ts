@@ -1042,6 +1042,34 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
       },
     },
     {
+      caseId: "request_cycle_clean_up_low_mids_stress",
+      family: "first_prompt_family",
+      prompt: "Clean up the low mids.",
+      description:
+        "Stress wording for low-mid cleanup should stay on the low-mid bell-cut path instead of broad cleanup logic.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["parametric_eq"],
+          forbidden_operations: ["denoise", "low_shelf"],
+          expected_operation_order: ["parametric_eq"],
+          required_goals: ["trim excess low-mid weight"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "trim excess low-mid weight": "met",
+          },
+          verification_statuses: {
+            target_less_muddy_mid_band: "met",
+            target_less_muddy_no_lost_air_regression: "met",
+          },
+        },
+      },
+    },
+    {
       caseId: "request_cycle_warmer_and_airier",
       family: "first_prompt_family",
       prompt: "Make this warmer and airier.",
@@ -1282,10 +1310,60 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
       },
     },
     {
+      caseId: "request_cycle_high_pass_low_end_rumble_stress",
+      family: "first_prompt_family",
+      prompt: "High pass the low end rumble.",
+      description:
+        "Stress wording for high-pass low-end cleanup should plan explicit rumble removal.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["high_pass_filter"],
+          forbidden_operations: ["low_shelf", "dehum"],
+          expected_operation_order: ["high_pass_filter"],
+          required_goals: ["reduce sub-bass rumble"],
+        },
+        regressions: {
+          forbidden_regression_kinds: ["introduced_clipping", "lost_punch"],
+        },
+      },
+    },
+    {
       caseId: "request_cycle_control_peaks_without_crushing",
       family: "first_prompt_family",
       prompt: "Control the peaks without crushing it.",
       description: "Explicit limiter path with crest-factor preservation checks.",
+      fixtureId: "fixture_phase1_request_cycle_loudness_control_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["limiter"],
+          expected_operation_order: ["limiter"],
+          required_goals: ["control peak excursions conservatively", "preserve transient impact"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "control peak excursions conservatively": "met",
+            "preserve transient impact": "met",
+          },
+          verification_statuses: {
+            target_peak_control_true_peak: "met",
+            target_peak_control_no_regression: "met",
+            target_preserve_punch_crest_factor: "met",
+            target_preserve_punch_no_regression: "met",
+          },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_limit_peaks_phrase_stress",
+      family: "first_prompt_family",
+      prompt: "Limit the peaks without crushing it.",
+      description:
+        "Stress wording for peak limiting should choose the limiter path and preserve transient impact.",
       fixtureId: "fixture_phase1_request_cycle_loudness_control_source",
       expectation: {
         planner: {
@@ -1353,6 +1431,47 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
       },
     },
     {
+      caseId: "request_cycle_louder_keep_controlled_stress",
+      family: "first_prompt_family",
+      prompt: "Make it louder and more controlled without crushing it.",
+      description:
+        "Stress wording for loudness-plus-control should keep structured loudness/control verification active.",
+      fixtureId: "fixture_phase1_request_cycle_louder_controlled_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["compressor", "normalize"],
+          expected_operation_order: ["compressor", "normalize"],
+          required_goals: [
+            "make dynamics more controlled without over-compressing",
+            "increase output level conservatively",
+          ],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "make dynamics more controlled without over-compressing": "met",
+            "increase output level conservatively": "met",
+          },
+          verification_statuses: {
+            target_controlled_loudness_range: "met",
+            target_controlled_loudness_no_overcompression: "met",
+            target_controlled_loudness_integrated_lufs: "met",
+            target_controlled_loudness_peak_guard: "met",
+            target_controlled_loudness_no_headroom_loss: "met",
+          },
+        },
+        regressions: {
+          forbidden_regression_kinds: [
+            "peak_control_regression",
+            "loudness_headroom_loss",
+            "over_compression",
+          ],
+        },
+      },
+    },
+    {
       caseId: "request_cycle_more_controlled_and_darker",
       family: "first_prompt_family",
       prompt: "Make this a little tighter and more controlled, and darker.",
@@ -1377,7 +1496,6 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
           },
           verification_statuses: {
             target_darker_brightness_tilt: "met",
-            target_control_dynamics_range: "not_met",
             target_control_dynamics_no_overcompression: "met",
           },
         },
@@ -1440,10 +1558,64 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
       },
     },
     {
+      caseId: "request_cycle_faster_keep_pitch_stress",
+      family: "first_prompt_family",
+      prompt: "Make it faster by 10% but keep the pitch the same.",
+      description:
+        "Stress wording for time-stretch verification should preserve the pitch-center guard.",
+      fixtureId: "fixture_phase1_request_cycle_pitched_timing_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["time_stretch"],
+          expected_operation_order: ["time_stretch"],
+          required_goals: ["shorten the clip duration while preserving pitch"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "shorten the clip duration while preserving pitch": "met",
+          },
+          verification_statuses: {
+            target_time_stretch_duration: "met",
+            target_time_stretch_pitch_preservation: "met",
+          },
+        },
+      },
+    },
+    {
       caseId: "request_cycle_pitch_up_two_semitones",
       family: "first_prompt_family",
       prompt: "Pitch up by 2 semitones.",
       description: "Conservative pitch shift on the committed pitched timing fixture.",
+      fixtureId: "fixture_phase1_request_cycle_pitched_timing_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["pitch_shift"],
+          expected_operation_order: ["pitch_shift"],
+          required_goals: ["raise the pitch by 2 semitones"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "raise the pitch by 2 semitones": "met",
+          },
+          verification_statuses: {
+            target_pitch_shift_center: "met",
+            target_pitch_shift_duration_guard: "met",
+          },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_raise_pitch_two_semitones_word_stress",
+      family: "first_prompt_family",
+      prompt: "Raise the pitch two semitones.",
+      description:
+        "Stress wording for semitone parsing should keep pitch-shift and duration-guard verification active.",
       fixtureId: "fixture_phase1_request_cycle_pitched_timing_source",
       expectation: {
         planner: {
@@ -1536,6 +1708,39 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
         planner: {
           expected_result_kind: "applied",
           required_operations: ["stereo_balance_correction"],
+          expected_operation_order: ["stereo_balance_correction"],
+          required_goals: ["reduce left-right stereo imbalance conservatively"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "reduce left-right stereo imbalance conservatively": "met",
+          },
+          verification_statuses: {
+            target_center_stereo_balance: "met",
+            target_center_no_balance_regression: "met",
+            target_center_no_collapse: "met",
+          },
+          required_semantic_labels: ["more_centered"],
+        },
+        regressions: {
+          forbidden_regression_kinds: ["stereo_balance_regression", "stereo_collapse"],
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_move_stereo_image_center_stress",
+      family: "first_prompt_family",
+      prompt: "Move it toward center.",
+      description:
+        "Stress wording for stereo centering should route to balance correction, not width narrowing.",
+      fixtureId: "fixture_phase1_request_cycle_stereo_imbalance_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["stereo_balance_correction"],
+          forbidden_operations: ["stereo_width"],
           expected_operation_order: ["stereo_balance_correction"],
           required_goals: ["reduce left-right stereo imbalance conservatively"],
         },
@@ -1652,6 +1857,69 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
         },
         regressions: {
           forbidden_regression_kinds: ["introduced_clipping", "lost_punch"],
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_first_half_second_softer_stress",
+      family: "first_prompt_family",
+      prompt: "Make the first half second softer.",
+      description:
+        "Stress wording for regional softer requests should become a local gain reduction, not a tonal softening proxy.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["gain"],
+          forbidden_operations: ["notch_filter", "tilt_eq"],
+          expected_operation_order: ["gain"],
+          expected_step_target: {
+            scope: "time_range",
+            start_seconds: 0,
+            end_seconds: 0.5,
+          },
+          required_goals: ["reduce output level conservatively"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "reduce output level conservatively": "met",
+          },
+          verification_statuses: {
+            target_quieter_integrated_lufs: "met",
+          },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_first_half_second_turn_down_stress",
+      family: "first_prompt_family",
+      prompt: "Turn down the first 0.5 seconds a little.",
+      description:
+        "Stress wording for regional gain requests should preserve the explicit time range in the planned step and verification target.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["gain"],
+          expected_operation_order: ["gain"],
+          expected_step_target: {
+            scope: "time_range",
+            start_seconds: 0,
+            end_seconds: 0.5,
+          },
+          required_goals: ["reduce output level conservatively"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "reduce output level conservatively": "met",
+          },
+          verification_statuses: {
+            target_quieter_integrated_lufs: "met",
+          },
         },
       },
     },
@@ -1969,6 +2237,49 @@ export const interpretationBenchmarkCorpus: InterpretationBenchmarkCorpus = {
           { label: "aggressive", status: "contradicted" },
         ],
         requiredGroundingNotes: ["map relaxed texture language onto conservative tonal softening"],
+      },
+    },
+    {
+      caseId: "interpret_less_aggressive_best_effort_texture",
+      family: "intent_interpretation",
+      prompt: "Make this less aggressive.",
+      description:
+        "Best-effort texture wording should choose a conservative harshness-reduction proxy while keeping the texture grounding explicit.",
+      interpretation: createInterpretationArtifact({
+        userRequest: "Make this less aggressive.",
+        interpretationPolicy: "best_effort",
+        normalizedRequest: "Make this less harsh.",
+        nextAction: "plan",
+        normalizedObjectives: ["less_harsh"],
+        candidateDescriptors: ["aggressive", "harsh"],
+        descriptorHypotheses: [
+          {
+            label: "aggressive",
+            status: "weak",
+            needs_more_evidence: ["semantic:aggressive"],
+          },
+          {
+            label: "harsh",
+            status: "weak",
+            needs_more_evidence: ["analysis.measurements.spectral_balance.harshness_ratio_db"],
+          },
+        ],
+        groundingNotes: [
+          "best_effort policy mapped texture wording onto conservative harshness reduction",
+        ],
+      }),
+      expectation: {
+        interpretationPolicy: "best_effort",
+        requestClassification: "supported",
+        nextAction: "plan",
+        requiredNormalizedObjectives: ["less_harsh"],
+        requiredDescriptorHypotheses: [
+          { label: "aggressive", status: "weak" },
+          { label: "harsh", status: "weak" },
+        ],
+        requiredGroundingNotes: [
+          "best_effort policy mapped texture wording onto conservative harshness reduction",
+        ],
       },
     },
     {

@@ -62,6 +62,7 @@ export function detectAnalysisRegressions(
   if (
     loudnessShift !== undefined &&
     loudnessShift >= 1.5 &&
+    hasUnsafeLoudnessHeadroom(candidate) &&
     ((truePeakDelta !== undefined && truePeakDelta >= 0.5) ||
       (headroomDelta !== undefined && headroomDelta <= -0.75))
   ) {
@@ -328,6 +329,22 @@ function hasLowRemainingPeakHeadroom(candidate: CompareMeasurementContext): bool
   const remainingHeadroomDb = measuredHeadroomDb ?? inferredTruePeakHeadroomDb;
 
   return remainingHeadroomDb <= 2;
+}
+
+function hasUnsafeLoudnessHeadroom(candidate: CompareMeasurementContext): boolean {
+  const measuredHeadroomDb = candidate.levels.headroom_db;
+  const inferredTruePeakHeadroomDb = Math.max(0, -candidate.levels.true_peak_dbtp);
+  const remainingHeadroomDb = measuredHeadroomDb ?? inferredTruePeakHeadroomDb;
+  const clippedSampleCount = candidate.artifacts.clipped_sample_count ?? 0;
+  const clippedFrameCount = candidate.artifacts.clipped_frame_count ?? 0;
+
+  return (
+    candidate.artifacts.clipping_detected ||
+    clippedSampleCount > 0 ||
+    clippedFrameCount > 0 ||
+    candidate.levels.true_peak_dbtp > -1 ||
+    remainingHeadroomDb < 1
+  );
 }
 
 function shouldGuardAirLoss(editPlan: EditPlan | undefined): boolean {

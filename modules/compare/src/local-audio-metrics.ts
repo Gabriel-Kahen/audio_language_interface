@@ -8,6 +8,14 @@ import type { AudioVersion, VerificationTarget } from "./types.js";
 const { WaveFile } = wavefile;
 const DECIBEL_FLOOR = -120;
 const MIN_REFERENCE_RMS = 1e-8;
+const PITCH_MIN_HZ = 60;
+const PITCH_MAX_HZ = 3000;
+const PITCH_WINDOW_FRAMES = 4096;
+const PITCH_MAX_WINDOWS = 5;
+const PITCH_ACTIVE_WINDOW_RMS_DBFS = -48;
+const PITCH_MIN_CORRELATION = 0.66;
+const PITCH_MIN_TARGET_CORRELATION = 0.25;
+const PITCH_TARGET_SEARCH_STEPS = 32;
 
 type TypedArrayConstructor = abstract new (...args: unknown[]) => ArrayLike<number>;
 
@@ -100,6 +108,13 @@ export function createLocalAudioMetricReader(context: LocalAudioVerificationCont
         return readFadeBoundaryRatio(loadCandidateAudio(), target, "out");
       }
 
+      if (
+        target.metric === "derived.pitch_center_hz" &&
+        (target.target === undefined || target.target.scope === "full_file")
+      ) {
+        return readPitchCenter(loadCandidateAudio(), target);
+      }
+
       if (target.target?.scope !== "time_range") {
         return undefined;
       }
@@ -107,6 +122,210 @@ export function createLocalAudioMetricReader(context: LocalAudioVerificationCont
       return readTimeRangeMetricDelta(loadBaselineAudio(), loadCandidateAudio(), target);
     },
   };
+}
+
+function readPitchCenter(
+  audio: LocalAudioData | undefined,
+  target: VerificationTarget,
+): LocalMetricObservation | undefined {
+  if (audio === undefined) {
+    return undefined;
+  }
+
+  const pitchCenterHz = estimateLocalPitchCenterHz(audio, {
+    ...(target.threshold === undefined ? {} : { targetHz: target.threshold }),
+    ...(target.tolerance === undefined ? {} : { toleranceHz: target.tolerance }),
+  });
+  if (pitchCenterHz === undefined) {
+    return undefined;
+  }
+
+  return {
+    observedValue: pitchCenterHz,
+    evidence: `Measured local full-file pitch center at ${pitchCenterHz.toFixed(
+      2,
+    )} Hz from workspace-local WAV evidence.`,
+  };
+}
+
+function estimateLocalPitchCenterHz(
+  audio: LocalAudioData,
+  options: { targetHz?: number; toleranceHz?: number },
+): number | undefined {
+  const windowStarts = collectPitchWindowStarts(audio.mono.length, PITCH_WINDOW_FRAMES);
+  const estimates: Array<{ frequencyHz: number; score: number }> = [];
+
+  for (const startFrame of windowStarts) {
+    const endFrame = Math.min(audio.mono.length, startFrame + PITCH_WINDOW_FRAMES);
+    if (endFrame <= startFrame + 64) {
+      continue;
+    }
+
+    const window = audio.mono.slice(startFrame, endFrame);
+    if (toDecibels(rms(window, 0, window.length)) < PITCH_ACTIVE_WINDOW_RMS_DBFS) {
+      continue;
+    }
+
+    const estimate = estimatePitchWindow(window, audio.sampleRateHz, options);
+    if (estimate !== undefined) {
+      estimates.push(estimate);
+    }
+  }
+
+  if (estimates.length === 0) {
+    return undefined;
+  }
+
+  const weightedFrequency =
+    estimates.reduce((sum, estimate) => sum + estimate.frequencyHz * estimate.score, 0) /
+    estimates.reduce((sum, estimate) => sum + estimate.score, 0);
+
+  return Number(weightedFrequency.toFixed(3));
+}
+
+function collectPitchWindowStarts(frameCount: number, windowFrames: number): number[] {
+  if (frameCount <= 0) {
+    return [0];
+  }
+
+  if (frameCount <= windowFrames) {
+    return [0];
+  }
+
+  const lastStart = Math.max(0, frameCount - windowFrames);
+  const starts: number[] = [];
+  for (let step = 0; step < PITCH_MAX_WINDOWS; step += 1) {
+    const ratio = step / (PITCH_MAX_WINDOWS - 1);
+    starts.push(Math.round(lastStart * ratio));
+  }
+
+  return Array.from(new Set(starts)).sort((left, right) => left - right);
+}
+
+function estimatePitchWindow(
+  samples: Float32Array,
+  sampleRateHz: number,
+  options: { targetHz?: number; toleranceHz?: number },
+): { frequencyHz: number; score: number } | undefined {
+  const centered = centerSamples(samples);
+  if (rms(centered, 0, centered.length) < 1e-5) {
+    return undefined;
+  }
+
+  const targetAnchored = estimateTargetAnchoredPitch(centered, sampleRateHz, options);
+  if (targetAnchored !== undefined) {
+    return targetAnchored;
+  }
+  if (options.targetHz !== undefined) {
+    return undefined;
+  }
+
+  const minimumLag = Math.max(1, Math.floor(sampleRateHz / PITCH_MAX_HZ));
+  const maximumLag = Math.min(
+    Math.max(minimumLag, Math.ceil(sampleRateHz / PITCH_MIN_HZ)),
+    Math.floor(centered.length / 2),
+  );
+  const lagScores: Array<number | undefined> = [];
+
+  for (let lag = minimumLag; lag <= maximumLag; lag += 1) {
+    lagScores[lag] = normalizedAutocorrelation(centered, lag);
+  }
+
+  let bestLag = 0;
+  let bestScore = 0;
+  for (let lag = minimumLag; lag <= maximumLag; lag += 1) {
+    const score = lagScores[lag] ?? 0;
+    const previous = lagScores[lag - 1] ?? Number.NEGATIVE_INFINITY;
+    const next = lagScores[lag + 1] ?? Number.NEGATIVE_INFINITY;
+    if (score >= previous && score >= next && score > bestScore) {
+      bestLag = lag;
+      bestScore = score;
+    }
+  }
+
+  if (bestLag === 0 || bestScore < PITCH_MIN_CORRELATION) {
+    return undefined;
+  }
+
+  return {
+    frequencyHz: sampleRateHz / bestLag,
+    score: bestScore,
+  };
+}
+
+function estimateTargetAnchoredPitch(
+  samples: Float32Array,
+  sampleRateHz: number,
+  options: { targetHz?: number; toleranceHz?: number },
+): { frequencyHz: number; score: number } | undefined {
+  const targetHz = options.targetHz;
+  if (
+    targetHz === undefined ||
+    targetHz < PITCH_MIN_HZ ||
+    targetHz > Math.min(PITCH_MAX_HZ, sampleRateHz / 2)
+  ) {
+    return undefined;
+  }
+
+  const toleranceHz = Math.max(options.toleranceHz ?? 0, targetHz * 0.035, 4);
+  const minHz = Math.max(PITCH_MIN_HZ, targetHz - toleranceHz * 1.5);
+  const maxHz = Math.min(PITCH_MAX_HZ, sampleRateHz / 2, targetHz + toleranceHz * 1.5);
+  let bestFrequencyHz = 0;
+  let bestScore = 0;
+
+  for (let step = 0; step <= PITCH_TARGET_SEARCH_STEPS; step += 1) {
+    const frequencyHz = minHz + ((maxHz - minHz) * step) / Math.max(1, PITCH_TARGET_SEARCH_STEPS);
+    const lag = Math.max(1, Math.round(sampleRateHz / frequencyHz));
+    const correlation = normalizedAutocorrelation(samples, lag);
+    const spectralSupport = measureFrequencyMagnitude(samples, sampleRateHz, frequencyHz);
+    const score = correlation * 0.75 + Math.min(1, spectralSupport / 0.02) * 0.25;
+    if (score > bestScore) {
+      bestFrequencyHz = sampleRateHz / lag;
+      bestScore = score;
+    }
+  }
+
+  if (bestScore < PITCH_MIN_TARGET_CORRELATION) {
+    return undefined;
+  }
+
+  return {
+    frequencyHz: bestFrequencyHz,
+    score: bestScore,
+  };
+}
+
+function normalizedAutocorrelation(samples: Float32Array, lag: number): number {
+  let numerator = 0;
+  let denominatorA = 0;
+  let denominatorB = 0;
+  for (let index = 0; index + lag < samples.length; index += 1) {
+    const left = samples[index] ?? 0;
+    const right = samples[index + lag] ?? 0;
+    numerator += left * right;
+    denominatorA += left * left;
+    denominatorB += right * right;
+  }
+
+  const denominator = Math.sqrt(denominatorA * denominatorB);
+  return denominator <= 0 ? 0 : numerator / denominator;
+}
+
+function measureFrequencyMagnitude(
+  samples: Float32Array,
+  sampleRateHz: number,
+  frequencyHz: number,
+): number {
+  let real = 0;
+  let imaginary = 0;
+  for (let index = 0; index < samples.length; index += 1) {
+    const phase = (2 * Math.PI * frequencyHz * index) / sampleRateHz;
+    const sample = samples[index] ?? 0;
+    real += sample * Math.cos(phase);
+    imaginary -= sample * Math.sin(phase);
+  }
+
+  return (2 * Math.hypot(real, imaginary)) / Math.max(1, samples.length);
 }
 
 function readFadeBoundaryRatio(
@@ -379,6 +598,20 @@ function maxAbs(samples: Float32Array): number {
     max = Math.max(max, Math.abs(sample));
   }
   return max;
+}
+
+function centerSamples(samples: Float32Array): Float32Array {
+  let sum = 0;
+  for (const sample of samples) {
+    sum += sample;
+  }
+
+  const mean = sum / Math.max(1, samples.length);
+  const centered = new Float32Array(samples.length);
+  for (let index = 0; index < samples.length; index += 1) {
+    centered[index] = (samples[index] ?? 0) - mean;
+  }
+  return centered;
 }
 
 function toDecibels(value: number): number {
