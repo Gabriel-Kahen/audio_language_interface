@@ -177,6 +177,68 @@ describe("buildSemanticProfile", () => {
     );
   });
 
+  it("assigns distorted and crunchy when clipped peaks also keep bright transient bite", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          levels: {
+            ...loadExampleReport().measurements.levels,
+            integrated_lufs: -12.2,
+            true_peak_dbtp: -0.2,
+            rms_dbfs: -14,
+            sample_peak_dbfs: -0.1,
+            headroom_db: 0.1,
+          },
+          dynamics: createDynamics({
+            crest_factor_db: 10.8,
+            transient_density_per_second: 1.9,
+            rms_short_term_dbfs: -14.8,
+            dynamic_range_db: 7.4,
+            transient_crest_db: 10.1,
+            punch_window_ratio: 0.34,
+          }),
+          spectral_balance: createSpectralBalance({
+            low_band_db: -15.5,
+            mid_band_db: -11.4,
+            high_band_db: -7.9,
+            spectral_centroid_hz: 2860,
+            brightness_tilt_db: 7.6,
+            presence_band_db: -8.3,
+            harshness_ratio_db: 4.8,
+          }),
+          artifacts: {
+            clipping_detected: true,
+            noise_floor_dbfs: -67,
+            clipped_sample_count: 96,
+          },
+        },
+        annotations: [
+          createAnnotation({
+            kind: "transient_impact",
+            start_seconds: 0,
+            end_seconds: 4,
+            bands_hz: [80, 5000],
+            severity: 0.52,
+            evidence: "hard transient windows keep biting upper-mid peaks",
+          }),
+          createAnnotation({
+            kind: "harshness",
+            start_seconds: 0,
+            end_seconds: 4,
+            bands_hz: [2800, 5200],
+            severity: 0.43,
+            evidence: "bright clipped ridge keeps upper-mid bite elevated",
+          }),
+        ],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).toEqual(
+      expect.arrayContaining(["clipped", "distorted", "crunchy"]),
+    );
+  });
+
   it("keeps borderline evidence unresolved instead of over-assigning descriptors", () => {
     const profile = buildSemanticProfile(
       createReport({
@@ -306,6 +368,107 @@ describe("buildSemanticProfile", () => {
 
     expect(profile.descriptors.map((descriptor) => descriptor.label)).toContain("warm");
     expect(profile.unresolved_terms ?? []).not.toContain("warm");
+  });
+
+  it("assigns relaxed when transients and upper-band bite are both restrained", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          levels: {
+            ...loadExampleReport().measurements.levels,
+            integrated_lufs: -17.1,
+            true_peak_dbtp: -3.1,
+            rms_dbfs: -18.2,
+            sample_peak_dbfs: -3.6,
+            headroom_db: 3.6,
+          },
+          dynamics: createDynamics({
+            crest_factor_db: 7.8,
+            transient_density_per_second: 0.82,
+            rms_short_term_dbfs: -17.3,
+            dynamic_range_db: 6.1,
+            transient_crest_db: 7.6,
+            punch_window_ratio: 0.1,
+          }),
+          spectral_balance: createSpectralBalance({
+            low_band_db: -12.8,
+            mid_band_db: -11.7,
+            high_band_db: -10.9,
+            spectral_centroid_hz: 2120,
+            brightness_tilt_db: 1.9,
+            presence_band_db: -11.2,
+            harshness_ratio_db: 0.5,
+          }),
+          artifacts: {
+            clipping_detected: false,
+            noise_floor_dbfs: -70,
+            clipped_sample_count: 0,
+          },
+        },
+        annotations: [],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).toContain("relaxed");
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).not.toContain("aggressive");
+  });
+
+  it("assigns aggressive when punchy transients and upper-band bite combine", () => {
+    const profile = buildSemanticProfile(
+      createReport({
+        measurements: {
+          ...loadExampleReport().measurements,
+          levels: {
+            ...loadExampleReport().measurements.levels,
+            integrated_lufs: -13.9,
+            true_peak_dbtp: -1.1,
+            rms_dbfs: -15.5,
+            sample_peak_dbfs: -1.4,
+            headroom_db: 1.4,
+          },
+          dynamics: createDynamics({
+            crest_factor_db: 10.7,
+            transient_density_per_second: 1.85,
+            rms_short_term_dbfs: -16.1,
+            dynamic_range_db: 7.5,
+            transient_crest_db: 10.2,
+            punch_window_ratio: 0.32,
+          }),
+          spectral_balance: createSpectralBalance({
+            low_band_db: -16.5,
+            mid_band_db: -12.3,
+            high_band_db: -8.1,
+            spectral_centroid_hz: 2940,
+            brightness_tilt_db: 8.4,
+            presence_band_db: -8.5,
+            harshness_ratio_db: 4.2,
+          }),
+        },
+        annotations: [
+          createAnnotation({
+            kind: "transient_impact",
+            start_seconds: 0,
+            end_seconds: 4,
+            bands_hz: [70, 4200],
+            severity: 0.46,
+            evidence: "strong repeated impact windows stay forward in the mix",
+          }),
+          createAnnotation({
+            kind: "harshness",
+            start_seconds: 0,
+            end_seconds: 4,
+            bands_hz: [3000, 4800],
+            severity: 0.41,
+            evidence: "persistent upper-mid bite remains clearly elevated",
+          }),
+        ],
+      }),
+    );
+
+    expect(profile.descriptors.map((descriptor) => descriptor.label)).toEqual(
+      expect.arrayContaining(["aggressive", "punchy"]),
+    );
   });
 
   it("assigns airy only when top-end lift stays open rather than harsh", () => {

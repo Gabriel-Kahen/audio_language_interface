@@ -24,10 +24,14 @@ The table below describes the semantic contract surface. A few labels are forwar
 | `off_center` | `measurements.stereo.balance_db` | Left-right image balance is clearly shifted away from center without being too ambiguous to describe conservatively. |
 | `punchy` | `measurements.dynamics` | Crest factor and transient density are both elevated. |
 | `controlled` | `measurements.dynamics` plus `measurements.levels` | Dynamic swings, crest factor, and sample-domain short-term RMS spread all remain contained. |
+| `relaxed` | `measurements.dynamics` plus `measurements.spectral_balance` | Transients, punch density, and upper-band bite all stay restrained enough to support a calmer texture label. |
+| `aggressive` | `measurements.dynamics` plus `measurements.spectral_balance` and optional transient/harshness annotations | Forward transient punch and upper-band bite combine strongly enough to justify a more forceful texture label. |
+| `crunchy` | `measurements.artifacts` plus `measurements.dynamics` and `measurements.spectral_balance` | Clipped or hard-driven peaks combine with bright transient bite, suggesting a crunchy texture rather than only a loud or bright one. |
 | `loud` | `measurements.levels` plus `measurements.dynamics` | Integrated loudness, RMS level, and true peak all sit in a high-output range. |
 | `quiet` | `measurements.levels` plus `measurements.dynamics` | Integrated loudness and RMS level both sit well below the current conservative output range. |
 | `level_unstable` | `measurements.levels` plus `measurements.dynamics` | Dynamic range and sample-domain short-term RMS spread suggest unstable overall level. |
 | `clipped` | `measurements.artifacts` | Clipping was directly detected. |
+| `distorted` | `measurements.artifacts` plus `measurements.levels` | Direct clipped-sample or near-zero-headroom evidence suggests audible distortion rather than only tonal imbalance. |
 | `noisy` | `annotations[*].kind == noise` plus `measurements.artifacts` | Sustained broadband-like floor evidence covers a meaningful region and the estimated floor is elevated. |
 | `hum_present` | explicit low-frequency, sustained `annotations[*]` from upstream analysis | A steady hum-like artifact is explicitly annotated strongly enough, for long enough, and low enough in frequency to support a restoration term. The current baseline analyzer can now emit this annotation when the mains-hum detector is confident enough. |
 | `clicks_present` | explicit short, impulsive `annotations[*]` from upstream analysis | Short impulsive click/pop artifacts are explicitly annotated strongly enough and briefly enough to support a restoration term. The current baseline analyzer can now emit this annotation when the click detector finds sparse impulse-like defects. |
@@ -50,7 +54,10 @@ The table below describes the semantic contract surface. A few labels are forwar
 - `wide` additionally requires sustained `stereo_width` coverage so a brief spread event does not become a whole-file semantic claim.
 - `punchy` also requires localized transient-impact evidence and avoids assignment when clipping or very low short-term dynamic range conflicts with the transient measurements.
 - `controlled` is intentionally assigned only in a restrained region of the dynamics space. The module prefers unresolved output over calling moderately dynamic material "controlled" too early.
+- `relaxed` is intentionally narrower than generic `softer` wording. It requires both restrained transient behavior and restrained upper-band bite, so a dark but still punchy source does not automatically read as relaxed.
+- `aggressive` requires both transient drive and upper-band bite. Loudness or brightness alone is not enough.
+- `distorted` and `crunchy` stay evidence-first. The module only assigns them when direct clipped-sample or near-zero-headroom evidence is present, rather than inferring them from harshness alone.
 - `loud`, `quiet`, and `level_unstable` are descriptive level states, not quality judgments. Near-threshold cases remain unresolved.
 - `noisy` additionally requires sustained coverage from `noise` annotations so a single short region does not become a whole-file claim.
-- Borderline evidence is recorded under `unresolved_terms` instead of forcing a descriptor. This now includes near-threshold `bright`, `dark`, `muddy`, `warm`, `airy`, `sibilant`, `wide`, `off_center`, `punchy`, `controlled`, `loud`, `quiet`, `level_unstable`, `slightly_harsh`, `noisy`, `hum_present`, and `clicks_present` cases.
+- Borderline evidence is recorded under `unresolved_terms` instead of forcing a descriptor. This now includes near-threshold `bright`, `dark`, `muddy`, `warm`, `airy`, `sibilant`, `wide`, `off_center`, `punchy`, `controlled`, `relaxed`, `aggressive`, `distorted`, `crunchy`, `loud`, `quiet`, `level_unstable`, `slightly_harsh`, `noisy`, `hum_present`, and `clicks_present` cases.
 - Every assigned descriptor includes one or more `evidence_refs` back to the source `AnalysisReport`.

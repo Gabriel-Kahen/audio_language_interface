@@ -261,6 +261,113 @@ describe("interpretRequest", () => {
     expect(interpretation.next_action).toBe("plan");
   });
 
+  it("supports texture wording like more relaxed through a grounded tonal proxy", async () => {
+    const interpretation = await interpretRequest({
+      userRequest: "Make it more relaxed.",
+      audioVersion: createAudioVersion(),
+      analysisReport: createAnalysisReport(),
+      semanticProfile: createSemanticProfile(),
+      capabilityManifest: defaultRuntimeCapabilityManifest,
+      provider: {
+        kind: "openai",
+        apiKey: "test-key",
+        model: "gpt-4.1-mini",
+      },
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    normalized_request: "Make it darker and less harsh.",
+                    request_classification: "supported",
+                    next_action: "plan",
+                    normalized_objectives: ["darker", "less_harsh"],
+                    candidate_descriptors: ["relaxed", "aggressive"],
+                    descriptor_hypotheses: [
+                      {
+                        label: "relaxed",
+                        status: "supported",
+                        supported_by: ["semantic:relaxed"],
+                      },
+                      {
+                        label: "aggressive",
+                        status: "contradicted",
+                        contradicted_by: ["semantic:controlled"],
+                      },
+                    ],
+                    rationale:
+                      "A more relaxed result is best grounded as a small darker and less-harsh tonal move.",
+                    confidence: 0.74,
+                  }),
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+    });
+
+    expect(interpretation.normalized_request).toBe("Make it darker and less harsh.");
+    expect(interpretation.normalized_objectives).toEqual(["darker", "less_harsh"]);
+    expect(interpretation.candidate_descriptors).toEqual(["relaxed", "aggressive"]);
+    expect(interpretation.descriptor_hypotheses?.[0]).toMatchObject({
+      label: "relaxed",
+      status: "supported",
+    });
+  });
+
+  it("can still refuse explicit distortion-repair wording when clipping evidence is direct", async () => {
+    const interpretation = await interpretRequest({
+      userRequest: "Make it less distorted.",
+      audioVersion: createAudioVersion(),
+      analysisReport: createAnalysisReport(),
+      semanticProfile: createSemanticProfile(),
+      capabilityManifest: defaultRuntimeCapabilityManifest,
+      provider: {
+        kind: "openai",
+        apiKey: "test-key",
+        model: "gpt-4.1-mini",
+      },
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    normalized_request:
+                      "Refuse explicit distortion repair and ask for a supported tonal proxy instead.",
+                    request_classification: "unsupported",
+                    next_action: "refuse",
+                    normalized_objectives: [],
+                    candidate_descriptors: ["distorted"],
+                    unsupported_phrases: ["less distorted"],
+                    descriptor_hypotheses: [
+                      {
+                        label: "distorted",
+                        status: "supported",
+                        supported_by: ["analysis:measurements.artifacts.clipping_detected"],
+                      },
+                    ],
+                    rationale:
+                      "Direct clipping evidence makes this a true distortion-repair request, which the baseline planner still does not support.",
+                    confidence: 0.8,
+                  }),
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+    });
+
+    expect(interpretation.request_classification).toBe("unsupported");
+    expect(interpretation.next_action).toBe("refuse");
+    expect(interpretation.unsupported_phrases).toEqual(["less distorted"]);
+  });
+
   it("builds a validated interpretation artifact through Codex CLI using local auth state", async () => {
     execaMock.mockImplementationOnce(async (_command, args: string[]) => {
       const outputIndex = args.indexOf("-o");

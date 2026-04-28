@@ -87,6 +87,7 @@ function joinLabels(labels: string[]): string {
 function selectSummaryLabels(descriptors: SemanticDescriptor[]): string[] {
   const categoryPriority: Array<keyof typeof DESCRIPTOR_TAXONOMY> = [
     "tonalBalance",
+    "texture",
     "level",
     "dynamics",
     "artifacts",

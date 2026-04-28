@@ -14,6 +14,9 @@ const RUNTIME_ONLY_PHRASE_MATCHERS: RuntimeOnlyPhraseMatch[] = [
   { phrase: "bit crush", operation: "bitcrush" },
   { phrase: "distortion", operation: "distortion" },
   { phrase: "distort", operation: "distortion" },
+  { phrase: "crunchy", operation: "distortion" },
+  { phrase: "crunchier", operation: "distortion" },
+  { phrase: "more distorted", operation: "distortion" },
   { phrase: "saturation", operation: "saturation" },
   { phrase: "saturate", operation: "saturation" },
   { phrase: "flanger", operation: "flanger" },
@@ -55,6 +58,9 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "less bright",
       "reduce brightness",
       "softer top end",
+      "more relaxed",
+      "sound more relaxed",
+      "feel more relaxed",
     ]),
     wants_brighter: containsAny(normalizedRequest, ["brighter", "brighten", "more presence"]),
     wants_more_air: containsAny(normalizedRequest, [
@@ -78,6 +84,13 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "smoother",
       "softer",
       "less aggressive",
+      "more relaxed",
+      "sound more relaxed",
+      "feel more relaxed",
+      "less distorted",
+      "reduce distortion",
+      "remove distortion",
+      "less crunchy",
       "harsh ring",
       "ringing resonance",
       "resonance",
@@ -354,6 +367,10 @@ function parseRuntimeOnlyRequests(value: string): RuntimeOnlyPhraseMatch[] {
   const seen = new Set<string>();
 
   for (const matcher of RUNTIME_ONLY_PHRASE_MATCHERS) {
+    if (matcher.operation === "distortion" && isTextureReductionRequest(value)) {
+      continue;
+    }
+
     if (!matchesRuntimeOnlyPhrase(value, matcher)) {
       continue;
     }
@@ -368,6 +385,15 @@ function parseRuntimeOnlyRequests(value: string): RuntimeOnlyPhraseMatch[] {
   }
 
   return matches;
+}
+
+function isTextureReductionRequest(value: string): boolean {
+  return containsAny(value, [
+    "less distorted",
+    "reduce distortion",
+    "remove distortion",
+    "less crunchy",
+  ]);
 }
 
 function classifyRequest(

@@ -11,8 +11,9 @@ export const DESCRIPTOR_TAXONOMY = {
   ],
   space: ["mono", "narrow", "wide", "off_center"],
   dynamics: ["punchy", "controlled", "level_unstable"],
+  texture: ["relaxed", "aggressive", "crunchy"],
   level: ["loud", "quiet"],
-  artifacts: ["clipped", "noisy", "hum_present", "clicks_present"],
+  artifacts: ["clipped", "distorted", "noisy", "hum_present", "clicks_present"],
 } as const;
 
 export const SUPPORTED_DESCRIPTOR_LABELS = Object.values(DESCRIPTOR_TAXONOMY).flat();

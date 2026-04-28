@@ -58,6 +58,7 @@ See `docs/api.md` for the current failure surface, planner entrypoint behavior, 
 - rejects combined fade requests that would overlap or cover more than half of the available file duration
 - uses analysis annotations and semantic descriptors to refine frequencies and emit structured verification targets
 - maps generic `cleaner` requests only when current evidence supports a conservative tonal cleanup target or the request also contains an explicit supported cleanup direction
+- maps texture wording such as `more relaxed` or `less aggressive` onto conservative tonal-softening only when that grounded reading stays inside the current supported planner slice
 - does not auto-promote generic cleanup wording into hum or click restoration; those restoration steps still require explicit supported intent
 - maps conservative `more controlled` language to `compressor`, maps explicit louder-and-controlled language to a measured `compressor -> normalize` path, maps explicit peak-control language to `limiter`, and refuses pure control wording on sources that already measure as tightly controlled
 - maps explicit boundary-silence requests to `trim_silence`, explicit speed-up or slow-down requests to conservative `time_stretch`, and conservative pitch requests such as explicit semitone counts, `pitch it up a bit`, or octave wording to `pitch_shift` only when the source reads as pitched
@@ -65,6 +66,7 @@ See `docs/api.md` for the current failure surface, planner entrypoint behavior, 
 - supports stereo recentering together with width changes when the current image is safe for both moves, and refuses that compound when the source is too narrow to recenter and narrow conservatively in one pass
 - refuses compound prompts that combine upper-band brightening with de-essing, broadband denoise with upper-band brightening, or hum removal with added warmth because the current baseline planner cannot sequence those safely in one pass
 - supports explicit loudness-normalization, upper-air, warmth, low-mid cleanup, harsh-ring, sibilance, click-cleanup, and hum-removal requests with conservative defaults grounded in the published manifest
+- refuses true clipping or distortion-repair requests explicitly instead of pretending tonal softening can fully repair distortion artifacts
 - supports explicit denoise requests only when analysis indicates steady noise
 - prefers annotation-backed or semantic-backed restoration verification when that evidence exists, and now routes hum/click verification through direct artifact measurements before falling back to coarse low-band or clipped-sample proxies
 - supports explicit stereo-width and centering requests only for already-stereo material when the current image is safe to adjust conservatively

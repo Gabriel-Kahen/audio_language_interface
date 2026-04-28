@@ -866,6 +866,38 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
       },
     },
     {
+      caseId: "request_cycle_more_relaxed",
+      family: "first_prompt_family",
+      prompt: "Make this more relaxed.",
+      description:
+        "Grounded texture wording resolves to the benchmarked darker-plus-less-harsh path.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["notch_filter", "tilt_eq"],
+          expected_operation_order: ["notch_filter", "tilt_eq"],
+          required_goals: [
+            "reduce upper-mid harshness",
+            "tilt the overall balance slightly darker",
+          ],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "reduce upper-mid harshness": "met",
+            "tilt the overall balance slightly darker": "met",
+          },
+          verification_statuses: {
+            target_reduce_harshness_presence_band: "met",
+            target_reduce_harshness_ratio: "met",
+            target_darker_brightness_tilt: "met",
+          },
+        },
+      },
+    },
+    {
       caseId: "request_cycle_reduce_brightness_without_losing_punch",
       family: "first_prompt_family",
       prompt: "reduce brightness without losing punch",
@@ -1779,6 +1811,43 @@ export const interpretationBenchmarkCorpus: InterpretationBenchmarkCorpus = {
       },
     },
     {
+      caseId: "interpret_more_relaxed_grounded_texture",
+      family: "intent_interpretation",
+      prompt: "Make it more relaxed.",
+      description:
+        "Texture wording should normalize to a grounded tonal-softening request instead of staying fuzzy.",
+      interpretation: createInterpretationArtifact({
+        userRequest: "Make it more relaxed.",
+        normalizedRequest: "Make it darker and less harsh.",
+        nextAction: "plan",
+        normalizedObjectives: ["darker", "less_harsh"],
+        candidateDescriptors: ["relaxed", "aggressive"],
+        descriptorHypotheses: [
+          {
+            label: "relaxed",
+            status: "supported",
+            supported_by: ["semantic:relaxed"],
+          },
+          {
+            label: "aggressive",
+            status: "contradicted",
+            contradicted_by: ["semantic:relaxed"],
+          },
+        ],
+        groundingNotes: ["map relaxed texture language onto conservative tonal softening"],
+      }),
+      expectation: {
+        requestClassification: "supported",
+        nextAction: "plan",
+        requiredNormalizedObjectives: ["darker", "less_harsh"],
+        requiredDescriptorHypotheses: [
+          { label: "relaxed", status: "supported" },
+          { label: "aggressive", status: "contradicted" },
+        ],
+        requiredGroundingNotes: ["map relaxed texture language onto conservative tonal softening"],
+      },
+    },
+    {
       caseId: "interpret_clean_it_conservative",
       family: "intent_interpretation",
       prompt: "Clean it.",
@@ -2027,6 +2096,39 @@ export const interpretationBenchmarkCorpus: InterpretationBenchmarkCorpus = {
         requiredNormalizedObjectives: ["bitcrush"],
       },
     },
+    {
+      caseId: "interpret_less_distorted_refuse_on_clipping",
+      family: "intent_interpretation",
+      prompt: "Make it less distorted.",
+      description:
+        "Explicit distortion-repair language should refuse when the supplied evidence already reads as real clipping or distortion.",
+      interpretation: createInterpretationArtifact({
+        userRequest: "Make it less distorted.",
+        normalizedRequest:
+          "Refuse explicit distortion repair and ask for a supported tonal proxy instead.",
+        requestClassification: "unsupported",
+        nextAction: "refuse",
+        normalizedObjectives: [],
+        candidateDescriptors: ["distorted"],
+        unsupportedPhrases: ["less distorted"],
+        descriptorHypotheses: [
+          {
+            label: "distorted",
+            status: "supported",
+            supported_by: ["analysis.measurements.artifacts.clipping_detected"],
+          },
+        ],
+        groundingNotes: ["direct clipping evidence makes this a true distortion-repair request"],
+      }),
+      expectation: {
+        requestClassification: "unsupported",
+        nextAction: "refuse",
+        requiredDescriptorHypotheses: [{ label: "distorted", status: "supported" }],
+        requiredGroundingNotes: [
+          "direct clipping evidence makes this a true distortion-repair request",
+        ],
+      },
+    },
   ],
 };
 
@@ -2075,6 +2177,48 @@ export const liveInterpretationBenchmarkCorpus: LiveInterpretationBenchmarkCorpu
         ),
       },
       expectation: getLiveInterpretationExpectation("interpret_darker_keep_punch"),
+    },
+    {
+      caseId: "live_interpret_more_relaxed_grounded_texture",
+      family: "live_intent_interpretation",
+      prompt: "Make it more relaxed.",
+      description:
+        "Live providers should map relaxed texture language onto the same grounded tonal-softening slice.",
+      input: {
+        policy: "best_effort",
+        audioVersion: createVersion("ver_liveinterprelaxed01"),
+        analysisReport: createAnalysisReport(
+          "analysis_liveinterprelaxed01",
+          "ver_liveinterprelaxed01",
+          {
+            integratedLufs: -15.2,
+            truePeakDbtp: -1.5,
+            crestFactorDb: 9.5,
+            transientDensity: 1.42,
+            lowBandDb: -15.5,
+            midBandDb: -11.3,
+            highBandDb: -9.1,
+            spectralCentroidHz: 2620,
+            stereoWidth: 0.56,
+            stereoCorrelation: 0.45,
+            noiseFloorDbfs: -69,
+            clippingDetected: false,
+          },
+        ),
+        semanticProfile: createSemanticProfile(
+          "analysis_liveinterprelaxed01",
+          "ver_liveinterprelaxed01",
+          {
+            descriptors: [
+              { label: "aggressive", confidence: 0.73 },
+              { label: "slightly_harsh", confidence: 0.7 },
+            ],
+            unresolvedTerms: ["relaxed"],
+            summary: "The source still reads a bit aggressive and upper-mid forward.",
+          },
+        ),
+      },
+      expectation: getLiveInterpretationExpectation("interpret_more_relaxed_grounded_texture"),
     },
     {
       caseId: "live_interpret_clean_it_conservative",

@@ -84,6 +84,7 @@ The current repository state includes expanded coverage around:
 - repeated request-cycle behavior, including alternate-version branching and revert-style follow-ups
 - provider-backed request interpretation, contract validation, and tool/orchestration integration for `IntentInterpretation`
 - interpretation-only benchmark scoring for richer `IntentInterpretation` artifacts, including conservative vs best-effort policy behavior, clarification, constraints, region-intent proposals, and follow-up interpretation
+- grounded texture semantics and interpretation coverage for descriptors such as `relaxed`, `aggressive`, `distorted`, and `crunchy`
 - end-to-end clarification-loop orchestration, tool, and request-cycle benchmark coverage for `clarify -> answer -> resume`
 - alpha CLI coverage for explicit session-directory persistence, first-run editing, and history-aware follow-up reuse
 - planner-facing request-cycle checks for the first explicit numeric region-targeting slice, including exact `time_range` target assertions on emitted `EditPlan` steps
@@ -123,7 +124,7 @@ The request-cycle benchmark mode should be read conservatively. Its scores are u
 
 That separation makes failures easier to diagnose, but it does not turn the benchmark into a perceptual listening test. Request-cycle outcome scoring still depends on the current compare-layer evidence, including structured verification, goal alignment, and regression warnings.
 
-The current request-cycle benchmark corpus is intentionally small. It covers stable tonal cleanup, tonal and cross-family compound edits, restoration, timing edits, stereo/spatial edits, the first explicit numeric region-targeting slice, iterative follow-up flows, peak-control, dedicated louder-and-controlled prompts, and explicit clarification/failure controls on committed phase-1 fixtures rather than trying to benchmark the full runtime surface at once.
+The current request-cycle benchmark corpus is intentionally small. It covers stable tonal cleanup, grounded texture wording, tonal and cross-family compound edits, restoration, timing edits, stereo/spatial edits, the first explicit numeric region-targeting slice, iterative follow-up flows, peak-control, dedicated louder-and-controlled prompts, and explicit clarification/failure controls on committed phase-1 fixtures rather than trying to benchmark the full runtime surface at once.
 
 That corpus now also includes a narrow compound-edit slice:
 

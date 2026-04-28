@@ -316,16 +316,52 @@ function resolvePlannerObjectives(
       .filter((descriptor) => descriptor.confidence >= 0.6)
       .map((descriptor) => descriptor.label),
   );
+  const requestedTextureRepair = isTextureRepairRequest(objectives.normalized_request);
+  const requestedTextureSoftening = isTextureSofteningRequest(objectives.normalized_request);
   const hasHarshnessEvidence =
     analysisReport.annotations?.some((annotation) => annotation.kind === "harshness") === true ||
     semanticLabels.has("harsh") ||
     semanticLabels.has("slightly_harsh");
   const hasMudEvidence = semanticLabels.has("muddy") || semanticLabels.has("slightly_muddy");
+  const hasTextureProxyEvidence =
+    semanticLabels.has("aggressive") ||
+    semanticLabels.has("punchy") ||
+    semanticLabels.has("slightly_harsh") ||
+    analysisReport.annotations?.some(
+      (annotation) =>
+        (annotation.kind === "harshness" || annotation.kind === "transient_impact") &&
+        annotation.severity >= 0.35,
+    ) === true;
 
   if (effectiveObjectives.wants_pitch_shift && analysisReport.source_character?.pitched !== true) {
     throw createPlanningFailure(
       "supported_but_underspecified",
       "The baseline planner only enables conservative pitch shifting when the current source reads as pitched material.",
+    );
+  }
+
+  if (
+    requestedTextureRepair &&
+    (semanticLabels.has("distorted") ||
+      semanticLabels.has("clipped") ||
+      analysisReport.measurements.artifacts.clipping_detected)
+  ) {
+    throw createPlanningFailure(
+      "unsupported",
+      "The request asks to reduce explicit distortion or clipping, but the current baseline planner cannot repair distortion artifacts directly. Ask for less harshness, a darker tone, quieter level, or use an explicit runtime-only distortion path instead.",
+      {
+        matched_requests: ["distortion repair"],
+      },
+    );
+  }
+
+  if ((requestedTextureSoftening || requestedTextureRepair) && !hasTextureProxyEvidence) {
+    throw createPlanningFailure(
+      "supported_but_underspecified",
+      "The request uses texture wording like relaxed, aggressive, distorted, or crunchy, but the current source does not show enough forward or harsh evidence for the baseline planner to ground that wording honestly. Ask for an explicit tonal direction such as less harsh or darker instead.",
+      {
+        matched_requests: ["texture wording"],
+      },
     );
   }
 
@@ -617,6 +653,24 @@ function hasCompanionNonDynamicsIntent(objectives: ReturnType<typeof parseUserRe
     objectives.wants_pitch_shift ||
     objectives.wants_trim_silence ||
     objectives.trim_range !== undefined
+  );
+}
+
+function isTextureRepairRequest(normalizedRequest: string): boolean {
+  return (
+    normalizedRequest.includes("less distorted") ||
+    normalizedRequest.includes("reduce distortion") ||
+    normalizedRequest.includes("remove distortion") ||
+    normalizedRequest.includes("less crunchy")
+  );
+}
+
+function isTextureSofteningRequest(normalizedRequest: string): boolean {
+  return (
+    normalizedRequest.includes("more relaxed") ||
+    normalizedRequest.includes("sound more relaxed") ||
+    normalizedRequest.includes("feel more relaxed") ||
+    normalizedRequest.includes("less aggressive")
   );
 }
 

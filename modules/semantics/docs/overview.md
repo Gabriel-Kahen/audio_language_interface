@@ -78,10 +78,14 @@ The currently assigned descriptor family includes:
 - `off_center`
 - `punchy`
 - `controlled`
+- `relaxed`
+- `aggressive`
+- `crunchy`
 - `loud`
 - `quiet`
 - `level_unstable`
 - `clipped`
+- `distorted`
 - `noisy`
 
 The semantic taxonomy includes restoration descriptors such as `hum_present` and `clicks_present`, and the current baseline analysis pipeline can now emit the matching `hum` and `click` annotations. Those labels are still assigned only when the incoming `AnalysisReport` carries strong enough explicit hum/click evidence.
@@ -94,6 +98,8 @@ The semantic taxonomy includes restoration descriptors such as `hum_present` and
 - `clicks_present` is only assigned when the annotation still looks short and impulse-like instead of becoming a broader burst region.
 - `warm` and `muddy` are intentionally separated. The module only assigns `warm` when low-band weight is present without the stronger low-mid masking that would justify `muddy`.
 - `controlled` is intentionally conservative. It is only assigned when dynamic range, crest factor, transient density, and sample-domain short-term RMS spread all cluster inside a restrained range without clipping.
+- `relaxed`, `aggressive`, `distorted`, and `crunchy` are texture descriptors, but they still stay deterministic and evidence-first. The module does not let open-ended language define them on the fly.
+- `distorted` and `crunchy` currently require direct artifact evidence such as clipping or near-zero headroom. Harshness alone is not enough.
 - `loud`, `quiet`, and `level_unstable` are based on measured level and dynamics fields only. They are not mastering-value judgments and are intentionally anchored to explicit thresholds in the same sample-domain or loudness-domain measurements, rather than cross-domain offsets.
 - `noisy` is only assigned when a localized `noise` annotation and an elevated `noise_floor_dbfs` agree. The aggregate floor value alone is still treated as insufficient.
 - `wide` is only assigned when aggregate width, positive correlation, and sustained `stereo_width` coverage agree without competing width-ambiguity evidence.

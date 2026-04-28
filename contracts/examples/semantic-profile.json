@@ -13,6 +13,15 @@
       "rationale": "High-band energy exceeds low-band energy and the spectral centroid is elevated."
     },
     {
+      "label": "aggressive",
+      "confidence": 0.68,
+      "evidence_refs": [
+        "analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:measurements.dynamics",
+        "analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:measurements.spectral_balance"
+      ],
+      "rationale": "Forward transient bite and elevated upper-band energy support a somewhat aggressive texture label."
+    },
+    {
       "label": "slightly_harsh",
       "confidence": 0.72,
       "evidence_refs": ["analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:annotations[0]"],

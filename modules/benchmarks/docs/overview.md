@@ -55,11 +55,13 @@ The benchmark cases now carry explicit fixture ids for the shared source loop an
 The interpretation benchmark corpus currently covers:
 
 - supported normalization with preservation constraints
+- grounded texture normalization such as `make it more relaxed`
 - ambiguous cleanup under both conservative and best-effort policy
 - contradictory tonal wording under both conservative and best-effort policy
 - region-intent proposals
 - session-aware follow-up intensity reduction
 - alternate-version follow-up interpretation
+- explicit refusal of true distortion-repair wording when the evidence already reads as direct clipping or distortion
 - runtime-only refusal behavior
 
 The live interpretation benchmark corpus covers the same prompt families, but stores executable `AudioVersion`, `AnalysisReport`, `SemanticProfile`, and optional session-context inputs instead of prebuilt interpretation artifacts so provider behavior can be measured directly. Its expectations are intentionally coarser than the offline interpretation corpus: it favors stable structured fields such as policy, request classification, next action, constraints, region scope, and follow-up kind over exact alternate counts or exact grounding-note strings.
@@ -159,6 +161,7 @@ For hum and click cleanup cases, outcome verification should anchor on direct `A
 The first public request-cycle corpus currently covers:
 
 - `make this loop darker and less harsh`
+- `make this more relaxed`
 - `make this warmer and airier`
 - `make this darker, less harsh, and less muddy`
 - `reduce brightness without losing punch`

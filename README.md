@@ -93,6 +93,7 @@ The current cleanup slice is now analysis-backed instead of purely prompt-driven
 
 - `analysis` emits explicit `hum` and `click` annotations plus file-level artifact fields such as `hum_detected`, `hum_fundamental_hz`, `click_detected`, and `click_count`
 - `semantics` can assign `hum_present` and `clicks_present` when that evidence is strong enough
+- `semantics` now also carries a small deterministic texture vocabulary for `relaxed`, `aggressive`, `distorted`, and `crunchy`, with the actual descriptor truth still grounded in measured dynamics, spectral, and artifact evidence
 - `compare` reports `evaluation_basis` so downstream callers can see whether structured verification, heuristic goal alignment, or raw deltas are driving quality interpretation
 - `benchmarks` includes a tiny committed fixture-backed cleanup corpus under [fixtures/audio/phase-1](fixtures/audio/phase-1)
 
@@ -285,10 +286,13 @@ The current system is strongest on conservative editing requests such as:
 
 - darker
 - less harsh
+- more relaxed
 - slightly cleaner
 - explicit loudness normalization
 - airier, warmer, or less muddy through conservative surgical EQ
+- texture wording such as `more relaxed` or `less aggressive` when it can be grounded honestly as a conservative tonal-softening move
 - tame sibilance, remove explicitly specified `50 Hz` or `60 Hz` hum, and clean up clicks
+- explicit `less distorted` or `less crunchy` wording only as a safe tonal proxy when the source does not already read as direct clipping or distortion; true distortion-repair requests still refuse honestly
 - more controlled
 - control peaks
 - widen or narrow slightly when stereo evidence supports it
@@ -307,7 +311,7 @@ This repo is usable today for technical experimentation and module-level integra
 - there is now a narrow alpha CLI entrypoint for local single-file editing and explicit follow-ups, but there is still no broader GUI or service surface
 - the baseline planner does not yet auto-select `pan`, `mid_side_eq`, channel remapping, or the broader Layer 1 runtime-effect surface
 - pure `more controlled` or `louder and more controlled` requests may now refuse on already tightly controlled material instead of silently degrading it
-- benchmark coverage now includes a tiny committed cleanup, timing, stereo/spatial, and control corpus, but it is still light compared with the long-term goal
+- benchmark coverage now includes a tiny committed cleanup, grounded texture, timing, stereo/spatial, and control corpus, but it is still light compared with the long-term goal
 
 ## Repository Layout
 

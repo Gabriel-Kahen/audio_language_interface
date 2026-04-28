@@ -59,6 +59,7 @@ The runtime capability surface is now also published explicitly through `Runtime
 
 - darker
 - less harsh
+- more relaxed
 - slightly cleaner
 - preserve punch
 - more controlled
@@ -71,7 +72,9 @@ Supported but conservative areas:
 - denoise or reduce hiss, when steady-noise evidence is strong enough
 - explicit loudness normalization through `normalize`
 - airier, warmer, less muddy, or less harsh ring through surgical tone-shaping
+- texture wording such as `more relaxed` or `less aggressive` when it can be grounded honestly as a conservative tonal-softening move
 - tame sibilance, remove explicitly specified `50 Hz` / `60 Hz` hum, or clean up clicks through narrow restoration primitives
+- explicit `less distorted` or `less crunchy` wording only as a safe tonal proxy when the source does not already read as direct clipping or distortion; true distortion-repair requests still refuse honestly
 - pure `more controlled` or `louder and more controlled` requests may refuse on already tightly controlled material instead of silently degrading it
 - small benchmarked compound prompts within the supported slice, including tonal combinations such as `warmer and airier` or `darker, less harsh, and less muddy` plus a narrow cross-family set such as `speed up by 10% and tame the sibilance`, `tame the sibilance and make it darker`, `center this more and make it wider`, and the current tradeoff-style `make this a little tighter and more controlled, and darker`
 
@@ -175,6 +178,7 @@ Current tool-surface caveats:
 - analysis currently requires `.wav` input files on disk
 - analysis reads the whole file into memory
 - semantic descriptor coverage is intentionally small and conservative
+- the deterministic descriptor layer now includes a small texture slice (`relaxed`, `aggressive`, `distorted`, `crunchy`), but true distortion repair is still narrower than the language surface
 - the optional interpretation layer broadens language handling, but it does not make unsupported descriptors or transforms safe automatically
 - the baseline planner now grounds one narrow region-targeting slice for explicit numeric `time_range` wording such as `the first 0.5 seconds` or `from 0.2s to 0.7s`, but it still refuses vague named regions like `intro` and it still refuses region-scoped requests that require full-file-only planner operations
 - planning fails on unsupported requests instead of trying to generalize broadly
@@ -187,7 +191,7 @@ Current tool-surface caveats:
 - compare now preserves compound-goal tradeoff detail through `goal_alignment[].verification_rollup` when structured verification rolls multiple targets into one goal
 - hum and click analysis evidence now exists in the baseline `AnalysisReport`, and compare now prefers those direct artifact fields before falling back to conservative low-band or clipped-sample proxies
 - the repository now provides a narrow alpha CLI entrypoint through `pnpm ali -- ...` for local `edit` and `follow-up` flows, with explicit session directories and no hidden persistence
-- benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, tonal and cross-family compound edits, restoration, timing edits, stereo/spatial edits, the first explicit numeric region-targeting slice, iterative follow-up flows, peak-control, dedicated louder-and-controlled prompts, and clarification/failure controls
+- benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, grounded texture wording, tonal and cross-family compound edits, restoration, timing edits, stereo/spatial edits, the first explicit numeric region-targeting slice, iterative follow-up flows, peak-control, dedicated louder-and-controlled prompts, and clarification/failure controls
 - live provider evaluation exists for the interpretation layer, but it is intentionally opt-in and narrower than the deterministic benchmark/reporting path because provider drift, key management, latency, and API cost are part of what that harness is meant to measure
 
 ## Practical Interpretation

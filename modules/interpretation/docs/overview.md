@@ -55,6 +55,7 @@ See `docs/api.md` for the concrete API shape and failure behavior.
 - interpretation stays optional and above deterministic planning
 - callers can now choose `conservative` or `best_effort` interpretation policy
 - the artifact can now carry explicit `interpretation_policy`, `next_action`, descriptor hypotheses, constraints, region-intent proposals, alternate candidates, and follow-up interpretation metadata
+- the current grounded texture vocabulary now includes labels such as `relaxed`, `aggressive`, `distorted`, and `crunchy`, but those labels still have to survive deterministic semantics and planning rather than being LLM-defined on the fly
 - explicit numeric `time_range` region intents can now be consumed by deterministic planning for the narrow first-cohort region-safe operations, while free-form `segment_reference` intents such as `intro` remain advisory
 - `conservative` preserves `clarify` for grounded ambiguity, while `best_effort` prefers one planner-facing reading and keeps the ambiguity explicit through alternates and grounding notes
 - provider behavior is hardened with explicit timeout, retry, and optional cache support, but raw provider failures still surface instead of falling back silently

@@ -64,6 +64,19 @@ describe("parseUserRequest", () => {
     expect(parsed.intensity).toBe("subtle");
   });
 
+  it("parses grounded texture wording into conservative tonal-cleanup objectives", () => {
+    const relaxed = parseUserRequest("Make it more relaxed.");
+    const lessDistorted = parseUserRequest("Make it less distorted.");
+
+    expect(relaxed.wants_darker).toBe(true);
+    expect(relaxed.wants_less_harsh).toBe(true);
+    expect(relaxed.request_classification).toBe("supported");
+
+    expect(lessDistorted.wants_less_harsh).toBe(true);
+    expect(lessDistorted.request_classification).toBe("supported");
+    expect(lessDistorted.supported_runtime_only_but_not_planner_enabled_requests).toEqual([]);
+  });
+
   it("parses stereo-centering intent phrases conservatively", () => {
     const parsed = parseUserRequest("Center this more and fix the stereo imbalance.");
 
@@ -240,6 +253,32 @@ describe("planEdits", () => {
       gain_db: -1.5,
       q: 0.6,
     });
+  });
+
+  it("maps more-relaxed wording onto the same conservative darker-and-less-harsh path", () => {
+    const plan = planEdits({
+      userRequest: "Make this more relaxed.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["notch_filter", "tilt_eq"]);
+    expect(plan.goals).toEqual([
+      "reduce upper-mid harshness",
+      "tilt the overall balance slightly darker",
+    ]);
+  });
+
+  it("refuses texture-softening wording when the source does not show enough aggressive evidence", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Make this more relaxed.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createRelaxedLikeAnalysisReportFixture(),
+        semanticProfile: createNeutralSemanticProfileFixture(),
+      }),
+    ).toThrow(/does not show enough forward or harsh evidence/i);
   });
 
   it("grounds explicit leading-window tonal requests to time_range step targets", () => {
@@ -1248,6 +1287,17 @@ describe("planEdits", () => {
     ).toThrow(/only supports conservative denoise when analysis indicates steady noise/i);
   });
 
+  it("refuses explicit distortion-repair language when clipping evidence is already direct", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Make it less distorted.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createClippedAnalysisReportFixture(),
+        semanticProfile: createDistortedSemanticProfileFixture(),
+      }),
+    ).toThrow(/cannot repair distortion artifacts directly/i);
+  });
+
   it("fails clearly for width requests that would overreach current stereo state", () => {
     expect(() =>
       planEdits({
@@ -1622,6 +1672,40 @@ function createNarrowStereoAnalysisReportFixture(): AnalysisReport {
   };
 }
 
+function createRelaxedLikeAnalysisReportFixture(): AnalysisReport {
+  return {
+    ...createAnalysisReportFixture(),
+    measurements: {
+      ...createAnalysisReportFixture().measurements,
+      dynamics: {
+        ...createAnalysisReportFixture().measurements.dynamics,
+        crest_factor_db: 7.8,
+        transient_density_per_second: 0.82,
+        dynamic_range_db: 6.1,
+        punch_window_ratio: 0.1,
+      },
+      spectral_balance: {
+        ...createAnalysisReportFixture().measurements.spectral_balance,
+        high_band_db: -10.9,
+        spectral_centroid_hz: 2120,
+        brightness_tilt_db: 1.9,
+        harshness_ratio_db: 0.5,
+      },
+      levels: {
+        ...createAnalysisReportFixture().measurements.levels,
+        integrated_lufs: -17.1,
+        headroom_db: 3.6,
+      },
+      artifacts: {
+        ...createAnalysisReportFixture().measurements.artifacts,
+        clipping_detected: false,
+        clipped_sample_count: 0,
+      },
+    },
+    annotations: [],
+  };
+}
+
 function createImbalancedStereoAnalysisReportFixture(): AnalysisReport {
   return {
     ...createAnalysisReportFixture(),
@@ -1757,6 +1841,40 @@ function createRestorationSemanticProfileFixture(): SemanticProfile {
         confidence: 0.74,
         evidence_refs: ["analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:annotations[1]"],
         rationale: "Short click evidence is present.",
+      },
+    ],
+  };
+}
+
+function createClippedAnalysisReportFixture(): AnalysisReport {
+  return {
+    ...createAnalysisReportFixture(),
+    measurements: {
+      ...createAnalysisReportFixture().measurements,
+      artifacts: {
+        ...createAnalysisReportFixture().measurements.artifacts,
+        clipping_detected: true,
+        clipped_sample_count: 64,
+      },
+    },
+  };
+}
+
+function createDistortedSemanticProfileFixture(): SemanticProfile {
+  return {
+    ...createNeutralSemanticProfileFixture(),
+    descriptors: [
+      {
+        label: "distorted",
+        confidence: 0.81,
+        evidence_refs: ["analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:measurements.artifacts"],
+        rationale: "Direct clipping evidence suggests audible distortion artifacts.",
+      },
+      {
+        label: "clipped",
+        confidence: 0.85,
+        evidence_refs: ["analysis_01HZX8C7J2V3M4N5P6Q7R8S9T0:measurements.artifacts"],
+        rationale: "Clipping was directly detected.",
       },
     ],
   };

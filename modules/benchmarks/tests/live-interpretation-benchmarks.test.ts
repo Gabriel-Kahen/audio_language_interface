@@ -24,10 +24,11 @@ function getLiveCase(caseId: string): LiveInterpretationBenchmarkCase {
 describe("liveInterpretationBenchmarkCorpus", () => {
   it("defines a stable live provider evaluation corpus", () => {
     expect(LIVE_INTERPRETATION_CORPUS_ID).toBe("intent_interpretation_live_v1");
-    expect(liveInterpretationBenchmarkSuite).toHaveLength(9);
+    expect(liveInterpretationBenchmarkSuite).toHaveLength(10);
     expect(liveInterpretationBenchmarkSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
         "live_interpret_darker_keep_punch",
+        "live_interpret_more_relaxed_grounded_texture",
         "live_interpret_clean_it_conservative",
         "live_interpret_clean_it_best_effort",
         "live_interpret_brighter_and_darker_conservative",

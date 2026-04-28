@@ -304,9 +304,10 @@ describe("firstPromptFamilyFixtureCorpus", () => {
     expect(firstPromptFamilyRequestCycleCorpus.fixtureManifestPath).toBe(
       FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
     );
-    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(35);
+    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(36);
     expect(firstPromptFamilyRequestCycleSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
+        "request_cycle_more_relaxed",
         "request_cycle_warmer_and_airier",
         "request_cycle_darker_less_harsh_less_muddy",
         "request_cycle_speed_up_and_tame_sibilance",
@@ -345,10 +346,11 @@ describe("firstPromptFamilyFixtureCorpus", () => {
 
   it("defines a stable interpretation benchmark corpus for the richer LLM artifact", () => {
     expect(interpretationBenchmarkCorpus.corpusId).toBe(INTERPRETATION_CORPUS_ID);
-    expect(interpretationBenchmarkSuite).toHaveLength(9);
+    expect(interpretationBenchmarkSuite).toHaveLength(11);
     expect(interpretationBenchmarkSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
         "interpret_darker_keep_punch",
+        "interpret_more_relaxed_grounded_texture",
         "interpret_clean_it_conservative",
         "interpret_clean_it_best_effort",
         "interpret_brighter_and_darker_conservative",
@@ -357,6 +359,7 @@ describe("firstPromptFamilyFixtureCorpus", () => {
         "interpret_follow_up_not_that_much",
         "interpret_try_another_version",
         "interpret_bitcrush_runtime_only",
+        "interpret_less_distorted_refuse_on_clipping",
       ]),
     );
   });

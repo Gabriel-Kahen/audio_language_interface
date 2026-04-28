@@ -11,6 +11,7 @@ export function assessDescriptors(report: AnalysisReport): SemanticAssessment {
   addTonalBodyDescriptors(report, descriptors, unresolvedTerms);
   addSpatialDescriptors(report, descriptors, unresolvedTerms);
   addDynamicsDescriptors(report, descriptors, unresolvedTerms);
+  addTextureDescriptors(report, descriptors, unresolvedTerms);
   addLevelDescriptors(report, descriptors, unresolvedTerms);
   addArtifactDescriptors(report, descriptors);
   addNoiseDescriptors(report, descriptors, unresolvedTerms);
@@ -432,6 +433,148 @@ function addDynamicsDescriptors(
         shortTermRmsOffsetDb <= 2.25))
   ) {
     unresolvedTerms.add("controlled");
+  }
+}
+
+function addTextureDescriptors(
+  report: AnalysisReport,
+  descriptors: SemanticDescriptor[],
+  unresolvedTerms: Set<string>,
+): void {
+  const spectral = report.measurements.spectral_balance;
+  const dynamics = report.measurements.dynamics;
+  const levels = report.measurements.levels;
+  const artifacts = report.measurements.artifacts;
+  const annotations = report.annotations ?? [];
+  const brightnessTiltDb =
+    spectral.brightness_tilt_db ?? spectral.high_band_db - spectral.low_band_db;
+  const harshnessRatioDb =
+    spectral.harshness_ratio_db ?? spectral.high_band_db - spectral.mid_band_db;
+  const harshnessAnnotation = findStrongestAnnotation(annotations, "harshness");
+  const harshnessSeverity = harshnessAnnotation?.annotation.severity ?? 0;
+  const transientImpactAnnotation = findStrongestAnnotation(annotations, "transient_impact");
+  const transientImpactSeverity = transientImpactAnnotation?.annotation.severity ?? 0;
+  const punchWindowRatio =
+    dynamics.punch_window_ratio ??
+    (dynamics.transient_density_per_second >= 1.5 && dynamics.crest_factor_db >= 10 ? 0.5 : 0.12);
+  const clippedSampleCount = artifacts.clipped_sample_count ?? 0;
+  const headroomDb = levels.headroom_db;
+  const centroidHz = spectral.spectral_centroid_hz;
+  const evidenceRefs = [
+    measurementEvidenceRef(report, "spectral_balance"),
+    measurementEvidenceRef(report, "dynamics"),
+    measurementEvidenceRef(report, "levels"),
+    measurementEvidenceRef(report, "artifacts"),
+  ];
+  const soundsPunchy =
+    dynamics.transient_density_per_second >= 1.35 &&
+    dynamics.crest_factor_db >= 9.2 &&
+    punchWindowRatio >= 0.2 &&
+    transientImpactSeverity >= 0.22;
+  const soundsBrightOrHarsh =
+    brightnessTiltDb >= 4.25 || harshnessRatioDb >= 3.5 || harshnessSeverity >= 0.35;
+  const isClippedTexture =
+    artifacts.clipping_detected ||
+    clippedSampleCount >= 24 ||
+    (headroomDb !== undefined && headroomDb <= 0.8);
+
+  if (
+    !artifacts.clipping_detected &&
+    dynamics.transient_density_per_second <= 1.05 &&
+    dynamics.crest_factor_db <= 8.4 &&
+    (dynamics.dynamic_range_db ?? 99) <= 7.5 &&
+    punchWindowRatio <= 0.16 &&
+    brightnessTiltDb <= 2.8 &&
+    harshnessRatioDb <= 2.8 &&
+    centroidHz <= 2350 &&
+    harshnessSeverity < 0.28
+  ) {
+    descriptors.push({
+      label: "relaxed",
+      confidence: clamp(
+        0.56 +
+          Math.min((1.05 - dynamics.transient_density_per_second) / 1.4, 0.12) +
+          Math.min((8.4 - dynamics.crest_factor_db) / 4, 0.08) +
+          Math.min((2.8 - Math.max(brightnessTiltDb, 0)) / 6, 0.08),
+      ),
+      evidence_refs: evidenceRefs,
+      rationale:
+        "Transient density, crest factor, and upper-band emphasis all stay restrained enough to support a calmer, less forceful texture.",
+    });
+  } else if (
+    !artifacts.clipping_detected &&
+    dynamics.transient_density_per_second <= 1.2 &&
+    dynamics.crest_factor_db <= 9 &&
+    punchWindowRatio <= 0.22 &&
+    brightnessTiltDb <= 3.5 &&
+    harshnessRatioDb <= 3.4 &&
+    centroidHz <= 2550
+  ) {
+    unresolvedTerms.add("relaxed");
+  }
+
+  if (
+    soundsPunchy &&
+    soundsBrightOrHarsh &&
+    ((levels.integrated_lufs >= -15 && headroomDb !== undefined && headroomDb <= 2.5) ||
+      transientImpactSeverity >= 0.4 ||
+      harshnessSeverity >= 0.42)
+  ) {
+    descriptors.push({
+      label: "aggressive",
+      confidence: clamp(
+        0.57 +
+          Math.min((dynamics.transient_density_per_second - 1.35) / 2.5, 0.12) +
+          Math.min((Math.max(brightnessTiltDb, harshnessRatioDb) - 3.5) / 8, 0.12) +
+          Math.min((transientImpactSeverity - 0.22) / 0.6, 0.08),
+      ),
+      evidence_refs: evidenceRefs,
+      rationale:
+        "Punchy transient behavior and elevated upper-band bite combine into a more forceful, forward texture.",
+    });
+  } else if (
+    (soundsPunchy && (brightnessTiltDb >= 3.25 || harshnessRatioDb >= 2.8)) ||
+    transientImpactSeverity >= 0.22 ||
+    harshnessSeverity >= 0.3
+  ) {
+    unresolvedTerms.add("aggressive");
+  }
+
+  if (isClippedTexture) {
+    descriptors.push({
+      label: "distorted",
+      confidence: clamp(
+        0.63 +
+          (artifacts.clipping_detected ? 0.18 : 0) +
+          Math.min(clippedSampleCount / 256, 0.12) +
+          Math.min(Math.max(0.8 - (headroomDb ?? 0.8), 0) / 0.8, 0.06),
+      ),
+      evidence_refs: evidenceRefs,
+      rationale:
+        "Direct clipped-sample or near-zero-headroom evidence suggests audible distortion rather than only a tonal imbalance.",
+    });
+  } else if (clippedSampleCount > 0 || (headroomDb !== undefined && headroomDb <= 1.2)) {
+    unresolvedTerms.add("distorted");
+  }
+
+  if (isClippedTexture && soundsPunchy && soundsBrightOrHarsh) {
+    descriptors.push({
+      label: "crunchy",
+      confidence: clamp(
+        0.55 +
+          Math.min(clippedSampleCount / 256, 0.1) +
+          Math.min((dynamics.transient_density_per_second - 1.35) / 2.5, 0.08) +
+          Math.min((Math.max(brightnessTiltDb, harshnessRatioDb) - 3.5) / 8, 0.1),
+      ),
+      evidence_refs: evidenceRefs,
+      rationale:
+        "Clipped or hard-driven peaks combine with bright transient bite, which supports a crunchy texture rather than simple loudness alone.",
+    });
+  } else if (
+    (isClippedTexture && (soundsPunchy || soundsBrightOrHarsh)) ||
+    (clippedSampleCount > 0 && (brightnessTiltDb >= 3.25 || harshnessRatioDb >= 2.8))
+  ) {
+    unresolvedTerms.add("crunchy");
   }
 }
 
