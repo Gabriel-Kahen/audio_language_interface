@@ -200,7 +200,7 @@ describe("planEdits", () => {
     });
 
     expect(plan.steps.map((step) => step.operation)).toEqual(["notch_filter", "tilt_eq"]);
-    expect(plan.steps[0]?.parameters).toEqual({ frequency_hz: 3750, q: 8 });
+    expect(plan.steps[0]?.parameters).toEqual({ frequency_hz: 3750, q: 6 });
     expect(plan.steps[1]?.parameters).toEqual({
       pivot_frequency_hz: 1200,
       gain_db: -1.13,
@@ -215,10 +215,10 @@ describe("planEdits", () => {
     expect(plan.verification_targets).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          target_id: "target_reduce_harshness_high_band",
+          target_id: "target_reduce_harshness_presence_band",
           goal: "reduce upper-mid harshness",
           kind: "analysis_metric",
-          metric: "spectral_balance.high_band_db",
+          metric: "spectral_balance.presence_band_db",
         }),
       ]),
     );
@@ -234,7 +234,7 @@ describe("planEdits", () => {
     });
 
     expect(plan.steps.map((step) => step.operation)).toEqual(["notch_filter", "tilt_eq"]);
-    expect(plan.steps[0]?.parameters).toEqual({ frequency_hz: 3750, q: 8 });
+    expect(plan.steps[0]?.parameters).toEqual({ frequency_hz: 3750, q: 5.5 });
     expect(plan.steps[1]?.parameters).toEqual({
       pivot_frequency_hz: 1200,
       gain_db: -1.5,
@@ -321,7 +321,7 @@ describe("planEdits", () => {
 
     expect(plan.steps).toHaveLength(1);
     expect(plan.steps[0]?.operation).toBe("notch_filter");
-    expect(plan.steps[0]?.parameters).toEqual({ frequency_hz: 3750, q: 8 });
+    expect(plan.steps[0]?.parameters).toEqual({ frequency_hz: 3750, q: 6 });
     expect(plan.goals).toEqual(["reduce upper-mid harshness"]);
   });
 
@@ -443,7 +443,7 @@ describe("planEdits", () => {
       "low_shelf",
       "high_shelf",
     ]);
-    expect(plan.steps[0]?.parameters).toEqual({ frequency_hz: 3750, q: 8 });
+    expect(plan.steps[0]?.parameters).toEqual({ frequency_hz: 3750, q: 5.5 });
     expect(plan.steps[1]?.parameters).toEqual({
       pivot_frequency_hz: 1200,
       gain_db: 1.7,
@@ -537,6 +537,11 @@ describe("planEdits", () => {
           target_id: "target_control_dynamics_range",
           goal: "make dynamics more controlled without over-compressing",
           metric: "dynamics.dynamic_range_db",
+        }),
+        expect.objectContaining({
+          target_id: "target_control_dynamics_headroom",
+          goal: "make dynamics more controlled without over-compressing",
+          metric: "levels.headroom_db",
         }),
       ]),
     );
@@ -640,6 +645,28 @@ describe("planEdits", () => {
       "control peak excursions conservatively",
       "preserve transient impact",
     ]);
+  });
+
+  it("refuses generic controlled-dynamics requests on already tightly controlled material", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Make it more controlled.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createAlreadyControlledAnalysisReportFixture(),
+        semanticProfile: createSemanticProfileFixture(),
+      }),
+    ).toThrow(/already measures as tightly controlled/i);
+  });
+
+  it("refuses louder-and-controlled requests on already tightly controlled material", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Make it louder and more controlled.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createAlreadyControlledAnalysisReportFixture(),
+        semanticProfile: createSemanticProfileFixture(),
+      }),
+    ).toThrow(/already measures as tightly controlled/i);
   });
 
   it("keeps pure peak-control prompts from adding loudness-maximizing limiter gain on low-peak sources", () => {
@@ -882,6 +909,26 @@ describe("planEdits", () => {
       audioVersion: createPitchedAudioVersionFixture(),
       analysisReport: createPitchedAnalysisReportFixture(),
       semanticProfile: createVersionScopedNeutralSemanticProfile("ver_pitchedTimingFixture"),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["pitch_shift"]);
+    expect(plan.steps[0]?.parameters).toEqual({ semitones: 12 });
+    expect(plan.goals).toContain("raise the pitch by 12 semitones");
+  });
+
+  it("keeps a 12-semitone pitch_shift when the interpreted wording says upward by one octave", () => {
+    const plan = planEdits({
+      userRequest: "Pitch it up like a whole octave.",
+      workspaceRoot: repoRoot,
+      audioVersion: createPitchedAudioVersionFixture(),
+      analysisReport: createPitchedAnalysisReportFixture(),
+      semanticProfile: createVersionScopedNeutralSemanticProfile("ver_pitchedTimingFixture"),
+      intentInterpretation: {
+        normalizedRequest: "pitch it up one octave",
+        normalizedObjectives: ["Pitch-shift the full audio upward by one octave."],
+        requestClassification: "supported",
+        nextAction: "plan",
+      },
     });
 
     expect(plan.steps.map((step) => step.operation)).toEqual(["pitch_shift"]);
@@ -1515,6 +1562,21 @@ function createPitchedBoundarySilenceAnalysisReportFixture(): AnalysisReport {
       { kind: "active", start_seconds: 0.08, end_seconds: 0.88 },
       { kind: "silence", start_seconds: 0.88, end_seconds: 0.96 },
     ],
+  };
+}
+
+function createAlreadyControlledAnalysisReportFixture(): AnalysisReport {
+  return {
+    ...createAnalysisReportFixture(),
+    measurements: {
+      ...createAnalysisReportFixture().measurements,
+      dynamics: {
+        ...createAnalysisReportFixture().measurements.dynamics,
+        dynamic_range_db: 1.1,
+        transient_density_per_second: 0.2,
+        punch_window_ratio: 0,
+      },
+    },
   };
 }
 

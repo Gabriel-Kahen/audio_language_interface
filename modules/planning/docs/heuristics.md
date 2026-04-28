@@ -24,6 +24,7 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - `remove 50 Hz hum`, `remove 60 Hz hum`, `dehum 50 hz`, `dehum 60 hz` -> conservative `dehum` at the explicitly requested mains frequency
 - `wider`, `widen`, `more width`, `narrower`, `narrow it` -> conservative `stereo_width` only for already-stereo material with safe balance and correlation
 - `speed it up`, `slow it down`, `narrow this` -> same baseline timing or stereo-width mappings as the corresponding shorter phrases
+- `increase playback speed by 10%`, `decrease playback speed by 10%`, `increase tempo by 10%`, `decrease tempo by 10%` -> same conservative `time_stretch` mapping as the shorter `speed up` or `slow down` wording
 - `center this more`, `more centered`, `fix stereo imbalance` -> conservative `stereo_balance_correction` only for already-stereo material with clear but not extreme left-right imbalance
 - `louder` -> conservative `gain` step limited by measured true-peak headroom to a `-1 dBTP` ceiling unless the request also explicitly asks for more control, in which case the dedicated controlled-loudness path takes precedence
 - `quieter` -> conservative negative `gain` step
@@ -78,6 +79,7 @@ Compatible compounds that the baseline planner now supports explicitly include:
 - Region wording must resolve to one explicit numeric window. Phrases such as `intro`, `outro`, `middle section`, or `ending word` still fail as `supported_but_underspecified`.
 - Region-targeted requests still fail when the selected operation family is full-file-only in the baseline planner, such as `trim_silence`, `time_stretch`, `pitch_shift`, or the current dynamics-control path.
 - The planner refuses louder-plus-peak-control prompts unless the request explicitly asks for normalization, rather than silently converting that into post-limiter gain staging.
+- The planner refuses pure `more controlled` or `louder and more controlled` requests when the source already measures as tightly controlled, because the current one-pass baseline is more likely to degrade peak behavior than to improve it on that material. Companion non-dynamics intents such as `darker` or `less harsh` can still proceed when their own path is safe.
 - The planner refuses upper-band brightening combined with de-essing, because the current one-pass phase order cannot guarantee that added air or brightness will not undermine the de-essing move.
 - The planner refuses broadband denoise combined with upper-band brightening, because brightening after denoise can exaggerate cleanup artifacts in one conservative pass.
 - The planner refuses hum removal combined with added warmth, because the current baseline planner does not safely combine narrow low-band cleanup with compensating low-shelf boosts in one pass.

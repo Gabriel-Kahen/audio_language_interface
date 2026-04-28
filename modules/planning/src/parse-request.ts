@@ -193,16 +193,20 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
     wants_speed_up: containsAny(normalizedRequest, [
       "speed up",
       "speed it up",
+      "speed this up",
       "faster",
       "quicken",
+      "increase playback speed",
       "increase the tempo",
       "increase tempo",
     ]),
     wants_slow_down: containsAny(normalizedRequest, [
       "slow down",
       "slow it down",
+      "slow this down",
       "slower",
       "stretch it out",
+      "decrease playback speed",
       "reduce the tempo",
       "reduce tempo",
     ]),
@@ -695,7 +699,7 @@ function wantsTrimTrailingSilence(value: string): boolean {
 
 function parseStretchRatio(value: string): number | undefined {
   const percentMatcher = value.match(
-    /\b(?:speed up|slow down|faster|slower|time stretch|stretch(?: it)? out)\b(?:\s+(?:by|around|about))?\s+(\d+(?:\.\d+)?)\s*(?:%|percent)?/,
+    /\b(?:speed(?: (?:it|this))? up|slow(?: (?:it|this))? down|faster|slower|time stretch|stretch(?: it)? out|increase playback speed|decrease playback speed|increase tempo|reduce tempo|decrease tempo)\b(?:\s+(?:by|around|about))?\s+(\d+(?:\.\d+)?)\s*(?:%|percent)?/,
   );
   if (percentMatcher) {
     const percent = Number(percentMatcher[1]);
@@ -703,7 +707,18 @@ function parseStretchRatio(value: string): number | undefined {
       return undefined;
     }
 
-    if (containsAny(value, ["slow down", "slower", "stretch it out"])) {
+    if (
+      containsAny(value, [
+        "slow down",
+        "slow it down",
+        "slow this down",
+        "slower",
+        "stretch it out",
+        "decrease playback speed",
+        "reduce tempo",
+        "decrease tempo",
+      ])
+    ) {
       return Number((1 + percent / 100).toFixed(6));
     }
 
@@ -711,7 +726,7 @@ function parseStretchRatio(value: string): number | undefined {
   }
 
   const multiplierMatcher = value.match(
-    /\b(?:speed up|slow down|time stretch|stretch(?: it)? out|faster|slower)\b(?:\s+(?:to|by))?\s+(\d+(?:\.\d+)?)\s*x\b/,
+    /\b(?:speed(?: (?:it|this))? up|slow(?: (?:it|this))? down|time stretch|stretch(?: it)? out|faster|slower|increase playback speed|decrease playback speed|increase tempo|reduce tempo|decrease tempo)\b(?:\s+(?:to|by))?\s+(\d+(?:\.\d+)?)\s*x\b/,
   );
   if (multiplierMatcher) {
     const multiplier = Number(multiplierMatcher[1]);
@@ -719,7 +734,18 @@ function parseStretchRatio(value: string): number | undefined {
       return undefined;
     }
 
-    if (containsAny(value, ["slow down", "slower", "stretch it out"])) {
+    if (
+      containsAny(value, [
+        "slow down",
+        "slow it down",
+        "slow this down",
+        "slower",
+        "stretch it out",
+        "decrease playback speed",
+        "reduce tempo",
+        "decrease tempo",
+      ])
+    ) {
       return Number(multiplier.toFixed(6));
     }
 
@@ -749,14 +775,17 @@ function parsePitchShiftSemitones(
   }
 
   const octaveMatcher = value.match(
-    /\b(?:pitch (?:it )?(up|down)|transpose(?: it)? (up|down)?|raise the pitch|lower the pitch|up|down)\b(?:[^.]*?)\b(?:(a|an|one|1|two|2)\s+)?(?:whole\s+)?octaves?\b/,
+    /\b(?:pitch(?:-|\s)?shift(?: the full audio)?\s+(?:(up|down|upward|downward))|pitch (?:it )?(up|down)|transpose(?: it)? (up|down|upward|downward)?|raise the pitch|lower the pitch|up|down)\b(?:[^.]*?)\b(?:(a|an|one|1|two|2)\s+)?(?:whole\s+)?octaves?\b/,
   );
   if (octaveMatcher) {
     const direction =
-      octaveMatcher[1] ?? octaveMatcher[2] ?? (value.includes("down") ? "down" : "up");
-    const octaveCountToken = octaveMatcher[3];
+      octaveMatcher[1] ??
+      octaveMatcher[2] ??
+      octaveMatcher[3] ??
+      (value.includes("down") ? "down" : "up");
+    const octaveCountToken = octaveMatcher[4];
     const octaveCount = octaveCountToken === "two" || octaveCountToken === "2" ? 2 : 1;
-    return direction === "down" ? -12 * octaveCount : 12 * octaveCount;
+    return direction.startsWith("down") ? -12 * octaveCount : 12 * octaveCount;
   }
 
   const defaultMagnitude =

@@ -91,7 +91,7 @@ Detects a small set of analysis-side failure modes:
 - measurable punch loss
 - over-compression from combined crest-factor and dynamic-range reduction
 - worsened peak control from higher peaks or lower sample headroom
-- increased sibilance from presence/harshness growth
+- increased sibilance from presence/harshness growth, but only when analysis already carries explicit sibilance annotations
 - lost air from upper-band loss
 - added muddiness from mid-band buildup paired with a duller brightness tilt
 - proxy-pattern increases in hum-like low-frequency contamination

@@ -306,6 +306,7 @@ This repo is usable today for technical experimentation and module-level integra
 - hum and click comparison now prefers direct `AnalysisReport.artifacts` evidence when it exists, with low-band or clipped-sample proxies kept only as conservative fallbacks
 - there is now a narrow alpha CLI entrypoint for local single-file editing and explicit follow-ups, but there is still no broader GUI or service surface
 - the baseline planner does not yet auto-select `pan`, `mid_side_eq`, channel remapping, or the broader Layer 1 runtime-effect surface
+- pure `more controlled` or `louder and more controlled` requests may now refuse on already tightly controlled material instead of silently degrading it
 - benchmark coverage now includes a tiny committed cleanup, timing, stereo/spatial, and control corpus, but it is still light compared with the long-term goal
 
 ## Repository Layout

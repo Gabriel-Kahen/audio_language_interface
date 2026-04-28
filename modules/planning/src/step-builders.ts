@@ -471,7 +471,7 @@ function buildTonalSteps({ objectives, analysisReport }: StepBuildContext): Edit
       target: { scope: "full_file" },
       parameters: {
         frequency_hz: midpoint(harshBand[0], harshBand[1]),
-        q: objectives.intensity === "strong" ? 8.5 : 8,
+        q: objectives.intensity === "subtle" ? 6 : objectives.intensity === "strong" ? 4.5 : 5.5,
       },
       expected_effects: ["reduce a narrow harsh resonance"],
       safety_limits: buildEqSafetyLimits(objectives),

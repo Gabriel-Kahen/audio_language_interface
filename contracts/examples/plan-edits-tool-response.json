@@ -25,13 +25,13 @@
       ],
       "verification_targets": [
         {
-          "target_id": "target_reduce_harshness_high_band",
+          "target_id": "target_reduce_harshness_presence_band",
           "goal": "reduce upper-mid harshness",
-          "label": "reduce high-band energy in the harshness region",
+          "label": "reduce upper-presence energy in the harshness region",
           "kind": "analysis_metric",
           "comparison": "decrease_by",
-          "metric": "spectral_balance.high_band_db",
-          "threshold": 1,
+          "metric": "spectral_balance.presence_band_db",
+          "threshold": 0.8,
           "target": {
             "scope": "frequency_region",
             "bands_hz": [3000, 4500]

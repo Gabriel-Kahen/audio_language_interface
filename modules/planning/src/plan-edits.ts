@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import {
+  type AnalysisReport,
   assertValidAnalysisReport,
   estimatePitchCenter,
   type PitchCenterEstimate,
@@ -321,14 +322,27 @@ function resolvePlannerObjectives(
     semanticLabels.has("slightly_harsh");
   const hasMudEvidence = semanticLabels.has("muddy") || semanticLabels.has("slightly_muddy");
 
-  if (objectives.wants_pitch_shift && analysisReport.source_character?.pitched !== true) {
+  if (effectiveObjectives.wants_pitch_shift && analysisReport.source_character?.pitched !== true) {
     throw createPlanningFailure(
       "supported_but_underspecified",
       "The baseline planner only enables conservative pitch shifting when the current source reads as pitched material.",
     );
   }
 
-  if (objectives.wants_denoise) {
+  if (
+    isAlreadyTightlyControlled(analysisReport) &&
+    effectiveObjectives.wants_more_controlled_dynamics &&
+    !hasCompanionNonDynamicsIntent(effectiveObjectives)
+  ) {
+    throw createPlanningFailure(
+      "supported_but_underspecified",
+      effectiveObjectives.wants_louder
+        ? "The current source already measures as tightly controlled, so the baseline planner will not guess at a louder-and-more-controlled pass that is likely to degrade peak behavior. Ask for louder only, explicit peak limiting, or a tonal change instead."
+        : "The current source already measures as tightly controlled, so the baseline planner will not guess at a generic more-controlled pass that is likely to degrade peak behavior. Ask for explicit peak limiting, louder only, or a tonal change instead.",
+    );
+  }
+
+  if (effectiveObjectives.wants_denoise) {
     const strongestNoiseSeverity = Math.max(
       0,
       ...(analysisReport.annotations
@@ -569,6 +583,43 @@ function resolvePlannerObjectives(
   );
 }
 
+function isAlreadyTightlyControlled(analysisReport: AnalysisReport): boolean {
+  const dynamicRangeDb = analysisReport.measurements.dynamics.dynamic_range_db;
+  const transientDensity = analysisReport.measurements.dynamics.transient_density_per_second;
+  const punchWindowRatio = analysisReport.measurements.dynamics.punch_window_ratio ?? 0;
+
+  return (
+    dynamicRangeDb !== undefined &&
+    dynamicRangeDb <= 1.25 &&
+    transientDensity <= 0.35 &&
+    punchWindowRatio <= 0.05
+  );
+}
+
+function hasCompanionNonDynamicsIntent(objectives: ReturnType<typeof parseUserRequest>): boolean {
+  return (
+    objectives.wants_darker ||
+    objectives.wants_brighter ||
+    objectives.wants_more_air ||
+    objectives.wants_less_harsh ||
+    objectives.wants_less_muddy ||
+    objectives.wants_more_warmth ||
+    objectives.wants_remove_rumble ||
+    objectives.wants_tame_sibilance ||
+    objectives.wants_denoise ||
+    objectives.wants_remove_hum ||
+    objectives.wants_remove_clicks ||
+    objectives.wants_wider ||
+    objectives.wants_narrower ||
+    objectives.wants_more_centered ||
+    objectives.wants_speed_up ||
+    objectives.wants_slow_down ||
+    objectives.wants_pitch_shift ||
+    objectives.wants_trim_silence ||
+    objectives.trim_range !== undefined
+  );
+}
+
 function buildInterpretationFailureMessage(
   interpretation: NonNullable<PlanEditsOptions["intentInterpretation"]>,
 ): string {
@@ -625,6 +676,18 @@ function applyInterpretationObjectiveHints(
 
   for (const objective of interpretation.normalizedObjectives ?? []) {
     const parsedObjective = parseUserRequest(objective);
+
+    if (parsedObjective.wants_speed_up) {
+      objectives.wants_speed_up = true;
+    }
+
+    if (parsedObjective.wants_slow_down) {
+      objectives.wants_slow_down = true;
+    }
+
+    if (parsedObjective.stretch_ratio !== undefined) {
+      objectives.stretch_ratio = parsedObjective.stretch_ratio;
+    }
 
     if (parsedObjective.wants_pitch_shift) {
       objectives.wants_pitch_shift = true;

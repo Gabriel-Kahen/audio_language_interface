@@ -36,6 +36,8 @@ describe("compareVersions", () => {
         lowBandDb: -16.4,
         midBandDb: -11.2,
         highBandDb: -9.8,
+        presenceBandDb: -10.1,
+        harshnessRatioDb: -6.4,
         spectralCentroidHz: 2650,
         stereoWidth: 0.62,
         stereoCorrelation: 0.41,
@@ -55,6 +57,8 @@ describe("compareVersions", () => {
         lowBandDb: -16.3,
         midBandDb: -11.5,
         highBandDb: -11.4,
+        presenceBandDb: -11.8,
+        harshnessRatioDb: -7.2,
         spectralCentroidHz: 2420,
         stereoWidth: 0.61,
         stereoCorrelation: 0.43,
@@ -98,9 +102,9 @@ describe("compareVersions", () => {
     expect(report.verification_results).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          target_id: "target_reduce_harshness_high_band",
+          target_id: "target_reduce_harshness_presence_band",
           status: "met",
-          observed_delta: -1.6,
+          observed_delta: -1.7,
         }),
         expect.objectContaining({
           target_id: "target_preserve_punch_crest_factor",
@@ -1426,6 +1430,15 @@ describe("compareVersions", () => {
         noiseFloorDbfs: -72,
         clippedSampleCount: 4,
         clippingDetected: false,
+        annotations: [
+          {
+            kind: "sibilance",
+            start_seconds: 0,
+            end_seconds: 1,
+            bands_hz: [3200, 6200],
+            severity: 0.42,
+          },
+        ],
       }),
       candidateAnalysis: createAnalysisReport({
         reportId: "analysis_layer2_cand",
@@ -1450,6 +1463,15 @@ describe("compareVersions", () => {
         noiseFloorDbfs: -70.5,
         clippedSampleCount: 32,
         clippingDetected: false,
+        annotations: [
+          {
+            kind: "sibilance",
+            start_seconds: 0,
+            end_seconds: 1,
+            bands_hz: [3200, 6200],
+            severity: 0.61,
+          },
+        ],
       }),
       generatedAt: "2026-04-18T20:20:22Z",
     });
@@ -1548,6 +1570,72 @@ describe("compareVersions", () => {
 
     expect(report.regressions).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ kind: "added_muddiness" })]),
+    );
+  });
+
+  it("does not treat aggregate upper-presence growth as sibilance without explicit sibilance annotations", () => {
+    const report = compareVersions({
+      baselineVersion: createVersion("ver_pitch_base"),
+      candidateVersion: createVersion("ver_pitch_cand"),
+      baselineAnalysis: createAnalysisReport({
+        reportId: "analysis_pitch_base",
+        versionId: "ver_pitch_base",
+        integratedLufs: -15.2,
+        truePeakDbtp: -1.4,
+        samplePeakDbfs: -1.5,
+        headroomDb: 1.5,
+        crestFactorDb: 11.1,
+        transientDensity: 0.8,
+        dynamicRangeDb: 7.2,
+        lowBandDb: -15.6,
+        midBandDb: -11.8,
+        highBandDb: -10.7,
+        spectralCentroidHz: 2050,
+        brightnessTiltDb: 4.7,
+        presenceBandDb: -10.3,
+        harshnessRatioDb: 0.6,
+        stereoWidth: 0.28,
+        stereoCorrelation: 0.81,
+        stereoBalanceDb: 0.1,
+        noiseFloorDbfs: -70.2,
+        clippedSampleCount: 0,
+        clippingDetected: false,
+      }),
+      candidateAnalysis: createAnalysisReport({
+        reportId: "analysis_pitch_cand",
+        versionId: "ver_pitch_cand",
+        integratedLufs: -15.1,
+        truePeakDbtp: -1.3,
+        samplePeakDbfs: -1.4,
+        headroomDb: 1.4,
+        crestFactorDb: 10.8,
+        transientDensity: 0.78,
+        dynamicRangeDb: 7.0,
+        lowBandDb: -15.4,
+        midBandDb: -11.5,
+        highBandDb: -9.2,
+        spectralCentroidHz: 2280,
+        brightnessTiltDb: 5.8,
+        presenceBandDb: -9.2,
+        harshnessRatioDb: 1.3,
+        stereoWidth: 0.28,
+        stereoCorrelation: 0.8,
+        stereoBalanceDb: 0.1,
+        noiseFloorDbfs: -70.1,
+        clippedSampleCount: 0,
+        clippingDetected: false,
+      }),
+      generatedAt: "2026-04-27T20:20:22Z",
+    });
+
+    expect(report.semantic_deltas).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ label: "more_sibilant" })]),
+    );
+    expect(report.regressions).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: "increased_sibilance" })]),
+    );
+    expect(report.semantic_deltas).toEqual(
+      expect.arrayContaining([expect.objectContaining({ label: "more_harsh" })]),
     );
   });
 });
@@ -2512,6 +2600,7 @@ interface AnalysisFixtureOptions {
   clickDetected?: boolean;
   clickCount?: number;
   clippingDetected: boolean;
+  annotations?: AnalysisReport["annotations"];
 }
 
 function createAnalysisReport(options: AnalysisFixtureOptions): AnalysisReport {
@@ -2528,6 +2617,7 @@ function createAnalysisReport(options: AnalysisFixtureOptions): AnalysisReport {
     summary: {
       plain_text: "fixture summary",
     },
+    ...(options.annotations === undefined ? {} : { annotations: options.annotations }),
     measurements: {
       levels: {
         integrated_lufs: options.integratedLufs,
@@ -2601,13 +2691,13 @@ function createEditPlan(): EditPlan {
     ],
     verification_targets: [
       {
-        target_id: "target_reduce_harshness_high_band",
+        target_id: "target_reduce_harshness_presence_band",
         goal: "reduce upper-mid harshness",
-        label: "reduce high-band energy in the harshness region",
+        label: "reduce upper-presence energy in the harshness region",
         kind: "analysis_metric",
         comparison: "decrease_by",
-        metric: "spectral_balance.high_band_db",
-        threshold: 1,
+        metric: "spectral_balance.presence_band_db",
+        threshold: 0.8,
       },
       {
         target_id: "target_reduce_brightness_tilt",

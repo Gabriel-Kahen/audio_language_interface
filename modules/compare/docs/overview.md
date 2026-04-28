@@ -154,6 +154,8 @@ Each item includes:
 - `confidence`
 - `evidence`
 
+Sibilance labels are narrower than broad harshness labels: `less_sibilant` and `more_sibilant` only appear when explicit upstream sibilance annotations are present alongside the measured presence or harshness movement.
+
 Important behavior:
 
 - labels only appear when a hard-coded threshold is crossed
@@ -183,6 +185,8 @@ The current regression warning kinds are:
 - `increased_click_proxy`
 
 `added_muddiness` is intentionally conservative: the current detector only fires when mid-band buildup is paired with a duller brightness tilt, so broad louder/control lifts are not mislabeled as muddier purely because multiple bands rose together.
+
+`increased_sibilance` is also intentionally conservative: aggregate presence or harshness growth alone is not enough without explicit upstream sibilance annotations.
 
 ### Render regressions
 
@@ -260,6 +264,7 @@ The fallback `evaluateGoalAlignment()` path is still heuristic and keyword-drive
 - Punch-related goals are still treated as preservation checks, but they now also use `dynamic_range_db` when present instead of relying only on crest factor and transient density.
 - Cleanup-related goals still anchor on measurable noise-floor reduction or clipping removal, but they now reject large top-end or punch losses that suggest denoise artifacts.
 - Sibilance checks require `presence_band_db` and `harshness_ratio_db`; without those fields, they return `unknown`.
+- `more_sibilant` and `increased_sibilance` also require explicit upstream sibilance annotations, so broad pitch or brightness shifts on non-sibilant material are not mislabeled as sibilance changes.
 - Hum and click checks are now direct-evidence-first. `hum` prefers `hum_detected` and `hum_level_dbfs`, and `click` prefers `click_detected`, `click_count`, and `click_rate_per_second`. Low-band, noise-floor, and clipped-sample movement remain only as conservative fallback signals when those direct artifact fields are unavailable.
 
 ## Summary generation

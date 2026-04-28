@@ -190,6 +190,8 @@ export function detectAnalysisRegressions(
   }
 
   if (
+    (baseline.evidence?.explicit_sibilance_annotation === true ||
+      candidate.evidence?.explicit_sibilance_annotation === true) &&
     presenceBandDelta !== undefined &&
     harshnessRatioDelta !== undefined &&
     presenceBandDelta >= 0.75 &&

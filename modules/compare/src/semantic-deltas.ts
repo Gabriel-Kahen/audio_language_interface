@@ -14,7 +14,7 @@ export function deriveSemanticDeltas(
 
   pushIfPresent(semanticDeltas, describeBrightnessShift(baseline, candidate));
   pushIfPresent(semanticDeltas, describeHarshnessShift(baseline, candidate));
-  pushIfPresent(semanticDeltas, describeSibilanceShift(metricDeltas));
+  pushIfPresent(semanticDeltas, describeSibilanceShift(baseline, candidate, metricDeltas));
   pushIfPresent(semanticDeltas, describeAirShift(metricDeltas));
   pushIfPresent(semanticDeltas, describeWarmthShift(metricDeltas));
   pushIfPresent(semanticDeltas, describeMuddinessShift(metricDeltas));
@@ -94,12 +94,23 @@ function describeHarshnessShift(
   return undefined;
 }
 
-function describeSibilanceShift(metricDeltas: MetricDelta[]): SemanticDelta | undefined {
+function describeSibilanceShift(
+  baseline: CompareMeasurementContext,
+  candidate: CompareMeasurementContext,
+  metricDeltas: MetricDelta[],
+): SemanticDelta | undefined {
+  const hasExplicitSibilanceEvidence =
+    baseline.evidence?.explicit_sibilance_annotation === true ||
+    candidate.evidence?.explicit_sibilance_annotation === true;
   const presenceDelta = getDelta(metricDeltas, "spectral_balance.presence_band_db");
   const harshnessRatioDelta = getDelta(metricDeltas, "spectral_balance.harshness_ratio_db");
   const highBandDelta = getDelta(metricDeltas, "spectral_balance.high_band_db");
 
-  if (presenceDelta === undefined || harshnessRatioDelta === undefined) {
+  if (
+    !hasExplicitSibilanceEvidence ||
+    presenceDelta === undefined ||
+    harshnessRatioDelta === undefined
+  ) {
     return undefined;
   }
 

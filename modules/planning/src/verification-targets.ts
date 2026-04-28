@@ -183,13 +183,13 @@ export function buildVerificationTargets(
 
   if (objectives.wants_less_harsh) {
     targets.push({
-      target_id: "target_reduce_harshness_high_band",
+      target_id: "target_reduce_harshness_presence_band",
       goal: "reduce upper-mid harshness",
-      label: "reduce high-band energy in the harshness region",
+      label: "reduce upper-presence energy in the harshness region",
       kind: "analysis_metric",
       comparison: "decrease_by",
-      metric: "spectral_balance.high_band_db",
-      threshold: thresholdByIntensity(objectives.intensity, 0.4, 1, 1.4),
+      metric: "spectral_balance.presence_band_db",
+      threshold: thresholdByIntensity(objectives.intensity, 0.4, 0.8, 1.1),
       ...(harshnessAnnotation?.bands_hz === undefined
         ? {}
         : {
@@ -198,18 +198,19 @@ export function buildVerificationTargets(
               bands_hz: harshnessAnnotation.bands_hz,
             } as const,
           }),
-      rationale: "Harshness should show up as lower upper-mid or high-band energy after the edit.",
+      rationale:
+        "Harshness should show up as lower upper-presence energy after the edit, even when a companion pitch move changes overall top-end placement.",
     });
     targets.push({
-      target_id: "target_reduce_harshness_centroid",
+      target_id: "target_reduce_harshness_ratio",
       goal: "reduce upper-mid harshness",
-      label: "reduce spectral centroid enough to soften the upper-mid emphasis",
+      label: "reduce the harshness ratio enough to soften upper-mid emphasis",
       kind: "analysis_metric",
       comparison: "decrease_by",
-      metric: "spectral_balance.spectral_centroid_hz",
-      threshold: thresholdByIntensity(objectives.intensity, 30, 80, 120),
+      metric: "spectral_balance.harshness_ratio_db",
+      threshold: thresholdByIntensity(objectives.intensity, 0.25, 0.5, 0.8),
       rationale:
-        "A small centroid drop helps verify the source actually moved away from harshness.",
+        "Harshness ratio tracks concentrated upper-mid bite more directly than broad centroid movement.",
     });
   }
 
@@ -374,8 +375,19 @@ export function buildVerificationTargets(
       kind: "analysis_metric",
       comparison: "decrease_by",
       metric: "dynamics.dynamic_range_db",
-      threshold: thresholdByIntensity(objectives.intensity, 0.3, 0.8, 1.2),
+      threshold: thresholdByIntensity(objectives.intensity, 0.15, 0.25, 0.4),
       rationale: "Controlled dynamics should trim range slightly without flattening the source.",
+    });
+    targets.push({
+      target_id: "target_control_dynamics_headroom",
+      goal: "make dynamics more controlled without over-compressing",
+      label: "improve peak headroom modestly",
+      kind: "analysis_metric",
+      comparison: "increase_by",
+      metric: "levels.headroom_db",
+      threshold: thresholdByIntensity(objectives.intensity, 0.2, 0.35, 0.5),
+      rationale:
+        "When a source is already dense, better control may show up as improved peak margin rather than a large dynamic-range swing.",
     });
     targets.push({
       target_id: "target_control_dynamics_no_overcompression",

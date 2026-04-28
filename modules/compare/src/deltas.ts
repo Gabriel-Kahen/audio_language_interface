@@ -11,6 +11,9 @@ const UNCHANGED_EPSILON = 1e-6;
 
 export type CompareMeasurementContext = AnalysisMeasurements & {
   derived?: DerivedMeasurements;
+  evidence?: {
+    explicit_sibilance_annotation: boolean;
+  };
 };
 
 /** Computes ordered numeric deltas from the measurement fields compare currently understands. */
@@ -226,7 +229,17 @@ export function createMeasurementContext(input: {
       ...(input.pitchCenterHz === undefined ? {} : { pitch_center_hz: input.pitchCenterHz }),
       absolute_stereo_balance_db: Math.abs(input.analysis.measurements.stereo.balance_db ?? 0),
     },
+    evidence: {
+      explicit_sibilance_annotation: hasExplicitSibilanceAnnotation(input.analysis),
+    },
   };
+}
+
+function hasExplicitSibilanceAnnotation(analysis: AnalysisReport): boolean {
+  return (analysis.annotations ?? []).some((annotation) => {
+    const kind = annotation.kind.toLowerCase();
+    return kind === "sibilance" || kind === "sibilant";
+  });
 }
 
 export function computeRenderMetricDeltas(
