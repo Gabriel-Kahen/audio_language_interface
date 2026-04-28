@@ -7,7 +7,7 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 ## Current phrase mappings
 
 - `darker`, `less bright` -> gentle `tilt_eq` darkening around `1200 Hz`
-- `less harsh`, `smoother`, non-regional `softer` -> `notch_filter` centered on the analysis harshness annotation midpoint, or `3750 Hz` fallback
+- `less harsh`, `tame the harshness`, `smoother`, non-regional `softer` -> `notch_filter` centered on the analysis harshness annotation midpoint, or `3750 Hz` fallback
 - `more relaxed`, `less aggressive`, `less intense`, `less sharp`, `less gritty`, `less fuzzy` -> conservative tonal softening only when deterministic evidence supports that grounded reading; harshness/aggressive evidence may use `notch_filter + tilt_eq`, while brightness-only evidence uses darker `tilt_eq` without inventing harshness repair
 - `less distorted`, `repair clipping`, `declip` -> conservative `declip` only when analysis shows direct clipping evidence
 - with `planningPolicy = "best_effort"`, subjective texture repair or softening wording without direct artifact evidence falls back to conservative tonal softening and records a best-effort constraint note instead of claiming hard artifact repair
@@ -21,7 +21,7 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - `more controlled`, `compression`, `tighter and more controlled` -> conservative `compressor` settings with explicit threshold, ratio, attack, and release when the source still has measurable dynamics room to tighten
 - `louder and more controlled`, `make it louder and more controlled` -> dedicated `compressor -> normalize` path when the source still has dynamics room to tighten; already tightly controlled sources use a peak-limited `limiter` input-gain path instead of refusing or adding redundant compression
 - `normalize it louder but keep it controlled` -> measured `normalize` path with true-peak protection when the source already measures as tightly controlled, or the controlled-loudness path when dynamics still have room to tighten safely
-- `control peaks`, `catch peaks`, `limit the peaks`, `limiter` -> conservative `limiter` settings with explicit `ceiling_dbtp`, `release_ms`, `lookahead_ms`, and no added limiter input gain by default
+- `control peaks`, `catch peaks`, `catch the peaks`, `limit the peaks`, `limiter` -> conservative `limiter` settings with explicit `ceiling_dbtp`, `release_ms`, `lookahead_ms`, and no added limiter input gain by default
 - explicit `normalize` / `normalise` requests -> `normalize` with integrated-loudness targeting and a `-1 dBTP` ceiling
 - `remove noise`, `reduce hiss`, `denoise` -> conservative `denoise` only when analysis indicates sustained noise
 - `tame sibilance`, `de-ess` -> conservative `de_esser` only when analysis or semantics show sibilance evidence, including one strong or multiple localized upper-presence harshness annotations in the de-essing range
@@ -31,7 +31,7 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - `speed it up`, `slow it down`, `narrow this` -> same baseline timing or stereo-width mappings as the corresponding shorter phrases
 - `increase playback speed by 10%`, `decrease playback speed by 10%`, `increase tempo by 10%`, `decrease tempo by 10%` -> same conservative `time_stretch` mapping as the shorter `speed up` or `slow down` wording
 - `center this more`, `center the stereo image`, `more centered`, `fix stereo imbalance` -> conservative `stereo_balance_correction` only for already-stereo material with clear but not extreme left-right imbalance
-- `louder` -> conservative `gain` step limited by measured true-peak headroom to a `-1 dBTP` ceiling unless the request also explicitly asks for more control and the source is not already tightly controlled, in which case the dedicated controlled-loudness path takes precedence
+- `louder`, `turn it up` -> conservative `gain` step limited by measured true-peak headroom to a `-1 dBTP` ceiling unless the request also explicitly asks for more control and the source is not already tightly controlled, in which case the dedicated controlled-loudness path takes precedence
 - `quieter` -> conservative negative `gain` step
 - `trim from Xs to Ys` -> `trim` time-range step with explicit start and end seconds
 - `make the first 0.5 seconds darker`, `remove 60 Hz hum only in the last 0.5 seconds`, `make it less harsh from 0.2s to 0.7s` -> keep the same supported operation family, but ground the steps to one explicit `time_range` target instead of `full_file`

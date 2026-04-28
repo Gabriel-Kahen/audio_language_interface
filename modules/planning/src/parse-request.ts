@@ -82,6 +82,8 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
         "less harsh",
         "reduce harsh",
         "tame harsh",
+        "tame harshness",
+        "tame the harshness",
         "smoother",
         "less aggressive",
         "less intense",
@@ -117,7 +119,13 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "high pass low end",
       "highpass low end",
     ]),
-    wants_louder: containsAny(normalizedRequest, ["louder", "turn up", "more level"]),
+    wants_louder: containsAny(normalizedRequest, [
+      "louder",
+      "turn up",
+      "turn it up",
+      "turn this up",
+      "more level",
+    ]),
     wants_quieter:
       containsAny(normalizedRequest, ["quieter", "turn down", "lower level"]) ||
       isLevelSofteningRequest(normalizedRequest),
@@ -127,6 +135,8 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "control peaks",
       "control the peaks",
       "catch peaks",
+      "catch the peaks",
+      "catch those peaks",
       "keep peaks in check",
       "limit peaks",
       "limit the peaks",

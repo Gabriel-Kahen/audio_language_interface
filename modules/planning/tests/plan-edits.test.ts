@@ -65,11 +65,17 @@ describe("parseUserRequest", () => {
   it("parses the benchmarked loudness-and-peak-control wording variants", () => {
     const louderAndControlled = parseUserRequest("Make it louder and more controlled.");
     const peakControl = parseUserRequest("Control the peaks without crushing it.");
+    const turnItUpAndTame = parseUserRequest("Tame the harshness and turn it up.");
+    const catchThePeaks = parseUserRequest("Catch the peaks but keep punch.");
 
     expect(louderAndControlled.wants_louder).toBe(true);
     expect(louderAndControlled.wants_more_controlled_dynamics).toBe(true);
     expect(peakControl.wants_peak_control).toBe(true);
     expect(peakControl.preserve_punch).toBe(true);
+    expect(turnItUpAndTame.wants_less_harsh).toBe(true);
+    expect(turnItUpAndTame.wants_louder).toBe(true);
+    expect(catchThePeaks.wants_peak_control).toBe(true);
+    expect(catchThePeaks.preserve_punch).toBe(true);
   });
 
   it("parses supported denoise and stereo-width intent phrases", () => {
@@ -1034,6 +1040,32 @@ describe("planEdits", () => {
 
     expect(plan.steps.map((step) => step.operation)).toEqual(["limiter"]);
     expect(plan.goals).toEqual([
+      "control peak excursions conservatively",
+      "preserve transient impact",
+    ]);
+  });
+
+  it("maps fresh stress aliases for harshness-plus-louder and peak control", () => {
+    const harshLouderPlan = planEdits({
+      userRequest: "Tame the harshness and turn it up.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+    const peakPunchPlan = planEdits({
+      userRequest: "Catch the peaks but keep punch.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(harshLouderPlan.steps.map((step) => step.operation)).toEqual(["notch_filter", "gain"]);
+    expect(harshLouderPlan.goals).toEqual([
+      "reduce upper-mid harshness",
+      "increase output level conservatively",
+    ]);
+    expect(peakPunchPlan.steps.map((step) => step.operation)).toEqual(["limiter"]);
+    expect(peakPunchPlan.goals).toEqual([
       "control peak excursions conservatively",
       "preserve transient impact",
     ]);
