@@ -37,6 +37,7 @@ describe("request-cycle golden benchmark coverage", () => {
     const cases = [
       getRequestCycleCase("request_cycle_reduce_brightness_without_losing_punch"),
       getRequestCycleCase("request_cycle_less_muddy"),
+      getRequestCycleCase("request_cycle_warmer_clean_low_mids_stress"),
       getRequestCycleCase("request_cycle_tame_sibilance"),
       getRequestCycleCase("request_cycle_speed_up_preserve_pitch"),
       getRequestCycleCase("request_cycle_pitch_up_two_semitones"),
@@ -71,6 +72,14 @@ describe("request-cycle golden benchmark coverage", () => {
         caseId: "request_cycle_less_muddy",
         prompt: "make this less muddy",
         operations: ["parametric_eq"],
+        resultKind: "applied",
+        errorStage: undefined,
+        failureClass: undefined,
+      },
+      {
+        caseId: "request_cycle_warmer_clean_low_mids_stress",
+        prompt: "Make it warmer but clean up the low mids.",
+        operations: ["parametric_eq", "low_shelf"],
         resultKind: "applied",
         errorStage: undefined,
         failureClass: undefined,

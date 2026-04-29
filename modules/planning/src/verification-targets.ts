@@ -349,12 +349,18 @@ export function buildVerificationTargets(
       targets.push({
         target_id: "target_more_warmth_low_band",
         goal: "add a little low-band warmth",
-        label: "increase low-band weight slightly",
+        label: objectives.wants_less_muddy
+          ? "increase low-band weight while low-mid buildup is reduced"
+          : "increase low-band weight slightly",
         kind: "analysis_metric",
         comparison: "increase_by",
         metric: "spectral_balance.low_band_db",
-        threshold: thresholdByIntensity(objectives.intensity, 0.3, 0.75, 1.2),
-        rationale: "Warmth should show up as a modest increase in low-band weight.",
+        threshold: objectives.wants_less_muddy
+          ? thresholdByIntensity(objectives.intensity, 0.12, 0.3, 0.55)
+          : thresholdByIntensity(objectives.intensity, 0.3, 0.75, 1.2),
+        rationale: objectives.wants_less_muddy
+          ? "When warmth is paired with low-mid cleanup, verification should expect a smaller low-band lift because the companion bell cut is intentionally removing nearby buildup."
+          : "Warmth should show up as a modest increase in low-band weight.",
       });
     }
     targets.push({

@@ -303,13 +303,6 @@ function resolvePlannerObjectives(
     );
   }
 
-  if (objectives.wants_more_warmth && objectives.wants_less_muddy) {
-    throw createPlanningFailure(
-      "supported_but_underspecified",
-      "The request asks for both more warmth and less muddiness. The baseline planner does not yet combine those opposing low-band shelf directions safely in one pass.",
-    );
-  }
-
   const effectiveObjectives = { ...objectives };
   applyInterpretationObjectiveHints(effectiveObjectives, intentInterpretation);
   const regionTarget = resolveRegionTarget(effectiveObjectives, audioVersion, intentInterpretation);
@@ -406,9 +399,7 @@ function resolvePlannerObjectives(
     hasBrightnessEvidence &&
     effectiveObjectives.wants_less_harsh
   ) {
-    if (planningPolicy === "best_effort") {
-      effectiveObjectives.wants_darker = true;
-    }
+    effectiveObjectives.wants_darker = true;
     effectiveObjectives.wants_less_harsh = false;
   }
 
@@ -612,6 +603,10 @@ function resolvePlannerObjectives(
     return effectiveObjectives;
   }
 
+  if (hasExplicitCleanerDirection(effectiveObjectives)) {
+    return effectiveObjectives;
+  }
+
   function resolveRegionTarget(
     objectives: ReturnType<typeof parseUserRequest>,
     audioVersion: PlanEditsOptions["audioVersion"],
@@ -748,6 +743,23 @@ function resolvePlannerObjectives(
   );
 }
 
+function hasExplicitCleanerDirection(objectives: ReturnType<typeof parseUserRequest>): boolean {
+  return (
+    objectives.wants_darker ||
+    objectives.wants_brighter ||
+    objectives.wants_more_air ||
+    objectives.wants_less_harsh ||
+    objectives.wants_less_muddy ||
+    objectives.wants_more_warmth ||
+    objectives.wants_remove_rumble ||
+    objectives.wants_denoise ||
+    objectives.wants_tame_sibilance ||
+    objectives.wants_remove_clicks ||
+    objectives.wants_declip ||
+    objectives.wants_remove_hum
+  );
+}
+
 function hasClippingEvidence(analysisReport: AnalysisReport): boolean {
   return (
     analysisReport.measurements.artifacts.clipping_detected ||
@@ -852,6 +864,7 @@ function preserveAlreadyControlledDynamics(objectives: ReturnType<typeof parseUs
     hasCompanionNonDynamicsIntent(objectives)
   ) {
     objectives.wants_more_controlled_dynamics = false;
+    objectives.skipped_redundant_controlled_dynamics = true;
   }
 }
 
@@ -1210,6 +1223,12 @@ function buildConstraints(
 
   if (objectives.wants_more_controlled_dynamics) {
     constraints.push("avoid obvious pumping or over-compression");
+  }
+
+  if (objectives.skipped_redundant_controlled_dynamics) {
+    constraints.push(
+      "source already measures as tightly controlled; skip redundant compression while applying the remaining requested edits",
+    );
   }
 
   if (

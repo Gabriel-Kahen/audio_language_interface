@@ -103,7 +103,7 @@ The current cleanup slice is now analysis-backed instead of purely prompt-driven
 
 The current benchmarked planner surface also includes conservative compound-edit handling:
 
-- explicit 2-step and 3-step tonal compounds such as `make this warmer and airier` and `make this darker, less harsh, and less muddy`
+- explicit 2-step and 3-step tonal compounds such as `make this warmer and airier`, `make this warmer but clean up the low mids`, and `make this darker, less harsh, and less muddy`
 - a narrow cross-family compound slice such as `speed up by 10% and tame the sibilance`, `tame the sibilance and make it darker`, `center this more and make it wider`, and the current tradeoff-style `make this a little tighter and more controlled, and darker`
 - explicit operation-phase ordering instead of prompt-order guesswork
 - structured multi-goal verification rollups that keep requested-target success and regression-guard outcomes separate, including honest partial-success reporting when only part of a compound request lands
@@ -295,7 +295,7 @@ The current system is strongest on conservative editing requests such as:
 - more relaxed
 - slightly cleaner
 - explicit loudness normalization
-- airier, warmer, or less muddy through conservative surgical EQ
+- airier, warmer, less muddy, or warmer-plus-low-mid cleanup through conservative surgical EQ
 - texture wording such as `more relaxed` or `less aggressive` when it can be grounded honestly as a conservative tonal-softening move
 - CLI-only `--best-effort` texture fallbacks for subjective phrases such as `less distorted`, `less aggressive`, `less sharp`, `less gritty`, `less fuzzy`, or `less intense`; these stay labeled as proxy tonal-softening edits rather than claimed artifact repair
 - tame sibilance, remove explicitly specified `50 Hz` or `60 Hz` hum, and clean up clicks
@@ -318,7 +318,7 @@ This repo is usable today for technical experimentation and module-level integra
 - hum and click comparison now prefers direct `AnalysisReport.artifacts` evidence when it exists, with low-band or clipped-sample proxies kept only as conservative fallbacks
 - there is now a narrow alpha CLI entrypoint for local single-file editing and explicit follow-ups, but there is still no broader GUI or service surface
 - the baseline planner does not yet auto-select `pan`, `mid_side_eq`, channel remapping, or the broader Layer 1 runtime-effect surface
-- pure `more controlled` or `louder and more controlled` requests may now refuse on already tightly controlled material instead of silently degrading it
+- pure `more controlled` requests may now refuse on already tightly controlled material instead of silently degrading it, while companion tonal edits can proceed with an explicit note that redundant compression was skipped
 - benchmark coverage now includes a tiny committed cleanup, grounded texture, timing, stereo/spatial, and control corpus, but it is still light compared with the long-term goal
 
 ## Repository Layout

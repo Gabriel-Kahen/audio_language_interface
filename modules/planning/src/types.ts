@@ -189,6 +189,7 @@ export interface ParsedEditObjectives {
   wants_more_controlled_dynamics: boolean;
   wants_peak_control: boolean;
   controlled_loudness_limiter_gain_db?: number;
+  skipped_redundant_controlled_dynamics?: boolean;
   wants_denoise: boolean;
   wants_tame_sibilance: boolean;
   wants_remove_clicks: boolean;

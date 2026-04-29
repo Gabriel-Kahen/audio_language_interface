@@ -67,6 +67,8 @@ describe("parseUserRequest", () => {
     const peakControl = parseUserRequest("Control the peaks without crushing it.");
     const turnItUpAndTame = parseUserRequest("Tame the harshness and turn it up.");
     const catchThePeaks = parseUserRequest("Catch the peaks but keep punch.");
+    const turnItDown = parseUserRequest("Turn it down a little.");
+    const keepThePeaks = parseUserRequest("Keep the peaks in check without crushing the punch.");
 
     expect(louderAndControlled.wants_louder).toBe(true);
     expect(louderAndControlled.wants_more_controlled_dynamics).toBe(true);
@@ -76,6 +78,23 @@ describe("parseUserRequest", () => {
     expect(turnItUpAndTame.wants_louder).toBe(true);
     expect(catchThePeaks.wants_peak_control).toBe(true);
     expect(catchThePeaks.preserve_punch).toBe(true);
+    expect(turnItDown.wants_quieter).toBe(true);
+    expect(turnItDown.intensity).toBe("subtle");
+    expect(keepThePeaks.wants_peak_control).toBe(true);
+    expect(keepThePeaks.preserve_punch).toBe(true);
+  });
+
+  it("parses stress wording for harshness removal and word-number semitone shifts", () => {
+    const takeOutHarshness = parseUserRequest("Take out some harshness.");
+    const sevenSemitones = parseUserRequest("Pitch it up seven semitones.");
+    const fiveSemitones = parseUserRequest("Pitch it up five semitones.");
+    const conflictingSignedDirection = parseUserRequest("Pitch it up -5 semitones.");
+
+    expect(takeOutHarshness.wants_less_harsh).toBe(true);
+    expect(sevenSemitones.pitch_shift_semitones).toBe(7);
+    expect(fiveSemitones.pitch_shift_semitones).toBe(5);
+    expect(conflictingSignedDirection.pitch_shift_semitones).toBeUndefined();
+    expect(conflictingSignedDirection.request_classification).toBe("supported_but_underspecified");
   });
 
   it("parses supported denoise and stereo-width intent phrases", () => {
@@ -707,6 +726,29 @@ describe("planEdits", () => {
     );
   });
 
+  it("supports warmth plus low-mid cleanup as a safe two-step tonal compound", () => {
+    const plan = planEdits({
+      userRequest: "Make it warmer but clean up the low mids.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["parametric_eq", "low_shelf"]);
+    expect(plan.steps[0]?.parameters).toEqual({
+      bands: [{ type: "bell", frequency_hz: 360, gain_db: -2.5, q: 0.9 }],
+    });
+    expect(plan.steps[1]?.parameters).toEqual({ frequency_hz: 180, gain_db: 1.5, q: 0.7 });
+    expect(plan.goals).toEqual(["trim excess low-mid weight", "add a little low-band warmth"]);
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ target_id: "target_less_muddy_mid_band" }),
+        expect.objectContaining({ target_id: "target_more_warmth_low_band", threshold: 0.3 }),
+        expect.objectContaining({ target_id: "target_more_warmth_no_added_muddiness" }),
+      ]),
+    );
+  });
+
   it("does not add the less-muddy air-loss guard when darker is explicitly requested", () => {
     const plan = planEdits({
       userRequest: "Make it darker and less muddy.",
@@ -1071,6 +1113,43 @@ describe("planEdits", () => {
     ]);
   });
 
+  it("maps newer stress aliases without dropping requested objectives", () => {
+    const turnDownPlan = planEdits({
+      userRequest: "Turn the level down a little.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+    const peakPunchPlan = planEdits({
+      userRequest: "Keep the peaks in check without crushing the punch.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+    const harshDarkerPlan = planEdits({
+      userRequest: "Make it darker and take out some harshness.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(turnDownPlan.steps.map((step) => step.operation)).toEqual(["gain"]);
+    expect(turnDownPlan.goals).toEqual(["reduce output level conservatively"]);
+    expect(peakPunchPlan.steps.map((step) => step.operation)).toEqual(["limiter"]);
+    expect(peakPunchPlan.goals).toEqual([
+      "control peak excursions conservatively",
+      "preserve transient impact",
+    ]);
+    expect(harshDarkerPlan.steps.map((step) => step.operation)).toEqual([
+      "notch_filter",
+      "tilt_eq",
+    ]);
+    expect(harshDarkerPlan.goals).toEqual([
+      "reduce upper-mid harshness",
+      "tilt the overall balance slightly darker",
+    ]);
+  });
+
   it("refuses generic controlled-dynamics requests on already tightly controlled material", () => {
     expect(() =>
       planEdits({
@@ -1136,6 +1215,9 @@ describe("planEdits", () => {
 
     expect(plan.steps.map((step) => step.operation)).toEqual(["tilt_eq"]);
     expect(plan.goals).toEqual(["tilt the overall balance slightly darker"]);
+    expect(plan.constraints).toContain(
+      "source already measures as tightly controlled; skip redundant compression while applying the remaining requested edits",
+    );
   });
 
   it("keeps pure peak-control prompts from adding loudness-maximizing limiter gain on low-peak sources", () => {
@@ -1355,8 +1437,11 @@ describe("planEdits", () => {
   it("maps exact explicit semitone stress prompts with the requested direction", () => {
     const requestsToExpectedSemitones = [
       ["Pitch it up 3 semitones.", 3],
+      ["Pitch it up seven semitones.", 7],
+      ["Pitch it up five semitones.", 5],
       ["Transpose it up 3 semitones.", 3],
       ["Lower the pitch by 1 semitone.", -1],
+      ["Lower the pitch by five semitones.", -5],
     ] as const;
 
     for (const [userRequest, semitones] of requestsToExpectedSemitones) {
@@ -1834,6 +1919,21 @@ describe("planEdits", () => {
     expect(plan.constraints).toContain(
       "best_effort: texture wording had weak or missing direct artifact evidence, so the planner chose a conservative tonal-softening proxy instead of refusing",
     );
+  });
+
+  it("maps brightness-backed sharpness softening to darker tilt instead of dropping it", () => {
+    const plan = planEdits({
+      userRequest: "Make it less sharp and a little louder.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createBrightNotHarshAnalysisReportFixture(),
+      semanticProfile: createBrightSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["tilt_eq", "gain"]);
+    expect(plan.goals).toEqual([
+      "tilt the overall balance slightly darker",
+      "increase output level conservatively",
+    ]);
   });
 
   it("drops unsupported declipping from compounds when safe tonal objectives remain", () => {

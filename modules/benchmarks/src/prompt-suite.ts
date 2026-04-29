@@ -1102,6 +1102,40 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
       },
     },
     {
+      caseId: "request_cycle_warmer_clean_low_mids_stress",
+      family: "first_prompt_family",
+      prompt: "Make it warmer but clean up the low mids.",
+      description:
+        "Stress wording for the safe low-band tonal compound should cut low-mid buildup before adding warmth.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["parametric_eq", "low_shelf"],
+          forbidden_operations: ["notch_filter", "denoise"],
+          expected_operation_order: ["parametric_eq", "low_shelf"],
+          required_goals: ["trim excess low-mid weight", "add a little low-band warmth"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "trim excess low-mid weight": "met",
+            "add a little low-band warmth": "met",
+          },
+          verification_statuses: {
+            target_less_muddy_mid_band: "met",
+            target_less_muddy_no_lost_air_regression: "met",
+            target_more_warmth_low_band: "met",
+            target_more_warmth_no_added_muddiness: "met",
+          },
+        },
+        regressions: {
+          forbidden_regression_kinds: ["added_muddiness", "lost_air"],
+        },
+      },
+    },
+    {
       caseId: "request_cycle_darker_less_harsh_less_muddy",
       family: "first_prompt_family",
       prompt: "Make this darker, less harsh, and less muddy.",

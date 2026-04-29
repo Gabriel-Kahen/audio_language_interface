@@ -84,6 +84,11 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
         "tame harsh",
         "tame harshness",
         "tame the harshness",
+        "take out harsh",
+        "take out harshness",
+        "take out some harshness",
+        "remove harsh",
+        "remove harshness",
         "smoother",
         "less aggressive",
         "less intense",
@@ -127,8 +132,16 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "more level",
     ]),
     wants_quieter:
-      containsAny(normalizedRequest, ["quieter", "turn down", "lower level"]) ||
-      isLevelSofteningRequest(normalizedRequest),
+      containsAny(normalizedRequest, [
+        "quieter",
+        "turn down",
+        "turn it down",
+        "turn this down",
+        "turn the level down",
+        "turn level down",
+        "lower level",
+        "lower the level",
+      ]) || isLevelSofteningRequest(normalizedRequest),
     wants_more_even_level: containsAny(normalizedRequest, ["normalize", "normalise"]),
     wants_more_controlled_dynamics: wantsMoreControlledDynamics(normalizedRequest),
     wants_peak_control: containsAny(normalizedRequest, [
@@ -138,6 +151,7 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "catch the peaks",
       "catch those peaks",
       "keep peaks in check",
+      "keep the peaks in check",
       "limit peaks",
       "limit the peaks",
       "peak limiting",
@@ -278,6 +292,7 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "without losing punch",
       "without losing the punch",
       "without crushing it",
+      "without crushing the punch",
       "without crushing the sound",
       "without crushing the peaks",
       "keep the transients",
@@ -307,6 +322,10 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
   const pitchShiftSemitones = parsePitchShiftSemitones(normalizedRequest, parsed);
   if (pitchShiftSemitones !== undefined) {
     parsed.pitch_shift_semitones = pitchShiftSemitones;
+  }
+  const pitchShiftDirectionConflict = parsePitchShiftDirectionConflict(normalizedRequest);
+  if (pitchShiftDirectionConflict !== undefined) {
+    parsed.supported_but_underspecified_requests.push(pitchShiftDirectionConflict);
   }
 
   const trimRange = parseTrimRange(normalizedRequest);
@@ -342,6 +361,7 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
 function normalizeRequest(value: string): string {
   return value
     .toLowerCase()
+    .replace(/-(?=\d)/g, " negative ")
     .replace(/[^a-z0-9.\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -884,24 +904,35 @@ function parsePitchShiftSemitones(
     return undefined;
   }
 
+  const semitoneTokenPattern =
+    "negative\\s+\\d+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve";
   const directedSemitoneMatcher = value.match(
-    /\b(?:(pitch(?: it)?|pitch(?:-|\s)?shift(?: the full audio)?|transpose(?: it)?|shift the pitch)\s+(up|down)|raise the pitch|lower the pitch)\b(?:\s+(?:by|around|about))?\s+(-?\d+(?:\.\d+)?)\s+(?:semitones?|st)\b/u,
+    new RegExp(
+      `\\b(?:(pitch(?: it)?|pitch(?:-|\\s)?shift(?: the full audio)?|transpose(?: it)?|shift the pitch)\\s+(up|down)|raise the pitch|lower the pitch)\\b(?:\\s+(?:by|around|about))?\\s+(${semitoneTokenPattern})\\s+(?:semitones?|st)\\b`,
+      "u",
+    ),
   );
   if (directedSemitoneMatcher) {
     const direction =
       directedSemitoneMatcher[2] ??
       (directedSemitoneMatcher[0].includes("lower the pitch") ? "down" : "up");
-    const magnitude = Math.abs(Number(directedSemitoneMatcher[3]));
+    if (isNegativeNumberToken(directedSemitoneMatcher[3])) {
+      return undefined;
+    }
+    const magnitude = Math.abs(parseNumberToken(directedSemitoneMatcher[3]));
     if (Number.isFinite(magnitude)) {
       return direction === "down" ? -magnitude : magnitude;
     }
   }
 
   const explicitMatcher = value.match(
-    /\b(?:pitch (?:up|down)|transpose|shift the pitch)\b(?:\s+(?:by|up|down))?\s+(-?\d+(?:\.\d+)?)\s+(?:semitones?|st)\b/,
+    new RegExp(
+      `\\b(?:pitch (?:up|down)|transpose|shift the pitch)\\b(?:\\s+(?:by|up|down))?\\s+(${semitoneTokenPattern})\\s+(?:semitones?|st)\\b`,
+      "u",
+    ),
   );
   if (explicitMatcher) {
-    const semitones = Number(explicitMatcher[1]);
+    const semitones = parseNumberToken(explicitMatcher[1]);
     return Number.isFinite(semitones) ? semitones : undefined;
   }
 
@@ -927,4 +958,53 @@ function parsePitchShiftSemitones(
   }
 
   return defaultMagnitude;
+}
+
+function parsePitchShiftDirectionConflict(value: string): string | undefined {
+  if (!value.match(/\b(?:pitch|transpose|raise the pitch|lower the pitch|shift the pitch)\b/u)) {
+    return undefined;
+  }
+
+  const hasDirectedNegativeSemitone = value.match(
+    /\b(?:(?:pitch(?: it)?|pitch(?:-|\s)?shift(?: the full audio)?|transpose(?: it)?|shift the pitch)\s+(?:up|down)|raise the pitch|lower the pitch)\b(?:\s+(?:by|around|about))?\s+negative\s+\d+(?:\.\d+)?\s+(?:semitones?|st)\b/u,
+  );
+
+  return hasDirectedNegativeSemitone ? hasDirectedNegativeSemitone[0].trim() : undefined;
+}
+
+function isNegativeNumberToken(token: string | undefined): boolean {
+  return token?.startsWith("negative ") === true;
+}
+
+function parseNumberToken(token: string | undefined): number {
+  if (token === undefined) {
+    return Number.NaN;
+  }
+
+  const numeric = Number(token);
+  if (Number.isFinite(numeric)) {
+    return numeric;
+  }
+
+  if (token.startsWith("negative ")) {
+    const magnitude = Number(token.replace(/^negative\s+/u, ""));
+    return Number.isFinite(magnitude) ? -magnitude : Number.NaN;
+  }
+
+  const wordNumbers: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+    eleven: 11,
+    twelve: 12,
+  };
+
+  return wordNumbers[token] ?? Number.NaN;
 }

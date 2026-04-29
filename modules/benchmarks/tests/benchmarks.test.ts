@@ -323,12 +323,13 @@ describe("firstPromptFamilyFixtureCorpus", () => {
     expect(firstPromptFamilyRequestCycleCorpus.fixtureManifestPath).toBe(
       FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
     );
-    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(47);
+    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(48);
     expect(firstPromptFamilyRequestCycleSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
         "request_cycle_more_relaxed",
         "request_cycle_clean_up_low_mids_stress",
         "request_cycle_warmer_and_airier",
+        "request_cycle_warmer_clean_low_mids_stress",
         "request_cycle_high_pass_low_end_rumble_stress",
         "request_cycle_darker_less_harsh_less_muddy",
         "request_cycle_speed_up_and_tame_sibilance",
