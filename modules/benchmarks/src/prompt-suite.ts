@@ -2037,6 +2037,13 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
             "tilt the overall balance slightly darker": "met",
           },
         },
+        session: {
+          require_valid_session_graph: true,
+          expected_output_parent_setup_index: 0,
+          require_output_plan_request: true,
+          require_output_transform_link: true,
+          min_active_history_entries: 3,
+        },
       },
     },
     {
@@ -2067,6 +2074,55 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
             "tilt the overall balance slightly darker": "met",
           },
         },
+        session: {
+          require_valid_session_graph: true,
+          expected_output_parent_setup_input_index: 0,
+          expected_branch_source_setup_input_index: 0,
+          expected_branch_head_is_output: true,
+          require_output_plan_request: true,
+          require_output_transform_link: true,
+          min_active_history_entries: 4,
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_follow_up_retry",
+      family: "first_prompt_family",
+      prompt: "retry",
+      description:
+        "Retry should use the same explicit alternate-version branch flow as try another version.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      setup_sequence: ["make this loop darker and less harsh", "more"],
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          expected_follow_up_source: "try_another_version",
+          require_active_branch: true,
+          expected_input_setup_index: 0,
+          required_operations: ["notch_filter", "tilt_eq"],
+          expected_operation_order: ["notch_filter", "tilt_eq"],
+          required_goals: [
+            "reduce upper-mid harshness",
+            "tilt the overall balance slightly darker",
+          ],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "reduce upper-mid harshness": "met",
+            "tilt the overall balance slightly darker": "met",
+          },
+        },
+        session: {
+          require_valid_session_graph: true,
+          expected_output_parent_setup_index: 0,
+          expected_branch_source_setup_index: 0,
+          expected_branch_head_is_output: true,
+          require_output_plan_request: true,
+          require_output_transform_link: true,
+          min_active_history_entries: 5,
+        },
       },
     },
     {
@@ -2081,6 +2137,10 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
           expected_result_kind: "reverted",
           expected_follow_up_source: "less",
           expected_output_setup_index: 0,
+        },
+        session: {
+          require_valid_session_graph: true,
+          min_active_history_entries: 4,
         },
       },
     },
@@ -2097,6 +2157,10 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
           expected_follow_up_source: "undo",
           expected_output_setup_index: 1,
         },
+        session: {
+          require_valid_session_graph: true,
+          min_active_history_entries: 5,
+        },
       },
     },
     {
@@ -2111,6 +2175,10 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
           expected_result_kind: "reverted",
           expected_follow_up_source: "revert",
           expected_output_setup_index: 0,
+        },
+        session: {
+          require_valid_session_graph: true,
+          min_active_history_entries: 4,
         },
       },
     },

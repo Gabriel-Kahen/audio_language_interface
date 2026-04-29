@@ -525,6 +525,14 @@ function assignBranchHead(
     throw new Error(`Branch '${branchId}' does not exist`);
   }
 
+  const nextVersionAssetId = metadata.provenance?.[versionId]?.asset_id;
+  const branchSourceAssetId = metadata.provenance?.[existingBranch.source_version_id]?.asset_id;
+  if (nextVersionAssetId && branchSourceAssetId && nextVersionAssetId !== branchSourceAssetId) {
+    throw new Error(
+      `Cannot move branch '${branchId}' to version '${versionId}' because it belongs to asset '${nextVersionAssetId}', not branch asset '${branchSourceAssetId}'`,
+    );
+  }
+
   nextBranches[branchIndex] = {
     ...existingBranch,
     head_version_id: versionId,

@@ -583,6 +583,7 @@ function normalizeOrchestrationError(error: unknown, userRequest: string): never
         field: "arguments.input",
         stage: error.stage,
         user_request: userRequest,
+        ...(error.partialResult === undefined ? {} : { partial_result: error.partialResult }),
       });
     }
   }

@@ -1,6 +1,9 @@
 import {
   createBranch,
   createSessionGraph,
+  getParentVersionId,
+  getVersionFollowUpRequest,
+  normalizeMetadata,
   recordAnalysisReport,
   recordAudioAsset,
   recordAudioVersion,
@@ -862,7 +865,7 @@ describe("runRequestCycle", () => {
     const revertedCycle = expectAppliedRequestCycleResult(undoCycle);
 
     expect(revertedCycle.result_kind).toBe("reverted");
-    expect(revertedCycle.followUpResolution).toEqual({
+    expect(revertedCycle.followUpResolution).toMatchObject({
       kind: "revert",
       targetVersionId: firstCycle.outputVersion.version_id,
       source: "undo",
@@ -875,6 +878,157 @@ describe("runRequestCycle", () => {
       firstCycle.outputVersion.version_id,
     );
     expect(validateSessionGraph(revertedCycle.sessionGraph).valid).toBe(true);
+  });
+
+  it("preserves provenance across more, less, undo, and retry follow-up cycles", async () => {
+    const asset = createAsset();
+    const inputVersion = createVersion("ver_input");
+    const dependencies = createDependencies();
+
+    const firstCycle = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "Make it darker",
+        input: {
+          kind: "existing",
+          asset,
+          version: inputVersion,
+        },
+        dependencies,
+      }),
+    );
+
+    const moreCycle = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "more",
+        input: {
+          kind: "existing",
+          asset,
+          version: firstCycle.outputVersion,
+          sessionGraph: firstCycle.sessionGraph,
+        },
+        dependencies,
+      }),
+    );
+
+    const lessCycle = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "less",
+        input: {
+          kind: "existing",
+          asset,
+          version: moreCycle.outputVersion,
+          sessionGraph: moreCycle.sessionGraph,
+        },
+        dependencies,
+      }),
+    );
+
+    const undoCycle = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "undo",
+        input: {
+          kind: "existing",
+          asset,
+          version: lessCycle.outputVersion,
+          sessionGraph: lessCycle.sessionGraph,
+        },
+        dependencies,
+      }),
+    );
+
+    const retryCycle = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "retry",
+        input: {
+          kind: "existing",
+          asset,
+          version: undoCycle.outputVersion,
+          sessionGraph: undoCycle.sessionGraph,
+        },
+        dependencies,
+      }),
+    );
+
+    expect(moreCycle.followUpResolution).toMatchObject({
+      kind: "apply",
+      source: "repeat_last_request",
+      resolvedUserRequest: "Make it darker",
+    });
+    expect(lessCycle.result_kind).toBe("reverted");
+    expect(lessCycle.outputVersion.version_id).toBe(firstCycle.outputVersion.version_id);
+    expect(undoCycle.result_kind).toBe("reverted");
+    expect(undoCycle.outputVersion.version_id).toBe(moreCycle.outputVersion.version_id);
+    expect(retryCycle.followUpResolution).toMatchObject({
+      kind: "apply",
+      source: "try_another_version",
+      inputVersionId: firstCycle.outputVersion.version_id,
+      resolvedUserRequest: "Make it darker",
+    });
+    expect(retryCycle.inputVersion.version_id).toBe(firstCycle.outputVersion.version_id);
+    expect(retryCycle.outputVersion.parent_version_id).toBe(firstCycle.outputVersion.version_id);
+    expect(retryCycle.outputVersion.version_id).not.toBe(moreCycle.outputVersion.version_id);
+    expect(getParentVersionId(retryCycle.sessionGraph, retryCycle.outputVersion.version_id)).toBe(
+      firstCycle.outputVersion.version_id,
+    );
+    expect(
+      getVersionFollowUpRequest(retryCycle.sessionGraph, retryCycle.outputVersion.version_id),
+    ).toBe("Make it darker");
+
+    const metadata = normalizeMetadata(retryCycle.sessionGraph.metadata);
+    const branchId =
+      retryCycle.followUpResolution.kind === "apply"
+        ? retryCycle.followUpResolution.branchId
+        : undefined;
+    const retryBranch = metadata.branches?.find((branch) => branch.branch_id === branchId);
+    expect(retryBranch).toMatchObject({
+      source_version_id: firstCycle.outputVersion.version_id,
+      head_version_id: retryCycle.outputVersion.version_id,
+    });
+    expect(retryCycle.sessionGraph.active_refs).toMatchObject({
+      asset_id: asset.asset_id,
+      version_id: retryCycle.outputVersion.version_id,
+      branch_id: branchId,
+    });
+    expect(metadata.active_ref_history_index).toBe((metadata.active_ref_history?.length ?? 0) - 1);
+    expect(metadata.active_ref_history?.map((entry) => entry.version_id)).toEqual(
+      expect.arrayContaining([
+        inputVersion.version_id,
+        firstCycle.outputVersion.version_id,
+        moreCycle.outputVersion.version_id,
+        retryCycle.outputVersion.version_id,
+      ]),
+    );
+    expect(validateSessionGraph(retryCycle.sessionGraph).valid).toBe(true);
+
+    const undoAfterRetryCycle = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "undo",
+        input: {
+          kind: "existing",
+          asset,
+          version: retryCycle.outputVersion,
+          sessionGraph: retryCycle.sessionGraph,
+        },
+        dependencies,
+      }),
+    );
+    const undoMetadata = normalizeMetadata(undoAfterRetryCycle.sessionGraph.metadata);
+    const undoBranch = undoMetadata.branches?.find((branch) => branch.branch_id === branchId);
+    expect(undoAfterRetryCycle.result_kind).toBe("reverted");
+    expect(undoAfterRetryCycle.outputVersion.version_id).toBe(firstCycle.outputVersion.version_id);
+    expect(undoAfterRetryCycle.sessionGraph.active_refs).toMatchObject({
+      asset_id: asset.asset_id,
+      version_id: firstCycle.outputVersion.version_id,
+      branch_id: branchId,
+    });
+    expect(undoBranch?.head_version_id).toBe(firstCycle.outputVersion.version_id);
+    expect(validateSessionGraph(undoAfterRetryCycle.sessionGraph).valid).toBe(true);
   });
 
   it("rejects revert execution when getAudioVersionById returns the wrong version payload", async () => {
@@ -975,7 +1129,7 @@ describe("resolveFollowUpRequest", () => {
         versionId: result.outputVersion.version_id,
         sessionGraph: result.sessionGraph,
       }),
-    ).toEqual({
+    ).toMatchObject({
       kind: "revert",
       targetVersionId: result.inputVersion.version_id,
       source: "undo",
@@ -1032,6 +1186,42 @@ describe("resolveFollowUpRequest", () => {
     expect(
       resolveFollowUpRequest({
         userRequest: "try another version",
+        versionId: result.outputVersion.version_id,
+        sessionGraph: result.sessionGraph,
+      }),
+    ).toEqual({
+      kind: "apply",
+      resolvedUserRequest: "Make it darker",
+      source: "try_another_version",
+      inputVersionId: result.inputVersion.version_id,
+    });
+  });
+
+  it.each([
+    "retry",
+    "retry that",
+    "try again",
+    "run it again",
+  ])("resolves `%s` as an alternate-version retry follow-up", async (userRequest) => {
+    const asset = createAsset();
+    const inputVersion = createVersion("ver_input");
+    const dependencies = createDependencies();
+    const result = expectAppliedRequestCycleResult(
+      await runRequestCycle({
+        workspaceRoot: "/workspace",
+        userRequest: "Make it darker",
+        input: {
+          kind: "existing",
+          asset,
+          version: inputVersion,
+        },
+        dependencies,
+      }),
+    );
+
+    expect(
+      resolveFollowUpRequest({
+        userRequest,
         versionId: result.outputVersion.version_id,
         sessionGraph: result.sessionGraph,
       }),

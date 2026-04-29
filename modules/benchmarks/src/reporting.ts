@@ -99,11 +99,13 @@ function formatRequestCycleMarkdownReport(result: RequestCycleBenchmarkRunResult
     `Planner correctness: ${formatCategoryScoreLine(breakdown.plannerCorrectness)}`,
     `Outcome verification: ${formatCategoryScoreLine(breakdown.outcomeVerification)}`,
     `Regression avoidance: ${formatCategoryScoreLine(breakdown.regressionAvoidance)}`,
+    `Session provenance: ${formatCategoryScoreLine(breakdown.sessionProvenance)}`,
     "",
     "## Failure Buckets",
     ...formatFailureBucketSection("planner_correctness", failureBuckets),
     ...formatFailureBucketSection("outcome_verification", failureBuckets),
     ...formatFailureBucketSection("regression_avoidance", failureBuckets),
+    ...formatFailureBucketSection("session_provenance", failureBuckets),
     "",
     "## Cases",
   ];
@@ -207,6 +209,7 @@ function formatRequestCycleCase(caseResult: RequestCycleBenchmarkCaseResult): st
     `- planner correctness: ${formatCategoryScoreLine(caseResult.scoreBreakdown.plannerCorrectness)}`,
     `- outcome verification: ${formatCategoryScoreLine(caseResult.scoreBreakdown.outcomeVerification)}`,
     `- regression avoidance: ${formatCategoryScoreLine(caseResult.scoreBreakdown.regressionAvoidance)}`,
+    `- session provenance: ${formatCategoryScoreLine(caseResult.scoreBreakdown.sessionProvenance)}`,
   ];
 
   if (caseResult.error !== undefined) {
@@ -335,17 +338,20 @@ function averageScoreBreakdown(
       plannerCorrectness: { passedChecks: 0, totalChecks: 0, score: 1 },
       outcomeVerification: { passedChecks: 0, totalChecks: 0, score: 1 },
       regressionAvoidance: { passedChecks: 0, totalChecks: 0, score: 1 },
+      sessionProvenance: { passedChecks: 0, totalChecks: 0, score: 1 },
     };
   }
 
   const plannerCorrectness = sumCategory(caseResults, "plannerCorrectness");
   const outcomeVerification = sumCategory(caseResults, "outcomeVerification");
   const regressionAvoidance = sumCategory(caseResults, "regressionAvoidance");
+  const sessionProvenance = sumCategory(caseResults, "sessionProvenance");
 
   return {
     plannerCorrectness,
     outcomeVerification,
     regressionAvoidance,
+    sessionProvenance,
   };
 }
 
@@ -431,5 +437,7 @@ function categoryTitle(category: RequestCycleBenchmarkCategory): string {
       return "Outcome Verification";
     case "regression_avoidance":
       return "Regression Avoidance";
+    case "session_provenance":
+      return "Session Provenance";
   }
 }

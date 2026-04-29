@@ -371,6 +371,19 @@ export function validateSessionGraph(graph: SessionGraph): ValidationResult {
       instancePath: "/metadata/active_ref_history_index",
       message: "active_ref_history_index must point to an entry in active_ref_history",
     });
+  } else if (activeRefHistoryIndex !== undefined) {
+    const activeHistoryEntry = activeRefHistory[activeRefHistoryIndex];
+    if (
+      activeHistoryEntry &&
+      (activeHistoryEntry.asset_id !== graph.active_refs.asset_id ||
+        activeHistoryEntry.version_id !== graph.active_refs.version_id ||
+        activeHistoryEntry.branch_id !== graph.active_refs.branch_id)
+    ) {
+      issues.push({
+        instancePath: "/metadata/active_ref_history_index",
+        message: "active_ref_history_index must point to the current active_refs entry",
+      });
+    }
   }
 
   for (const [index, entry] of activeRefHistory.entries()) {
@@ -416,6 +429,15 @@ export function validateSessionGraph(graph: SessionGraph): ValidationResult {
       issues.push({
         instancePath: "/metadata/branches",
         message: `branch '${branch.branch_id}' source version '${branch.source_version_id}' is unknown`,
+      });
+    }
+
+    const headAssetId = provenance[branch.head_version_id]?.asset_id;
+    const sourceAssetId = provenance[branch.source_version_id]?.asset_id;
+    if (headAssetId && sourceAssetId && headAssetId !== sourceAssetId) {
+      issues.push({
+        instancePath: "/metadata/branches",
+        message: `branch '${branch.branch_id}' head and source versions belong to different assets`,
       });
     }
   }
@@ -471,6 +493,14 @@ export function validateSessionGraph(graph: SessionGraph): ValidationResult {
       instancePath: "/active_refs/branch_id",
       message: `active branch '${graph.active_refs.branch_id}' is unknown`,
     });
+  } else if (graph.active_refs.branch_id) {
+    const activeBranch = getBranch(graph, graph.active_refs.branch_id);
+    if (activeBranch && activeBranch.head_version_id !== graph.active_refs.version_id) {
+      issues.push({
+        instancePath: "/active_refs/branch_id",
+        message: `active branch '${graph.active_refs.branch_id}' head does not match active version '${graph.active_refs.version_id}'`,
+      });
+    }
   }
 
   return {
@@ -663,6 +693,17 @@ function validateProvenanceRecord(
           message: "parent_version_id cannot equal version_id",
         });
       }
+      if (record.parent_version_id) {
+        const parentAssetId = normalizeMetadata(graph.metadata).provenance?.[
+          record.parent_version_id
+        ]?.asset_id;
+        if (parentAssetId && record.asset_id && parentAssetId !== record.asset_id) {
+          issues.push({
+            instancePath: `/metadata/provenance/${node.ref_id}/parent_version_id`,
+            message: `parent version '${record.parent_version_id}' belongs to asset '${parentAssetId}', not '${record.asset_id}'`,
+          });
+        }
+      }
       if (record.plan_id && !hasNodeRef(graph, record.plan_id, "edit_plan")) {
         issues.push({
           instancePath: `/metadata/provenance/${node.ref_id}/plan_id`,
@@ -680,10 +721,23 @@ function validateProvenanceRecord(
         const transformOutputVersionId = normalizeMetadata(graph.metadata).provenance?.[
           record.transform_record_id
         ]?.output_version_id;
+        const transformInputVersionId = normalizeMetadata(graph.metadata).provenance?.[
+          record.transform_record_id
+        ]?.input_version_id;
         if (transformOutputVersionId && transformOutputVersionId !== node.ref_id) {
           issues.push({
             instancePath: `/metadata/provenance/${node.ref_id}/transform_record_id`,
             message: `transform record '${record.transform_record_id}' does not produce version '${node.ref_id}'`,
+          });
+        }
+        if (
+          record.parent_version_id &&
+          transformInputVersionId &&
+          transformInputVersionId !== record.parent_version_id
+        ) {
+          issues.push({
+            instancePath: `/metadata/provenance/${node.ref_id}/transform_record_id`,
+            message: `transform record '${record.transform_record_id}' starts from version '${transformInputVersionId}', not parent version '${record.parent_version_id}'`,
           });
         }
       }

@@ -121,10 +121,11 @@ The request-cycle benchmark mode should be read conservatively. Its scores are u
 - planner correctness
 - outcome verification
 - regression avoidance
+- session provenance
 
 That separation makes failures easier to diagnose, but it does not turn the benchmark into a perceptual listening test. Request-cycle outcome scoring still depends on the current compare-layer evidence, including structured verification, goal alignment, and regression warnings.
 
-The current request-cycle benchmark corpus is intentionally small. It covers stable tonal cleanup, grounded texture wording, tonal and cross-family compound edits, restoration, timing edits, stereo/spatial edits, the first explicit numeric region-targeting slice, iterative follow-up flows, peak-control, dedicated louder-and-controlled prompts, and explicit clarification/failure controls on committed phase-1 fixtures rather than trying to benchmark the full runtime surface at once.
+The current request-cycle benchmark corpus is intentionally small. It covers stable tonal cleanup, grounded texture wording, tonal and cross-family compound edits, restoration, timing edits, stereo/spatial edits, the first explicit numeric region-targeting slice, iterative follow-up flows, peak-control, dedicated louder-and-controlled prompts, explicit clarification/failure controls, and repeated-edit session provenance on committed phase-1 fixtures rather than trying to benchmark the full runtime surface at once.
 
 That corpus now also includes a narrow compound-edit slice:
 

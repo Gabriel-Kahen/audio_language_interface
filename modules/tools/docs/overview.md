@@ -92,5 +92,6 @@ See `docs/api.md` for the concrete callable tool surface and payload conventions
 - `run_request_cycle` can also forward an explicit opt-in `interpretation` configuration when the runtime injects an `interpretRequest` implementation, and it surfaces the resulting richer interpretation artifacts back to the caller.
 - `run_request_cycle` now surfaces clarification-required outcomes explicitly and stores only the minimal clarification resume token in `session_graph.metadata.pending_clarification`.
 - The tool layer still does not maintain session state or resolve artifacts by id. Session-aware follow-up calls must provide an explicit `SessionGraph` plus any materialized `available_versions` needed for historical lookups.
+- Orchestration stage failures preserve recoverable `partial_result` details in tool errors when available so external callers can inspect the last valid session graph or artifact state.
 - The tool layer does not persist interpretation state between calls. Callers must opt into interpretation again on each `run_request_cycle` request, even when they resume a pending clarification through the explicit `SessionGraph`.
 - Tool-specific argument validation happens inside handlers rather than through one centralized schema per tool.

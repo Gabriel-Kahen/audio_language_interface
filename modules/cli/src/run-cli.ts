@@ -266,6 +266,16 @@ async function runEditCommand(
     dependencies: createCliDependencies(undefined, options, defaultOrchestrationDependencies),
   });
 
+  const sessionStateInput = {
+    workspaceRootRelative: "workspace",
+    runId,
+    runDirectoryRelative: path.relative(sessionDir, runDir),
+    request: command.request,
+    createdAt: now.toISOString(),
+    result,
+  };
+  await saveCliSessionState(sessionDir, buildUpdatedCliSessionState(sessionStateInput));
+
   const outputFileRelative = isAppliedOrRevertedRequestCycleResult(result)
     ? await persistRunArtifacts({
         sessionDir,
@@ -280,17 +290,15 @@ async function runEditCommand(
         request: command.request,
         result,
       });
-
-  const sessionState = buildUpdatedCliSessionState({
-    workspaceRootRelative: "workspace",
-    runId,
-    runDirectoryRelative: path.relative(sessionDir, runDir),
-    request: command.request,
-    createdAt: now.toISOString(),
-    result,
-    ...(outputFileRelative === undefined ? {} : { outputFileRelative }),
-  });
-  await saveCliSessionState(sessionDir, sessionState);
+  if (outputFileRelative !== undefined) {
+    await saveCliSessionState(
+      sessionDir,
+      buildUpdatedCliSessionState({
+        ...sessionStateInput,
+        outputFileRelative,
+      }),
+    );
+  }
 
   return buildJsonSummary({
     sessionDir,
@@ -339,6 +347,17 @@ async function runFollowUpCommand(
     ),
   });
 
+  const sessionStateInput = {
+    previousState: sessionState,
+    workspaceRootRelative: sessionState.workspace_root,
+    runId,
+    runDirectoryRelative: path.relative(command.sessionDir, runDir),
+    request: command.request,
+    createdAt: now.toISOString(),
+    result,
+  };
+  await saveCliSessionState(command.sessionDir, buildUpdatedCliSessionState(sessionStateInput));
+
   const outputFileRelative = isAppliedOrRevertedRequestCycleResult(result)
     ? await persistRunArtifacts({
         sessionDir: command.sessionDir,
@@ -353,18 +372,15 @@ async function runFollowUpCommand(
         request: command.request,
         result,
       });
-
-  const updatedState = buildUpdatedCliSessionState({
-    previousState: sessionState,
-    workspaceRootRelative: sessionState.workspace_root,
-    runId,
-    runDirectoryRelative: path.relative(command.sessionDir, runDir),
-    request: command.request,
-    createdAt: now.toISOString(),
-    result,
-    ...(outputFileRelative === undefined ? {} : { outputFileRelative }),
-  });
-  await saveCliSessionState(command.sessionDir, updatedState);
+  if (outputFileRelative !== undefined) {
+    await saveCliSessionState(
+      command.sessionDir,
+      buildUpdatedCliSessionState({
+        ...sessionStateInput,
+        outputFileRelative,
+      }),
+    );
+  }
 
   return buildJsonSummary({
     sessionDir: command.sessionDir,

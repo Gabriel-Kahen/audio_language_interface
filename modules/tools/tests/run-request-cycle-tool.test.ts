@@ -746,4 +746,52 @@ describe("run_request_cycle tool", () => {
       },
     });
   });
+
+  it("preserves recoverable orchestration partial results in handler errors", async () => {
+    const asset = buildAudioAsset();
+    const currentVersion = buildAudioVersion("ver_current");
+    const sessionGraph = buildSessionGraph(asset, [currentVersion]);
+    const runRequestCycle = vi.fn().mockRejectedValue(
+      new OrchestrationStageError({
+        stage: "render_candidate",
+        error: new Error("render failed after apply"),
+        attempts: 1,
+        partialResult: {
+          outputVersion: currentVersion,
+          sessionGraph,
+        },
+      }),
+    );
+
+    const response = await executeToolRequest(
+      buildRequest({
+        session_id: sessionGraph.session_id,
+        arguments: {
+          user_request: "make it darker",
+          input: {
+            kind: "existing",
+            asset,
+            audio_version: currentVersion,
+            session_graph: sessionGraph,
+          },
+        },
+      }),
+      {
+        workspaceRoot: "/tmp/ali-tools",
+        runtime: { runRequestCycle } satisfies Partial<ToolsRuntime>,
+      },
+    );
+
+    expect(response.status).toBe("error");
+    expect(response.error).toMatchObject({
+      code: "handler_failed",
+      details: {
+        stage: "render_candidate",
+        partial_result: {
+          outputVersion: expect.objectContaining({ version_id: currentVersion.version_id }),
+          sessionGraph: expect.objectContaining({ session_id: sessionGraph.session_id }),
+        },
+      },
+    });
+  });
 });

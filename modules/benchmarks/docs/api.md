@@ -169,11 +169,12 @@ Scores one live provider execution by combining:
 
 ### `scoreRequestCycleBenchmarkCase(benchmarkCase, result, error?, setupResults?)`
 
-Scores one request-cycle case across three separate responsibility buckets:
+Scores one request-cycle case across four separate responsibility buckets:
 
 - planner correctness
 - outcome verification
 - regression avoidance
+- session provenance
 
 This helper returns:
 

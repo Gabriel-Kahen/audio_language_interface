@@ -323,7 +323,7 @@ describe("firstPromptFamilyFixtureCorpus", () => {
     expect(firstPromptFamilyRequestCycleCorpus.fixtureManifestPath).toBe(
       FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
     );
-    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(48);
+    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(49);
     expect(firstPromptFamilyRequestCycleSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
         "request_cycle_more_relaxed",
@@ -348,6 +348,7 @@ describe("firstPromptFamilyFixtureCorpus", () => {
         "request_cycle_center_this_more_and_make_it_wider",
         "request_cycle_follow_up_more",
         "request_cycle_follow_up_try_another_version",
+        "request_cycle_follow_up_retry",
         "request_cycle_follow_up_less",
         "request_cycle_follow_up_undo",
         "request_cycle_follow_up_revert_previous_version",
@@ -666,6 +667,7 @@ describe("runRequestCycleBenchmarks", () => {
     const introDarkerRefusal = getRequestCycleCase("request_cycle_intro_darker_region_refusal");
     const followUpMore = getRequestCycleCase("request_cycle_follow_up_more");
     const tryAnother = getRequestCycleCase("request_cycle_follow_up_try_another_version");
+    const followUpRetry = getRequestCycleCase("request_cycle_follow_up_retry");
     const followUpLess = getRequestCycleCase("request_cycle_follow_up_less");
     const followUpUndo = getRequestCycleCase("request_cycle_follow_up_undo");
     const followUpRevert = getRequestCycleCase("request_cycle_follow_up_revert_previous_version");
@@ -714,6 +716,7 @@ describe("runRequestCycleBenchmarks", () => {
           introDarkerRefusal,
           followUpMore,
           tryAnother,
+          followUpRetry,
           followUpLess,
           followUpUndo,
           followUpRevert,
@@ -738,7 +741,7 @@ describe("runRequestCycleBenchmarks", () => {
 
     expect(result.suiteId).toBe("first_prompt_family");
     expect(result.corpusId).toBe("request_cycle_test_subset");
-    expect(result.caseResults).toHaveLength(34);
+    expect(result.caseResults).toHaveLength(35);
     expect(result.totalChecks).toBeGreaterThan(0);
     expect(result.totalPassedChecks).toBe(result.totalChecks);
     expect(result.overallScore).toBe(1);
@@ -902,6 +905,17 @@ describe("runRequestCycleBenchmarks", () => {
     expect(tryAnotherCase?.requestCycleResult?.sessionGraph.active_refs.branch_id).toMatch(
       /^branch_alt_/,
     );
+
+    const retryCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === followUpRetry.caseId,
+    );
+    expect(retryCase?.status).toBe("ok");
+    expect(retryCase?.requestCycleResult?.followUpResolution).toMatchObject({
+      kind: "apply",
+      source: "try_another_version",
+      branchId: expect.stringMatching(/^branch_alt_/),
+    });
+    expect(retryCase?.scoreBreakdown.sessionProvenance.score).toBe(1);
 
     const followUpLessCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === followUpLess.caseId,
@@ -1115,6 +1129,7 @@ describe("runRequestCycleBenchmarks", () => {
   it("can execute iterative follow-up benchmarks through the run_request_cycle tool surface", async () => {
     const followUpMore = getRequestCycleCase("request_cycle_follow_up_more");
     const tryAnother = getRequestCycleCase("request_cycle_follow_up_try_another_version");
+    const followUpRetry = getRequestCycleCase("request_cycle_follow_up_retry");
     const followUpUndo = getRequestCycleCase("request_cycle_follow_up_undo");
 
     const result = await runRequestCycleBenchmarks(
@@ -1123,14 +1138,14 @@ describe("runRequestCycleBenchmarks", () => {
         suiteId: "first_prompt_family",
         fixtureManifestPath: FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
         description: "Tool-surface request-cycle benchmark smoke suite.",
-        cases: [followUpMore, tryAnother, followUpUndo],
+        cases: [followUpMore, tryAnother, followUpRetry, followUpUndo],
       },
       {
         executionSurface: "tool",
       },
     );
 
-    expect(result.caseResults).toHaveLength(3);
+    expect(result.caseResults).toHaveLength(4);
     expect(result.totalPassedChecks).toBe(result.totalChecks);
     expect(result.overallScore).toBe(1);
     expect(result.caseResults.every((caseResult) => caseResult.executionSurface === "tool")).toBe(

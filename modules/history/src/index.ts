@@ -6,6 +6,8 @@ export {
   createSnapshot,
   listBranches,
   listSnapshots,
+  type RestoreActiveRefsInput,
+  restoreActiveRefs,
   type SetActiveRefsInput,
   setActiveRefs,
 } from "./branching.js";
@@ -32,6 +34,7 @@ export {
   resolveRedoTargets,
   resolveRevertTarget,
   resolveUndoTarget,
+  resolveUndoTargetEntry,
   revertToVersion,
   undoActiveRef,
 } from "./revert.js";

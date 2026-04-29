@@ -255,14 +255,14 @@ When present, the tool forwards that configuration into orchestration and requir
 
 Important follow-up behavior:
 
-- `run_request_cycle` exposes session-aware follow-up requests through the published tool surface, including `more`, `less`, `undo`, `revert to previous version`, and `try another version`
+- `run_request_cycle` exposes session-aware follow-up requests through the published tool surface, including `more`, `less`, `undo`, `revert to previous version`, `try another version`, and `retry`
 - `run_request_cycle` also exposes the clarification loop explicitly: ambiguous conservative interpretation can return `result_kind = "clarification_required"`, and the next request can resume from `session_graph.metadata.pending_clarification`
 - the tool remains explicit and stateless: it does not maintain hidden session state or resolve historical versions by id
 - callers using `input.kind = "existing"` must provide the current `session_graph`
 - revert-style and alternate-version flows must also provide any required historical `AudioVersion` artifacts in `arguments.input.available_versions`
 - clarification-resume flows reuse that same explicit `session_graph`; the tool does not store clarification state privately
 
-If orchestration cannot resolve a follow-up safely because required historical versions were not provided, the tool returns `invalid_arguments`, typically pointing at `arguments.input.available_versions`.
+If orchestration cannot resolve a follow-up safely because required historical versions were not provided, the tool returns `invalid_arguments`, typically pointing at `arguments.input.available_versions`. When a later orchestration stage fails with recoverable state, the tool error includes `details.partial_result` so callers can inspect the latest valid session graph and artifacts instead of losing the edit lineage.
 
 ## Validation behavior
 

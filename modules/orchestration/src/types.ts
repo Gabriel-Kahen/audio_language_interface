@@ -1,7 +1,11 @@
 import type { AnalysisReport, AnalyzeAudioOptions } from "@audio-language-interface/analysis";
 import type { ComparisonReport } from "@audio-language-interface/compare";
 import type { AudioAsset, AudioVersion } from "@audio-language-interface/core";
-import type { PendingClarification, SessionGraph } from "@audio-language-interface/history";
+import type {
+  ActiveRefs,
+  PendingClarification,
+  SessionGraph,
+} from "@audio-language-interface/history";
 import type {
   IntentInterpretation,
   InterpretationPolicy,
@@ -319,6 +323,7 @@ export interface FollowUpRevertResolution {
   kind: "revert";
   targetVersionId: string;
   source: "less" | "undo" | "revert";
+  targetActiveRefs?: ActiveRefs;
 }
 
 export type FollowUpResolution = FollowUpApplyResolution | FollowUpRevertResolution;

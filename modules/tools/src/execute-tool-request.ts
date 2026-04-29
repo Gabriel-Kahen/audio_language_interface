@@ -66,12 +66,32 @@ function normalizeExecutionError(
   }
 
   if (error instanceof Error) {
+    const stageDetails = extractStageErrorDetails(error);
     return createErrorResponse(request, completedAt, "handler_failed", error.message, {
       cause: error.name,
+      ...(stageDetails === undefined ? {} : stageDetails),
     });
   }
 
   return createErrorResponse(request, completedAt, "handler_failed", "Tool handler failed.");
+}
+
+function extractStageErrorDetails(error: Error): Record<string, unknown> | undefined {
+  const record = error as Error & {
+    stage?: unknown;
+    attempts?: unknown;
+    partialResult?: unknown;
+  };
+
+  if (typeof record.stage !== "string") {
+    return undefined;
+  }
+
+  return {
+    stage: record.stage,
+    ...(typeof record.attempts === "number" ? { attempts: record.attempts } : {}),
+    ...(record.partialResult === undefined ? {} : { partial_result: record.partialResult }),
+  };
 }
 
 export async function executeToolRequest(

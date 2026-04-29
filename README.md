@@ -83,6 +83,7 @@ On top of the one-shot loop, orchestration now supports early iterative follow-u
 - `undo`
 - `revert to previous version`
 - `try another version`
+- `retry`
 
 Those follow-ups stay explicit: orchestration resolves them against recorded session history and version provenance instead of inventing hidden state.
 

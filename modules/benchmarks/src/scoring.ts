@@ -1,4 +1,9 @@
 import type { ComparisonReport } from "@audio-language-interface/compare";
+import {
+  getBranch,
+  getVersionFollowUpRequest,
+  validateSessionGraph,
+} from "@audio-language-interface/history";
 import type { RequestCycleResult } from "@audio-language-interface/orchestration";
 
 import type {
@@ -356,6 +361,7 @@ export function scoreRequestCycleBenchmarkCase(
           ...scorePlannerCorrectness(benchmarkCase, result, setupResults),
           ...scoreOutcomeVerification(benchmarkCase, result),
           ...scoreRegressionAvoidance(benchmarkCase, result),
+          ...scoreSessionProvenance(benchmarkCase, result, setupResults),
         ];
   const passedChecks = checks.filter((check) => check.passed).length;
   const totalChecks = checks.length;
@@ -702,6 +708,178 @@ function scoreRegressionAvoidance(
   return checks;
 }
 
+function scoreSessionProvenance(
+  benchmarkCase: RequestCycleBenchmarkCase,
+  result: NonNullable<RequestCycleBenchmarkCaseResult["requestCycleResult"]>,
+  setupResults?: RequestCycleBenchmarkCaseResult["setupResults"],
+): RequestCycleBenchmarkCheckResult[] {
+  const checks: RequestCycleBenchmarkCheckResult[] = [];
+  const expectation = benchmarkCase.expectation.session;
+  if (expectation === undefined) {
+    return checks;
+  }
+
+  if (expectation.require_valid_session_graph !== undefined) {
+    const validation = validateSessionGraph(result.sessionGraph);
+    checks.push({
+      category: "session_provenance",
+      scope: "session_graph",
+      checkId: "session:valid_graph",
+      passed: validation.valid === expectation.require_valid_session_graph,
+      expected: expectation.require_valid_session_graph ? "valid" : "invalid",
+      actual: validation.valid
+        ? "valid"
+        : validation.issues.map((issue) => issue.message).join("; "),
+    });
+  }
+
+  const outputVersion =
+    result.result_kind === "clarification_required" ? undefined : result.outputVersion;
+  const outputRecord =
+    outputVersion === undefined
+      ? undefined
+      : result.sessionGraph.metadata?.provenance?.[outputVersion.version_id];
+
+  if (expectation.expected_output_parent_setup_index !== undefined) {
+    const expectedVersionId = getSetupResultVersionId(
+      setupResults,
+      expectation.expected_output_parent_setup_index,
+    );
+    checks.push({
+      category: "session_provenance",
+      scope: "session_graph",
+      checkId: "session:output_parent",
+      passed:
+        outputRecord?.parent_version_id !== undefined &&
+        expectedVersionId !== undefined &&
+        outputRecord.parent_version_id === expectedVersionId,
+      expected: expectedVersionId ?? `setup[${expectation.expected_output_parent_setup_index}]`,
+      actual: outputRecord?.parent_version_id ?? "missing",
+    });
+  }
+
+  if (expectation.expected_output_parent_setup_input_index !== undefined) {
+    const expectedVersionId =
+      setupResults?.[expectation.expected_output_parent_setup_input_index]?.inputVersion.version_id;
+    checks.push({
+      category: "session_provenance",
+      scope: "session_graph",
+      checkId: "session:output_parent_input",
+      passed:
+        outputRecord?.parent_version_id !== undefined &&
+        expectedVersionId !== undefined &&
+        outputRecord.parent_version_id === expectedVersionId,
+      expected:
+        expectedVersionId ?? `setup[${expectation.expected_output_parent_setup_input_index}].input`,
+      actual: outputRecord?.parent_version_id ?? "missing",
+    });
+  }
+
+  if (expectation.expected_branch_source_setup_index !== undefined) {
+    const expectedVersionId = getSetupResultVersionId(
+      setupResults,
+      expectation.expected_branch_source_setup_index,
+    );
+    const activeBranchId = result.sessionGraph.active_refs.branch_id;
+    const branch = activeBranchId ? getBranch(result.sessionGraph, activeBranchId) : undefined;
+    checks.push({
+      category: "session_provenance",
+      scope: "session_graph",
+      checkId: "session:branch_source",
+      passed:
+        branch?.source_version_id !== undefined &&
+        expectedVersionId !== undefined &&
+        branch.source_version_id === expectedVersionId,
+      expected: expectedVersionId ?? `setup[${expectation.expected_branch_source_setup_index}]`,
+      actual: branch?.source_version_id ?? "missing",
+    });
+  }
+
+  if (expectation.expected_branch_source_setup_input_index !== undefined) {
+    const expectedVersionId =
+      setupResults?.[expectation.expected_branch_source_setup_input_index]?.inputVersion.version_id;
+    const activeBranchId = result.sessionGraph.active_refs.branch_id;
+    const branch = activeBranchId ? getBranch(result.sessionGraph, activeBranchId) : undefined;
+    checks.push({
+      category: "session_provenance",
+      scope: "session_graph",
+      checkId: "session:branch_source_input",
+      passed:
+        branch?.source_version_id !== undefined &&
+        expectedVersionId !== undefined &&
+        branch.source_version_id === expectedVersionId,
+      expected:
+        expectedVersionId ?? `setup[${expectation.expected_branch_source_setup_input_index}].input`,
+      actual: branch?.source_version_id ?? "missing",
+    });
+  }
+
+  if (expectation.expected_branch_head_is_output !== undefined) {
+    const activeBranchId = result.sessionGraph.active_refs.branch_id;
+    const branch = activeBranchId ? getBranch(result.sessionGraph, activeBranchId) : undefined;
+    const actualMatches =
+      outputVersion !== undefined &&
+      branch !== undefined &&
+      branch.head_version_id === outputVersion.version_id;
+    checks.push({
+      category: "session_provenance",
+      scope: "session_graph",
+      checkId: "session:branch_head_output",
+      passed: actualMatches === expectation.expected_branch_head_is_output,
+      expected: expectation.expected_branch_head_is_output ? "output" : "not_output",
+      actual: branch?.head_version_id ?? "missing",
+    });
+  }
+
+  if (expectation.require_output_plan_request !== undefined) {
+    const actual =
+      outputVersion !== undefined &&
+      getVersionFollowUpRequest(result.sessionGraph, outputVersion.version_id) !== undefined;
+    checks.push({
+      category: "session_provenance",
+      scope: "session_graph",
+      checkId: "session:output_plan_request",
+      passed: actual === expectation.require_output_plan_request,
+      expected: expectation.require_output_plan_request ? "present" : "absent",
+      actual: actual ? "present" : "absent",
+    });
+  }
+
+  if (expectation.require_output_transform_link !== undefined) {
+    const transformRecordId = outputRecord?.transform_record_id;
+    const transformOutputVersionId =
+      transformRecordId === undefined
+        ? undefined
+        : result.sessionGraph.metadata?.provenance?.[transformRecordId]?.output_version_id;
+    const actual =
+      outputVersion !== undefined &&
+      transformRecordId !== undefined &&
+      transformOutputVersionId === outputVersion.version_id;
+    checks.push({
+      category: "session_provenance",
+      scope: "session_graph",
+      checkId: "session:output_transform_link",
+      passed: actual === expectation.require_output_transform_link,
+      expected: expectation.require_output_transform_link ? "linked" : "absent",
+      actual: actual ? "linked" : "missing",
+    });
+  }
+
+  if (expectation.min_active_history_entries !== undefined) {
+    const actual = result.sessionGraph.metadata?.active_ref_history?.length ?? 0;
+    checks.push({
+      category: "session_provenance",
+      scope: "session_graph",
+      checkId: "session:active_history_min",
+      passed: actual >= expectation.min_active_history_entries,
+      expected: `>=${expectation.min_active_history_entries}`,
+      actual: String(actual),
+    });
+  }
+
+  return checks;
+}
+
 function scoreErrorExpectation(
   expectation: RequestCycleBenchmarkCase["expectation"]["error"],
   error: RequestCycleBenchmarkFailure | undefined,
@@ -781,6 +959,20 @@ function scoreErrorExpectation(
     : checks;
 }
 
+function getSetupResultVersionId(
+  setupResults: RequestCycleBenchmarkCaseResult["setupResults"] | undefined,
+  setupIndex: number,
+): string | undefined {
+  const setupResult = setupResults?.[setupIndex];
+  if (!setupResult) {
+    return undefined;
+  }
+
+  return setupResult.result_kind === "clarification_required"
+    ? setupResult.inputVersion.version_id
+    : setupResult.outputVersion.version_id;
+}
+
 function createScoreBreakdown(
   checks: RequestCycleBenchmarkCheckResult[],
 ): RequestCycleScoreBreakdown {
@@ -788,6 +980,7 @@ function createScoreBreakdown(
     plannerCorrectness: scoreCategory(checks, "planner_correctness"),
     outcomeVerification: scoreCategory(checks, "outcome_verification"),
     regressionAvoidance: scoreCategory(checks, "regression_avoidance"),
+    sessionProvenance: scoreCategory(checks, "session_provenance"),
   };
 }
 

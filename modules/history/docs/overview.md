@@ -26,7 +26,7 @@ Main API groups:
 - graph lookup helpers: `deriveNodeId`, `getNodeById`, `getNodeByRef`, `getVersionFollowUpRequest`, `getBranch`, `hasNodeRef`, `hasBranch`
 - artifact recording: `recordAudioAsset`, `recordAudioVersion`, `recordAnalysisReport`, `recordSemanticProfile`, `recordEditPlan`, `recordTransformRecord`, `recordRenderArtifact`, `recordComparisonReport`
 - low-level mutation helpers: `addNode`, `addEdge`
-- branch and snapshot helpers: `createBranch`, `checkoutBranch`, `createSnapshot`, `listBranches`, `listSnapshots`, `setActiveRefs`
+- branch and snapshot helpers: `createBranch`, `checkoutBranch`, `createSnapshot`, `listBranches`, `listSnapshots`, `setActiveRefs`, `restoreActiveRefs`
 - revert helpers: `getParentVersionId`, `listAncestorVersionIds`, `resolveRevertTarget`, `resolveUndoTarget`, `revertToVersion`, `resolveRedoTargets`, `undoActiveRef`, `redoActiveRef`
 
 Detailed behavior is documented in `docs/api.md`.
@@ -97,11 +97,14 @@ Revert behavior:
 
 - `resolveRevertTarget` walks version ancestry using `parent_version_id`
 - `resolveUndoTarget` walks explicit `active_ref_history`, which lets callers undo the last active selection even when that last move was itself a revert
+- `resolveUndoTargetEntry` returns the full prior active-ref entry for callers that need to restore branch context as well as the target version
 - by default it resolves one step back from the active version, or from a supplied branch head
 - `revertToVersion` changes `active_refs` to the target version
 - when a branch is active, `revertToVersion` also rewrites that branch's `head_version_id`
-- branch revert records one active-ref history entry for the revert; undo can move the active pointer back to the pre-revert version, but it still does not restore the older branch head automatically
-- `undoActiveRef` and `redoActiveRef` only move the active pointer through recorded ref history; they do not restore branch metadata, snapshots, nodes, edges, or provenance
+- branch revert records one active-ref history entry for the revert
+- `restoreActiveRefs` restores a full prior active-ref entry and rewinds the referenced branch head when the entry is branch-bound
+- `undoActiveRef` and `redoActiveRef` move the active pointer through recorded ref history and keep branch-bound entries coherent by restoring that branch head to the indexed version
+- undo and redo do not restore snapshots, nodes, edges, or provenance to an earlier structural state
 
 ## Validation Semantics
 
@@ -120,10 +123,13 @@ Runtime validation currently checks:
 - `active_refs` and active ref history entries use asset/version pairs that agree with version provenance
 - `active_ref_history_index` points to a known history entry
 - active ref history entries resolve to known asset, version, and optional branch records
+- the indexed active-ref history entry matches `active_refs`
+- an active branch points at the active version
 - recorded audio assets and versions have the provenance entries required by branch and revert helpers
 - version ancestry does not contain cycles, including multi-step cycles
 - implementation-owned provenance refs resolve to known nodes and validate their typed links
 - version provenance parents, direct transform links, branch heads, branch sources, snapshot versions, and snapshot branch ids resolve to known records
+- direct transform provenance input must match the output version's recorded parent when both are present
 
 ## Schema And Implementation Limitations
 

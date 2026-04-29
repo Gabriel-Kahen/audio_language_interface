@@ -572,7 +572,7 @@ describe("request cycle integration", () => {
           versionId: secondCycle.outputVersion.version_id,
           sessionGraph: secondCycle.sessionGraph,
         }),
-      ).toEqual({
+      ).toMatchObject({
         kind: "revert",
         targetVersionId: firstCycle.outputVersion.version_id,
         source: "undo",
@@ -616,7 +616,7 @@ describe("request cycle integration", () => {
       expect(undoCycle.sessionGraph.active_refs.version_id).toBe(
         secondCycle.outputVersion.version_id,
       );
-      expect(undoCycle.followUpResolution).toEqual({
+      expect(undoCycle.followUpResolution).toMatchObject({
         kind: "revert",
         targetVersionId: secondCycle.outputVersion.version_id,
         source: "undo",

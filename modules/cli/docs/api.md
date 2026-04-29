@@ -40,7 +40,7 @@ Supported options:
 Follow-up requests can include:
 
 - direct new supported requests
-- iterative shorthand such as `more`, `less`, `undo`, `revert to previous version`, or `try another version`
+- iterative shorthand such as `more`, `less`, `undo`, `revert to previous version`, `try another version`, or `retry`
 - clarification answers when the previous run returned `clarification_required`
 
 ## Run artifacts
@@ -72,3 +72,4 @@ Each run directory contains a narrow set of explicit artifacts:
 - the run history needed to keep follow-up behavior explicit
 
 It is not a published cross-module contract, but it is validated by the CLI before reuse.
+The stored `current_version` must match `session_graph.active_refs` so follow-up resolution cannot silently run against stale session state.

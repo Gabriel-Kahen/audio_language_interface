@@ -299,7 +299,8 @@ export interface LiveInterpretationBenchmarkRunResult {
 export type RequestCycleBenchmarkCategory =
   | "planner_correctness"
   | "outcome_verification"
-  | "regression_avoidance";
+  | "regression_avoidance"
+  | "session_provenance";
 
 export type RequestCycleBenchmarkExecutionSurface = "orchestration" | "tool";
 
@@ -338,6 +339,18 @@ export interface RequestCycleBenchmarkRegressionExpectation {
   max_severity?: number;
 }
 
+export interface RequestCycleBenchmarkSessionExpectation {
+  require_valid_session_graph?: boolean;
+  expected_output_parent_setup_index?: number;
+  expected_output_parent_setup_input_index?: number;
+  expected_branch_source_setup_index?: number;
+  expected_branch_source_setup_input_index?: number;
+  expected_branch_head_is_output?: boolean;
+  require_output_plan_request?: boolean;
+  require_output_transform_link?: boolean;
+  min_active_history_entries?: number;
+}
+
 export interface RequestCycleBenchmarkErrorExpectation {
   stage?: string;
   failure_class?: string;
@@ -356,6 +369,7 @@ export interface RequestCycleBenchmarkCase {
     planner?: RequestCycleBenchmarkPlannerExpectation;
     outcome?: RequestCycleBenchmarkOutcomeExpectation;
     regressions?: RequestCycleBenchmarkRegressionExpectation;
+    session?: RequestCycleBenchmarkSessionExpectation;
     error?: RequestCycleBenchmarkErrorExpectation;
   };
 }
@@ -388,7 +402,7 @@ export interface RequestCycleBenchmarkFailure {
 
 export interface RequestCycleBenchmarkCheckResult extends BenchmarkCheckResult {
   category: RequestCycleBenchmarkCategory;
-  scope: "planner" | "version_compare" | "render_compare" | "request_cycle";
+  scope: "planner" | "version_compare" | "render_compare" | "request_cycle" | "session_graph";
 }
 
 export interface RequestCycleCategoryScore {
@@ -401,6 +415,7 @@ export interface RequestCycleScoreBreakdown {
   plannerCorrectness: RequestCycleCategoryScore;
   outcomeVerification: RequestCycleCategoryScore;
   regressionAvoidance: RequestCycleCategoryScore;
+  sessionProvenance: RequestCycleCategoryScore;
 }
 
 export interface RequestCycleFailureBucket {

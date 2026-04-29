@@ -54,8 +54,11 @@ Runtime validation also enforces the history invariants that branch checkout, re
 
 - every recorded `audio_asset` and `audio_version` must have a provenance entry
 - `active_refs` and `active_ref_history` must be coherent asset/version pairs according to version provenance
+- `active_ref_history_index`, when present, must point at the current `active_refs` entry
+- an active branch must exist and its head must match the active version
+- branch source and head versions must belong to the same asset
 - version ancestry must be acyclic across the full parent chain, not just at one hop
-- transform provenance must agree in both directions when a version claims a direct `transform_record_id`
+- transform provenance must agree in both directions when a version claims a direct `transform_record_id`, including the transform input matching the version parent
 
 ### `assertValidSessionGraph(graph)`
 
@@ -81,6 +84,7 @@ Behavior:
 - updates `active_refs` by default
 - appends an active-ref history entry when the active selection changes
 - updates a branch head when `options.branch_id` is supplied
+- refuses to move a branch head to a version from another asset
 
 `RecordOptions`:
 
@@ -211,6 +215,17 @@ Behavior:
 - branch id, when present, must already exist
 - if the user previously undid history, redo entries after the current index are discarded before appending
 
+### `restoreActiveRefs(graph, input)`
+
+Restores a complete active-ref entry and appends that restoration to active-ref history.
+
+Behavior:
+
+- asset and version refs must already exist
+- branch id, when present, must already exist
+- when a branch id is present, the branch head is rewound to the restored version
+- this is intended for undo/retry recovery where the previous active selection may be a branch source rather than the current branch head
+
 ## Revert, Undo, And Redo
 
 ### `getParentVersionId(graph, versionId)`
@@ -256,7 +271,7 @@ Behavior with active branch:
 
 Important consequence:
 
-- `undoActiveRef` can move the active pointer back to the pre-revert version, but branch metadata remains at the reverted head because undo and redo do not replay structural history
+- branch-bound undo/redo restores the active branch head to the indexed active version so validation remains coherent
 
 ### `resolveRedoTargets(graph, versionId?)`
 
@@ -273,7 +288,8 @@ Move the current active selection backward or forward through `metadata.active_r
 Important limitation:
 
 - these helpers only move `active_refs` and the history index
-- they do not restore branch heads, snapshots, nodes, edges, or provenance to an earlier structural state
+- when the indexed entry is branch-bound, they restore that branch head to the indexed active version
+- they do not restore snapshots, nodes, edges, or provenance to an earlier structural state
 
 ## Metadata Contract Reality
 

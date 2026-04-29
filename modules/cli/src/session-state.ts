@@ -68,6 +68,20 @@ export function assertValidCliSessionState(value: unknown): CliSessionState {
   if (!availableVersions.some((version) => version.version_id === currentVersion.version_id)) {
     throw new Error("CLI session state current_version must exist in available_versions.");
   }
+  if (asset.asset_id !== currentVersion.asset_id) {
+    throw new Error("CLI session state current_version must belong to asset.");
+  }
+  if (
+    sessionGraph.active_refs.asset_id !== asset.asset_id ||
+    sessionGraph.active_refs.version_id !== currentVersion.version_id
+  ) {
+    throw new Error(
+      "CLI session state session_graph.active_refs must match asset and current_version.",
+    );
+  }
+  if (sessionGraph.session_id !== record.session_id) {
+    throw new Error("CLI session state session_graph.session_id must match session_id.");
+  }
 
   return {
     schema_version: "1.0.0",

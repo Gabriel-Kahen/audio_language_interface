@@ -20,6 +20,8 @@ import {
   resolveRedoTargets,
   resolveRevertTarget,
   resolveUndoTarget,
+  resolveUndoTargetEntry,
+  restoreActiveRefs,
   revertToVersion,
   type SessionGraph,
   undoActiveRef,
@@ -328,6 +330,10 @@ describe("history module", () => {
     });
 
     expect(resolveUndoTarget(graph)).toBe("ver_01HZX8C7J2V3M4N5P6Q7R8S9T2A");
+    expect(resolveUndoTargetEntry(graph)).toMatchObject({
+      asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T2A",
+      version_id: "ver_01HZX8C7J2V3M4N5P6Q7R8S9T2A",
+    });
     expect(resolveUndoTarget(graph, { steps: 2 })).toBe("ver_01HZX8B7J2V3M4N5P6Q7R8S9T2A");
 
     const reverted = revertToVersion(
@@ -398,8 +404,70 @@ describe("history module", () => {
     expect(undone.active_refs.version_id).toBe("ver_01HZX8C7J2V3M4N5P6Q7R8S9T2B");
     expect(undone.active_refs.branch_id).toBe("branch_darken");
     expect(getBranch(undone, "branch_darken")?.head_version_id).toBe(
-      "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2B",
+      "ver_01HZX8C7J2V3M4N5P6Q7R8S9T2B",
     );
+    expect(validateSessionGraph(undone).valid).toBe(true);
+  });
+
+  it("restores branch-bound active refs without leaving a stale branch head", () => {
+    let graph = createSessionGraph({
+      session_id: "session_01HZX8J7J2V3M4N5P6Q7R8S9T2C",
+      created_at: "2026-04-14T22:07:00Z",
+      active_refs: {
+        asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T2C",
+        version_id: "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2C",
+      },
+    });
+
+    graph = recordAudioAsset(graph, {
+      asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T2C",
+      source: { imported_at: "2026-04-14T22:07:00Z" },
+    });
+    graph = recordAudioVersion(graph, {
+      asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T2C",
+      version_id: "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2C",
+      lineage: {
+        created_at: "2026-04-14T22:07:01Z",
+        created_by: "modules/io",
+      },
+    });
+    graph = createBranch(graph, {
+      branch_id: "branch_retry",
+      source_version_id: "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2C",
+      created_at: "2026-04-14T22:07:02Z",
+    });
+    graph = recordAudioVersion(
+      graph,
+      {
+        asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T2C",
+        version_id: "ver_01HZX8C7J2V3M4N5P6Q7R8S9T2C",
+        parent_version_id: "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2C",
+        lineage: {
+          created_at: "2026-04-14T22:07:03Z",
+          created_by: "modules/transforms",
+        },
+      },
+      { branch_id: "branch_retry" },
+    );
+
+    const restored = restoreActiveRefs(graph, {
+      active_refs: {
+        asset_id: "asset_01HZX8A7J2V3M4N5P6Q7R8S9T2C",
+        version_id: "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2C",
+        branch_id: "branch_retry",
+      },
+      changed_at: "2026-04-14T22:07:04Z",
+      reason: "follow_up_undo",
+    });
+
+    expect(restored.active_refs).toMatchObject({
+      version_id: "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2C",
+      branch_id: "branch_retry",
+    });
+    expect(getBranch(restored, "branch_retry")?.head_version_id).toBe(
+      "ver_01HZX8B7J2V3M4N5P6Q7R8S9T2C",
+    );
+    expect(validateSessionGraph(restored).valid).toBe(true);
   });
 
   it("surfaces invalid active refs and broken provenance", () => {
@@ -739,6 +807,145 @@ describe("history module", () => {
         (issue) =>
           issue.instancePath === "/active_refs/version_id" &&
           issue.message.includes("missing required provenance"),
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects stale active history, stale branch heads, and parent/transform disagreement", () => {
+    const result = validateSessionGraph({
+      schema_version: "1.0.0",
+      session_id: "session_01HZX8J7J2V3M4N5P6Q7R8S9TE",
+      created_at: "2026-04-14T23:25:00Z",
+      updated_at: "2026-04-14T23:25:00Z",
+      nodes: [
+        {
+          node_id: "node_asset_1",
+          node_type: "audio_asset",
+          ref_id: "asset_1",
+          created_at: "2026-04-14T23:25:00Z",
+        },
+        {
+          node_id: "node_ver_1",
+          node_type: "audio_version",
+          ref_id: "ver_1",
+          created_at: "2026-04-14T23:25:00Z",
+        },
+        {
+          node_id: "node_ver_2",
+          node_type: "audio_version",
+          ref_id: "ver_2",
+          created_at: "2026-04-14T23:25:00Z",
+        },
+        {
+          node_id: "node_ver_3",
+          node_type: "audio_version",
+          ref_id: "ver_3",
+          created_at: "2026-04-14T23:25:00Z",
+        },
+        {
+          node_id: "node_transform_1",
+          node_type: "transform_record",
+          ref_id: "transform_1",
+          created_at: "2026-04-14T23:25:00Z",
+        },
+      ],
+      edges: [
+        {
+          from_node_id: "node_asset_1",
+          to_node_id: "node_ver_1",
+          relation: "has_version",
+        },
+        {
+          from_node_id: "node_asset_1",
+          to_node_id: "node_ver_2",
+          relation: "has_version",
+        },
+        {
+          from_node_id: "node_asset_1",
+          to_node_id: "node_ver_3",
+          relation: "has_version",
+        },
+        {
+          from_node_id: "node_transform_1",
+          to_node_id: "node_ver_3",
+          relation: "produced",
+        },
+      ],
+      active_refs: {
+        asset_id: "asset_1",
+        version_id: "ver_3",
+        branch_id: "branch_retry",
+      },
+      metadata: {
+        branches: [
+          {
+            branch_id: "branch_retry",
+            source_version_id: "ver_1",
+            head_version_id: "ver_2",
+            created_at: "2026-04-14T23:25:01Z",
+          },
+        ],
+        active_ref_history: [
+          {
+            asset_id: "asset_1",
+            version_id: "ver_1",
+            changed_at: "2026-04-14T23:25:00Z",
+          },
+          {
+            asset_id: "asset_1",
+            version_id: "ver_2",
+            changed_at: "2026-04-14T23:25:01Z",
+          },
+          {
+            asset_id: "asset_1",
+            version_id: "ver_3",
+            branch_id: "branch_retry",
+            changed_at: "2026-04-14T23:25:02Z",
+          },
+        ],
+        active_ref_history_index: 1,
+        provenance: {
+          asset_1: {
+            asset_id: "asset_1",
+          },
+          ver_1: {
+            asset_id: "asset_1",
+            version_id: "ver_1",
+          },
+          ver_2: {
+            asset_id: "asset_1",
+            version_id: "ver_2",
+            parent_version_id: "ver_1",
+          },
+          ver_3: {
+            asset_id: "asset_1",
+            version_id: "ver_3",
+            parent_version_id: "ver_2",
+            transform_record_id: "transform_1",
+          },
+          transform_1: {
+            asset_id: "asset_1",
+            input_version_id: "ver_1",
+            output_version_id: "ver_3",
+          },
+        },
+      },
+    });
+
+    expect(result.valid).toBe(false);
+    expect(
+      result.issues.some((issue) =>
+        issue.message.includes("active_ref_history_index must point to the current active_refs"),
+      ),
+    ).toBe(true);
+    expect(
+      result.issues.some((issue) =>
+        issue.message.includes("active branch 'branch_retry' head does not match active version"),
+      ),
+    ).toBe(true);
+    expect(
+      result.issues.some((issue) =>
+        issue.message.includes("starts from version 'ver_1', not parent version 'ver_2'"),
       ),
     ).toBe(true);
   });

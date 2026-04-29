@@ -31,6 +31,8 @@ export interface SetActiveRefsInput {
   reason?: string;
 }
 
+export type RestoreActiveRefsInput = SetActiveRefsInput;
+
 /** Creates a named branch from an existing version and activates it by default. */
 export function createBranch(graph: SessionGraph, input: CreateBranchInput): SessionGraph {
   requireVersion(graph, input.source_version_id);
@@ -171,6 +173,49 @@ export function setActiveRefs(graph: SessionGraph, input: SetActiveRefsInput): S
   );
 }
 
+/**
+ * Restores a previously active ref entry.
+ *
+ * Unlike a plain checkout, restoring branch-bound active refs must also rewind
+ * the referenced branch head to the restored version; otherwise the active
+ * branch and active version can disagree after undoing a retry/alternate take.
+ */
+export function restoreActiveRefs(
+  graph: SessionGraph,
+  input: RestoreActiveRefsInput,
+): SessionGraph {
+  let nextGraph = graph;
+
+  if (input.active_refs.branch_id) {
+    const branch = getBranch(graph, input.active_refs.branch_id);
+    if (!branch) {
+      throw new Error(`Branch '${input.active_refs.branch_id}' does not exist`);
+    }
+
+    const targetAssetId = resolveAssetIdForVersion(graph, input.active_refs.version_id);
+    const branchAssetId = resolveAssetIdForVersion(graph, branch.source_version_id);
+    if (targetAssetId !== input.active_refs.asset_id) {
+      throw new Error(
+        `Cannot restore active refs to version '${input.active_refs.version_id}' because it belongs to asset '${targetAssetId}', not '${input.active_refs.asset_id}'`,
+      );
+    }
+    if (targetAssetId !== branchAssetId) {
+      throw new Error(
+        `Cannot restore branch '${input.active_refs.branch_id}' to version '${input.active_refs.version_id}' because it belongs to asset '${targetAssetId}', not branch asset '${branchAssetId}'`,
+      );
+    }
+
+    nextGraph = replaceBranchHead(
+      nextGraph,
+      input.active_refs.branch_id,
+      input.active_refs.version_id,
+      input.changed_at,
+    );
+  }
+
+  return setActiveRefs(nextGraph, input);
+}
+
 /** Returns a shallow copy of all stored branches. */
 export function listBranches(graph: SessionGraph): SessionBranch[] {
   return [...(normalizeMetadata(graph.metadata).branches ?? [])];
@@ -200,4 +245,36 @@ function resolveAssetIdForVersion(graph: SessionGraph, versionId: string): strin
     throw new Error(`No asset provenance recorded for version '${versionId}'`);
   }
   return assetId;
+}
+
+function replaceBranchHead(
+  graph: SessionGraph,
+  branchId: string,
+  versionId: string,
+  updatedAt: string,
+): SessionGraph {
+  const metadata = normalizeMetadata(graph.metadata);
+  const branches = metadata.branches ?? [];
+  const branchIndex = branches.findIndex((branch) => branch.branch_id === branchId);
+  const branch = branches[branchIndex];
+  if (!branch) {
+    throw new Error(`Branch '${branchId}' does not exist`);
+  }
+
+  const nextBranches = [...branches];
+  nextBranches[branchIndex] = {
+    ...branch,
+    head_version_id: versionId,
+  };
+
+  return withUpdatedTimestamp(
+    {
+      ...graph,
+      metadata: {
+        ...metadata,
+        branches: nextBranches,
+      },
+    },
+    updatedAt,
+  );
 }

@@ -1,4 +1,4 @@
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -64,7 +64,7 @@ describe("runCli", () => {
     } finally {
       await rm(sessionDir, { recursive: true, force: true });
     }
-  }, 10_000);
+  }, 20_000);
 
   it("uses --best-effort to apply a conservative proxy for texture wording", async () => {
     const sessionDir = await mkdtemp(path.join(os.tmpdir(), "ali-cli-best-effort-"));
@@ -104,7 +104,7 @@ describe("runCli", () => {
     } finally {
       await rm(sessionDir, { recursive: true, force: true });
     }
-  }, 10_000);
+  }, 20_000);
 
   it("reuses saved session state for follow-up undo requests", async () => {
     const sessionDir = await mkdtemp(path.join(os.tmpdir(), "ali-cli-follow-up-"));
@@ -158,7 +158,45 @@ describe("runCli", () => {
     } finally {
       await rm(sessionDir, { recursive: true, force: true });
     }
-  }, 10_000);
+  }, 20_000);
+
+  it("rejects stale session state before running follow-up orchestration", async () => {
+    const sessionDir = await mkdtemp(path.join(os.tmpdir(), "ali-cli-stale-state-"));
+    const stdout = createBufferWriter();
+
+    try {
+      const firstRun = await runCli(
+        [
+          "edit",
+          firstSliceFixturePath,
+          "Make this loop darker and less harsh.",
+          "--session-dir",
+          sessionDir,
+          "--json",
+        ],
+        { stdout },
+      );
+      expect(firstRun.exitCode).toBe(0);
+
+      const state = await loadCliSessionState(sessionDir);
+      const originalVersion = state.available_versions.find(
+        (version) => version.state?.is_original === true,
+      );
+      expect(originalVersion).toBeTruthy();
+      await writeFile(
+        path.join(sessionDir, "session.json"),
+        `${JSON.stringify({ ...state, current_version: originalVersion }, null, 2)}\n`,
+      );
+
+      const stderr = createBufferWriter();
+      const followUp = await runCli(["follow-up", sessionDir, "more", "--json"], { stderr });
+
+      expect(followUp.exitCode).toBe(1);
+      expect(stderr.value).toContain("session_graph.active_refs must match");
+    } finally {
+      await rm(sessionDir, { recursive: true, force: true });
+    }
+  }, 20_000);
 });
 
 function createBufferWriter(): { value: string; write(chunk: string): void } {

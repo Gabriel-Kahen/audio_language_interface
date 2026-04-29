@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the tool envelope for running the full orchestration editing cycle, including explicit session-aware follow-up requests such as `more`, `less`, `undo`, `revert to previous version`, and `try another version`, plus clarification-required request interpretation flows.
+Defines the tool envelope for running the full orchestration editing cycle, including explicit session-aware follow-up requests such as `more`, `less`, `undo`, `revert to previous version`, `try another version`, and `retry`, plus clarification-required request interpretation flows.
 
 This tool is the adapter-layer entrypoint for one-shot and iterative request-cycle execution. It delegates workflow logic to `modules/orchestration` while keeping session history explicit at the tool boundary.
 
@@ -119,7 +119,7 @@ Important response semantics:
   - applied the direct request
   - treated the current request as a clarification answer
   - repeated the last request for `more`
-  - branched and replayed the prior request for `try another version`
+  - branched and replayed the prior request for `try another version` or `retry`
   - reverted to a concrete historical version for `less`, `undo`, or `revert`
 - when interpretation is enabled, `intent_interpretation` makes the normalized planner-facing request and any ambiguity flags explicit without bypassing deterministic planning
 - the richer interpretation artifact may also expose `next_action`, descriptor hypotheses, constraints, region-intent proposals, alternate candidates, and follow-up interpretation metadata
@@ -138,6 +138,7 @@ Historical follow-up resolution failures should surface as `invalid_arguments`, 
 
 - `error.details.field = "arguments.input.available_versions"` when a required historical version was not provided
 - `error.details.stage` when orchestration failed while resolving or loading follow-up history
+- `error.details.partial_result` when orchestration had recoverable session or artifact state at the failure boundary
 
 ## Schemas
 

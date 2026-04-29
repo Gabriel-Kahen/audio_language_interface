@@ -14,7 +14,7 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - `less crunchy` -> conservative `less harsh` proxy only when the request does not already read as explicit clipping or distortion repair
 - `cleaner`, `clean up a bit` -> conservative tonal cleanup only when analysis or semantics show harshness or muddiness; otherwise reject as underspecified
 - `brighter`, `more presence` -> gentle `tilt_eq` brightening around `1200 Hz`
-- `airier`, `more air` -> `high_shelf` boost around `6500 Hz`
+- `airier`, `more air`, `a little air`, `sparkle` -> `high_shelf` boost around `6500 Hz`
 - `less muddy`, `clean up the low mids` -> low-mid `parametric_eq` bell cut around `360 Hz`; verification uses a low-threshold broad mid-band check because the actual edit is localized, and when this is combined with an explicit darker request, the planner omits the automatic lost-air guard because the user asked for a top-end reduction
 - `warmer`, `more warmth` -> `low_shelf` boost around `180 Hz`; when paired with explicit quieter wording, verification checks warmer relative tonal tilt instead of absolute low-band gain because the level move intentionally reduces the whole signal
 - `warmer` plus `clean up the low mids` -> `parametric_eq -> low_shelf`; the low-mid cut removes mud while the warmth shelf adds body below that buildup region, and warmth verification uses a smaller low-band lift threshold because the companion cut intentionally removes nearby buildup

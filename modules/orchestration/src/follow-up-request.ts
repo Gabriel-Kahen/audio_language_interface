@@ -2,7 +2,7 @@ import {
   getParentVersionId,
   getVersionFollowUpRequest,
   resolveRevertTarget,
-  resolveUndoTarget,
+  resolveUndoTargetEntry,
   type SessionGraph,
 } from "@audio-language-interface/history";
 import type { FollowUpApplyResolution, FollowUpRevertResolution } from "./types.js";
@@ -73,9 +73,11 @@ export function resolveFollowUpRequest(input: {
       );
     }
 
+    const targetActiveRefs =
+      revertSource === "undo" ? resolveUndoTargetEntry(input.sessionGraph) : undefined;
     const targetVersionId =
       revertSource === "undo"
-        ? resolveUndoTarget(input.sessionGraph)
+        ? targetActiveRefs?.version_id
         : resolveRevertTarget(input.sessionGraph, {
             version_id: input.versionId,
           });
@@ -91,6 +93,17 @@ export function resolveFollowUpRequest(input: {
       kind: "revert",
       targetVersionId,
       source: revertSource,
+      ...(targetActiveRefs === undefined
+        ? {}
+        : {
+            targetActiveRefs: {
+              asset_id: targetActiveRefs.asset_id,
+              version_id: targetActiveRefs.version_id,
+              ...(targetActiveRefs.branch_id === undefined
+                ? {}
+                : { branch_id: targetActiveRefs.branch_id }),
+            },
+          }),
     };
   }
 
@@ -142,6 +155,11 @@ function getRevertSource(value: string): RevertFollowUpSource | undefined {
 
 function isTryAnotherVersionFollowUp(value: string): boolean {
   return [
+    "retry",
+    "retry that",
+    "try again",
+    "try it again",
+    "run it again",
     "try another version",
     "another version",
     "try another",

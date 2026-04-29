@@ -105,6 +105,21 @@ describe("parseUserRequest", () => {
     expect(parsed.intensity).toBe("subtle");
   });
 
+  it("parses air and transient-preservation stress aliases", () => {
+    const sparkle = parseUserRequest("Add a bit of sparkle and keep the punch.");
+    const littleAir = parseUserRequest("Give it more warmth and a little air.");
+    const transientPreservation = parseUserRequest(
+      "Catch those peaks without losing the transients.",
+    );
+
+    expect(sparkle.wants_more_air).toBe(true);
+    expect(sparkle.preserve_punch).toBe(true);
+    expect(littleAir.wants_more_warmth).toBe(true);
+    expect(littleAir.wants_more_air).toBe(true);
+    expect(transientPreservation.wants_peak_control).toBe(true);
+    expect(transientPreservation.preserve_punch).toBe(true);
+  });
+
   it("parses grounded texture wording into conservative tonal cleanup and declipping objectives", () => {
     const relaxed = parseUserRequest("Make it more relaxed.");
     const lessDistorted = parseUserRequest("Make it less distorted.");
@@ -704,6 +719,29 @@ describe("planEdits", () => {
     expect(plan.goals).toContain("add a little upper-band air");
   });
 
+  it("maps sparkle and little-air aliases to high-shelf plans without dropping companions", () => {
+    const sparklePlan = planEdits({
+      userRequest: "Add a bit of sparkle and keep the punch.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+    const warmthAirPlan = planEdits({
+      userRequest: "Give it more warmth and a little air.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(sparklePlan.steps.map((step) => step.operation)).toEqual(["high_shelf"]);
+    expect(sparklePlan.goals).toEqual(["add a little upper-band air", "preserve transient impact"]);
+    expect(warmthAirPlan.steps.map((step) => step.operation)).toEqual(["low_shelf", "high_shelf"]);
+    expect(warmthAirPlan.goals).toEqual([
+      "add a little upper-band air",
+      "add a little low-band warmth",
+    ]);
+  });
+
   it("maps less-muddy requests to a low-mid parametric cut aligned with verification", () => {
     const plan = planEdits({
       userRequest: "Make it less muddy.",
@@ -1108,6 +1146,21 @@ describe("planEdits", () => {
     ]);
     expect(peakPunchPlan.steps.map((step) => step.operation)).toEqual(["limiter"]);
     expect(peakPunchPlan.goals).toEqual([
+      "control peak excursions conservatively",
+      "preserve transient impact",
+    ]);
+  });
+
+  it("preserves transient intent for peak-control wording variants", () => {
+    const plan = planEdits({
+      userRequest: "Catch those peaks without losing the transients.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["limiter"]);
+    expect(plan.goals).toEqual([
       "control peak excursions conservatively",
       "preserve transient impact",
     ]);

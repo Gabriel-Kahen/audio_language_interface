@@ -1,5 +1,10 @@
 import { setActiveRefs } from "./branching.js";
-import { getBranch, normalizeMetadata, type SessionGraph } from "./session-graph.js";
+import {
+  type ActiveRefHistoryEntry,
+  getBranch,
+  normalizeMetadata,
+  type SessionGraph,
+} from "./session-graph.js";
 
 export interface ResolveRevertTargetInput {
   version_id?: string;
@@ -58,6 +63,14 @@ export function resolveUndoTarget(
   graph: SessionGraph,
   input: ResolveUndoTargetInput = {},
 ): string | undefined {
+  return resolveUndoTargetEntry(graph, input)?.version_id;
+}
+
+/** Resolves a prior active ref entry from explicit active ref history. */
+export function resolveUndoTargetEntry(
+  graph: SessionGraph,
+  input: ResolveUndoTargetInput = {},
+): ActiveRefHistoryEntry | undefined {
   const steps = input.steps ?? 1;
   const metadata = normalizeMetadata(graph.metadata);
   const history = metadata.active_ref_history ?? [];
@@ -68,7 +81,7 @@ export function resolveUndoTarget(
     return undefined;
   }
 
-  return history[targetIndex]?.version_id;
+  return history[targetIndex];
 }
 
 /**
@@ -105,6 +118,13 @@ export function revertToVersion(
     const branch = getBranch(graph, graph.active_refs.branch_id);
     if (!branch) {
       throw new Error(`Branch '${graph.active_refs.branch_id}' does not exist`);
+    }
+    const branchAssetId = normalizeMetadata(graph.metadata).provenance?.[branch.source_version_id]
+      ?.asset_id;
+    if (branchAssetId && branchAssetId !== assetId) {
+      throw new Error(
+        `Cannot move branch '${branch.branch_id}' to version '${versionId}' because it belongs to asset '${assetId}', not branch asset '${branchAssetId}'`,
+      );
     }
 
     return setActiveRefs(
@@ -155,19 +175,7 @@ export function undoActiveRef(graph: SessionGraph): SessionGraph {
     return graph;
   }
 
-  return {
-    ...graph,
-    active_refs: {
-      asset_id: entry.asset_id,
-      version_id: entry.version_id,
-      ...(entry.branch_id ? { branch_id: entry.branch_id } : {}),
-    },
-    metadata: {
-      ...metadata,
-      active_ref_history_index: nextIndex,
-    },
-    updated_at: entry.changed_at,
-  };
+  return restoreIndexedActiveRef(graph, entry, nextIndex);
 }
 
 /** Moves the active selection forward through active ref history. */
@@ -182,6 +190,43 @@ export function redoActiveRef(graph: SessionGraph): SessionGraph {
     return graph;
   }
 
+  return restoreIndexedActiveRef(graph, entry, nextIndex);
+}
+
+function restoreIndexedActiveRef(
+  graph: SessionGraph,
+  entry: ActiveRefHistoryEntry,
+  index: number,
+): SessionGraph {
+  const metadata = normalizeMetadata(graph.metadata);
+  let branches = metadata.branches ?? [];
+
+  if (entry.branch_id) {
+    const branch = getBranch(graph, entry.branch_id);
+    if (!branch) {
+      throw new Error(`Branch '${entry.branch_id}' does not exist`);
+    }
+
+    const entryAssetId = metadata.provenance?.[entry.version_id]?.asset_id;
+    const branchAssetId = metadata.provenance?.[branch.source_version_id]?.asset_id;
+    if (entryAssetId && entryAssetId !== entry.asset_id) {
+      throw new Error(
+        `Cannot restore active refs to version '${entry.version_id}' because it belongs to asset '${entryAssetId}', not '${entry.asset_id}'`,
+      );
+    }
+    if (entryAssetId && branchAssetId && entryAssetId !== branchAssetId) {
+      throw new Error(
+        `Cannot restore branch '${entry.branch_id}' to version '${entry.version_id}' because it belongs to asset '${entryAssetId}', not branch asset '${branchAssetId}'`,
+      );
+    }
+
+    branches = (branches ?? []).map((candidate) =>
+      candidate.branch_id === entry.branch_id
+        ? { ...candidate, head_version_id: entry.version_id }
+        : candidate,
+    );
+  }
+
   return {
     ...graph,
     active_refs: {
@@ -191,7 +236,8 @@ export function redoActiveRef(graph: SessionGraph): SessionGraph {
     },
     metadata: {
       ...metadata,
-      active_ref_history_index: nextIndex,
+      branches,
+      active_ref_history_index: index,
     },
     updated_at: entry.changed_at,
   };

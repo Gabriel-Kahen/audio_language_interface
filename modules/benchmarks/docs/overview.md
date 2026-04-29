@@ -30,6 +30,7 @@ The benchmark scoring/reporting layer now supports four evaluation shapes:
   - planner correctness
   - outcome verification
   - regression avoidance
+  - session provenance
 
 See `docs/api.md` for the exported benchmark runners, fixture helpers, scoring helpers, and report-formatting behavior.
 
@@ -149,6 +150,7 @@ Request-cycle scores are intentionally split by responsibility boundary:
 - planner correctness checks whether the cycle emitted the expected result kind, operations, ordering, goals, explicit `time_range` targets when applicable, or revision decision
 - outcome verification checks whether the completed version/render comparisons show the expected goal statuses, verification-target statuses, semantic deltas, and structured-verification presence when required
 - regression avoidance checks whether forbidden regression kinds stayed absent and whether severe regressions were avoided
+- session provenance checks whether the returned `SessionGraph` is valid and whether repeated-edit lineage, branch heads, plan-request recovery, transform links, and active-ref history stayed coherent when the case declares those expectations
 
 The request-cycle overall score is the equal-weighted average of the non-empty category scores rather than one flat check bucket. That keeps planner mistakes, verification failures, and regression failures visible as separate failure modes.
 
@@ -183,7 +185,7 @@ The first public request-cycle corpus currently covers:
 - `center this more and make it wider`
 - `make the first 0.5 seconds darker and less harsh`
 - regional level wording such as `make the first half second softer` and `turn down the first 0.5 seconds a little`
-- iterative follow-up requests such as `more`, `less`, `undo`, `revert to previous version`, and `try another version`
+- iterative follow-up requests such as `more`, `less`, `undo`, `revert to previous version`, `try another version`, and `retry`
 - `control the peaks without crushing it`
 - peak-limiting wording such as `limit the peaks without crushing it`
 - `make it louder and more controlled`

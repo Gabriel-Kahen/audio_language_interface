@@ -2,6 +2,7 @@ import { createSessionId } from "@audio-language-interface/core";
 import {
   clearPendingClarification,
   getPendingClarification,
+  restoreActiveRefs,
   setPendingClarification,
 } from "@audio-language-interface/history";
 import { executeWithFailurePolicy, OrchestrationStageError } from "./failure-policy.js";
@@ -41,7 +42,7 @@ export async function runRequestCycle(
   const iterations: IterationResult[] = [];
   let revision: RevisionDecision | undefined;
   let resolvedUserRequest = options.userRequest;
-  let activeBranchId = options.branchId;
+  let activeBranchId = options.branchId ?? sessionGraph?.active_refs.branch_id;
   let followUpResolution: FollowUpResolution = {
     kind: "apply",
     resolvedUserRequest: options.userRequest,
@@ -197,7 +198,11 @@ export async function runRequestCycle(
     }
 
     resolvedUserRequest = followUp.resolvedUserRequest;
-    if (pendingClarification !== undefined && followUp.source === "direct_request") {
+    if (
+      pendingClarification !== undefined &&
+      followUp.source === "direct_request" &&
+      options.interpretation !== undefined
+    ) {
       followUpResolution = {
         ...followUp,
         source: "clarification_answer",
@@ -519,7 +524,9 @@ export async function runRequestCycle(
   sessionGraph = options.dependencies.recordRenderArtifact(sessionGraph, baselineRender);
   sessionGraph = options.dependencies.recordRenderArtifact(sessionGraph, candidateRender);
   sessionGraph = options.dependencies.recordComparisonReport(sessionGraph, renderComparisonReport);
-  sessionGraph = clearPendingClarification(sessionGraph, new Date().toISOString());
+  if (followUpResolution.source === "clarification_answer") {
+    sessionGraph = clearPendingClarification(sessionGraph, new Date().toISOString());
+  }
 
   return {
     result_kind: "applied",
@@ -609,12 +616,20 @@ async function runRevertRequestCycle(input: {
     trace: input.trace,
   });
 
-  let sessionGraph = input.options.dependencies.revertToVersion(
-    input.sessionGraph,
-    targetVersion.version_id,
-    new Date().toISOString(),
-    `follow_up_${input.followUp.source}`,
-  );
+  const revertedAt = new Date().toISOString();
+  let sessionGraph =
+    input.followUp.targetActiveRefs === undefined
+      ? input.options.dependencies.revertToVersion(
+          input.sessionGraph,
+          targetVersion.version_id,
+          revertedAt,
+          `follow_up_${input.followUp.source}`,
+        )
+      : restoreActiveRefs(input.sessionGraph, {
+          active_refs: input.followUp.targetActiveRefs,
+          changed_at: revertedAt,
+          reason: `follow_up_${input.followUp.source}`,
+        });
   sessionGraph = clearPendingClarification(sessionGraph, new Date().toISOString());
 
   const outputAnalysis = await executeWithFailurePolicy({
