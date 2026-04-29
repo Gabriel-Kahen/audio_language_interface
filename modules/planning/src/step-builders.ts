@@ -109,7 +109,7 @@ export function buildPlannedSteps(context: StepBuildContext): EditPlanStep[] {
     },
     {
       phase: "filters",
-      steps: [buildRumbleStep(context.objectives)],
+      steps: [buildRumbleStep(context.objectives), buildLowPassStep(context.objectives)],
     },
     {
       phase: "tonal_balance",
@@ -354,8 +354,24 @@ function buildRumbleStep(objectives: ParsedEditObjectives): EditPlanStep | undef
     step_id: "step_high_pass_1",
     operation: "high_pass_filter",
     target: { scope: "full_file" },
-    parameters: { frequency_hz: 40 },
-    expected_effects: ["reduce low-frequency rumble below 40 Hz"],
+    parameters: { frequency_hz: 100 },
+    expected_effects: ["reduce low-frequency rumble below 100 Hz"],
+    safety_limits: buildFilterSafetyLimits(),
+  };
+}
+
+function buildLowPassStep(objectives: ParsedEditObjectives): EditPlanStep | undefined {
+  if (!objectives.wants_low_pass_filter) {
+    return undefined;
+  }
+
+  return {
+    ...assertPlannerStepSupport("low_pass_filter", "full_file"),
+    step_id: "step_low_pass_1",
+    operation: "low_pass_filter",
+    target: { scope: "full_file" },
+    parameters: { frequency_hz: 6500 },
+    expected_effects: ["roll off high-frequency content above 6500 Hz"],
     safety_limits: buildFilterSafetyLimits(),
   };
 }

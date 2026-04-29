@@ -71,6 +71,7 @@ Supported but conservative areas:
 - wider or narrower, when stereo evidence is safe enough
 - center this more or fix the stereo imbalance, when measured left-right balance is clearly off but still safe to correct conservatively
 - denoise or reduce hiss, when steady-noise evidence is strong enough
+- explicit low-pass filtering or top-end rolloff wording such as `low pass the top end`, as a measured high-band rolloff distinct from generic darker tonal tilt
 - explicit loudness normalization through `normalize`
 - airier, warmer, less muddy, or less harsh ring through surgical tone-shaping, with less-muddy requests using a low-mid bell cut aligned to mid-band verification; `warmer` plus `clean up the low mids` is now treated as a safe low-band compound with a warmth shelf after the low-mid cleanup cut
 - texture wording such as `more relaxed` or `less aggressive` when it can be grounded honestly as a conservative tonal-softening move from harshness, aggressive, or brightness evidence
@@ -197,7 +198,7 @@ Current tool-surface caveats:
 - the repository now provides a narrow alpha CLI entrypoint through `pnpm ali -- ...` for local `edit` and `follow-up` flows, with explicit session directories and no hidden persistence
 - benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, grounded texture wording, tonal and cross-family compound edits, restoration, timing edits, stereo/spatial edits, the first explicit numeric region-targeting slice, iterative follow-up flows, peak-control, dedicated louder-and-controlled prompts, clarification/failure controls, and session-provenance checks for repeated edits
 - live provider evaluation exists for the interpretation layer, but it is intentionally opt-in and narrower than the deterministic benchmark/reporting path because provider drift, key management, latency, and API cost are part of what that harness is meant to measure
-- the planner-supported operation verification matrix now makes coverage honest per operation: most planner-supported operations have request-cycle outcome evidence, `high_pass_filter` has request-cycle planner coverage only, `trim`, `fade`, and `denoise` are planner/compare-only today, and `low_pass_filter` is an explicit verification gap because it is published as planner-supported but not currently emitted or verified by the deterministic planner path
+- the planner-supported operation verification matrix now makes coverage honest per operation: every current planner-supported operation has request-cycle outcome evidence, including explicit trim, fade, denoise, high-pass, and low-pass cases
 
 ## Practical Interpretation
 

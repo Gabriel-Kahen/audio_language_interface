@@ -76,14 +76,13 @@ export const plannerSupportedOperationVerificationMatrix = [
     operation: "trim",
     plannerIntentSummary: "Explicit keep/cut ranges with concrete start and end timestamps.",
     plannerUnitTestRefs: ["modules/planning/tests/plan-edits.test.ts"],
-    requestCycleCaseIds: [],
+    requestCycleCaseIds: ["request_cycle_explicit_trim_range"],
     verificationTargetIds: ["target_trim_explicit_duration"],
     verificationMetrics: ["duration_seconds", "derived.output_duration_seconds"],
     regressionGuardKinds: [],
     compareEvidence: ["local_audio_metrics.duration"],
-    coverageStatus: "planner_verified",
-    notes:
-      "Planning and local compare evidence exist, but there is not yet a fixture-backed request-cycle benchmark for explicit trim ranges.",
+    coverageStatus: "request_cycle_verified",
+    notes: "Explicit trim ranges now have request-cycle coverage with local duration evidence.",
   }),
   entry({
     operation: "trim_silence",
@@ -111,7 +110,7 @@ export const plannerSupportedOperationVerificationMatrix = [
     operation: "fade",
     plannerIntentSummary: "Explicit fade-in and fade-out envelopes with concrete durations.",
     plannerUnitTestRefs: ["modules/planning/tests/plan-edits.test.ts"],
-    requestCycleCaseIds: [],
+    requestCycleCaseIds: ["request_cycle_explicit_fade_out"],
     verificationTargetIds: [
       "target_fade_in_200ms_envelope",
       "target_fade_out_100ms_envelope",
@@ -120,9 +119,9 @@ export const plannerSupportedOperationVerificationMatrix = [
     verificationMetrics: ["derived.fade_in_boundary_ratio", "derived.fade_out_boundary_ratio"],
     regressionGuardKinds: [],
     compareEvidence: ["local_audio_metrics.fade_envelope"],
-    coverageStatus: "planner_verified",
+    coverageStatus: "request_cycle_verified",
     notes:
-      "Planning and local fade-envelope verification exist, but no request-cycle case currently exercises fade.",
+      "Explicit fade-out requests now have request-cycle coverage with local envelope evidence.",
   }),
   entry({
     operation: "pitch_shift",
@@ -172,22 +171,26 @@ export const plannerSupportedOperationVerificationMatrix = [
     verificationMetrics: ["spectral_balance.low_band_db"],
     regressionGuardKinds: [],
     compareEvidence: ["structured_verification.analysis_metric"],
-    coverageStatus: "request_cycle_planner_covered",
+    coverageStatus: "request_cycle_verified",
     notes:
       "High-pass verification is anchored to low-band reduction around the published rumble target.",
   }),
   entry({
     operation: "low_pass_filter",
-    plannerIntentSummary: "Published planner-supported low-pass operation metadata.",
-    plannerUnitTestRefs: [],
-    requestCycleCaseIds: [],
-    verificationTargetIds: [],
-    verificationMetrics: [],
-    regressionGuardKinds: [],
-    compareEvidence: [],
-    coverageStatus: "verification_gap",
+    plannerIntentSummary:
+      "Explicit low-pass filtering and high-frequency rolloff requests that should not be folded into generic darker wording.",
+    plannerUnitTestRefs: ["modules/planning/tests/plan-edits.test.ts"],
+    requestCycleCaseIds: ["request_cycle_low_pass_top_end_stress"],
+    verificationTargetIds: ["target_low_pass_high_band", "target_low_pass_no_added_muddiness"],
+    verificationMetrics: ["spectral_balance.high_band_db"],
+    regressionGuardKinds: ["added_muddiness"],
+    compareEvidence: [
+      "structured_verification.analysis_metric",
+      "structured_verification.regression_guard",
+    ],
+    coverageStatus: "request_cycle_verified",
     notes:
-      "Marked planner_supported in the capability manifest, but no deterministic parser, planner builder, verification target, or request-cycle case currently emits it.",
+      "Explicit low-pass wording is planner-emitted and benchmarked separately from generic darker tonal tilt.",
   }),
   entry({
     operation: "high_shelf",
@@ -400,7 +403,7 @@ export const plannerSupportedOperationVerificationMatrix = [
     plannerIntentSummary:
       "Conservative noise-floor reduction only when steady-noise evidence is present.",
     plannerUnitTestRefs: ["modules/planning/tests/plan-edits.test.ts"],
-    requestCycleCaseIds: [],
+    requestCycleCaseIds: ["request_cycle_remove_hiss_denoise"],
     verificationTargetIds: ["target_reduce_noise_floor", "target_reduce_noise_no_artifacts"],
     verificationMetrics: ["artifacts.noise_floor_dbfs"],
     regressionGuardKinds: ["denoise_artifacts"],
@@ -408,9 +411,9 @@ export const plannerSupportedOperationVerificationMatrix = [
       "structured_verification.analysis_metric",
       "structured_verification.regression_guard",
     ],
-    coverageStatus: "planner_verified",
+    coverageStatus: "request_cycle_verified",
     notes:
-      "Planning and compare targets exist, but no committed request-cycle fixture currently provides stable denoise evidence.",
+      "Denoise is request-cycle verified on the committed bright/noisy cleanup fixture with steady-noise evidence.",
   }),
   entry({
     operation: "de_esser",

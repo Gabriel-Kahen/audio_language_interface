@@ -257,6 +257,16 @@ function resolvePlannerObjectives(
     );
   }
 
+  if (
+    objectives.wants_low_pass_filter &&
+    (objectives.wants_brighter || objectives.wants_more_air)
+  ) {
+    throw createPlanningFailure(
+      "supported_but_underspecified",
+      "The request combines explicit low-pass filtering with upper-band brightening. Please choose either a high-frequency rolloff or a brighter/airier top end.",
+    );
+  }
+
   if (objectives.wants_denoise && (objectives.wants_brighter || objectives.wants_more_air)) {
     throw createPlanningFailure(
       "supported_but_underspecified",
@@ -752,6 +762,7 @@ function hasExplicitCleanerDirection(objectives: ReturnType<typeof parseUserRequ
     objectives.wants_less_muddy ||
     objectives.wants_more_warmth ||
     objectives.wants_remove_rumble ||
+    objectives.wants_low_pass_filter ||
     objectives.wants_denoise ||
     objectives.wants_tame_sibilance ||
     objectives.wants_remove_clicks ||
@@ -891,6 +902,7 @@ function hasCompanionNonDynamicsIntent(objectives: ReturnType<typeof parseUserRe
     objectives.wants_less_muddy ||
     objectives.wants_more_warmth ||
     objectives.wants_remove_rumble ||
+    objectives.wants_low_pass_filter ||
     objectives.wants_tame_sibilance ||
     objectives.wants_denoise ||
     objectives.wants_remove_hum ||
@@ -920,6 +932,7 @@ function hasCompanionNonDeclipIntent(objectives: ReturnType<typeof parseUserRequ
     objectives.wants_less_muddy ||
     objectives.wants_more_warmth ||
     objectives.wants_remove_rumble ||
+    objectives.wants_low_pass_filter ||
     objectives.wants_louder ||
     objectives.wants_quieter ||
     objectives.wants_more_even_level ||
@@ -1148,6 +1161,9 @@ function buildGoals(objectives: ReturnType<typeof parseUserRequest>): string[] {
   if (objectives.wants_remove_rumble) {
     goals.push("reduce sub-bass rumble");
   }
+  if (objectives.wants_low_pass_filter) {
+    goals.push("roll off high-frequency content conservatively");
+  }
   if (objectives.wants_more_controlled_dynamics) {
     goals.push("make dynamics more controlled without over-compressing");
   }
@@ -1276,6 +1292,10 @@ function buildConstraints(
 
   if (objectives.wants_remove_hum) {
     constraints.push("avoid thinning wanted low-frequency body");
+  }
+
+  if (objectives.wants_low_pass_filter) {
+    constraints.push("keep the high-frequency rolloff conservative and avoid dulling the source");
   }
 
   if (objectives.wants_trim_silence) {

@@ -183,6 +183,7 @@ export interface ParsedEditObjectives {
   wants_less_muddy: boolean;
   wants_more_warmth: boolean;
   wants_remove_rumble: boolean;
+  wants_low_pass_filter: boolean;
   wants_louder: boolean;
   wants_quieter: boolean;
   wants_more_even_level: boolean;

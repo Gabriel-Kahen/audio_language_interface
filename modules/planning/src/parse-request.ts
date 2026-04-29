@@ -66,6 +66,7 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
     wants_more_air: containsAny(normalizedRequest, [
       "airier",
       "more air",
+      "add air",
       "add some air",
       "add a little air",
       "a little air",
@@ -131,6 +132,22 @@ export function parseUserRequest(userRequest: string): ParsedEditObjectives {
       "highpass the low end",
       "high pass low end",
       "highpass low end",
+    ]),
+    wants_low_pass_filter: containsAny(normalizedRequest, [
+      "low pass",
+      "lowpass",
+      "low pass filter",
+      "lowpass filter",
+      "roll off highs",
+      "roll off the highs",
+      "roll off high frequencies",
+      "roll off the high frequencies",
+      "roll off top end",
+      "roll off the top end",
+      "cut high frequencies",
+      "cut the high frequencies",
+      "filter out highs",
+      "filter out the highs",
     ]),
     wants_louder: containsAny(normalizedRequest, [
       "louder",
@@ -514,6 +531,7 @@ function hasSupportedIntent(parsed: ParsedEditObjectives): boolean {
     parsed.wants_less_muddy ||
     parsed.wants_more_warmth ||
     parsed.wants_remove_rumble ||
+    parsed.wants_low_pass_filter ||
     parsed.wants_louder ||
     parsed.wants_quieter ||
     parsed.wants_more_controlled_dynamics ||
@@ -664,6 +682,7 @@ function hasRegionScopeCandidate(parsed: ParsedEditObjectives): boolean {
     parsed.wants_less_muddy ||
     parsed.wants_more_warmth ||
     parsed.wants_remove_rumble ||
+    parsed.wants_low_pass_filter ||
     parsed.wants_louder ||
     parsed.wants_quieter ||
     parsed.wants_more_even_level ||

@@ -1309,6 +1309,33 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
       },
     },
     {
+      caseId: "request_cycle_remove_hiss_denoise",
+      family: "first_prompt_family",
+      prompt: "Remove hiss a little.",
+      description: "Explicit denoise path on the committed sustained-hiss source fixture.",
+      fixtureId: "fixture_phase1_request_cycle_denoise_hiss_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["denoise"],
+          forbidden_operations: ["notch_filter", "tilt_eq"],
+          expected_operation_order: ["denoise"],
+          required_goals: ["reduce steady background noise conservatively"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "reduce steady background noise conservatively": "met",
+          },
+          verification_statuses: {
+            target_reduce_noise_floor: "met",
+            target_reduce_noise_no_artifacts: "met",
+          },
+        },
+      },
+    },
+    {
       caseId: "request_cycle_less_distorted_declip",
       family: "first_prompt_family",
       prompt: "Make it less distorted.",
@@ -1358,8 +1385,49 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
           expected_operation_order: ["high_pass_filter"],
           required_goals: ["reduce sub-bass rumble"],
         },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "reduce sub-bass rumble": "met",
+          },
+          verification_statuses: {
+            target_remove_rumble_low_band: "met",
+          },
+        },
         regressions: {
           forbidden_regression_kinds: ["introduced_clipping", "lost_punch"],
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_low_pass_top_end_stress",
+      family: "first_prompt_family",
+      prompt: "Low pass the top end.",
+      description:
+        "Explicit low-pass wording should emit a real low_pass_filter and verify high-band rolloff.",
+      fixtureId: FIRST_PROMPT_FAMILY_SOURCE_FIXTURE_ID,
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["low_pass_filter"],
+          forbidden_operations: ["tilt_eq", "high_shelf"],
+          expected_operation_order: ["low_pass_filter"],
+          required_goals: ["roll off high-frequency content conservatively"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "roll off high-frequency content conservatively": "met",
+          },
+          verification_statuses: {
+            target_low_pass_high_band: "met",
+            target_low_pass_no_added_muddiness: "met",
+          },
+        },
+        regressions: {
+          forbidden_regression_kinds: ["introduced_clipping", "added_muddiness"],
         },
       },
     },
@@ -1599,6 +1667,61 @@ export const firstPromptFamilyRequestCycleCorpus: RequestCycleBenchmarkCorpus = 
             target_trim_leading_silence: "met",
             target_trim_trailing_silence: "met",
             target_trim_silence_duration_reduction: "met",
+          },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_explicit_trim_range",
+      family: "first_prompt_family",
+      prompt: "Trim from 0.2s to 0.8s.",
+      description: "Explicit trim range should produce a local duration-verified trim step.",
+      fixtureId: "fixture_phase1_request_cycle_pitched_timing_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["trim"],
+          expected_operation_order: ["trim"],
+          expected_step_target: {
+            scope: "time_range",
+            start_seconds: 0.2,
+            end_seconds: 0.8,
+          },
+          required_goals: ["trim the file to the explicitly requested time range"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "trim the file to the explicitly requested time range": "met",
+          },
+          verification_statuses: {
+            target_trim_explicit_duration: "met",
+          },
+        },
+      },
+    },
+    {
+      caseId: "request_cycle_explicit_fade_out",
+      family: "first_prompt_family",
+      prompt: "Add a 0.2 second fade out.",
+      description: "Explicit fade-out request should produce a boundary-envelope verified fade.",
+      fixtureId: "fixture_phase1_request_cycle_pitched_timing_source",
+      expectation: {
+        planner: {
+          expected_result_kind: "applied",
+          required_operations: ["fade"],
+          expected_operation_order: ["fade"],
+          required_goals: ["smooth file boundaries with explicit fades"],
+        },
+        outcome: {
+          report_scope: "version",
+          require_structured_verification: true,
+          goal_statuses: {
+            "smooth file boundaries with explicit fades": "met",
+          },
+          verification_statuses: {
+            target_fade_out_200ms_envelope: "met",
           },
         },
       },

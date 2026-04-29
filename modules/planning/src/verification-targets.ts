@@ -390,6 +390,30 @@ export function buildVerificationTargets(
     });
   }
 
+  if (objectives.wants_low_pass_filter) {
+    targets.push({
+      target_id: "target_low_pass_high_band",
+      goal: "roll off high-frequency content conservatively",
+      label: "reduce high-band energy above the low-pass cutoff",
+      kind: "analysis_metric",
+      comparison: "decrease_by",
+      metric: "spectral_balance.high_band_db",
+      threshold: thresholdByIntensity(objectives.intensity, 0.4, 0.8, 1.2),
+      rationale: `Explicit low-pass filtering should reduce measured high-band content above the ${Math.min(
+        6500,
+        audioVersion.audio.sample_rate_hz / 2,
+      )} Hz cutoff without relying on generic darker wording.`,
+    });
+    targets.push({
+      target_id: "target_low_pass_no_added_muddiness",
+      goal: "roll off high-frequency content conservatively",
+      label: "avoid making the rolloff read as added muddiness",
+      kind: "regression_guard",
+      comparison: "absent",
+      regression_kind: "added_muddiness",
+    });
+  }
+
   if (useControlledLoudnessTargets) {
     targets.push({
       target_id: "target_controlled_loudness_range",

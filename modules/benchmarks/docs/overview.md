@@ -113,7 +113,7 @@ The live interpretation benchmark corpus covers the same prompt families, but st
 - interpretation benchmarks are intentionally offline artifact checks; they benchmark the shape and stability of `IntentInterpretation`, not live provider/network quality
 - live interpretation benchmarks are intentionally opt-in and not part of default CI because they require real provider keys, incur network latency and API cost, and are expected to surface provider drift over time
 - the request-cycle benchmark corpus is intentionally small and currently focuses on stable tonal cleanup, cross-family compounds that stay honest on the committed fixtures, restoration, timing edits, stereo/spatial edits, the first explicit numeric region-targeting slice, stress wording from recent prompt runs, iterative follow-up flows, peak control, and explicit clarification/failure controls, including a real clarify -> answer -> resume path
-- the planner-supported operation verification matrix is now CI-checked against the published capability manifest, but some operations are intentionally marked planner-only or gap instead of being overclaimed as request-cycle verified
+- the planner-supported operation verification matrix is now CI-checked against the published capability manifest so planner-support drift becomes visible when coverage changes
 - some cross-family request-cycle cases intentionally encode mixed or unmet outcome expectations when that is what the current compare/orchestration path actually produces on the committed fixtures
 - tool-surface request-cycle benchmarks still keep session state explicit by materializing `SessionGraph` and `available_versions` inside the benchmark harness rather than relying on hidden adapter persistence
 - request-cycle outcome scoring is only as strong as the current compare/orchestration evidence:
@@ -179,7 +179,7 @@ Coverage status meanings:
 - `planner_verified`: the planner and compare layers expose deterministic behavior or verification targets, but there is not yet a committed request-cycle case for the operation.
 - `verification_gap`: the capability manifest says the operation is planner-supported, but the planner or verification path does not yet prove that claim.
 
-Current request-cycle planner-only coverage is `high_pass_filter`. Current planner-only operations are `trim`, `fade`, and `denoise`. Current verification gap is `low_pass_filter`: it is still published as planner-supported metadata, but the deterministic parser/planner path and request-cycle suite do not yet emit or verify it. This is intentional documentation of a gap, not a hidden fallback.
+Current planner-supported operations have at least request-cycle outcome coverage in the committed matrix. If a future operation is added without request-cycle evidence, it must be marked as `request_cycle_planner_covered`, `planner_verified`, or `verification_gap` instead of being overclaimed as fully verified.
 
 ## Current request-cycle corpus
 
@@ -196,7 +196,9 @@ The first public request-cycle corpus currently covers:
 - `tame the sibilance and make it darker`
 - `remove 60 Hz hum`
 - `clean up clicks`
+- `remove hiss`
 - `trim the silence at the beginning and end`
+- explicit source-range and boundary-envelope edits such as `trim from 0.2s to 0.8s` and `add a 0.2 second fade out`
 - `speed up by 10%`
 - `pitch up by 2 semitones`
 - stress variants for semitone wording and time-stretch verification such as `raise the pitch two semitones` and `make it faster by 10% but keep the pitch the same`
@@ -215,6 +217,7 @@ The first public request-cycle corpus currently covers:
 - already-controlled `make it louder and more controlled`, which should use peak-limited input gain instead of redundant compression
 - loudness/control wording such as `make it louder but keep the dynamics controlled`
 - high-pass low-end wording such as `high pass the low end rumble`
+- explicit low-pass top-end wording such as `low pass the top end`
 - low-mid cleanup wording such as `clean up the low mids`
 - grounded request-cycle texture wording such as `make this feel more relaxed`
 - `make this a little tighter and more controlled, and darker`

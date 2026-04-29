@@ -332,6 +332,44 @@
       ]
     },
     {
+      "fixture_id": "fixture_phase1_request_cycle_denoise_hiss_source",
+      "display_name": "Request-Cycle Denoise Hiss Source",
+      "relative_path": "phase-1/request-cycle-denoise-hiss-source.wav",
+      "availability": "committed",
+      "format": {
+        "container": "wav",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 48000,
+        "channels": 2,
+        "bit_depth": 16,
+        "duration_seconds": 1.2,
+        "file_size_bytes": 230444
+      },
+      "provenance": {
+        "source_type": "synthetic_generation",
+        "created_by": "fixtures/audio request-cycle corpus",
+        "license": "CC0-1.0",
+        "redistributable": true,
+        "checksum_sha256": "894a56d9855aab6990b6fff7c79d8be4be24876966023b4c9d1b32c7102ba8b0",
+        "notes": "Deterministic stereo source with sustained low-level broadband hiss and a short harmonic bed, generated to satisfy the planner denoise evidence gate without weakening denoise safety."
+      },
+      "intended_use": {
+        "prompt_family": ["remove hiss", "denoise conservatively"],
+        "used_by": ["benchmarks"],
+        "expected_characteristics": [
+          "sustained broadband hiss",
+          "hiss-only lead-in and tail windows",
+          "analysis-detectable noise annotations",
+          "stereo 48 kHz source that survives request-cycle import without resampling"
+        ]
+      },
+      "generation_recipe": [
+        "Write a 1.2-second stereo WAV at 48000 Hz with deterministic seeded broadband hiss around -46 dBFS.",
+        "Keep hiss-only regions from 0.00s to 0.25s and 0.95s to 1.20s so the analyzer can publish sustained noise annotations.",
+        "Add a conservative 220 Hz and 440 Hz harmonic bed in the middle region so denoise verification measures noise reduction without replacing the entire source with silence."
+      ]
+    },
+    {
       "fixture_id": "fixture_phase1_request_cycle_clipped_distortion_source",
       "display_name": "Request-Cycle Clipped Distortion Source",
       "relative_path": "phase-1/request-cycle-clipped-distortion-source.wav",

@@ -327,7 +327,7 @@ describe("firstPromptFamilyFixtureCorpus", () => {
     expect(firstPromptFamilyRequestCycleCorpus.fixtureManifestPath).toBe(
       FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
     );
-    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(49);
+    expect(firstPromptFamilyRequestCycleSuite).toHaveLength(53);
     expect(firstPromptFamilyRequestCycleSuite.map((benchmarkCase) => benchmarkCase.caseId)).toEqual(
       expect.arrayContaining([
         "request_cycle_more_relaxed",
@@ -341,8 +341,12 @@ describe("firstPromptFamilyFixtureCorpus", () => {
         "request_cycle_tame_sibilance",
         "request_cycle_remove_60hz_hum",
         "request_cycle_clean_up_clicks",
+        "request_cycle_remove_hiss_denoise",
         "request_cycle_less_distorted_declip",
         "request_cycle_trim_boundary_silence",
+        "request_cycle_explicit_trim_range",
+        "request_cycle_explicit_fade_out",
+        "request_cycle_low_pass_top_end_stress",
         "request_cycle_speed_up_preserve_pitch",
         "request_cycle_pitch_up_two_semitones",
         "request_cycle_make_this_wider",
@@ -446,15 +450,13 @@ describe("firstPromptFamilyFixtureCorpus", () => {
 
     expect(
       plannerSupportedOperationVerificationPlannerOnly.map((entry) => entry.operation).sort(),
-    ).toEqual(["denoise", "fade", "trim"]);
-    expect(plannerSupportedOperationVerificationGaps.map((entry) => entry.operation)).toEqual([
-      "low_pass_filter",
-    ]);
+    ).toEqual([]);
+    expect(plannerSupportedOperationVerificationGaps.map((entry) => entry.operation)).toEqual([]);
     expect(
       plannerSupportedOperationVerificationRequestCyclePlannerCovered.map(
         (entry) => entry.operation,
       ),
-    ).toEqual(["high_pass_filter"]);
+    ).toEqual([]);
   });
 
   it("defines a stable interpretation benchmark corpus for the richer LLM artifact", () => {
@@ -731,8 +733,12 @@ describe("runRequestCycleBenchmarks", () => {
     const tameSibilanceAndDarker = getRequestCycleCase("request_cycle_tame_sibilance_and_darker");
     const removeHum = getRequestCycleCase("request_cycle_remove_60hz_hum");
     const cleanUpClicks = getRequestCycleCase("request_cycle_clean_up_clicks");
+    const removeHissDenoise = getRequestCycleCase("request_cycle_remove_hiss_denoise");
     const lessDistortedDeclip = getRequestCycleCase("request_cycle_less_distorted_declip");
+    const lowPassTopEnd = getRequestCycleCase("request_cycle_low_pass_top_end_stress");
     const trimBoundarySilence = getRequestCycleCase("request_cycle_trim_boundary_silence");
+    const explicitTrimRange = getRequestCycleCase("request_cycle_explicit_trim_range");
+    const explicitFadeOut = getRequestCycleCase("request_cycle_explicit_fade_out");
     const speedUp = getRequestCycleCase("request_cycle_speed_up_preserve_pitch");
     const pitchUp = getRequestCycleCase("request_cycle_pitch_up_two_semitones");
     const makeWider = getRequestCycleCase("request_cycle_make_this_wider");
@@ -784,8 +790,12 @@ describe("runRequestCycleBenchmarks", () => {
           tameSibilanceAndDarker,
           removeHum,
           cleanUpClicks,
+          removeHissDenoise,
           lessDistortedDeclip,
+          lowPassTopEnd,
           trimBoundarySilence,
+          explicitTrimRange,
+          explicitFadeOut,
           speedUp,
           pitchUp,
           makeWider,
@@ -822,7 +832,7 @@ describe("runRequestCycleBenchmarks", () => {
 
     expect(result.suiteId).toBe("first_prompt_family");
     expect(result.corpusId).toBe("request_cycle_test_subset");
-    expect(result.caseResults).toHaveLength(35);
+    expect(result.caseResults).toHaveLength(39);
     expect(result.totalChecks).toBeGreaterThan(0);
     expect(result.totalPassedChecks).toBe(result.totalChecks);
     expect(result.overallScore).toBe(1);
@@ -905,6 +915,16 @@ describe("runRequestCycleBenchmarks", () => {
       ),
     ).toEqual(["declick"]);
 
+    const denoiseCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === removeHissDenoise.caseId,
+    );
+    expect(denoiseCase?.status).toBe("ok");
+    expect(
+      expectAppliedRequestCycleResult(denoiseCase?.requestCycleResult).editPlan?.steps.map(
+        (step) => step.operation,
+      ),
+    ).toEqual(["denoise"]);
+
     const lessDistortedDeclipCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === lessDistortedDeclip.caseId,
     );
@@ -915,6 +935,16 @@ describe("runRequestCycleBenchmarks", () => {
       ).editPlan?.steps.map((step) => step.operation),
     ).toEqual(["declip"]);
 
+    const lowPassCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === lowPassTopEnd.caseId,
+    );
+    expect(lowPassCase?.status).toBe("ok");
+    expect(
+      expectAppliedRequestCycleResult(lowPassCase?.requestCycleResult).editPlan?.steps.map(
+        (step) => step.operation,
+      ),
+    ).toEqual(["low_pass_filter"]);
+
     const trimSilenceCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === trimBoundarySilence.caseId,
     );
@@ -924,6 +954,26 @@ describe("runRequestCycleBenchmarks", () => {
         (step) => step.operation,
       ),
     ).toEqual(["trim_silence"]);
+
+    const explicitTrimCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === explicitTrimRange.caseId,
+    );
+    expect(explicitTrimCase?.status).toBe("ok");
+    expect(
+      expectAppliedRequestCycleResult(explicitTrimCase?.requestCycleResult).editPlan?.steps.map(
+        (step) => step.operation,
+      ),
+    ).toEqual(["trim"]);
+
+    const explicitFadeCase = result.caseResults.find(
+      (caseResult) => caseResult.caseId === explicitFadeOut.caseId,
+    );
+    expect(explicitFadeCase?.status).toBe("ok");
+    expect(
+      expectAppliedRequestCycleResult(explicitFadeCase?.requestCycleResult).editPlan?.steps.map(
+        (step) => step.operation,
+      ),
+    ).toEqual(["fade"]);
 
     const firstHalfSecondDarkerCase = result.caseResults.find(
       (caseResult) => caseResult.caseId === firstHalfSecondDarker.caseId,

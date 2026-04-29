@@ -18,7 +18,8 @@ Document the initial deterministic request-to-plan mappings used by `modules/pla
 - `less muddy`, `clean up the low mids` -> low-mid `parametric_eq` bell cut around `360 Hz`; verification uses a low-threshold broad mid-band check because the actual edit is localized, and when this is combined with an explicit darker request, the planner omits the automatic lost-air guard because the user asked for a top-end reduction
 - `warmer`, `more warmth` -> `low_shelf` boost around `180 Hz`; when paired with explicit quieter wording, verification checks warmer relative tonal tilt instead of absolute low-band gain because the level move intentionally reduces the whole signal
 - `warmer` plus `clean up the low mids` -> `parametric_eq -> low_shelf`; the low-mid cut removes mud while the warmth shelf adds body below that buildup region, and warmth verification uses a smaller low-band lift threshold because the companion cut intentionally removes nearby buildup
-- `rumble`, `subsonic`, `high-pass the low end` -> `high_pass_filter` at `40 Hz`
+- `rumble`, `subsonic`, `high-pass the low end` -> `high_pass_filter` at `100 Hz`
+- `low pass`, `roll off the top end`, `roll off highs`, `cut high frequencies` -> `low_pass_filter` at `6500 Hz` with explicit high-band rolloff verification; this is separate from generic `darker` wording, which still maps to `tilt_eq`
 - `more controlled`, `compression`, `tighter and more controlled` -> conservative `compressor` settings with explicit threshold, ratio, attack, and release when the source still has measurable dynamics room to tighten
 - `louder and more controlled`, `make it louder and more controlled` -> dedicated `compressor -> normalize` path when the source still has dynamics room to tighten; already tightly controlled sources use a peak-limited `limiter` input-gain path instead of refusing or adding redundant compression
 - `normalize it louder but keep it controlled` -> measured `normalize` path with true-peak protection when the source already measures as tightly controlled, or the controlled-loudness path when dynamics still have room to tighten safely
@@ -52,7 +53,7 @@ When one request maps to multiple supported operations, the baseline planner emi
 - pitch shaping: `pitch_shift`
 - boundary envelopes: `fade`
 - restoration: `declip`, `declick`, `dehum`, `denoise`, `de_esser`
-- filters: `high_pass_filter`
+- filters: `high_pass_filter`, `low_pass_filter`
 - tonal balance: EQ and filter-toning steps such as `tilt_eq`, `notch_filter`, `high_shelf`, `low_shelf`
 - dynamics: `compressor`, `limiter`, or the dedicated controlled-loudness path
 - stereo image: `stereo_balance_correction`, `stereo_width`
@@ -90,6 +91,7 @@ Compatible compounds that the baseline planner now supports explicitly include:
 - The planner refuses louder-plus-peak-control prompts unless the request explicitly asks for normalization, rather than silently converting that into post-limiter gain staging.
 - The planner refuses pure `more controlled` requests when the source already measures as tightly controlled. If the same already-controlled source also asks for louder output, the planner treats controlled as an explicit peak-preservation constraint and uses a small limiter input-gain move rather than a compressor. Companion non-dynamics intents such as `darker` or `less harsh` can still proceed when their own path is safe, with redundant compression omitted and recorded as an explicit plan constraint.
 - The planner refuses upper-band brightening combined with de-essing, because the current one-pass phase order cannot guarantee that added air or brightness will not undermine the de-essing move.
+- The planner refuses explicit low-pass filtering combined with upper-band brightening or added air, because those requests ask for directly opposed high-frequency moves.
 - The planner refuses broadband denoise combined with upper-band brightening, because brightening after denoise can exaggerate cleanup artifacts in one conservative pass.
 - The planner refuses hum removal combined with added warmth, because the current baseline planner does not safely combine narrow low-band cleanup with compensating low-shelf boosts in one pass.
 - The planner refuses stereo narrowing plus recentering when the source is not already wide enough for both moves conservatively.

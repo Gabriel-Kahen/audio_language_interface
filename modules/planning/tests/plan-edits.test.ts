@@ -204,6 +204,7 @@ describe("parseUserRequest", () => {
   it("parses stress-tested supported wording variants without changing intent boundaries", () => {
     const peakControl = parseUserRequest("Limit the peaks.");
     const highPass = parseUserRequest("High-pass the low end.");
+    const lowPass = parseUserRequest("Roll off the top end with a low pass filter.");
     const centerImage = parseUserRequest("Center the stereo image.");
     const lowMids = parseUserRequest("Clean up the low mids.");
     const regionalSofter = parseUserRequest("Make the last second softer.");
@@ -212,6 +213,7 @@ describe("parseUserRequest", () => {
 
     expect(peakControl.wants_peak_control).toBe(true);
     expect(highPass.wants_remove_rumble).toBe(true);
+    expect(lowPass.wants_low_pass_filter).toBe(true);
     expect(centerImage.wants_more_centered).toBe(true);
     expect(lowMids.wants_less_muddy).toBe(true);
     expect(regionalSofter.wants_quieter).toBe(true);
@@ -470,6 +472,34 @@ describe("planEdits", () => {
       ]),
     );
     expect(plan.constraints).toContain("apply supported edits only within 0s to 1s");
+  });
+
+  it("grounds explicit regional low-pass requests to time_range targets", () => {
+    const plan = planEdits({
+      userRequest: "Low pass the first 0.5 seconds.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
+
+    expect(plan.steps.map((step) => step.operation)).toEqual(["low_pass_filter"]);
+    expect(plan.steps[0]?.target).toEqual({
+      scope: "time_range",
+      start_seconds: 0,
+      end_seconds: 0.5,
+    });
+    expect(plan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_low_pass_high_band",
+          target: {
+            scope: "time_range",
+            start_seconds: 0,
+            end_seconds: 0.5,
+          },
+        }),
+      ]),
+    );
   });
 
   it("grounds interpreted time-range intents when the requested operations are region-safe", () => {
@@ -978,6 +1008,12 @@ describe("planEdits", () => {
       analysisReport: createAnalysisReportFixture(),
       semanticProfile: createSemanticProfileFixture(),
     });
+    const lowPassPlan = planEdits({
+      userRequest: "Roll off the top end with a low pass filter.",
+      audioVersion: createAudioVersionFixture(),
+      analysisReport: createAnalysisReportFixture(),
+      semanticProfile: createSemanticProfileFixture(),
+    });
     const lowMidPlan = planEdits({
       userRequest: "Clean up the low mids.",
       audioVersion: createAudioVersionFixture(),
@@ -998,6 +1034,21 @@ describe("planEdits", () => {
     });
 
     expect(highPassPlan.steps.map((step) => step.operation)).toEqual(["high_pass_filter"]);
+    expect(lowPassPlan.steps.map((step) => step.operation)).toEqual(["low_pass_filter"]);
+    expect(lowPassPlan.steps[0]?.parameters).toEqual({ frequency_hz: 6500 });
+    expect(lowPassPlan.goals).toContain("roll off high-frequency content conservatively");
+    expect(lowPassPlan.verification_targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_id: "target_low_pass_high_band",
+          metric: "spectral_balance.high_band_db",
+        }),
+        expect.objectContaining({
+          target_id: "target_low_pass_no_added_muddiness",
+          regression_kind: "added_muddiness",
+        }),
+      ]),
+    );
     expect(lowMidPlan.steps.map((step) => step.operation)).toEqual(["parametric_eq"]);
     expect(centerPlan.steps.map((step) => step.operation)).toEqual(["stereo_balance_correction"]);
     expect(peakPlan.steps.map((step) => step.operation)).toEqual(["limiter"]);
@@ -2048,6 +2099,17 @@ describe("planEdits", () => {
         semanticProfile: createSemanticProfileFixture(),
       }),
     ).toThrow(/both darker and brighter tonal moves/i);
+  });
+
+  it("fails clearly for explicit low-pass plus upper-band brightening", () => {
+    expect(() =>
+      planEdits({
+        userRequest: "Low pass it and add air.",
+        audioVersion: createAudioVersionFixture(),
+        analysisReport: createAnalysisReportFixture(),
+        semanticProfile: createSemanticProfileFixture(),
+      }),
+    ).toThrow(/low-pass filtering with upper-band brightening/i);
   });
 
   it("supports safe stereo compounds that mix centering with width changes", () => {

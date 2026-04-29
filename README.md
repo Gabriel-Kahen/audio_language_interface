@@ -285,7 +285,7 @@ The current baseline is strongest on conservative cleanup and corrective-edit pr
 - `analysis` can now publish steady mains-hum evidence and sparse click evidence directly in `AnalysisReport`
 - `planning` keeps hum/click cleanup conservative and still requires explicit restoration intent rather than widening generic `clean it up` phrasing automatically
 - `compare` prefers structured verification targets when they exist and exposes `evaluation_basis` in `ComparisonReport`
-- `benchmarks` now include curated compare cases, an interpretation-only corpus for the richer `IntentInterpretation` artifact, a small fixture-backed request-cycle corpus that executes the real orchestration path across tonal cleanup, restoration, timing edits, stereo/spatial edits, peak-control, and benchmarked louder-and-controlled prompts, plus a planner-supported operation verification matrix that records request-cycle coverage, planner-only coverage, and explicit gaps
+- `benchmarks` now include curated compare cases, an interpretation-only corpus for the richer `IntentInterpretation` artifact, a small fixture-backed request-cycle corpus that executes the real orchestration path across tonal cleanup, restoration, timing edits, stereo/spatial edits, peak-control, benchmarked louder-and-controlled prompts, and explicit filter/trim/fade/denoise prompts, plus a planner-supported operation verification matrix that records request-cycle coverage, planner-only coverage, and explicit gaps
 
 ## Best-Supported Requests Right Now
 
@@ -320,7 +320,7 @@ This repo is usable today for technical experimentation and module-level integra
 - there is now a narrow alpha CLI entrypoint for local single-file editing and explicit follow-ups, but there is still no broader GUI or service surface
 - the baseline planner does not yet auto-select `pan`, `mid_side_eq`, channel remapping, or the broader Layer 1 runtime-effect surface
 - pure `more controlled` requests may now refuse on already tightly controlled material instead of silently degrading it, while companion tonal edits can proceed with an explicit note that redundant compression was skipped
-- benchmark coverage now includes a tiny committed cleanup, grounded texture, timing, stereo/spatial, and control corpus, plus an operation-by-operation verification matrix; it is still light compared with the long-term goal, and the matrix currently marks `high_pass_filter` as request-cycle planner-only and `low_pass_filter` as an explicit planner-supported verification gap
+- benchmark coverage now includes a tiny committed cleanup, grounded texture, timing, stereo/spatial, filter, restoration, and control corpus, plus an operation-by-operation verification matrix; it is still light compared with the long-term goal, but every current planner-supported operation now has fixture-backed request-cycle outcome coverage
 
 ## Repository Layout
 

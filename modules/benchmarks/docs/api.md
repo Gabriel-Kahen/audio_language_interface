@@ -73,7 +73,7 @@ The module also exports a planner-supported operation verification matrix:
 - `getPlannerSupportedOperationVerificationEntry(operation)`
 - `listPlannerSupportedOperationVerificationEntries(options?)`
 
-The matrix is synchronized to `plannerSupportedRuntimeOperations` from `modules/capabilities`. It is not a production contract; it is an evaluation artifact that records which planner-supported operations have fixture-backed request-cycle outcome coverage, which have request-cycle planning coverage only, which are currently planner/compare-only, and which are gaps. Current request-cycle planner-only row is `high_pass_filter`; current planner-only rows are `trim`, `fade`, and `denoise`; the current explicit gap is `low_pass_filter`.
+The matrix is synchronized to `plannerSupportedRuntimeOperations` from `modules/capabilities`. It is not a production contract; it is an evaluation artifact that records which planner-supported operations have fixture-backed request-cycle outcome coverage, which have request-cycle planning coverage only, which are currently planner/compare-only, and which are gaps. The current committed matrix has no planner-only rows and no explicit gaps; future unsupported coverage states should be recorded honestly instead of hidden behind optimistic capability metadata.
 
 ## Compare benchmark execution
 
