@@ -63,6 +63,18 @@ These objects are the default benchmark inputs used when a caller does not suppl
 
 The request-cycle corpus includes a lightweight stress-prompt smoke slice over committed fixtures. It preserves prompt categories for semitone wording, peak limiting, high-pass low-end cleanup, stereo centering, low-mid cleanup, regional softer/gain requests, pitch/time verification guards, loudness/control verification guards, already-controlled peak-limited loudness, and grounded texture wording without requiring live providers or large audio fixtures. Best-effort texture-policy coverage is represented in the offline interpretation corpus.
 
+The module also exports a planner-supported operation verification matrix:
+
+- `plannerSupportedOperationVerificationMatrix`
+- `plannerSupportedOperationVerificationRequestCycleVerified`
+- `plannerSupportedOperationVerificationRequestCyclePlannerCovered`
+- `plannerSupportedOperationVerificationPlannerOnly`
+- `plannerSupportedOperationVerificationGaps`
+- `getPlannerSupportedOperationVerificationEntry(operation)`
+- `listPlannerSupportedOperationVerificationEntries(options?)`
+
+The matrix is synchronized to `plannerSupportedRuntimeOperations` from `modules/capabilities`. It is not a production contract; it is an evaluation artifact that records which planner-supported operations have fixture-backed request-cycle outcome coverage, which have request-cycle planning coverage only, which are currently planner/compare-only, and which are gaps. Current request-cycle planner-only row is `high_pass_filter`; current planner-only rows are `trim`, `fade`, and `denoise`; the current explicit gap is `low_pass_filter`.
+
 ## Compare benchmark execution
 
 ### `runComparisonBenchmarkCase(benchmarkCase)`
@@ -199,6 +211,11 @@ Current behavior:
 ## Public types
 
 `src/index.ts` re-exports the benchmark manifest, case, expectation, score, failure, and result types used by the current harness.
+
+It also re-exports:
+
+- `PlannerSupportedOperationVerificationCoverageStatus`
+- `PlannerSupportedOperationVerificationEntry`
 
 Those types are implementation-facing shapes for the benchmark layer. They are not shared production contracts under `contracts/schemas/`.
 

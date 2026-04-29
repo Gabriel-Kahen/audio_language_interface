@@ -7,6 +7,15 @@ export {
   resolveAudioFixtureSourcePath,
 } from "./fixture-loader.js";
 export {
+  getPlannerSupportedOperationVerificationEntry,
+  listPlannerSupportedOperationVerificationEntries,
+  plannerSupportedOperationVerificationGaps,
+  plannerSupportedOperationVerificationMatrix,
+  plannerSupportedOperationVerificationPlannerOnly,
+  plannerSupportedOperationVerificationRequestCyclePlannerCovered,
+  plannerSupportedOperationVerificationRequestCycleVerified,
+} from "./operation-verification-matrix.js";
+export {
   FIRST_PROMPT_FAMILY_CORPUS_ID,
   FIRST_PROMPT_FAMILY_FIXTURE_MANIFEST_PATH,
   FIRST_PROMPT_FAMILY_REQUEST_CYCLE_CORPUS_ID,
@@ -72,6 +81,8 @@ export type {
   LiveInterpretationBenchmarkProviderTarget,
   LiveInterpretationBenchmarkRunResult,
   LiveInterpretationProviderSummary,
+  PlannerSupportedOperationVerificationCoverageStatus,
+  PlannerSupportedOperationVerificationEntry,
   RequestCycleBenchmarkArtifacts,
   RequestCycleBenchmarkCase,
   RequestCycleBenchmarkCaseResult,

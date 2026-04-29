@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-
+import { plannerSupportedRuntimeOperations } from "@audio-language-interface/capabilities";
 import {
   defaultOrchestrationDependencies,
   isAppliedOrRevertedRequestCycleResult,
@@ -23,6 +23,10 @@ import {
   INTERPRETATION_CORPUS_ID,
   interpretationBenchmarkCorpus,
   interpretationBenchmarkSuite,
+  plannerSupportedOperationVerificationGaps,
+  plannerSupportedOperationVerificationMatrix,
+  plannerSupportedOperationVerificationPlannerOnly,
+  plannerSupportedOperationVerificationRequestCyclePlannerCovered,
   runComparisonBenchmarks,
   runInterpretationBenchmarks,
   runRequestCycleBenchmarkCase,
@@ -374,6 +378,83 @@ describe("firstPromptFamilyFixtureCorpus", () => {
     for (const benchmarkCase of firstPromptFamilyRequestCycleSuite) {
       expect(fixtureIds.has(benchmarkCase.fixtureId)).toBe(true);
     }
+  });
+
+  it("keeps planner-supported operation verification coverage explicit and synced to capabilities", () => {
+    const matrixOperations = plannerSupportedOperationVerificationMatrix.map(
+      (entry) => entry.operation,
+    );
+    const uniqueMatrixOperations = new Set(matrixOperations);
+
+    expect(plannerSupportedOperationVerificationMatrix).toHaveLength(
+      plannerSupportedRuntimeOperations.length,
+    );
+    expect(uniqueMatrixOperations.size).toBe(plannerSupportedOperationVerificationMatrix.length);
+    expect([...matrixOperations].sort()).toEqual([...plannerSupportedRuntimeOperations].sort());
+
+    const requestCycleCaseIds = new Set(
+      firstPromptFamilyRequestCycleSuite.map((benchmarkCase) => benchmarkCase.caseId),
+    );
+
+    for (const matrixEntry of plannerSupportedOperationVerificationMatrix) {
+      expect(matrixEntry.plannerIntentSummary.length).toBeGreaterThan(0);
+      expect(matrixEntry.supportedTargetScopes.length).toBeGreaterThan(0);
+      expect(matrixEntry.notes.length).toBeGreaterThan(0);
+
+      for (const caseId of matrixEntry.requestCycleCaseIds) {
+        expect(requestCycleCaseIds.has(caseId)).toBe(true);
+      }
+
+      if (matrixEntry.coverageStatus !== "verification_gap") {
+        expect(matrixEntry.plannerUnitTestRefs.length).toBeGreaterThan(0);
+        expect(matrixEntry.verificationTargetIds.length).toBeGreaterThan(0);
+        expect(matrixEntry.verificationMetrics.length).toBeGreaterThan(0);
+        expect(matrixEntry.compareEvidence.length).toBeGreaterThan(0);
+      }
+
+      if (matrixEntry.coverageStatus === "request_cycle_verified") {
+        expect(matrixEntry.requestCycleCaseIds.length).toBeGreaterThan(0);
+
+        const cases = matrixEntry.requestCycleCaseIds.map((caseId) => getRequestCycleCase(caseId));
+        const plannedOperations = new Set(
+          cases.flatMap(
+            (benchmarkCase) => benchmarkCase.expectation.planner?.required_operations ?? [],
+          ),
+        );
+        const hasOutcomeVerification = cases.some(
+          (benchmarkCase) =>
+            benchmarkCase.expectation.outcome?.require_structured_verification === true ||
+            benchmarkCase.expectation.outcome?.verification_statuses !== undefined,
+        );
+
+        expect(plannedOperations.has(matrixEntry.operation)).toBe(true);
+        expect(hasOutcomeVerification).toBe(true);
+      }
+
+      if (matrixEntry.coverageStatus === "request_cycle_planner_covered") {
+        expect(matrixEntry.requestCycleCaseIds.length).toBeGreaterThan(0);
+
+        const plannedOperations = new Set(
+          matrixEntry.requestCycleCaseIds.flatMap(
+            (caseId) => getRequestCycleCase(caseId).expectation.planner?.required_operations ?? [],
+          ),
+        );
+
+        expect(plannedOperations.has(matrixEntry.operation)).toBe(true);
+      }
+    }
+
+    expect(
+      plannerSupportedOperationVerificationPlannerOnly.map((entry) => entry.operation).sort(),
+    ).toEqual(["denoise", "fade", "trim"]);
+    expect(plannerSupportedOperationVerificationGaps.map((entry) => entry.operation)).toEqual([
+      "low_pass_filter",
+    ]);
+    expect(
+      plannerSupportedOperationVerificationRequestCyclePlannerCovered.map(
+        (entry) => entry.operation,
+      ),
+    ).toEqual(["high_pass_filter"]);
   });
 
   it("defines a stable interpretation benchmark corpus for the richer LLM artifact", () => {

@@ -1,4 +1,8 @@
-import type { RuntimeOperationName } from "@audio-language-interface/capabilities";
+import type {
+  RuntimeOperationCategory,
+  RuntimeOperationName,
+  RuntimeTargetScope,
+} from "@audio-language-interface/capabilities";
 import type {
   CompareVersionsOptions,
   ComparisonReport,
@@ -294,6 +298,27 @@ export interface LiveInterpretationBenchmarkRunResult {
   totalChecks: number;
   overallScore: number;
   totalDurationMs: number;
+}
+
+export type PlannerSupportedOperationVerificationCoverageStatus =
+  | "request_cycle_verified"
+  | "request_cycle_planner_covered"
+  | "planner_verified"
+  | "verification_gap";
+
+export interface PlannerSupportedOperationVerificationEntry {
+  operation: RuntimeOperationName;
+  category: RuntimeOperationCategory;
+  supportedTargetScopes: readonly RuntimeTargetScope[];
+  plannerIntentSummary: string;
+  plannerUnitTestRefs: readonly string[];
+  requestCycleCaseIds: readonly string[];
+  verificationTargetIds: readonly string[];
+  verificationMetrics: readonly string[];
+  regressionGuardKinds: readonly string[];
+  compareEvidence: readonly string[];
+  coverageStatus: PlannerSupportedOperationVerificationCoverageStatus;
+  notes: string;
 }
 
 export type RequestCycleBenchmarkCategory =

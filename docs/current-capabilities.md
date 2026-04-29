@@ -51,7 +51,7 @@ The runtime capability surface is now also published explicitly through `Runtime
 
 ### Evaluation
 
-- `benchmarks`: fixture-backed compare benchmarks, offline interpretation benchmarks, opt-in live provider interpretation evals, and a real request-cycle benchmark runner for the current supported prompt family
+- `benchmarks`: fixture-backed compare benchmarks, offline interpretation benchmarks, opt-in live provider interpretation evals, a real request-cycle benchmark runner for the current supported prompt family, and a CI-checked planner-supported operation verification matrix
 
 ## Current Prompt And Operation Scope
 
@@ -197,6 +197,7 @@ Current tool-surface caveats:
 - the repository now provides a narrow alpha CLI entrypoint through `pnpm ali -- ...` for local `edit` and `follow-up` flows, with explicit session directories and no hidden persistence
 - benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, grounded texture wording, tonal and cross-family compound edits, restoration, timing edits, stereo/spatial edits, the first explicit numeric region-targeting slice, iterative follow-up flows, peak-control, dedicated louder-and-controlled prompts, clarification/failure controls, and session-provenance checks for repeated edits
 - live provider evaluation exists for the interpretation layer, but it is intentionally opt-in and narrower than the deterministic benchmark/reporting path because provider drift, key management, latency, and API cost are part of what that harness is meant to measure
+- the planner-supported operation verification matrix now makes coverage honest per operation: most planner-supported operations have request-cycle outcome evidence, `high_pass_filter` has request-cycle planner coverage only, `trim`, `fade`, and `denoise` are planner/compare-only today, and `low_pass_filter` is an explicit verification gap because it is published as planner-supported but not currently emitted or verified by the deterministic planner path
 
 ## Practical Interpretation
 

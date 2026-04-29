@@ -73,6 +73,7 @@ The live interpretation benchmark corpus covers the same prompt families, but st
 - `src/run-benchmarks.ts`: compare-only and interpretation benchmark execution entrypoint
 - `src/run-live-interpretation-benchmarks.ts`: opt-in live provider evaluation for the interpretation layer
 - `src/run-request-cycle-benchmarks.ts`: end-to-end request-cycle benchmark execution entrypoint
+- `src/operation-verification-matrix.ts`: planner-supported operation coverage matrix synced to the capability manifest
 - `src/fixture-loader.ts`: fixture manifest loading and workspace materialization helpers
 - `src/scoring.ts`: metric aggregation and score policies
 - `src/reporting.ts`: human-readable and machine-readable reports
@@ -112,6 +113,7 @@ The live interpretation benchmark corpus covers the same prompt families, but st
 - interpretation benchmarks are intentionally offline artifact checks; they benchmark the shape and stability of `IntentInterpretation`, not live provider/network quality
 - live interpretation benchmarks are intentionally opt-in and not part of default CI because they require real provider keys, incur network latency and API cost, and are expected to surface provider drift over time
 - the request-cycle benchmark corpus is intentionally small and currently focuses on stable tonal cleanup, cross-family compounds that stay honest on the committed fixtures, restoration, timing edits, stereo/spatial edits, the first explicit numeric region-targeting slice, stress wording from recent prompt runs, iterative follow-up flows, peak control, and explicit clarification/failure controls, including a real clarify -> answer -> resume path
+- the planner-supported operation verification matrix is now CI-checked against the published capability manifest, but some operations are intentionally marked planner-only or gap instead of being overclaimed as request-cycle verified
 - some cross-family request-cycle cases intentionally encode mixed or unmet outcome expectations when that is what the current compare/orchestration path actually produces on the committed fixtures
 - tool-surface request-cycle benchmarks still keep session state explicit by materializing `SessionGraph` and `available_versions` inside the benchmark harness rather than relying on hidden adapter persistence
 - request-cycle outcome scoring is only as strong as the current compare/orchestration evidence:
@@ -157,6 +159,27 @@ The request-cycle overall score is the equal-weighted average of the non-empty c
 Request-cycle reports also aggregate failed checks into category-specific failure buckets so maintainers can see quickly whether a run is failing because the planner chose the wrong operation, the compare layer could not verify the intended outcome, or regressions were introduced during execution.
 
 For clipping, hum, and click cleanup cases, outcome verification should anchor on direct `AnalysisReport.artifacts` evidence first: `clipped_frame_count` / `clipping_severity` for declip-style checks, `hum_detected` / `hum_level_dbfs` for dehum-style checks, and `click_detected` / `click_count` for declick-style checks. Low-band, noise-floor, and clipped-sample checks remain fallback coverage for analyses that do not expose those direct artifact fields.
+
+## Planner-supported operation verification matrix
+
+`src/operation-verification-matrix.ts` publishes one row per operation currently marked `planner_supported` in the runtime capability manifest. Each row records:
+
+- the planner-supported operation name, capability category, and supported target scopes
+- the planning intent covered by current parser/planner behavior
+- planner unit-test references
+- request-cycle benchmark case ids, when fixture-backed coverage exists
+- structured verification target ids and metrics
+- regression guard kinds and compare evidence sources
+- a coverage status
+
+Coverage status meanings:
+
+- `request_cycle_verified`: the operation has at least one fixture-backed request-cycle case that expects the operation and requires structured verification or explicit verification statuses.
+- `request_cycle_planner_covered`: the operation has fixture-backed request-cycle planning coverage, but that case does not yet assert structured outcome verification.
+- `planner_verified`: the planner and compare layers expose deterministic behavior or verification targets, but there is not yet a committed request-cycle case for the operation.
+- `verification_gap`: the capability manifest says the operation is planner-supported, but the planner or verification path does not yet prove that claim.
+
+Current request-cycle planner-only coverage is `high_pass_filter`. Current planner-only operations are `trim`, `fade`, and `denoise`. Current verification gap is `low_pass_filter`: it is still published as planner-supported metadata, but the deterministic parser/planner path and request-cycle suite do not yet emit or verify it. This is intentional documentation of a gap, not a hidden fallback.
 
 ## Current request-cycle corpus
 
