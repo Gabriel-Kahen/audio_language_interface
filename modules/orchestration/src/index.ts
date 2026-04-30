@@ -21,6 +21,7 @@ import { buildSemanticProfile } from "@audio-language-interface/semantics";
 import { applyEditPlan } from "@audio-language-interface/transforms";
 
 import { OrchestrationStageError } from "./failure-policy.js";
+import { generateEditVariants } from "./flows/generate-edit-variants.js";
 import { importAndAnalyze } from "./flows/import-and-analyze.js";
 import { iterativeRefine } from "./flows/iterative-refine.js";
 import { planAndApply } from "./flows/plan-and-apply.js";
@@ -31,6 +32,7 @@ import { runRequestCycle } from "./run-request-cycle.js";
 import type { OrchestrationDependencies } from "./types.js";
 
 export {
+  generateEditVariants,
   importAndAnalyze,
   iterativeRefine,
   OrchestrationStageError,
@@ -74,8 +76,12 @@ export type {
   ClarificationRequiredRequestCycleResult,
   ComparisonReport,
   EditPlan,
+  EditVariantGenerationResult,
+  EditVariantLabel,
+  EditVariantResult,
   FailurePolicy,
   FollowUpResolution,
+  GenerateEditVariantsOptions,
   ImportAndAnalyzeOptions,
   ImportAndAnalyzeResult,
   ImportAudioOptions,
@@ -99,6 +105,7 @@ export type {
   SemanticDescriptor,
   SemanticProfile,
   SessionGraph,
+  VariantStrengthProfile,
   WorkflowStage,
   WorkflowTraceEntry,
 } from "./types.js";

@@ -31,6 +31,7 @@ Builds a canonical `EditPlan` from:
 - `analysisReport`
 - `semanticProfile`
 - optional planner constraints and timestamp override
+- optional `variantStrength` profile: `subtle`, `balanced`, or `stronger`
 
 Current behavior:
 
@@ -41,6 +42,7 @@ Current behavior:
 - rejects runtime-only requests with a distinct `supported_runtime_only_but_not_planner_enabled` failure class
 - grounds the plan against `defaultRuntimeCapabilityManifest.manifest_id`
 - builds ordered steps through the current step builders
+- applies `variantStrength` by overriding the parsed intensity only; it does not change operation selection or introduce randomness
 - emits `goals`, optional `constraints`, and typed `verification_targets`
 - schema-validates the final `EditPlan`
 
@@ -48,6 +50,7 @@ Important defaults:
 
 - `capability_manifest_id` always comes from the current default runtime capability manifest
 - `created_at` defaults to `semanticProfile.generated_at` unless `generatedAt` is provided
+- `variantStrength` changes the deterministic plan id so candidate plans remain distinct and inspectable
 
 ### `createPlanningFailure(failureClass, message, details?)`
 

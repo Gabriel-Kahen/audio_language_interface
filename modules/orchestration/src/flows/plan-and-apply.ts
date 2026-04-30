@@ -4,6 +4,7 @@ import { executeWithFailurePolicy } from "../failure-policy.js";
 import { resolveRequestInterpretation } from "../request-interpretation.js";
 import type {
   AudioVersion,
+  IntentInterpretation,
   PlanAndApplyOptions,
   PlanAndApplyResult,
   SemanticProfile,
@@ -13,9 +14,7 @@ import type {
 export async function planAndApply(options: PlanAndApplyOptions): Promise<PlanAndApplyResult> {
   const trace = [] as PlanAndApplyResult["trace"];
   let semanticProfile = options.semanticProfile;
-  let intentInterpretation = options.requestInterpretation
-    ? undefined
-    : (undefined as PlanAndApplyResult["intentInterpretation"]);
+  let intentInterpretation = options.intentInterpretation;
   let editPlan: PlanAndApplyResult["editPlan"] | undefined;
   const buildSemanticProfile = options.dependencies.buildSemanticProfile;
 
@@ -55,21 +54,20 @@ export async function planAndApply(options: PlanAndApplyOptions): Promise<PlanAn
           : { original_user_request: options.originalUserRequest }),
       };
 
-      intentInterpretation =
-        options.requestInterpretation === undefined
-          ? undefined
-          : await resolveRequestInterpretation({
-              userRequest: options.userRequest,
-              audioVersion: options.version,
-              analysisReport: options.analysisReport,
-              semanticProfile,
-              ...(options.originalUserRequest === undefined
-                ? {}
-                : { originalUserRequest: options.originalUserRequest }),
-              interpretation: options.requestInterpretation,
-              ...(Object.keys(sessionContext).length === 0 ? {} : { sessionContext }),
-              interpretRequest: options.dependencies.interpretRequest,
-            });
+      if (intentInterpretation === undefined && options.requestInterpretation !== undefined) {
+        intentInterpretation = await resolveRequestInterpretation({
+          userRequest: options.userRequest,
+          audioVersion: options.version,
+          analysisReport: options.analysisReport,
+          semanticProfile,
+          ...(options.originalUserRequest === undefined
+            ? {}
+            : { originalUserRequest: options.originalUserRequest }),
+          interpretation: options.requestInterpretation,
+          ...(Object.keys(sessionContext).length === 0 ? {} : { sessionContext }),
+          interpretRequest: options.dependencies.interpretRequest,
+        });
+      }
 
       editPlan = await Promise.resolve(
         options.dependencies.planEdits({
@@ -80,74 +78,15 @@ export async function planAndApply(options: PlanAndApplyOptions): Promise<PlanAn
           ...(intentInterpretation === undefined
             ? {}
             : {
-                intentInterpretation: {
-                  interpretationId: intentInterpretation.interpretation_id,
-                  normalizedRequest: intentInterpretation.normalized_request,
-                  normalizedObjectives: intentInterpretation.normalized_objectives,
-                  requestClassification: intentInterpretation.request_classification,
-                  ...(intentInterpretation.ambiguities === undefined
-                    ? {}
-                    : { ambiguities: intentInterpretation.ambiguities }),
-                  ...(intentInterpretation.unsupported_phrases === undefined
-                    ? {}
-                    : { unsupportedPhrases: intentInterpretation.unsupported_phrases }),
-                  ...(intentInterpretation.clarification_question === undefined
-                    ? {}
-                    : { clarificationQuestion: intentInterpretation.clarification_question }),
-                  ...(intentInterpretation.next_action === undefined
-                    ? {}
-                    : { nextAction: intentInterpretation.next_action }),
-                  ...(intentInterpretation.constraints === undefined
-                    ? {}
-                    : { constraints: intentInterpretation.constraints }),
-                  ...(intentInterpretation.region_intents === undefined
-                    ? {}
-                    : { regionIntents: intentInterpretation.region_intents }),
-                  ...(intentInterpretation.descriptor_hypotheses === undefined
-                    ? {}
-                    : {
-                        descriptorHypotheses: intentInterpretation.descriptor_hypotheses.map(
-                          (hypothesis) => ({
-                            label: hypothesis.label,
-                            status: hypothesis.status,
-                            ...(hypothesis.supported_by === undefined
-                              ? {}
-                              : { supportedBy: hypothesis.supported_by }),
-                            ...(hypothesis.contradicted_by === undefined
-                              ? {}
-                              : { contradictedBy: hypothesis.contradicted_by }),
-                            ...(hypothesis.needs_more_evidence === undefined
-                              ? {}
-                              : { needsMoreEvidence: hypothesis.needs_more_evidence }),
-                            ...(hypothesis.rationale === undefined
-                              ? {}
-                              : { rationale: hypothesis.rationale }),
-                          }),
-                        ),
-                      }),
-                  ...(intentInterpretation.candidate_interpretations === undefined
-                    ? {}
-                    : {
-                        candidateInterpretations:
-                          intentInterpretation.candidate_interpretations.map((candidate) => ({
-                            normalizedRequest: candidate.normalized_request,
-                            requestClassification: candidate.request_classification,
-                            nextAction: candidate.next_action,
-                            confidence: candidate.confidence,
-                          })),
-                      }),
-                  ...(intentInterpretation.follow_up_intent === undefined
-                    ? {}
-                    : { followUpIntent: intentInterpretation.follow_up_intent }),
-                  ...(intentInterpretation.grounding_notes === undefined
-                    ? {}
-                    : { groundingNotes: intentInterpretation.grounding_notes }),
-                },
+                intentInterpretation: toPlannerIntentInterpretationInput(intentInterpretation),
               }),
           workspaceRoot: options.workspaceRoot,
           ...(options.planningPolicy === undefined
             ? {}
             : { planningPolicy: options.planningPolicy }),
+          ...(options.variantStrength === undefined
+            ? {}
+            : { variantStrength: options.variantStrength }),
         }),
       );
 
@@ -204,5 +143,68 @@ export async function planAndApply(options: PlanAndApplyOptions): Promise<PlanAn
     trace,
     ...(semanticProfile === undefined ? {} : { semanticProfile }),
     ...(intentInterpretation === undefined ? {} : { intentInterpretation }),
+  };
+}
+
+function toPlannerIntentInterpretationInput(intentInterpretation: IntentInterpretation) {
+  return {
+    interpretationId: intentInterpretation.interpretation_id,
+    normalizedRequest: intentInterpretation.normalized_request,
+    normalizedObjectives: intentInterpretation.normalized_objectives,
+    requestClassification: intentInterpretation.request_classification,
+    ...(intentInterpretation.ambiguities === undefined
+      ? {}
+      : { ambiguities: intentInterpretation.ambiguities }),
+    ...(intentInterpretation.unsupported_phrases === undefined
+      ? {}
+      : { unsupportedPhrases: intentInterpretation.unsupported_phrases }),
+    ...(intentInterpretation.clarification_question === undefined
+      ? {}
+      : { clarificationQuestion: intentInterpretation.clarification_question }),
+    ...(intentInterpretation.next_action === undefined
+      ? {}
+      : { nextAction: intentInterpretation.next_action }),
+    ...(intentInterpretation.constraints === undefined
+      ? {}
+      : { constraints: intentInterpretation.constraints }),
+    ...(intentInterpretation.region_intents === undefined
+      ? {}
+      : { regionIntents: intentInterpretation.region_intents }),
+    ...(intentInterpretation.descriptor_hypotheses === undefined
+      ? {}
+      : {
+          descriptorHypotheses: intentInterpretation.descriptor_hypotheses.map((hypothesis) => ({
+            label: hypothesis.label,
+            status: hypothesis.status,
+            ...(hypothesis.supported_by === undefined
+              ? {}
+              : { supportedBy: hypothesis.supported_by }),
+            ...(hypothesis.contradicted_by === undefined
+              ? {}
+              : { contradictedBy: hypothesis.contradicted_by }),
+            ...(hypothesis.needs_more_evidence === undefined
+              ? {}
+              : { needsMoreEvidence: hypothesis.needs_more_evidence }),
+            ...(hypothesis.rationale === undefined ? {} : { rationale: hypothesis.rationale }),
+          })),
+        }),
+    ...(intentInterpretation.candidate_interpretations === undefined
+      ? {}
+      : {
+          candidateInterpretations: intentInterpretation.candidate_interpretations.map(
+            (candidate) => ({
+              normalizedRequest: candidate.normalized_request,
+              requestClassification: candidate.request_classification,
+              nextAction: candidate.next_action,
+              confidence: candidate.confidence,
+            }),
+          ),
+        }),
+    ...(intentInterpretation.follow_up_intent === undefined
+      ? {}
+      : { followUpIntent: intentInterpretation.follow_up_intent }),
+    ...(intentInterpretation.grounding_notes === undefined
+      ? {}
+      : { groundingNotes: intentInterpretation.grounding_notes }),
   };
 }

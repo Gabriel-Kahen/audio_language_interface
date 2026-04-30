@@ -59,6 +59,16 @@ When one request maps to multiple supported operations, the baseline planner emi
 - stereo image: `stereo_balance_correction`, `stereo_width`
 - loudness: `normalize`, `gain`
 
+## Variant strength profiles
+
+Orchestration can ask the planner for deterministic candidate strengths through `variantStrength`.
+
+- `subtle` maps to the existing subtle intensity profile.
+- `balanced` maps to the default intensity profile.
+- `stronger` maps to the existing strong intensity profile.
+
+The profile changes parameter magnitudes and verification thresholds through the same intensity machinery used for explicit user wording such as `a little` or `much`. It does not change operation selection, bypass evidence gates, or introduce randomized plans.
+
 Compatible compounds that the baseline planner now supports explicitly include:
 
 - timing plus restoration such as `trim_silence + declick`

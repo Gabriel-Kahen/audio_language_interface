@@ -12,7 +12,11 @@ import type {
   InterpretationSessionContext,
 } from "@audio-language-interface/interpretation";
 import type { ImportAudioOptions, ImportAudioResult } from "@audio-language-interface/io";
-import type { EditPlan, PlanningPolicy } from "@audio-language-interface/planning";
+import type {
+  EditPlan,
+  PlanningPolicy,
+  VariantStrengthProfile,
+} from "@audio-language-interface/planning";
 import type {
   FinalRenderOptions,
   PreviewRenderOptions,
@@ -40,6 +44,7 @@ export type {
   SemanticDescriptor,
   SemanticProfile,
   SessionGraph,
+  VariantStrengthProfile,
 };
 export type WorkflowStage =
   | "import"
@@ -167,8 +172,10 @@ export interface PlanAndApplyOptions {
   analysisReport: AnalysisReport;
   pass?: number;
   semanticProfile?: SemanticProfile;
+  intentInterpretation?: IntentInterpretation;
   requestInterpretation?: LlmAssistedInterpretationOptions;
   planningPolicy?: PlanningPolicy;
+  variantStrength?: VariantStrengthProfile;
   interpretationSessionContext?: InterpretationSessionContext;
   sessionGraph?: SessionGraph;
   outputDir?: string;
@@ -214,6 +221,50 @@ export interface RenderAndCompareResult {
   baselineRender: RenderArtifact;
   candidateRender: RenderArtifact;
   comparisonReport: ComparisonReport;
+  trace: WorkflowTraceEntry[];
+}
+
+export type EditVariantLabel = VariantStrengthProfile;
+
+export interface EditVariantResult {
+  variant_id: string;
+  label: EditVariantLabel;
+  rank: number;
+  is_recommended: boolean;
+  rationale: string;
+  warnings: string[];
+  editPlan: EditPlan;
+  outputVersion: AudioVersion;
+  outputAnalysis: AnalysisReport;
+  transformRecord: ApplyTransformsResult["transformRecord"];
+  previewRender: RenderArtifact;
+  comparisonReport: ComparisonReport;
+  renderComparisonReport?: ComparisonReport;
+}
+
+export interface GenerateEditVariantsOptions {
+  workspaceRoot: string;
+  userRequest: string;
+  input: Extract<RequestCycleInput, { kind: "import" }>;
+  variants: 1 | 2 | 3;
+  analysisOptions?: AnalyzeAudioOptions;
+  interpretation?: LlmAssistedInterpretationOptions;
+  planningPolicy?: PlanningPolicy;
+  sessionId?: string;
+  branchId?: string;
+  dependencies: OrchestrationDependencies;
+  failurePolicy?: FailurePolicy | undefined;
+}
+
+export interface EditVariantGenerationResult {
+  result_kind: "variants_generated";
+  asset: AudioAsset;
+  inputVersion: AudioVersion;
+  inputAnalysis: AnalysisReport;
+  semanticProfile: SemanticProfile;
+  variants: EditVariantResult[];
+  recommendedVariant: EditVariantResult;
+  sessionGraph: SessionGraph;
   trace: WorkflowTraceEntry[];
 }
 

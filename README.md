@@ -318,6 +318,7 @@ This repo is usable today for technical experimentation and module-level integra
 - compare can verify explicit trim duration, fade boundary envelopes, and the first numeric `time_range` level/spectral checks from workspace-local WAV evidence
 - hum and click comparison now prefers direct `AnalysisReport.artifacts` evidence when it exists, with low-band or clipped-sample proxies kept only as conservative fallbacks
 - there is now a narrow alpha CLI entrypoint for local single-file editing and explicit follow-ups, but there is still no broader GUI or service surface
+- the public SDK can now request deterministic edit variants for fresh imports, returning `subtle`, `balanced`, and/or `stronger` candidates with canonical artifacts and conservative ranking
 - the baseline planner does not yet auto-select `pan`, `mid_side_eq`, channel remapping, or the broader Layer 1 runtime-effect surface
 - pure `more controlled` requests may now refuse on already tightly controlled material instead of silently degrading it, while companion tonal edits can proceed with an explicit note that redundant compression was skipped
 - benchmark coverage now includes a tiny committed cleanup, grounded texture, timing, stereo/spatial, filter, restoration, and control corpus, plus an operation-by-operation verification matrix; it is still light compared with the long-term goal, but every current planner-supported operation now has fixture-backed request-cycle outcome coverage

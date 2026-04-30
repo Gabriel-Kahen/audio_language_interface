@@ -11,7 +11,10 @@ import {
   type ComparisonReport,
   defaultOrchestrationDependencies,
   type EditPlan,
+  type EditVariantGenerationResult,
+  type EditVariantLabel,
   type FailurePolicy,
+  generateEditVariants,
   type ImportAudioOptions,
   importAndAnalyze,
   isAppliedOrRevertedRequestCycleResult,
@@ -94,6 +97,7 @@ export interface SdkImportResult {
 export interface SdkEditInput {
   input: string;
   request: string;
+  variants?: 1 | 2 | 3;
   importOptions?: ImportAudioOptions;
   renderKind?: RenderKind;
   interpretation?: LlmAssistedInterpretationOptions;
@@ -131,7 +135,7 @@ export interface AudioLanguageSessionState {
   currentVersion?: AudioVersion;
   sessionGraph?: SessionGraph;
   availableVersions: AudioVersion[];
-  lastResult?: AudioLanguageEditResult;
+  lastResult?: AudioLanguageSessionResult;
 }
 
 interface BaseSdkEditResult {
@@ -185,10 +189,41 @@ export type AudioLanguageEditResult =
   | AudioLanguageRevertedResult
   | AudioLanguageClarificationResult;
 
+export interface AudioLanguageEditVariant {
+  variantId: string;
+  label: EditVariantLabel;
+  rank: number;
+  isRecommended: boolean;
+  rationale: string;
+  warnings: string[];
+  editPlan: EditPlan;
+  outputVersion: AudioVersion;
+  outputAnalysis: AnalysisReport;
+  previewRender: RenderArtifact;
+  transformRecord: TransformRecord;
+  comparisonReport: ComparisonReport;
+  renderComparisonReport?: ComparisonReport;
+}
+
+export interface AudioLanguageVariantEditResult {
+  resultKind: "variants_generated";
+  asset: AudioAsset;
+  inputVersion: AudioVersion;
+  inputAnalysis: AnalysisReport;
+  semanticProfile: SemanticProfile;
+  variants: AudioLanguageEditVariant[];
+  recommendedVariant: AudioLanguageEditVariant;
+  sessionGraph: SessionGraph;
+  trace: WorkflowTraceEntry[];
+  rawResult: EditVariantGenerationResult;
+}
+
+export type AudioLanguageSessionResult = AudioLanguageEditResult | AudioLanguageVariantEditResult;
+
 export interface AudioLanguageSession {
   readonly workspaceDir: string;
   importAudio(input: SdkImportInput): Promise<SdkImportResult>;
-  edit(input: SdkEditInput): Promise<AudioLanguageEditResult>;
+  edit(input: SdkEditInput): Promise<AudioLanguageSessionResult>;
   followUp(input: SdkFollowUpInput): Promise<AudioLanguageEditResult>;
   render(input?: SdkRenderInput): Promise<RenderArtifact>;
   compare(input?: SdkCompareInput): Promise<ComparisonReport>;
@@ -218,7 +253,7 @@ class DefaultAudioLanguageSession implements AudioLanguageSession {
   private asset: AudioAsset | undefined;
   private currentVersion: AudioVersion | undefined;
   private sessionGraph: SessionGraph | undefined;
-  private lastResult: AudioLanguageEditResult | undefined;
+  private lastResult: AudioLanguageSessionResult | undefined;
   private lastInputVersion: AudioVersion | undefined;
   private lastInputAnalysis: AnalysisReport | undefined;
   private lastOutputAnalysis: AnalysisReport | undefined;
@@ -297,7 +332,32 @@ class DefaultAudioLanguageSession implements AudioLanguageSession {
     };
   }
 
-  async edit(input: SdkEditInput): Promise<AudioLanguageEditResult> {
+  async edit(input: SdkEditInput): Promise<AudioLanguageSessionResult> {
+    if (input.variants !== undefined) {
+      assertVariantEditOptions(input);
+      const result = await generateEditVariants({
+        workspaceRoot: this.workspaceDir,
+        userRequest: input.request,
+        input: {
+          kind: "import",
+          inputPath: this.resolveInputPath(input.input),
+          importOptions: {
+            ...input.importOptions,
+            workspaceRoot: this.workspaceDir,
+          },
+        },
+        variants: input.variants,
+        ...optionalInterpretation(input.interpretation ?? this.defaultInterpretation),
+        ...optionalPlanningPolicy(input.planningPolicy ?? this.defaultPlanningPolicy),
+        sessionId: this.sessionId,
+        ...(this.branchId === undefined ? {} : { branchId: this.branchId }),
+        dependencies: this.createDependencies(),
+        ...(this.failurePolicy === undefined ? {} : { failurePolicy: this.failurePolicy }),
+      });
+
+      return this.commitVariantGenerationResult(result);
+    }
+
     const result = await runRequestCycle({
       workspaceRoot: this.workspaceDir,
       userRequest: input.request,
@@ -471,6 +531,30 @@ class DefaultAudioLanguageSession implements AudioLanguageSession {
     return normalized;
   }
 
+  private commitVariantGenerationResult(
+    result: EditVariantGenerationResult,
+  ): AudioLanguageVariantEditResult {
+    if (this.asset?.asset_id !== result.asset.asset_id) {
+      this.availableVersions.clear();
+    }
+
+    this.asset = result.asset;
+    this.sessionGraph = result.sessionGraph;
+    this.rememberVersion(result.inputVersion);
+    for (const variant of result.variants) {
+      this.rememberVersion(variant.outputVersion);
+    }
+    this.currentVersion = result.recommendedVariant.outputVersion;
+    this.lastInputVersion = result.inputVersion;
+    this.lastInputAnalysis = result.inputAnalysis;
+    this.lastOutputAnalysis = result.recommendedVariant.outputAnalysis;
+    this.lastEditPlan = result.recommendedVariant.editPlan;
+
+    const normalized = toSdkVariantGenerationResult(result);
+    this.lastResult = normalized;
+    return normalized;
+  }
+
   private createDependencies(): OrchestrationDependencies {
     const overrides = this.dependencyOverrides;
     return {
@@ -544,6 +628,47 @@ function toSdkEditResult(result: RequestCycleResult): AudioLanguageEditResult {
   };
 }
 
+function toSdkVariantGenerationResult(
+  result: EditVariantGenerationResult,
+): AudioLanguageVariantEditResult {
+  const variants = result.variants.map((variant) => ({
+    variantId: variant.variant_id,
+    label: variant.label,
+    rank: variant.rank,
+    isRecommended: variant.is_recommended,
+    rationale: variant.rationale,
+    warnings: variant.warnings,
+    editPlan: variant.editPlan,
+    outputVersion: variant.outputVersion,
+    outputAnalysis: variant.outputAnalysis,
+    previewRender: variant.previewRender,
+    transformRecord: variant.transformRecord,
+    comparisonReport: variant.comparisonReport,
+    ...(variant.renderComparisonReport === undefined
+      ? {}
+      : { renderComparisonReport: variant.renderComparisonReport }),
+  }));
+  const recommendedVariant = variants.find(
+    (variant) => variant.variantId === result.recommendedVariant.variant_id,
+  );
+  if (recommendedVariant === undefined) {
+    throw new Error("Variant generation result did not include the recommended variant.");
+  }
+
+  return {
+    resultKind: "variants_generated",
+    asset: result.asset,
+    inputVersion: result.inputVersion,
+    inputAnalysis: result.inputAnalysis,
+    semanticProfile: result.semanticProfile,
+    variants,
+    recommendedVariant,
+    sessionGraph: result.sessionGraph,
+    trace: result.trace,
+    rawResult: result,
+  };
+}
+
 function optionalInterpretation(
   interpretation: LlmAssistedInterpretationOptions | undefined,
 ): { interpretation: LlmAssistedInterpretationOptions } | Record<string, never> {
@@ -560,4 +685,16 @@ function optionalRevision(
   revision: RequestCycleRevisionOptions | undefined,
 ): { revision: RequestCycleRevisionOptions } | Record<string, never> {
   return revision === undefined ? {} : { revision };
+}
+
+function assertVariantEditOptions(input: SdkEditInput): void {
+  if (input.renderKind !== undefined) {
+    throw new Error(
+      "Variant generation always returns preview renders; call render() on a selected variant for final output.",
+    );
+  }
+
+  if (input.revision !== undefined) {
+    throw new Error("Variant generation does not support revision passes.");
+  }
 }

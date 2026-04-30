@@ -47,7 +47,7 @@ The runtime capability surface is now also published explicitly through `Runtime
 
 - `interpretation`: optional provider-backed request normalization that emits richer `IntentInterpretation` artifacts for OpenAI API, Google API, or local Codex CLI callers, including an explicit `conservative` vs `best_effort` policy, `next_action`, descriptor hypotheses, constraints, region-intent proposals, alternate candidates, and follow-up interpretation metadata
 - `tools`: callable tool registry and request execution for the published tool set
-- `orchestration`: composed happy-path workflows and iterative refinement helpers, including an explicit planner policy hook used by the CLI for opt-in best-effort texture fallbacks
+- `orchestration`: composed happy-path workflows, deterministic variant generation, and iterative refinement helpers, including an explicit planner policy hook used by the CLI for opt-in best-effort texture fallbacks
 
 ### Evaluation
 
@@ -199,6 +199,7 @@ Current tool-surface caveats:
 - benchmark coverage is fixture-backed for the current cleanup slice, including compare-only hum/click isolation cases and a small end-to-end request-cycle corpus focused on stable tonal cleanup, grounded texture wording, tonal and cross-family compound edits, restoration, timing edits, stereo/spatial edits, the first explicit numeric region-targeting slice, iterative follow-up flows, peak-control, dedicated louder-and-controlled prompts, clarification/failure controls, and session-provenance checks for repeated edits
 - live provider evaluation exists for the interpretation layer, but it is intentionally opt-in and narrower than the deterministic benchmark/reporting path because provider drift, key management, latency, and API cost are part of what that harness is meant to measure
 - the planner-supported operation verification matrix now makes coverage honest per operation: every current planner-supported operation has request-cycle outcome evidence, including explicit trim, fade, denoise, high-pass, and low-pass cases
+- SDK/orchestration variant generation can produce up to three deterministic strength-profile candidates (`subtle`, `balanced`, `stronger`) from one imported source; this is not random generation and does not expand planner capability breadth
 
 ## Practical Interpretation
 

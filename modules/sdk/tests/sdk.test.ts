@@ -116,6 +116,96 @@ describe("createAudioLanguageSession", () => {
       );
     });
   });
+
+  it.each([
+    [1, ["balanced"]],
+    [2, ["subtle", "balanced"]],
+    [3, ["subtle", "balanced", "stronger"]],
+  ] as const)("generates %i deterministic edit variant(s)", async (variantCount, labels) => {
+    await withTempWorkspace(async (root) => {
+      const inputPath = path.join(root, "fixtures", `variants-${variantCount}.wav`);
+      await writeFixtureWav(inputPath, { sampleRateHz: 44_100, durationSeconds: 1.25 });
+
+      const session = await createAudioLanguageSession({
+        workspaceDir: "workspace",
+        cwd: root,
+        dependencies: createTestDependencies(),
+      });
+
+      const result = await session.edit({
+        input: `fixtures/variants-${variantCount}.wav`,
+        request: "make this darker but keep the punch",
+        variants: variantCount,
+      });
+
+      expect(result.resultKind).toBe("variants_generated");
+      if (result.resultKind !== "variants_generated") {
+        throw new Error(`Expected variants_generated result, got ${result.resultKind}.`);
+      }
+
+      expect(result.variants).toHaveLength(variantCount);
+      expect(result.variants.map((variant) => variant.label)).toEqual(labels);
+      expect(result.variants.map((variant) => variant.rank).sort()).toEqual(
+        Array.from({ length: variantCount }, (_, index) => index + 1),
+      );
+      expect(result.recommendedVariant.isRecommended).toBe(true);
+      expect(result.sessionGraph.active_refs.version_id).toBe(
+        result.recommendedVariant.outputVersion.version_id,
+      );
+
+      for (const variant of result.variants) {
+        expect(variant.editPlan.steps.map((step) => step.operation)).toEqual(["tilt_eq"]);
+        expect(variant.outputVersion.parent_version_id).toBe(result.inputVersion.version_id);
+        expect(variant.transformRecord.plan_id).toBe(variant.editPlan.plan_id);
+        expect(variant.previewRender.kind).toBe("preview");
+        expect(variant.previewRender.version_id).toBe(variant.outputVersion.version_id);
+        expect(variant.comparisonReport.candidate.ref_id).toBe(variant.outputVersion.version_id);
+        expect(variant.rationale).toContain(variant.label);
+      }
+
+      const state = session.getState();
+      expect(state.currentVersion?.version_id).toBe(
+        result.recommendedVariant.outputVersion.version_id,
+      );
+      expect(state.availableVersions.map((version) => version.version_id)).toEqual(
+        expect.arrayContaining([
+          result.inputVersion.version_id,
+          ...result.variants.map((variant) => variant.outputVersion.version_id),
+        ]),
+      );
+    });
+  });
+
+  it("rejects single-output options that variant generation cannot honor", async () => {
+    await withTempWorkspace(async (root) => {
+      const inputPath = path.join(root, "fixtures", "variant-options.wav");
+      await writeFixtureWav(inputPath, { sampleRateHz: 44_100, durationSeconds: 1.25 });
+
+      const session = await createAudioLanguageSession({
+        workspaceDir: "workspace",
+        cwd: root,
+        dependencies: createTestDependencies(),
+      });
+
+      await expect(
+        session.edit({
+          input: "fixtures/variant-options.wav",
+          request: "make this darker",
+          variants: 2,
+          renderKind: "final",
+        }),
+      ).rejects.toThrow("Variant generation always returns preview renders");
+
+      await expect(
+        session.edit({
+          input: "fixtures/variant-options.wav",
+          request: "make this darker",
+          variants: 2,
+          revision: { enabled: true },
+        }),
+      ).rejects.toThrow("Variant generation does not support revision passes");
+    });
+  });
 });
 
 function createTestDependencies() {

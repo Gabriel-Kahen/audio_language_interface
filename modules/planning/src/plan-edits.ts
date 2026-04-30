@@ -16,7 +16,14 @@ import { assertValidSemanticProfile } from "@audio-language-interface/semantics"
 import { createPlanningFailure } from "./failures.js";
 import { parseUserRequest } from "./parse-request.js";
 import { buildPlannedSteps } from "./step-builders.js";
-import type { EditPlan, PlanEditsOptions, PlanningPolicy, RegionTarget } from "./types.js";
+import type {
+  EditPlan,
+  ParsedEditObjectives,
+  PlanEditsOptions,
+  PlanningPolicy,
+  RegionTarget,
+  VariantStrengthProfile,
+} from "./types.js";
 import { CONTRACT_SCHEMA_VERSION } from "./types.js";
 import { assertValidEditPlan } from "./utils/schema.js";
 import { buildVerificationTargets } from "./verification-targets.js";
@@ -66,6 +73,7 @@ export function planEdits(options: PlanEditsOptions): EditPlan {
     options.intentInterpretation,
     options.planningPolicy ?? "strict",
   );
+  applyVariantStrengthProfile(objectives, options.variantStrength);
   const steps = buildPlannedSteps({
     objectives,
     audioVersion: options.audioVersion,
@@ -103,7 +111,7 @@ export function planEdits(options: PlanEditsOptions): EditPlan {
     goals,
     steps,
     created_at: options.generatedAt ?? options.semanticProfile.generated_at,
-    rationale: buildRationale(goals, steps.length),
+    rationale: buildRationale(goals, steps.length, options.variantStrength),
   };
 
   if (options.intentInterpretation?.normalizedRequest !== undefined) {
@@ -1121,6 +1129,8 @@ function createPlanId(options: PlanEditsOptions, normalizedRequest: string): str
     .update(options.semanticProfile.profile_id)
     .update("|")
     .update(normalizedRequest)
+    .update("|")
+    .update(options.variantStrength ?? "single")
     .digest("hex")
     .slice(0, 24)
     .toUpperCase();
@@ -1355,9 +1365,29 @@ function buildConstraints(
   return dedupe(constraints);
 }
 
-function buildRationale(goals: string[], stepCount: number): string {
+function buildRationale(
+  goals: string[],
+  stepCount: number,
+  variantStrength?: VariantStrengthProfile,
+): string {
   const goalSummary = goals.slice(0, 3).join(", ");
-  return `The baseline planner mapped the request to ${stepCount} explicit step${stepCount === 1 ? "" : "s"} focused on ${goalSummary}.`;
+  const variantPrefix =
+    variantStrength === undefined
+      ? "The baseline planner"
+      : `The ${variantStrength} variant profile`;
+  return `${variantPrefix} mapped the request to ${stepCount} explicit step${stepCount === 1 ? "" : "s"} focused on ${goalSummary}.`;
+}
+
+function applyVariantStrengthProfile(
+  objectives: ParsedEditObjectives,
+  variantStrength: VariantStrengthProfile | undefined,
+): void {
+  if (variantStrength === undefined) {
+    return;
+  }
+
+  objectives.intensity =
+    variantStrength === "subtle" ? "subtle" : variantStrength === "stronger" ? "strong" : "default";
 }
 
 function dedupe(values: string[]): string[] {

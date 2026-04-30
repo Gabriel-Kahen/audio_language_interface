@@ -19,6 +19,7 @@ export type {
   SemanticDescriptor,
   SemanticProfile,
   TargetScope,
+  VariantStrengthProfile,
   VerificationComparison,
   VerificationTarget,
   VerificationTargetKind,

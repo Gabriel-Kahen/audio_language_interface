@@ -24,6 +24,7 @@ export type PlannerRequestClass =
   | "supported_runtime_only_but_not_planner_enabled";
 export type PlannerFailureClass = Exclude<PlannerRequestClass, "supported">;
 export type PlanningPolicy = "strict" | "best_effort";
+export type VariantStrengthProfile = "subtle" | "balanced" | "stronger";
 export type InterpretationNextAction = "plan" | "clarify" | "refuse";
 export type DescriptorHypothesisStatus = "supported" | "weak" | "contradicted" | "unresolved";
 
@@ -229,6 +230,7 @@ export interface PlanEditsOptions {
   semanticProfile: SemanticProfile;
   intentInterpretation?: PlannerIntentInterpretationInput;
   planningPolicy?: PlanningPolicy;
+  variantStrength?: VariantStrengthProfile;
   workspaceRoot?: string;
   generatedAt?: string;
   constraints?: string[];

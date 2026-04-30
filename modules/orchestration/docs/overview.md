@@ -11,6 +11,7 @@ The current implementation is a thin integration layer over the existing runtime
 ## Public API surface
 
 - `runRequestCycle(options)`
+- `generateEditVariants(options)`
 - `importAndAnalyze(options)`
 - `planApplyComparePass(options)`
 - `planAndApply(options)`
@@ -23,6 +24,7 @@ The current implementation is a thin integration layer over the existing runtime
 ## Implemented source files
 
 - `src/run-request-cycle.ts`: end-to-end workflow entrypoint
+- `src/flows/generate-edit-variants.ts`: deterministic multi-candidate generation from one imported source
 - `src/flows/import-and-analyze.ts`: ingest plus analysis path
 - `src/flows/plan-apply-compare.ts`: one explicit plan/apply/analyze/compare pass
 - `src/flows/plan-and-apply.ts`: planning plus execution path
@@ -70,6 +72,7 @@ It may also consume the optional `interpretation` adapter when callers opt into 
 - `runRequestCycle` can optionally execute one additional revision pass after the first version-level comparison. The decision stays explicit through `options.revision` and every applied pass is preserved in `result.iterations`.
 - `runRequestCycle` now exposes the final version-level comparison directly as `result.versionComparisonReport`, while preserving the final render-to-render comparison as `result.renderComparisonReport` and the legacy compatibility alias `result.comparisonReport`.
 - `runRequestCycle` can forward `options.planningPolicy = "best_effort"` to deterministic planning for explicit caller-controlled texture fallback behavior; strict planning remains the default.
+- `generateEditVariants` imports and analyzes one source once, then generates `subtle`, `balanced`, and/or `stronger` deterministic candidate plans from the same baseline version. Each candidate carries its own `EditPlan`, output `AudioVersion`, preview `RenderArtifact`, `TransformRecord`, version `ComparisonReport`, rationale, warnings, and conservative rank.
 - `resolveFollowUpRequest` can safely expand `more` and natural variants such as `make it more` to the last recorded request, resolve `less` and natural variants such as `make it less` plus explicit revert wording against version ancestry, resolve `undo` against explicit active-ref history, and branch `try another version` or `retry` from the prior baseline when the required session provenance exists.
 - LLM-assisted interpretation stays explicit and opt-in: callers must provide `options.interpretation` plus an `interpretRequest` dependency, and orchestration returns `intentInterpretation` artifacts so the normalized planner request and the chosen `conservative` vs `best_effort` policy stay inspectable.
 - When conservative interpretation returns `next_action = "clarify"`, `runRequestCycle` now returns `result_kind = "clarification_required"` instead of throwing a planner failure, and it records `metadata.pending_clarification` in the returned `SessionGraph`.
@@ -78,6 +81,7 @@ It may also consume the optional `interpretation` adapter when callers opt into 
 ## Current limitations
 
 - Orchestration depends on the same current module capabilities as the underlying runtime and intent layers. It does not add hidden planning breadth, hidden transform support, or alternate capability discovery on top of them.
+- Variant generation is limited to fresh imported inputs and at most three deterministic strength profiles. It does not generate random alternatives, choose unsupported creative effects, or apply variants cumulatively.
 - Revert-like and alternate-version follow-ups are fully executable when the caller provides `getAudioVersionById`, which lets orchestration materialize the referenced historical `AudioVersion` artifact explicitly before re-analyzing, branching, re-rendering, or reverting it.
 - When `runRequestCycle` performs a second pass, the final render comparison still compares the original input against the final output. The final version comparison is also surfaced at `result.versionComparisonReport`, while the per-pass version comparisons remain available in `result.iterations` and are also recorded into session history.
 - Interpretation artifacts themselves are not persisted into `SessionGraph` today. They are returned explicitly in `RequestCycleResult` and `iterations[]`, and callers must opt into interpretation again on later request-cycle invocations.

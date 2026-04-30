@@ -13,6 +13,7 @@ The current v1 surface stays thin by:
 ## Public exports
 
 - `runRequestCycle(options)`
+- `generateEditVariants(options)`
 - `importAndAnalyze(options)`
 - `planApplyComparePass(options)`
 - `planAndApply(options)`
@@ -82,6 +83,30 @@ For clarification-required results, `runRequestCycle()` returns the current `inp
 
 The same pending clarification state is also written to `sessionGraph.metadata.pending_clarification` so the next explicit request-cycle call can resume without hidden orchestration state.
 
+## Variant workflow
+
+`generateEditVariants(options)` supports `input.kind = "import"` and `variants = 1 | 2 | 3`.
+
+The variant profile set is deterministic:
+
+- `1`: `balanced`
+- `2`: `subtle`, `balanced`
+- `3`: `subtle`, `balanced`, `stronger`
+
+The returned `EditVariantGenerationResult` includes:
+
+- `result_kind = "variants_generated"`
+- input `AudioAsset`, `AudioVersion`, and `AnalysisReport`
+- one shared `SemanticProfile`
+- `variants[]`, each with label, rank, rationale, warnings, `EditPlan`, output `AudioVersion`, output analysis, `TransformRecord`, preview `RenderArtifact`, version `ComparisonReport`, and render comparison report
+- `recommendedVariant`, chosen by conservative ranking
+- updated `SessionGraph`
+- workflow trace entries
+
+All variants start from the same imported input version. Orchestration records every variant output version but marks the recommended candidate as the active session version.
+
+Ranking is conservative: severe regressions, unmet goals, and unmet structured verification targets are penalized before stronger profiles win ties. Transform warnings and meaningful comparison warnings are surfaced per variant.
+
 ## Failure behavior
 
 Each public flow uses stage-aware error wrapping.
@@ -107,7 +132,7 @@ The default behavior is one attempt with no retries.
 
 - optionally derives a semantic profile
 - optionally derives an `IntentInterpretation` artifact when `options.requestInterpretation` is present and `interpretRequest` is injected
-- builds an edit plan through `modules/planning`
+- builds an edit plan through `modules/planning`, optionally forwarding a deterministic variant strength profile
 - applies that plan through `modules/transforms`
 
 `renderAndCompare(options)`
