@@ -72,6 +72,10 @@ Owns conversion from user intent plus current audio state into an ordered, param
 
 Owns the thin local command-line entrypoint and explicit session-directory surface.
 
+#### `modules/sdk`
+
+Owns the stable application-facing TypeScript entrypoint over orchestration and canonical artifacts.
+
 #### `modules/interpretation`
 
 Owns optional provider-backed request normalization. It turns open-ended user language into a bounded `IntentInterpretation` artifact without replacing deterministic planning, semantics, or verification.
@@ -103,7 +107,7 @@ The current natural-language editing workflow is:
 7. `render` generates a `RenderArtifact`.
 8. `compare` produces a `ComparisonReport`.
 9. `history` records lineage into a `SessionGraph`.
-10. `tools` and `orchestration` expose and compose the above for external callers.
+10. `tools`, `sdk`, and `orchestration` expose and compose the above for external callers.
 
 That workflow is important, but it is not the same thing as the architecture. The repo is organized by responsibility boundaries first, not by one flat pipeline.
 
@@ -178,6 +182,7 @@ Modules should communicate through those artifacts rather than through ad hoc in
    - `modules/planning`
 4. adapters
    - `modules/tools`
+   - `modules/sdk`
    - `modules/orchestration`
 5. evaluation
    - `modules/benchmarks`

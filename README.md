@@ -346,6 +346,7 @@ This repo is usable today for technical experimentation and module-level integra
 |   |-- orchestration/
 |   |-- planning/
 |   |-- render/
+|   |-- sdk/
 |   |-- semantics/
 |   |-- tools/
 |   `-- transforms/

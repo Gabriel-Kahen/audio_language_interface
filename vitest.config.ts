@@ -35,6 +35,9 @@ export default defineConfig({
       "@audio-language-interface/render": fileURLToPath(
         new URL("./modules/render/src/index.ts", import.meta.url),
       ),
+      "@audio-language-interface/sdk": fileURLToPath(
+        new URL("./modules/sdk/src/index.ts", import.meta.url),
+      ),
       "@audio-language-interface/semantics": fileURLToPath(
         new URL("./modules/semantics/src/index.ts", import.meta.url),
       ),

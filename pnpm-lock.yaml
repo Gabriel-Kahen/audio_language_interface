@@ -11,6 +11,9 @@ importers:
       '@audio-language-interface/cli':
         specifier: workspace:*
         version: link:modules/cli
+      '@audio-language-interface/sdk':
+        specifier: workspace:*
+        version: link:modules/sdk
       execa:
         specifier: ^9.6.1
         version: 9.6.1
@@ -233,6 +236,24 @@ importers:
       vitest:
         specifier: ^4.1.4
         version: 4.1.4(@types/node@22.19.17)(vite@8.0.8(@types/node@22.19.17)(esbuild@0.27.7)(tsx@4.21.0))
+
+  modules/sdk:
+    dependencies:
+      '@audio-language-interface/core':
+        specifier: workspace:*
+        version: link:../core
+      '@audio-language-interface/history':
+        specifier: workspace:*
+        version: link:../history
+      '@audio-language-interface/orchestration':
+        specifier: workspace:*
+        version: link:../orchestration
+      '@audio-language-interface/planning':
+        specifier: workspace:*
+        version: link:../planning
+      '@audio-language-interface/transforms':
+        specifier: workspace:*
+        version: link:../transforms
 
   modules/semantics:
     dependencies:

@@ -16,6 +16,7 @@
       "@audio-language-interface/orchestration": ["./modules/orchestration/src/index.ts"],
       "@audio-language-interface/planning": ["./modules/planning/src/index.ts"],
       "@audio-language-interface/render": ["./modules/render/src/index.ts"],
+      "@audio-language-interface/sdk": ["./modules/sdk/src/index.ts"],
       "@audio-language-interface/semantics": ["./modules/semantics/src/index.ts"],
       "@audio-language-interface/tools": ["./modules/tools/src/index.ts"],
       "@audio-language-interface/transforms": ["./modules/transforms/src/index.ts"]
