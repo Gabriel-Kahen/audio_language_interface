@@ -36,6 +36,55 @@ Current behavior:
 - defaults output sample rate and channel count to the source version unless overridden
 - probes and validates the materialized output before returning `{ command, artifact }`
 
+### `renderComparisonPreview(options)`
+
+Renders fair A/B preview artifacts for one original `AudioVersion` and one edited `AudioVersion`.
+
+Current behavior:
+
+- validates both versions and requires them to belong to the same asset
+- renders the normal original preview and normal edited preview
+- resolves or measures source loudness from `originalLoudness`, `editedLoudness`, or FFmpeg `loudnorm`
+- chooses a target integrated LUFS value, defaulting to the quieter source
+- caps the target when needed so estimated true peak stays below `maxTruePeakDbtp`, which defaults to `-1`
+- renders loudness-matched original and edited previews with an explicit `volume` gain and `alimiter` clipping guard
+- measures the rendered preview loudness and writes `loudness_summary` into each returned `RenderArtifact`
+- returns `{ originalPreview, editedPreview, loudnessMatchedOriginalPreview, loudnessMatchedEditedPreview, metadata }`
+
+Example:
+
+```ts
+const previews = await renderComparisonPreview({
+  workspaceRoot,
+  originalVersion,
+  editedVersion,
+  matchToleranceLufs: 1,
+});
+
+console.log(previews.originalPreview.artifact.output.path);
+console.log(previews.loudnessMatchedEditedPreview.artifact.output.path);
+console.log(previews.metadata.target_integrated_lufs);
+```
+
+`metadata` contains:
+
+- `method`: currently `integrated_lufs_true_peak_capped_gain`
+- `target_integrated_lufs`
+- `max_true_peak_dbtp`
+- `tolerance_lufs`
+- `clipping_guard`
+- per-side input loudness, gain, estimated true peak, and measured matched loudness
+- optional warnings for target capping, tolerance misses, or post-render true-peak guard violations
+
+### `measureRenderLoudness(inputPath, options?)`
+
+Measures integrated LUFS and true peak using FFmpeg `loudnorm` and returns:
+
+- `integrated_lufs`
+- `true_peak_dbtp`
+
+This helper exists in `render` so comparison-preview correctness does not depend on application code or future UI surfaces.
+
 ## FFmpeg helpers
 
 ### `buildFfmpegRenderCommand(options)`
@@ -48,6 +97,7 @@ Current behavior:
 - sets channel count with `-ac`
 - sets sample rate with `-ar`
 - sets audio codec with `-c:a`
+- includes `-af` when an internal render path supplies an explicit audio filter chain
 - adds bitrate only when the selected render format requires it
 
 ### `executeFfmpegCommand(command, executor?)`
@@ -130,5 +180,7 @@ The module exports these current error classes:
 
 - preview rendering is fixed to MP3
 - final export rendering is limited to WAV and FLAC
-- loudness data is caller-supplied metadata passthrough; this module does not calculate it
+- regular preview/export loudness data is caller-supplied metadata passthrough
+- comparison-preview loudness is measured by the render module for A/B matching
+- comparison-preview matching is preview-only and does not mutate source versions
 - the module relies on system-installed `ffmpeg` and `ffprobe`

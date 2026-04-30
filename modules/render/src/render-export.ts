@@ -37,6 +37,13 @@ const FINAL_FORMATS: Record<NonNullable<FinalRenderOptions["format"]>, RenderFor
  * from the rendered file after ffmpeg succeeds.
  */
 export async function renderExport(options: FinalRenderOptions): Promise<RenderResult> {
+  return renderExportWithFilter(options);
+}
+
+async function renderExportWithFilter(
+  options: FinalRenderOptions,
+  internalOptions: { audioFilterChain?: string | undefined } = {},
+): Promise<RenderResult> {
   assertValidAudioVersion(options.version);
 
   const inputPath = resolveSourceAudioPath(
@@ -63,6 +70,9 @@ export async function renderExport(options: FinalRenderOptions): Promise<RenderR
     sampleRateHz: expectedSampleRateHz,
     channels: expectedChannels,
     ...(options.ffmpegPath === undefined ? {} : { ffmpegPath: options.ffmpegPath }),
+    ...(internalOptions.audioFilterChain === undefined
+      ? {}
+      : { audioFilterChain: internalOptions.audioFilterChain }),
     format,
   });
 

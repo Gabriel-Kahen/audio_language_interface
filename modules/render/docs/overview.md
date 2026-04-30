@@ -10,6 +10,8 @@ This module is part of the audio runtime layer.
 
 - `renderPreview(options)`: render a lossy preview artifact
 - `renderExport(options)`: render a final export artifact
+- `renderComparisonPreview(options)`: render original, edited, and loudness-matched A/B preview artifacts for fair listening comparisons
+- `measureRenderLoudness(inputPath, options?)`: measure integrated LUFS and true peak for render-level preview matching
 - `buildFfmpegRenderCommand(options)`: build the explicit `ffmpeg` invocation used for a render
 - `executeFfmpegCommand(command, executor?)`: execute a prepared render command
 - `resolveRenderOutputPath(options)`: resolve and validate a workspace-local output path
@@ -21,6 +23,8 @@ See `docs/api.md` for the detailed render behavior, metadata validation rules, a
 
 - `src/render-preview.ts`: fast preview rendering
 - `src/render-export.ts`: final-quality export rendering
+- `src/render-comparison-preview.ts`: loudness-matched before/after preview sets
+- `src/loudness.ts`: FFmpeg loudnorm probing for preview matching
 - `src/output-metadata.ts`: rendered file metadata extraction
 - `src/path-policy.ts`: output naming and storage policy
 - `src/index.ts`: public exports only
@@ -54,6 +58,8 @@ See `docs/api.md` for the detailed render behavior, metadata validation rules, a
 - Both render paths preserve the source `AudioVersion` duration in the emitted artifact.
 - Both render paths can override sample rate and channel count at render time.
 - The returned `RenderArtifact.output.path` is a workspace-relative POSIX-style path.
+- Comparison previews return four `RenderArtifact`s: original preview, edited preview, loudness-matched original preview, and loudness-matched edited preview.
+- Comparison preview matching uses integrated LUFS and a true-peak cap so A/B previews are judged by the edit, not by loudness advantage.
 
 ## FFmpeg assumptions
 
@@ -80,11 +86,15 @@ See `docs/api.md` for the detailed render behavior, metadata validation rules, a
 - successful renders fail if the output file is missing, empty, or probed as the wrong container format.
 - `warnings` contains stderr warning lines plus validation warnings when the materialized file differs from the requested sample rate, channel count, or expected duration.
 - `loudness_summary` is passed through from caller-provided data; this module does not calculate loudness itself.
+- `renderComparisonPreview()` measures preview loudness with FFmpeg `loudnorm` and attaches measured `loudness_summary` values to the four preview artifacts.
+- Loudness-match metadata records the method, target integrated LUFS, true-peak ceiling, applied gain, measured matched loudness, and warnings when tolerance or clipping guards are exceeded.
 
 ## Current limitations
 
 - Preview format support is fixed to MP3 in the current implementation.
 - Final export format support is limited to WAV and FLAC.
+- Comparison-preview matching is an A/B preview utility only. It does not change the source `AudioVersion`s or replace final export rendering.
+- The default comparison target is the quieter source loudness; callers may provide a target, but the engine lowers it when required to preserve true-peak headroom.
 
 ## Test expectations
 
@@ -92,6 +102,7 @@ See `docs/api.md` for the detailed render behavior, metadata validation rules, a
 - verify path and format handling
 - verify rendered outputs match declared artifact metadata
 - verify contract alignment for `RenderArtifact`
+- verify comparison-preview artifacts are materialized and loudness-matched within tolerance
 
 ## Additional docs
 

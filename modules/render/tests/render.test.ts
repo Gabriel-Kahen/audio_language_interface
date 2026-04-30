@@ -19,9 +19,11 @@ import type {
   FfmpegExecutionResult,
   FfprobeCommand,
   FfprobeExecutionResult,
+  LoudnessProbeCommand,
 } from "../src/index.js";
 import {
   buildFfmpegRenderCommand,
+  renderComparisonPreview,
   renderExport,
   renderPreview,
   resolveRenderOutputPath,
@@ -149,6 +151,40 @@ describe("buildFfmpegRenderCommand", () => {
       "-c:a",
       "pcm_s16le",
       "/tmp/render.wav",
+    ]);
+  });
+
+  it("adds an audio filter chain when requested", () => {
+    const command = buildFfmpegRenderCommand({
+      inputPath: "/tmp/source.wav",
+      outputPath: "/tmp/render.mp3",
+      sampleRateHz: 44100,
+      channels: 2,
+      audioFilterChain: "volume=-6dB,alimiter=limit=0.891251",
+      format: {
+        format: "mp3",
+        codec: "libmp3lame",
+        extension: "mp3",
+        bitrate: "128k",
+      },
+    });
+
+    expect(command.args).toEqual([
+      "-y",
+      "-i",
+      "/tmp/source.wav",
+      "-vn",
+      "-af",
+      "volume=-6dB,alimiter=limit=0.891251",
+      "-ac",
+      "2",
+      "-ar",
+      "44100",
+      "-c:a",
+      "libmp3lame",
+      "-b:a",
+      "128k",
+      "/tmp/render.mp3",
     ]);
   });
 });
@@ -391,6 +427,102 @@ describe("renderExport", () => {
   });
 });
 
+describe("renderComparisonPreview", () => {
+  it("renders original, edited, and loudness-matched preview artifacts", async () => {
+    const workspaceRoot = await createWorkspace();
+    const originalVersion = await createAudioVersionFixture(workspaceRoot);
+    const editedVersion: AudioVersion = {
+      ...originalVersion,
+      version_id: "ver_01HZX8B7J2V3M4N5P6Q7EDIT01",
+      parent_version_id: originalVersion.version_id,
+      audio: {
+        ...originalVersion.audio,
+        storage_ref: "storage/audio/edited.wav",
+      },
+      state: {
+        is_original: false,
+        is_preview: false,
+      },
+    };
+    await writeFile(path.join(workspaceRoot, "storage", "audio", "edited.wav"), "edited-bytes");
+
+    const result = await renderComparisonPreview({
+      workspaceRoot,
+      originalVersion,
+      editedVersion,
+      originalLoudness: {
+        integrated_lufs: -20,
+        true_peak_dbtp: -4,
+      },
+      editedLoudness: {
+        integrated_lufs: -14,
+        true_peak_dbtp: -1.5,
+      },
+      renderIds: {
+        originalPreview: "render_originalpreview123",
+        editedPreview: "render_editedpreview123",
+        loudnessMatchedOriginalPreview: "render_matchedoriginal123",
+        loudnessMatchedEditedPreview: "render_matchededited123",
+      },
+      createdAt: new Date("2026-04-14T20:22:20Z"),
+      executor: createFakeExecutor("comparison-preview"),
+      probeExecutor: createFakeProbeExecutor({
+        format: "mp3",
+        codec: "mp3",
+        sampleRateHz: 44100,
+        channels: 2,
+        durationSeconds: 4,
+      }),
+      loudnessProbeExecutor: createFakeLoudnessProbeExecutor({
+        render_originalpreview123: { integrated_lufs: -20.1, true_peak_dbtp: -4.1 },
+        render_editedpreview123: { integrated_lufs: -14.2, true_peak_dbtp: -1.8 },
+        render_matchedoriginal123: { integrated_lufs: -20, true_peak_dbtp: -4 },
+        render_matchededited123: { integrated_lufs: -20.1, true_peak_dbtp: -7.4 },
+      }),
+    });
+
+    expect(result.originalPreview.artifact.output.path).toBe(
+      "renders/comparison-previews/render_originalpreview123.mp3",
+    );
+    expect(result.editedPreview.artifact.output.path).toBe(
+      "renders/comparison-previews/render_editedpreview123.mp3",
+    );
+    expect(result.loudnessMatchedOriginalPreview.artifact.output.path).toBe(
+      "renders/comparison-previews/render_matchedoriginal123.mp3",
+    );
+    expect(result.loudnessMatchedEditedPreview.artifact.output.path).toBe(
+      "renders/comparison-previews/render_matchededited123.mp3",
+    );
+    expect(result.metadata).toMatchObject({
+      method: "integrated_lufs_true_peak_capped_gain",
+      target_integrated_lufs: -20,
+      max_true_peak_dbtp: -1,
+      clipping_guard: "true_peak_gain_cap_and_limiter",
+      original: {
+        gain_db: 0,
+        matched_loudness: {
+          integrated_lufs: -20,
+        },
+      },
+      edited: {
+        gain_db: -6,
+        estimated_true_peak_dbtp: -7.5,
+        matched_loudness: {
+          integrated_lufs: -20.1,
+        },
+      },
+    });
+    expect(result.metadata.warnings).toBeUndefined();
+    expect(result.loudnessMatchedEditedPreview.command.args).toContain(
+      "volume=-6dB,alimiter=limit=0.891251",
+    );
+    expect(validateRenderArtifact(result.originalPreview.artifact)).toBe(true);
+    expect(validateRenderArtifact(result.editedPreview.artifact)).toBe(true);
+    expect(validateRenderArtifact(result.loudnessMatchedOriginalPreview.artifact)).toBe(true);
+    expect(validateRenderArtifact(result.loudnessMatchedEditedPreview.artifact)).toBe(true);
+  });
+});
+
 async function createWorkspace(): Promise<string> {
   const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), "render-module-"));
   tempDirs.push(workspaceRoot);
@@ -510,6 +642,33 @@ function createFakeProbeExecutor(metadata: {
     }),
     stderr: "",
   });
+}
+
+function createFakeLoudnessProbeExecutor(
+  byRenderId: Record<string, { integrated_lufs: number; true_peak_dbtp: number }>,
+): (command: LoudnessProbeCommand) => Promise<FfmpegExecutionResult> {
+  return async (command) => {
+    const entry = Object.entries(byRenderId).find(([renderId]) =>
+      command.inputPath.includes(renderId),
+    )?.[1];
+
+    if (entry === undefined) {
+      return {
+        exitCode: 1,
+        stdout: "",
+        stderr: `missing fake loudness for ${command.inputPath}`,
+      };
+    }
+
+    return {
+      exitCode: 0,
+      stdout: "",
+      stderr: JSON.stringify({
+        input_i: String(entry.integrated_lufs),
+        input_tp: String(entry.true_peak_dbtp),
+      }),
+    };
+  };
 }
 
 function validateRenderArtifact(payload: unknown): boolean {

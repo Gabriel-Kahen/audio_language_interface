@@ -30,6 +30,13 @@ const PREVIEW_FORMAT = {
  * from the rendered file after ffmpeg succeeds.
  */
 export async function renderPreview(options: PreviewRenderOptions): Promise<RenderResult> {
+  return renderPreviewWithFilter(options);
+}
+
+export async function renderPreviewWithFilter(
+  options: PreviewRenderOptions,
+  internalOptions: { audioFilterChain?: string | undefined } = {},
+): Promise<RenderResult> {
   assertValidAudioVersion(options.version);
 
   const inputPath = resolveSourceAudioPath(
@@ -55,6 +62,9 @@ export async function renderPreview(options: PreviewRenderOptions): Promise<Rend
     sampleRateHz: expectedSampleRateHz,
     channels: expectedChannels,
     ...(options.ffmpegPath === undefined ? {} : { ffmpegPath: options.ffmpegPath }),
+    ...(internalOptions.audioFilterChain === undefined
+      ? {}
+      : { audioFilterChain: internalOptions.audioFilterChain }),
     format: {
       ...PREVIEW_FORMAT,
       bitrate: options.bitrate ?? "128k",

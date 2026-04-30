@@ -23,6 +23,32 @@ The two public render entry points differ in format policy:
 
 Both entry points let callers override sample rate and channel count.
 
+## Comparison previews
+
+`renderComparisonPreview()` is the engine-level A/B preview path for fair before/after listening.
+
+It produces four preview `RenderArtifact`s:
+
+- original preview
+- edited preview
+- loudness-matched original preview
+- loudness-matched edited preview
+
+The function measures integrated LUFS and true peak with FFmpeg `loudnorm` unless callers provide `originalLoudness` and `editedLoudness`. It then chooses a target integrated LUFS value. By default the target is the quieter source loudness so the comparison does not prefer the louder file. If a caller provides `targetIntegratedLufs`, the engine still lowers that target when required to preserve the configured true-peak ceiling.
+
+Matched previews are rendered with an explicit `volume=<gain>dB` filter followed by `alimiter=limit=<linear true peak cap>`. After rendering, the module measures both matched previews and records:
+
+- match method
+- target integrated LUFS
+- max true peak dBTP
+- tolerance LUFS
+- applied gain per side
+- estimated true peak per side
+- measured matched loudness per side
+- warnings for target capping, tolerance misses, or post-render true-peak guard violations
+
+Comparison preview matching is preview-only. It does not create new `AudioVersion`s, rewrite source audio, or replace final export rendering.
+
 ## FFmpeg execution assumptions
 
 - The module assumes `ffmpeg` is installed on the host system.
@@ -73,11 +99,13 @@ The module assembles `RenderArtifact.output` from the produced file after a succ
 ## Loudness summary behavior
 
 - `loudness_summary` is optional passthrough data.
-- The render module does not compute loudness values.
-- If a caller does not provide loudness data, the field is omitted from the artifact.
+- Regular `renderPreview()` and `renderExport()` calls do not compute loudness values.
+- `renderComparisonPreview()` computes preview loudness values and attaches them to all four returned `RenderArtifact`s.
+- If a caller does not provide loudness data to regular preview/export calls, the field is omitted from the artifact.
 
 ## Known limitations
 
 - No preview formats other than MP3 are supported.
 - No final formats other than WAV and FLAC are supported.
 - The module does not expose container-specific encoding options beyond the current small config surface.
+- Comparison previews are limited to full-file matching. Region-specific A/B loudness matching is not implemented.

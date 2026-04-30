@@ -15,7 +15,7 @@ The current repository supports a real single-file natural-language editing slic
 - derive a conservative `SemanticProfile`
 - plan small deterministic edits for a conservative but growing supported request family
 - apply deterministic FFmpeg-backed transforms
-- render preview and limited export artifacts
+- render preview, loudness-matched A/B preview, and limited export artifacts
 - compare baseline and candidate versions or renders
 - record provenance in a `SessionGraph`
 - access the flow through adapter surfaces in `tools` or `orchestration`
@@ -35,7 +35,7 @@ The runtime capability surface is now also published explicitly through `Runtime
 - `io`: local file import, metadata inspection, optional WAV normalization, source-ref validation
 - `analysis`: deterministic baseline analysis for workspace-local WAV files, including explicit hum/click artifact detection and direct clipping severity fields for the current cleanup slice
 - `transforms`: deterministic FFmpeg-backed execution for the current runtime operation set
-- `render`: preview MP3 rendering plus WAV and FLAC export rendering
+- `render`: preview MP3 rendering, loudness-matched A/B preview sets, plus WAV and FLAC export rendering
 - `compare`: metric deltas, small semantic delta vocabulary, regression warnings, structured verification, and `evaluation_basis` metadata
 
 ### Intent Layer
@@ -190,6 +190,7 @@ Current tool-surface caveats:
 - conservative interpretation can now stop at a first-class clarification result instead of a planner error, and the next caller-supplied `session_graph` can resume that clarification path explicitly
 - the baseline planner still does not choose `pan`, channel remapping, `mid_side_eq`, broader Layer 1 runtime effects, or the creative-effect surface automatically
 - render preview is MP3-only
+- loudness-matched A/B previews are full-file preview artifacts only; they do not mutate source versions or replace final exports
 - final render export is limited to WAV and FLAC
 - compare now prefers planner-emitted structured verification targets and still keeps heuristic goal alignment only as a legacy fallback
 - compare now preserves compound-goal tradeoff detail through `goal_alignment[].verification_rollup` when structured verification rolls multiple targets into one goal

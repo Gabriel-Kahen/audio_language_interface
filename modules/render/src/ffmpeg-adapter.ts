@@ -17,6 +17,7 @@ export interface BuildFfmpegRenderCommandOptions {
   sampleRateHz: number;
   channels: number;
   format: RenderFormatConfig;
+  audioFilterChain?: string | undefined;
 }
 
 export class RenderExecutionError extends Error {
@@ -35,18 +36,20 @@ export class RenderExecutionError extends Error {
 
 /** Builds an explicit ffmpeg invocation for a single audio render. */
 export function buildFfmpegRenderCommand(options: BuildFfmpegRenderCommandOptions): FfmpegCommand {
-  const args = [
-    "-y",
-    "-i",
-    options.inputPath,
-    "-vn",
+  const args = ["-y", "-i", options.inputPath, "-vn"];
+
+  if (options.audioFilterChain !== undefined) {
+    args.push("-af", options.audioFilterChain);
+  }
+
+  args.push(
     "-ac",
     String(options.channels),
     "-ar",
     String(options.sampleRateHz),
     "-c:a",
     options.format.codec,
-  ];
+  );
 
   if (options.format.bitrate !== undefined) {
     args.push("-b:a", options.format.bitrate);

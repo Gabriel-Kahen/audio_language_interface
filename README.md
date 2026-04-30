@@ -45,7 +45,7 @@ Today, the repository supports a real single-file editing loop:
 3. derive conservative semantic descriptors
 4. translate a user request into an explicit `EditPlan`
 5. apply deterministic FFmpeg-backed transforms
-6. render previews or exports
+6. render previews, loudness-matched A/B previews, or exports
 7. compare before and after
 8. record provenance in a `SessionGraph`
 
@@ -137,7 +137,7 @@ This layer owns canonical artifacts, schema contracts, IDs, provenance, and publ
 - `modules/render`
 - `modules/compare`
 
-This layer owns deterministic import, inspection, execution, rendering, and before/after evaluation.
+This layer owns deterministic import, inspection, execution, rendering, loudness-matched A/B preview generation, and before/after evaluation.
 
 ### Intent Layer
 
@@ -319,6 +319,7 @@ This repo is usable today for technical experimentation and module-level integra
 - hum and click comparison now prefers direct `AnalysisReport.artifacts` evidence when it exists, with low-band or clipped-sample proxies kept only as conservative fallbacks
 - there is now a narrow alpha CLI entrypoint for local single-file editing and explicit follow-ups, but there is still no broader GUI or service surface
 - the public SDK can now request deterministic edit variants for fresh imports, returning `subtle`, `balanced`, and/or `stronger` candidates with canonical artifacts and conservative ranking
+- the render engine can now produce fair before/after preview sets with original, edited, loudness-matched original, and loudness-matched edited artifacts
 - the baseline planner does not yet auto-select `pan`, `mid_side_eq`, channel remapping, or the broader Layer 1 runtime-effect surface
 - pure `more controlled` requests may now refuse on already tightly controlled material instead of silently degrading it, while companion tonal edits can proceed with an explicit note that redundant compression was skipped
 - benchmark coverage now includes a tiny committed cleanup, grounded texture, timing, stereo/spatial, filter, restoration, and control corpus, plus an operation-by-operation verification matrix; it is still light compared with the long-term goal, but every current planner-supported operation now has fixture-backed request-cycle outcome coverage
